@@ -15,6 +15,7 @@
 
 import prisma from "@/config/prisma";
 import type { Prisma, SiteConfig, SiteTemplate } from "@prisma/client";
+import sitesRepo from "@/modules/sites/sites.repository";
 
 export type PublicSiteConfig = SiteConfig & { template: SiteTemplate | null };
 
@@ -41,6 +42,25 @@ export interface PublicSiteProduct {
   priceFrom: string;
   /** Priciest active variation price. */
   priceTo: string;
+  /**
+   * True when the product has at least one active ProductDiscount row
+   * whose optional start/end window covers "now". Matches the semantic
+   * of the `/public/offers` endpoint so badges stay consistent across
+   * surfaces.
+   */
+  onOffer: boolean;
+  /**
+   * Integer percent saved when finalSp < mrp, else null. Derived purely
+   * from the price fields — does NOT look at ProductDiscount. This is
+   * the number the "strikethrough + X% OFF" badge reads.
+   */
+  discountPct: number | null;
+  /**
+   * Human-readable version of discountPct, e.g. "25% OFF". null when
+   * there is no discount. Centralized here so all storefront surfaces
+   * format the label identically.
+   */
+  discountLabel: string | null;
 }
 
 /** Structured attribute payload used by the PDP buybox chip selector. */
@@ -178,12 +198,65 @@ function primaryPhotoFromList(variations: ListVariationRow[]): string | null {
   return variation.photos[0]?.photoUrl ?? null;
 }
 
+/**
+ * Derive the three discount fields on a product card from its prices
+ * plus whether an active ProductDiscount row exists for it right now.
+ *
+ * discountPct is computed from (mrp, finalSp) rather than from the
+ * ProductDiscount row because the product-card contract is "show what
+ * the customer actually saves at the current list/sell prices". Stores
+ * sometimes set finalSp = mrp and rely on ProductDiscount for the
+ * actual reduction; in that case discountPct is null but `onOffer`
+ * is still true, so the UI can show an "On Offer" badge without a
+ * bogus strikethrough.
+ */
+export function deriveDiscount(
+  mrp: Prisma.Decimal | number | string,
+  finalSp: Prisma.Decimal | number | string,
+  hasActiveDiscount: boolean,
+): {
+  onOffer: boolean;
+  discountPct: number | null;
+  discountLabel: string | null;
+} {
+  const mrpNum = Number(mrp);
+  const finalSpNum = Number(finalSp);
+  let discountPct: number | null = null;
+  if (mrpNum > 0 && finalSpNum >= 0 && finalSpNum < mrpNum) {
+    discountPct = Math.round(((mrpNum - finalSpNum) / mrpNum) * 100);
+    if (discountPct <= 0) discountPct = null;
+  }
+  return {
+    onOffer: hasActiveDiscount,
+    discountPct,
+    discountLabel: discountPct != null ? `${discountPct}% OFF` : null,
+  };
+}
+
+/**
+ * Prisma where clause for "an active discount row whose optional
+ * start/end window covers `now`". Extracted so list / detail / collection
+ * selects all agree on the same semantic.
+ */
+function activeDiscountWhere(now: Date): Prisma.ProductDiscountWhereInput {
+  return {
+    isActive: true,
+    AND: [
+      { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+      { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+    ],
+  };
+}
+
 export class PublicSiteRepository {
+  /**
+   * Delegates to sitesRepo.findConfig so the per-request memoization
+   * there (see SitesRepository.findConfig) also applies to callers
+   * going through the public-site service. Keeps both repos returning
+   * the same SiteConfig promise within a request.
+   */
   findSiteConfig(tenantId: string): Promise<PublicSiteConfig | null> {
-    return prisma.siteConfig.findUnique({
-      where: { tenantId },
-      include: { template: true },
-    });
+    return sitesRepo.findConfig(tenantId);
   }
 
   async listProducts(
@@ -302,6 +375,11 @@ export class PublicSiteRepository {
           dateCreated: true,
           category: { select: { id: true, name: true } },
           ...LIST_VARIATION_SELECT,
+          discounts: {
+            where: activeDiscountWhere(now),
+            select: { id: true },
+            take: 1,
+          },
         },
       }),
       prisma.product.count({ where }),
@@ -323,6 +401,7 @@ export class PublicSiteRepository {
       category: r.category,
       photoUrl: primaryPhotoFromList(r.variations),
       ...priceStats(r.variations, r.finalSp),
+      ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
     }));
     return [products, total, facets];
   }
@@ -467,6 +546,7 @@ export class PublicSiteRepository {
     tenantId: string,
     id: string,
   ): Promise<PublicSiteProductDetail | null> {
+    const now = new Date();
     const row = await prisma.product.findFirst({
       where: { id, tenantId, deletedAt: null },
       select: {
@@ -484,6 +564,11 @@ export class PublicSiteRepository {
         subCategory: true,
         dateCreated: true,
         category: { select: { id: true, name: true } },
+        discounts: {
+          where: activeDiscountWhere(now),
+          select: { id: true },
+          take: 1,
+        },
         // Full active-variation set so the PDP buybox can render a chip
         // picker grouped by attribute type. Attributes + sub-variations
         // join through; photos are flattened to URL strings to keep the
@@ -594,15 +679,34 @@ export class PublicSiteRepository {
       photoUrls,
       variations,
       ...stats,
+      ...deriveDiscount(row.mrp, row.finalSp, row.discounts.length > 0),
     };
   }
 
-  listCategories(tenantId: string) {
-    return prisma.category.findMany({
+  async listCategories(tenantId: string): Promise<
+    {
+      id: string;
+      name: string;
+      description: string | null;
+      productCount: number;
+    }[]
+  > {
+    const rows = await prisma.category.findMany({
       where: { tenantId, deletedAt: null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        _count: { select: { products: { where: { deletedAt: null } } } },
+      },
     });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      productCount: r._count.products,
+    }));
   }
 
   /**
@@ -626,6 +730,7 @@ export class PublicSiteRepository {
     if (joinRows.length === 0) return [];
 
     const productIds = joinRows.map((r) => r.productId);
+    const now = new Date();
     const rows = await prisma.product.findMany({
       where: { tenantId, deletedAt: null, id: { in: productIds } },
       select: {
@@ -640,6 +745,11 @@ export class PublicSiteRepository {
         dateCreated: true,
         category: { select: { id: true, name: true } },
         ...LIST_VARIATION_SELECT,
+        discounts: {
+          where: activeDiscountWhere(now),
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
@@ -661,6 +771,7 @@ export class PublicSiteRepository {
         category: r.category,
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
       });
     }
     return ordered;

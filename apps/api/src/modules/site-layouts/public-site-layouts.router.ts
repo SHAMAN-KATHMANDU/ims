@@ -14,7 +14,7 @@ import { asyncHandler, AppError } from "@/middlewares/errorHandler";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import { sendControllerError } from "@/utils/controllerError";
-import sitesRepo from "@/modules/sites/sites.repository";
+import { ensurePublishedSite } from "@/modules/public-site/ensurePublished";
 import defaultRepo from "./site-layouts.repository";
 import { SiteLayoutScopeEnum } from "./site-layouts.schema";
 
@@ -31,15 +31,6 @@ function getTenantId(req: Request): string {
     throw err;
   }
   return tenantId;
-}
-
-async function ensurePublished(tenantId: string): Promise<void> {
-  const config = await sitesRepo.findConfig(tenantId);
-  if (!config || !config.websiteEnabled || !config.isPublished) {
-    const err = new Error("Not found") as AppError;
-    err.statusCode = 404;
-    throw err;
-  }
 }
 
 /**
@@ -62,7 +53,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);
-      await ensurePublished(tenantId);
+      await ensurePublishedSite(tenantId);
 
       const scope = SiteLayoutScopeEnum.parse(req.params.scope);
       const rawPageId = req.query.pageId;
