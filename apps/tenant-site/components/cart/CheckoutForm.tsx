@@ -181,6 +181,9 @@ export function CheckoutForm({
           unitPrice: i.unitPrice,
           quantity: i.quantity,
           lineTotal: i.unitPrice * i.quantity,
+          variationId: i.variationId ?? null,
+          subVariationId: i.subVariationId ?? null,
+          variationLabel: i.variationLabel ?? null,
         })),
       });
       if (!resp || !resp.orderCode) {

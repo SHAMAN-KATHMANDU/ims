@@ -23,6 +23,18 @@ export interface CartItem {
   quantity: number;
   /** Optional image for the cart thumbnail. */
   imageUrl?: string | null;
+  /**
+   * Variation selected on the PDP. When present it flows through to the
+   * SaleItem on conversion; when absent the server falls back to the
+   * product's first active variation (legacy single-variation flow).
+   */
+  variationId?: string | null;
+  subVariationId?: string | null;
+  /**
+   * Human-readable summary of the variation (e.g. "Red / M"). Shown in
+   * the cart line; not authoritative for pricing.
+   */
+  variationLabel?: string | null;
 }
 
 export interface CartState {
@@ -44,16 +56,29 @@ function clampQty(q: number): number {
 }
 
 /**
- * Add a product to the cart, merging with any existing line for the same
- * productId. New line quantities beyond MAX_LINE_QTY are clamped — we
- * don't surface an error, we just cap silently.
+ * Cart identity key: same productId + same selected variation + same
+ * sub-variation merge into a single line. Missing values coerce to ""
+ * so legacy items (no variation) don't collide with variation-tagged
+ * ones for the same product.
+ */
+function cartKey(
+  item: Pick<CartItem, "productId" | "variationId" | "subVariationId">,
+): string {
+  return `${item.productId}:${item.variationId ?? ""}:${item.subVariationId ?? ""}`;
+}
+
+/**
+ * Add a product to the cart, merging with any existing line that shares
+ * the same (productId, variationId, subVariationId). Quantities beyond
+ * MAX_LINE_QTY are clamped silently.
  */
 export function addItem(
   cart: CartState,
   item: Omit<CartItem, "quantity"> & { quantity?: number },
 ): CartState {
   const addQty = clampQty(item.quantity ?? 1);
-  const existing = cart.items.findIndex((i) => i.productId === item.productId);
+  const key = cartKey(item);
+  const existing = cart.items.findIndex((i) => cartKey(i) === key);
 
   if (existing >= 0) {
     const next = cart.items.slice();
@@ -80,15 +105,36 @@ export function addItem(
         unitPrice: Math.max(0, item.unitPrice),
         quantity: addQty,
         imageUrl: item.imageUrl ?? null,
+        variationId: item.variationId ?? null,
+        subVariationId: item.subVariationId ?? null,
+        variationLabel: item.variationLabel ?? null,
       },
     ],
   };
 }
 
-export function removeItem(cart: CartState, productId: string): CartState {
+/**
+ * Legacy callers identified lines by productId alone. Both `removeItem`
+ * and `updateQty` now accept an optional variation tuple and fall back
+ * to "all lines matching this productId" when neither is passed.
+ */
+export function removeItem(
+  cart: CartState,
+  productId: string,
+  opts?: { variationId?: string | null; subVariationId?: string | null },
+): CartState {
+  const targetKey = opts
+    ? cartKey({
+        productId,
+        variationId: opts.variationId ?? null,
+        subVariationId: opts.subVariationId ?? null,
+      })
+    : null;
   return {
     ...cart,
-    items: cart.items.filter((i) => i.productId !== productId),
+    items: cart.items.filter((i) =>
+      targetKey ? cartKey(i) !== targetKey : i.productId !== productId,
+    ),
   };
 }
 
@@ -96,13 +142,24 @@ export function updateQty(
   cart: CartState,
   productId: string,
   quantity: number,
+  opts?: { variationId?: string | null; subVariationId?: string | null },
 ): CartState {
-  if (quantity <= 0) return removeItem(cart, productId);
+  if (quantity <= 0) return removeItem(cart, productId, opts);
+  const targetKey = opts
+    ? cartKey({
+        productId,
+        variationId: opts.variationId ?? null,
+        subVariationId: opts.subVariationId ?? null,
+      })
+    : null;
   return {
     ...cart,
-    items: cart.items.map((i) =>
-      i.productId === productId ? { ...i, quantity: clampQty(quantity) } : i,
-    ),
+    items: cart.items.map((i) => {
+      const matches = targetKey
+        ? cartKey(i) === targetKey
+        : i.productId === productId;
+      return matches ? { ...i, quantity: clampQty(quantity) } : i;
+    }),
   };
 }
 
@@ -171,6 +228,11 @@ export function deserialize(raw: string | null): CartState {
             typeof i.imageUrl === "string" || i.imageUrl === null
               ? (i.imageUrl as string | null)
               : null,
+          variationId: typeof i.variationId === "string" ? i.variationId : null,
+          subVariationId:
+            typeof i.subVariationId === "string" ? i.subVariationId : null,
+          variationLabel:
+            typeof i.variationLabel === "string" ? i.variationLabel : null,
         });
       }
     }

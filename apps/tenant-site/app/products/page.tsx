@@ -17,14 +17,33 @@ import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 
 interface PageProps {
-  searchParams: Promise<{
-    page?: string;
-    categoryId?: string;
-    sort?: string;
-    search?: string;
-    minPrice?: string;
-    maxPrice?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+/**
+ * Extract the attribute filter (type → value) from Next.js's flat
+ * searchParams by matching the `attr[<typeId>]` key shape. Next doesn't
+ * parse bracket notation into a nested object — we do it ourselves so
+ * the URL still matches the Express qs-parsed shape the API expects.
+ */
+function parseAttrFilter(
+  params: Record<string, string | string[] | undefined>,
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    const m = key.match(/^attr\[(.+)\]$/);
+    if (!m) continue;
+    const typeId = m[1];
+    if (!typeId) continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (typeof v === "string" && v.length > 0) out[typeId] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function getOne(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
 }
 
 const VALID_SORTS = new Set<ProductSort>([
@@ -41,8 +60,14 @@ function parseSort(raw: string | undefined): ProductSort | undefined {
 
 export default async function ProductsPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const page = Number(params.page ?? "1") || 1;
-  const sort = parseSort(params.sort);
+  const page = Number(getOne(params.page) ?? "1") || 1;
+  const sort = parseSort(getOne(params.sort));
+  const categoryId = getOne(params.categoryId);
+  const search = getOne(params.search);
+  const rawMinPrice = getOne(params.minPrice);
+  const rawMaxPrice = getOne(params.maxPrice);
+  const vendorId = getOne(params.vendorId);
+  const attr = parseAttrFilter(params);
 
   const ctx = await getTenantContext();
   const [site, productList, categories, navPages, layout] = await Promise.all([
@@ -50,11 +75,13 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     getProducts(ctx.host, ctx.tenantId, {
       page,
       limit: 24,
-      categoryId: params.categoryId,
+      categoryId,
       sort,
-      search: params.search,
-      minPrice: params.minPrice ? Number(params.minPrice) : undefined,
-      maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
+      search,
+      minPrice: rawMinPrice ? Number(rawMinPrice) : undefined,
+      maxPrice: rawMaxPrice ? Number(rawMaxPrice) : undefined,
+      vendorId,
+      attr,
     }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
@@ -78,6 +105,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       productsPage: productList?.page,
       productsTotal: productList?.total,
       searchParams: params,
+      productFacets: productList?.facets,
     };
     return (
       <>

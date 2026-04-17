@@ -91,4 +91,36 @@ router.get("/products/:id", asyncHandler(controller.getProduct));
  */
 router.get("/categories", asyncHandler(controller.listCategories));
 
+/**
+ * @swagger
+ * /public/offers:
+ *   get:
+ *     summary: Products currently on an active ProductDiscount for the request Host
+ *     tags: [Public]
+ *     responses:
+ *       200: { description: Paginated list of on-offer products }
+ *       404: { description: Site not published }
+ */
+router.get("/offers", asyncHandler(controller.listOffers));
+
+/**
+ * @swagger
+ * /public/collections/{slug}:
+ *   get:
+ *     summary: Get a curated collection (featured, exclusives, top-picks, custom) by slug
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 24 }
+ *     responses:
+ *       200: { description: Collection metadata + ordered products }
+ *       404: { description: Collection inactive, missing, or site not published }
+ */
+router.get("/collections/:slug", asyncHandler(controller.getCollectionBySlug));
+
 export default router;

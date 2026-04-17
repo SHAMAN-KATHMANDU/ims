@@ -107,6 +107,18 @@ export type BrandingFormInput = z.infer<typeof BrandingFormSchema>;
 // Contact
 // ============================================
 
+export const SOCIAL_KEYS = [
+  "facebook",
+  "instagram",
+  "tiktok",
+  "youtube",
+  "whatsapp",
+  "x",
+  "linkedin",
+] as const;
+
+export type SocialKey = (typeof SOCIAL_KEYS)[number];
+
 export const ContactFormSchema = z.object({
   email: z
     .string()
@@ -117,6 +129,13 @@ export const ContactFormSchema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   address: z.string().trim().max(300).optional().or(z.literal("")),
   mapUrl: optionalUrl,
+  facebook: optionalUrl,
+  instagram: optionalUrl,
+  tiktok: optionalUrl,
+  youtube: optionalUrl,
+  whatsapp: optionalUrl,
+  x: optionalUrl,
+  linkedin: optionalUrl,
 });
 
 export type ContactFormInput = z.infer<typeof ContactFormSchema>;
@@ -261,12 +280,21 @@ export function contactFromJson(
     phone?: string;
     address?: string;
     mapUrl?: string;
+    socials?: Partial<Record<SocialKey, string>>;
   };
+  const s = j.socials ?? {};
   return {
     email: j.email ?? "",
     phone: j.phone ?? "",
     address: j.address ?? "",
     mapUrl: j.mapUrl ?? "",
+    facebook: s.facebook ?? "",
+    instagram: s.instagram ?? "",
+    tiktok: s.tiktok ?? "",
+    youtube: s.youtube ?? "",
+    whatsapp: s.whatsapp ?? "",
+    x: s.x ?? "",
+    linkedin: s.linkedin ?? "",
   };
 }
 
@@ -276,6 +304,12 @@ export function contactToJson(form: ContactFormInput): Record<string, unknown> {
   if (form.phone) out.phone = form.phone;
   if (form.address) out.address = form.address;
   if (form.mapUrl) out.mapUrl = form.mapUrl;
+  const socials: Record<string, string> = {};
+  for (const key of SOCIAL_KEYS) {
+    const v = form[key];
+    if (v) socials[key] = v;
+  }
+  if (Object.keys(socials).length > 0) out.socials = socials;
   return out;
 }
 

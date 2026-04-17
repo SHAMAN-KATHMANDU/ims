@@ -19,6 +19,15 @@ export const CartItemSchema = z.object({
   unitPrice: z.number().nonnegative(),
   quantity: z.number().int().min(1).max(99),
   lineTotal: z.number().nonnegative(),
+  /**
+   * Variation selected by the customer on the PDP. When provided the
+   * website-orders → Sale conversion honors the customer's choice;
+   * when null/omitted the server falls back to the product's first
+   * active variation for backwards compatibility.
+   */
+  variationId: z.string().uuid().nullish(),
+  subVariationId: z.string().uuid().nullish(),
+  variationLabel: z.string().trim().max(200).nullish(),
 });
 
 export const CreateGuestOrderSchema = z.object({

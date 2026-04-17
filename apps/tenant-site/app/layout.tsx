@@ -5,7 +5,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
 };
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getTenantContext } from "@/lib/tenant";
 import { getSite } from "@/lib/api";
 import {
@@ -95,6 +95,14 @@ export default async function RootLayout({
   } else {
     vars = brandingToCssVars(site?.branding ?? null);
     theme = brandingTheme(site?.branding ?? null);
+  }
+
+  // A visitor's explicit toggle (site-theme cookie) overrides the tenant
+  // default so reloads don't flash back to the configured mode.
+  const cookieStore = await cookies();
+  const cookieTheme = cookieStore.get("site-theme")?.value;
+  if (cookieTheme === "light" || cookieTheme === "dark") {
+    theme = cookieTheme;
   }
 
   // Inline the design tokens on <html> (not <body>) so the ":focus-visible"

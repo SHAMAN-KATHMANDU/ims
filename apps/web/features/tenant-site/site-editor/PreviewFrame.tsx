@@ -35,6 +35,12 @@ type Props = {
   onRefresh: () => void;
   device: DeviceWidth;
   onDeviceChange: (device: DeviceWidth) => void;
+  /**
+   * When scope is `product-detail`, the iframe needs a concrete productId so
+   * the preview service can hydrate activeProduct/relatedProducts. The editor
+   * owns this state (see SiteEditorPage) and forwards it here.
+   */
+  productId?: string | null;
 };
 
 export function PreviewFrame({
@@ -44,6 +50,7 @@ export function PreviewFrame({
   onRefresh,
   device,
   onDeviceChange,
+  productId,
 }: Props) {
   const [showGrid, setShowGrid] = useState(false);
 
@@ -52,8 +59,9 @@ export function PreviewFrame({
     const u = new URL(previewUrl);
     u.searchParams.set("_r", String(refreshKey));
     if (showGrid) u.searchParams.set("grid", "1");
+    if (productId) u.searchParams.set("productId", productId);
     return u.toString();
-  }, [previewUrl, refreshKey, showGrid]);
+  }, [previewUrl, refreshKey, showGrid, productId]);
 
   return (
     <div className="flex h-full flex-col">

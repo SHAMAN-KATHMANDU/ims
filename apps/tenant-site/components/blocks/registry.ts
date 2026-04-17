@@ -37,7 +37,10 @@ import {
 import { ProductListingBlock } from "./kinds/ProductListingBlock";
 
 // Marketing
+import { ProductFiltersBlock } from "./kinds/ProductFiltersBlock";
 import {
+  AnnouncementBarBlock,
+  CollectionCardsBlock,
   TrustStripBlock,
   StorySplitBlock,
   BentoShowcaseBlock,
@@ -104,6 +107,9 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "category-tiles": { component: CategoryTilesBlock },
   "product-listing": { component: ProductListingBlock },
   // Marketing
+  "announcement-bar": { component: AnnouncementBarBlock },
+  "collection-cards": { component: CollectionCardsBlock },
+  "product-filters": { component: ProductFiltersBlock },
   "trust-strip": { component: TrustStripBlock },
   "story-split": { component: StorySplitBlock },
   "bento-showcase": { component: BentoShowcaseBlock },

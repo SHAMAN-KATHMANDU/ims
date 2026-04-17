@@ -44,6 +44,15 @@ export interface CartItemSnapshot {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /**
+   * Customer-selected variation at checkout time. Null on legacy orders
+   * (and products with a single active variation — the public-orders
+   * schema leaves it null and the conversion falls back to the first
+   * active variation).
+   */
+  variationId?: string | null;
+  subVariationId?: string | null;
+  variationLabel?: string | null;
 }
 
 export interface CreateOrderInput {
@@ -195,7 +204,6 @@ export class WebsiteOrdersService {
           variations: {
             where: { isActive: true },
             orderBy: { createdAt: "asc" },
-            take: 1,
             select: {
               id: true,
               locationInventory: {
@@ -217,7 +225,12 @@ export class WebsiteOrdersService {
         },
       });
 
-      const variation = product?.variations[0];
+      // Honor the customer-selected variation when the snapshot carries
+      // one; otherwise fall back to the first active variation to match
+      // the legacy single-variation behavior.
+      const variation = item.variationId
+        ? product?.variations.find((v) => v.id === item.variationId)
+        : product?.variations[0];
       const stockByLocation = (variation?.locationInventory ?? [])
         .filter(
           (inv) => inv.location.type === "SHOWROOM" && inv.location.isActive,
@@ -292,7 +305,6 @@ export class WebsiteOrdersService {
             variations: {
               where: { isActive: true },
               orderBy: { createdAt: "asc" },
-              take: 1,
             },
           },
         });
@@ -303,10 +315,18 @@ export class WebsiteOrdersService {
             400,
           );
         }
-        const variation = product.variations[0];
+
+        // Prefer the customer's selected variation (PDP chip picker);
+        // otherwise fall back to the product's first active variation
+        // so pre-variation orders keep converting unchanged.
+        const variation = item.variationId
+          ? product.variations.find((v) => v.id === item.variationId)
+          : product.variations[0];
         if (!variation) {
           throw createError(
-            `Product "${item.productName}" has no active variation. Edit the order or reject it.`,
+            item.variationId
+              ? `Variation "${item.variationLabel ?? item.variationId}" on "${item.productName}" is no longer available. Edit the order or reject it.`
+              : `Product "${item.productName}" has no active variation. Edit the order or reject it.`,
             400,
           );
         }
@@ -317,6 +337,9 @@ export class WebsiteOrdersService {
           variationId: variation.id,
           quantity: item.quantity,
           customUnitPrice: Number(item.unitPrice),
+          ...(item.subVariationId
+            ? { subVariationId: item.subVariationId }
+            : {}),
         });
       }
     }

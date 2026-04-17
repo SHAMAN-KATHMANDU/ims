@@ -19,6 +19,10 @@ export function AddToCartButton({
   imageUrl,
   label = "Add to cart",
   quantity,
+  variationId,
+  subVariationId,
+  variationLabel,
+  disabled,
 }: {
   productId: string;
   productName: string;
@@ -26,6 +30,11 @@ export function AddToCartButton({
   imageUrl?: string | null;
   label?: string;
   quantity?: number;
+  variationId?: string | null;
+  subVariationId?: string | null;
+  variationLabel?: string | null;
+  /** Disables the button (e.g. when the picked variation is out of stock). */
+  disabled?: boolean;
 }) {
   const { addItem, hydrated } = useCart();
   const [status, setStatus] = useState<"idle" | "added">("idle");
@@ -37,6 +46,9 @@ export function AddToCartButton({
       unitPrice,
       imageUrl: imageUrl ?? null,
       quantity: quantity ?? 1,
+      variationId: variationId ?? null,
+      subVariationId: subVariationId ?? null,
+      variationLabel: variationLabel ?? null,
     });
     setStatus("added");
     window.setTimeout(() => setStatus("idle"), 1800);
@@ -50,10 +62,14 @@ export function AddToCartButton({
         type="button"
         className="btn"
         onClick={handleAdd}
-        disabled={!hydrated}
-        style={{ minWidth: 180 }}
+        disabled={!hydrated || disabled}
+        style={{
+          minWidth: 180,
+          opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+        }}
       >
-        {status === "added" ? "Added ✓" : label}
+        {disabled ? "Out of stock" : status === "added" ? "Added ✓" : label}
       </button>
       {status === "added" && (
         <Link

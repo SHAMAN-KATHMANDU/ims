@@ -71,6 +71,9 @@ class PublicOrdersController {
         unitPrice: i.unitPrice,
         quantity: i.quantity,
         lineTotal: i.lineTotal,
+        variationId: i.variationId ?? null,
+        subVariationId: i.subVariationId ?? null,
+        variationLabel: i.variationLabel ?? null,
       }));
       const order = await service.createGuestOrder(tenantId, {
         customerName: body.customerName,

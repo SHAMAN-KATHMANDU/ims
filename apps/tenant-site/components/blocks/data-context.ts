@@ -13,6 +13,7 @@ import type {
   PublicCategory,
   PublicNavPage,
   PublicProduct,
+  PublicProductFacets,
   PublicBlogPostListItem,
   PublicSite,
 } from "@/lib/api";
@@ -34,4 +35,10 @@ export interface BlockDataContext {
   productsTotal?: number;
   /** Active URL search params (for product-listing / filter blocks). */
   searchParams?: Record<string, string | string[] | undefined>;
+  /**
+   * Aggregate facets for the current filter scope — brands, price
+   * range, and attribute values with counts. Present only when the
+   * server routed through `/public/products` (products-index scope).
+   */
+  productFacets?: PublicProductFacets;
 }

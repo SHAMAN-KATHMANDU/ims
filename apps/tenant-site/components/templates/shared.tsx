@@ -32,6 +32,49 @@ import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
+import { ThemeToggle } from "@/components/templates/ThemeToggle";
+import type { LucideIcon } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+  Music2,
+  Twitter,
+  Youtube,
+} from "lucide-react";
+
+type SocialKey =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "whatsapp"
+  | "x"
+  | "linkedin";
+
+// lucide-react has icons for most networks. TikTok and WhatsApp aren't in the
+// set, so we reuse Music2 and MessageCircle as recognizable stand-ins; X is
+// the rebranded Twitter, so we use Twitter's bird glyph.
+const SOCIAL_META: Record<SocialKey, { label: string; Icon: LucideIcon }> = {
+  facebook: { label: "Facebook", Icon: Facebook },
+  instagram: { label: "Instagram", Icon: Instagram },
+  tiktok: { label: "TikTok", Icon: Music2 },
+  youtube: { label: "YouTube", Icon: Youtube },
+  whatsapp: { label: "WhatsApp", Icon: MessageCircle },
+  x: { label: "X", Icon: Twitter },
+  linkedin: { label: "LinkedIn", Icon: Linkedin },
+};
+
+const SOCIAL_ORDER: SocialKey[] = [
+  "facebook",
+  "instagram",
+  "tiktok",
+  "youtube",
+  "x",
+  "linkedin",
+  "whatsapp",
+];
 
 // ============================================================================
 // Brand + header
@@ -326,6 +369,7 @@ function SiteHeaderFromConfig({
           style={config.cta.style}
         />
       )}
+      <ThemeToggle />
       {config.showCart && <CartBadge />}
       <MobileNavDrawer items={items} drawerStyle={config.mobile.drawerStyle} />
     </>
@@ -532,6 +576,7 @@ export async function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <ThemeToggle />
             <CartBadge />
           </nav>
         </div>
@@ -576,6 +621,7 @@ export async function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <ThemeToggle />
             <CartBadge />
           </nav>
         </div>
@@ -614,6 +660,7 @@ export async function SiteHeader({
           <span className="tpl-nav-search">
             <SearchBar />
           </span>
+          <ThemeToggle />
           <CartBadge />
         </nav>
       </div>
@@ -833,6 +880,67 @@ export function Hero({
 // Products
 // ============================================================================
 
+function formatPrice(value: string | number): string {
+  return `₹${Number(value).toLocaleString("en-IN")}`;
+}
+
+function PriceDisplay({
+  product,
+  hasDiscount,
+}: {
+  product: PublicProduct;
+  hasDiscount: boolean;
+}) {
+  const priceFrom = product.priceFrom ?? product.finalSp;
+  const priceTo = product.priceTo ?? product.finalSp;
+  const isRange =
+    (product.variationCount ?? 0) > 1 &&
+    priceFrom !== priceTo &&
+    Number(priceFrom) !== Number(priceTo);
+
+  const priceStyle = {
+    fontWeight: 600,
+    color: "var(--color-text)",
+    fontFamily: "var(--font-display)",
+  } as const;
+
+  if (isRange) {
+    return (
+      <span style={priceStyle}>
+        <span
+          style={{
+            fontSize: "0.72em",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "var(--color-muted)",
+            marginRight: "0.35rem",
+          }}
+        >
+          From
+        </span>
+        {formatPrice(priceFrom)}
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <span style={priceStyle}>{formatPrice(product.finalSp)}</span>
+      {hasDiscount && (
+        <span
+          style={{
+            textDecoration: "line-through",
+            color: "var(--color-muted)",
+            fontSize: "0.88rem",
+          }}
+        >
+          {formatPrice(product.mrp)}
+        </span>
+      )}
+    </>
+  );
+}
+
 export function ProductCard({
   product,
   variant = "bordered",
@@ -972,12 +1080,24 @@ export function ProductCard({
             New
           </span>
         )}
-        <QuickAddButton
-          productId={product.id}
-          productName={product.name}
-          unitPrice={Number(product.finalSp)}
-          imageUrl={product.photoUrl ?? null}
-        />
+        {/* Skip QuickAdd when the product has multiple variations with
+            diverging prices — the card shows "From X" but we don't know
+            which variant the customer wants, and the base finalSp may
+            not match the displayed price. The full <Link> wrapping this
+            card takes them to the PDP where they can pick. */}
+        {!(
+          (product.variationCount ?? 0) > 1 &&
+          product.priceFrom !== undefined &&
+          product.priceTo !== undefined &&
+          product.priceFrom !== product.priceTo
+        ) && (
+          <QuickAddButton
+            productId={product.id}
+            productName={product.name}
+            unitPrice={Number(product.finalSp)}
+            imageUrl={product.photoUrl ?? null}
+          />
+        )}
       </div>
       <div
         style={{
@@ -1026,26 +1146,7 @@ export function ProductCard({
               marginTop: "0.25rem",
             }}
           >
-            <span
-              style={{
-                fontWeight: 600,
-                color: "var(--color-text)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              ₹{Number(product.finalSp).toLocaleString("en-IN")}
-            </span>
-            {hasDiscount && (
-              <span
-                style={{
-                  textDecoration: "line-through",
-                  color: "var(--color-muted)",
-                  fontSize: "0.88rem",
-                }}
-              >
-                ₹{Number(product.mrp).toLocaleString("en-IN")}
-              </span>
-            )}
+            <PriceDisplay product={product} hasDiscount={!!hasDiscount} />
           </div>
         )}
       </div>
@@ -1286,6 +1387,53 @@ function FooterColumn({
   );
 }
 
+function SocialsRow({
+  socials,
+}: {
+  socials: Partial<Record<SocialKey, string>>;
+}) {
+  const entries = SOCIAL_ORDER.filter(
+    (k) => typeof socials[k] === "string" && (socials[k] as string).length > 0,
+  );
+  if (entries.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.75rem",
+        marginTop: "1rem",
+        flexWrap: "wrap",
+      }}
+    >
+      {entries.map((key) => {
+        const { label, Icon } = SOCIAL_META[key];
+        return (
+          <a
+            key={key}
+            href={socials[key]}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={label}
+            style={{
+              width: 32,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-muted)",
+              transition: "color 0.2s, border-color 0.2s",
+            }}
+          >
+            <Icon size={16} />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 export async function SiteFooter({
   site,
   host,
@@ -1300,7 +1448,9 @@ export async function SiteFooter({
     email?: string;
     phone?: string;
     address?: string;
+    socials?: Partial<Record<SocialKey, string>>;
   };
+  const socials = contact.socials ?? {};
 
   // Phase 2: tenant-editable footer columns. `footer-1` replaces the built-in
   // "Shop" column; `footer-2` replaces the "About" column (which today auto-
@@ -1358,6 +1508,7 @@ export async function SiteFooter({
               {brandingTagline(site.branding)}
             </p>
           )}
+          <SocialsRow socials={socials} />
         </div>
 
         <FooterColumn

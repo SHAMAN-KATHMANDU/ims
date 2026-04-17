@@ -92,9 +92,16 @@ describe("PublicSiteService", () => {
       (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config(),
       );
+      const facets = {
+        brands: [],
+        priceMin: null,
+        priceMax: null,
+        attributes: [],
+      };
       (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
         [{ id: "p1", name: "Chair" }],
         42,
+        facets,
       ]);
 
       const result = await service.listProducts("t1", {
@@ -107,11 +114,15 @@ describe("PublicSiteService", () => {
       expect(result.total).toBe(42);
       expect(result.page).toBe(2);
       expect(result.limit).toBe(10);
+      expect(result.facets).toEqual(facets);
       expect(mockRepo.listProducts).toHaveBeenCalledWith("t1", {
         page: 2,
         limit: 10,
         categoryId: undefined,
         search: undefined,
+        vendorId: undefined,
+        attr: undefined,
+        includeFacets: true,
       });
     });
 
@@ -122,6 +133,7 @@ describe("PublicSiteService", () => {
       (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
         [],
         0,
+        { brands: [], priceMin: null, priceMax: null, attributes: [] },
       ]);
 
       const result = await service.listProducts("t1", {});
