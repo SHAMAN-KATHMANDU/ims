@@ -56,16 +56,20 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
 
   if (submitted) {
     return (
-      <section style={{ padding: "var(--section-padding) 0" }}>
+      <section
+        aria-live="polite"
+        style={{ padding: "var(--section-padding) 0" }}
+      >
         <div
           className="container"
           style={{ maxWidth: 640, textAlign: "center" }}
         >
           <div
+            aria-hidden="true"
             style={{
               fontSize: "2rem",
               marginBottom: "1rem",
-              color: "var(--color-primary)",
+              color: "var(--color-success)",
             }}
           >
             ✓
@@ -123,7 +127,13 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
               <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>
                 {field.label}
                 {field.required && (
-                  <span style={{ color: "var(--color-primary)" }}> *</span>
+                  <span
+                    aria-label="required"
+                    style={{ color: "var(--color-error)" }}
+                  >
+                    {" "}
+                    *
+                  </span>
                 )}
               </span>
               {field.kind === "textarea" ? (
@@ -170,10 +180,12 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
 
           {error && (
             <p
+              role="alert"
               style={{
                 padding: "0.75rem 1rem",
-                background: "rgba(220,38,38,0.08)",
-                color: "rgb(185,28,28)",
+                background: "var(--color-error-bg)",
+                color: "var(--color-error)",
+                border: "1px solid var(--color-error-border)",
                 borderRadius: "var(--radius)",
                 fontSize: "0.88rem",
               }}
@@ -186,7 +198,8 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
             type="submit"
             className="btn"
             disabled={submitting}
-            style={{ alignSelf: "flex-start" }}
+            aria-busy={submitting}
+            style={{ alignSelf: "flex-start", minHeight: 44 }}
           >
             {submitting ? "Sending…" : (props.submitLabel ?? "Submit")}
           </button>
@@ -198,6 +211,7 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
 
 const inputStyle: React.CSSProperties = {
   padding: "0.85rem 1.1rem",
+  minHeight: 44,
   border: "1px solid var(--color-border)",
   borderRadius: "var(--radius)",
   background: "var(--color-background)",

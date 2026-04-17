@@ -32,11 +32,12 @@ export function BlogCard({
       }}
     >
       {post.heroImageUrl && (
-        <Link href={`/blog/${post.slug}`}>
-          {}
+        <Link href={`/blog/${post.slug}`} aria-label={post.title} tabIndex={-1}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={post.heroImageUrl}
-            alt={post.title}
+            alt=""
+            aria-hidden="true"
             loading="lazy"
             decoding="async"
             sizes="(max-width: 768px) 100vw, 33vw"
@@ -62,24 +63,30 @@ export function BlogCard({
           {post.category.name}
         </Link>
       )}
-      <Link
-        href={`/blog/${post.slug}`}
+      <h3
         style={{
           fontSize: featured ? "1.75rem" : "1.25rem",
           fontWeight: 600,
           lineHeight: 1.25,
-          color: "inherit",
-          textDecoration: "none",
+          margin: 0,
         }}
       >
-        {post.title}
-      </Link>
+        <Link
+          href={`/blog/${post.slug}`}
+          style={{
+            color: "inherit",
+            textDecoration: "none",
+          }}
+        >
+          {post.title}
+        </Link>
+      </h3>
       {post.excerpt && (
         <p
           style={{
             fontSize: "0.95rem",
             lineHeight: 1.55,
-            color: "rgba(0,0,0,0.7)",
+            color: "var(--color-muted)",
             margin: 0,
           }}
         >
@@ -91,12 +98,20 @@ export function BlogCard({
           display: "flex",
           gap: "1rem",
           fontSize: "0.8rem",
-          color: "rgba(0,0,0,0.55)",
+          color: "var(--color-muted)",
         }}
       >
         {post.authorName && <span>{post.authorName}</span>}
-        {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
-        {post.readingMinutes && <span>{post.readingMinutes} min read</span>}
+        {post.publishedAt && (
+          <time dateTime={post.publishedAt}>
+            {formatDate(post.publishedAt)}
+          </time>
+        )}
+        {post.readingMinutes && (
+          <span aria-label={`${post.readingMinutes} minute read`}>
+            {post.readingMinutes} min read
+          </span>
+        )}
       </div>
     </article>
   );

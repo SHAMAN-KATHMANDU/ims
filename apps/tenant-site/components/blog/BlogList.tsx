@@ -38,7 +38,8 @@ export function BlogList({
   return (
     <div>
       {categories.length > 0 && (
-        <div
+        <nav
+          aria-label="Blog categories"
           style={{
             display: "flex",
             flexWrap: "wrap",
@@ -48,40 +49,51 @@ export function BlogList({
         >
           <Link
             href="/blog"
-            data-active={!activeCategorySlug}
+            aria-current={!activeCategorySlug ? "page" : undefined}
             style={{
-              padding: "0.4rem 0.9rem",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "0.5rem 1rem",
+              minHeight: 44,
               borderRadius: 999,
-              fontSize: "0.8rem",
+              fontSize: "0.85rem",
               background: !activeCategorySlug
-                ? "rgba(0,0,0,0.85)"
-                : "rgba(128,128,128,0.1)",
-              color: !activeCategorySlug ? "white" : "inherit",
+                ? "var(--color-text)"
+                : "var(--color-surface)",
+              color: !activeCategorySlug
+                ? "var(--color-background)"
+                : "inherit",
               textDecoration: "none",
             }}
           >
             All
           </Link>
-          {categories.map((c) => (
-            <Link
-              key={c.id}
-              href={`/blog/category/${c.slug}`}
-              style={{
-                padding: "0.4rem 0.9rem",
-                borderRadius: 999,
-                fontSize: "0.8rem",
-                background:
-                  activeCategorySlug === c.slug
-                    ? "rgba(0,0,0,0.85)"
-                    : "rgba(128,128,128,0.1)",
-                color: activeCategorySlug === c.slug ? "white" : "inherit",
-                textDecoration: "none",
-              }}
-            >
-              {c.name} ({c.postCount})
-            </Link>
-          ))}
-        </div>
+          {categories.map((c) => {
+            const isActive = activeCategorySlug === c.slug;
+            return (
+              <Link
+                key={c.id}
+                href={`/blog/category/${c.slug}`}
+                aria-current={isActive ? "page" : undefined}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "0.5rem 1rem",
+                  minHeight: 44,
+                  borderRadius: 999,
+                  fontSize: "0.85rem",
+                  background: isActive
+                    ? "var(--color-text)"
+                    : "var(--color-surface)",
+                  color: isActive ? "var(--color-background)" : "inherit",
+                  textDecoration: "none",
+                }}
+              >
+                {c.name} ({c.postCount})
+              </Link>
+            );
+          })}
+        </nav>
       )}
 
       {featured && (
@@ -106,27 +118,37 @@ export function BlogList({
 
       {pageCount > 1 && (
         <nav
+          aria-label="Pagination"
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: "0.75rem",
+            gap: "0.5rem",
             marginTop: "3rem",
           }}
         >
           {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => {
             const href = p === 1 ? basePath : `${basePath}?page=${p}`;
+            const isActive = p === page;
             return (
               <Link
                 key={p}
                 href={href}
+                aria-label={`Go to page ${p}`}
+                aria-current={isActive ? "page" : undefined}
                 style={{
-                  padding: "0.4rem 0.9rem",
-                  borderRadius: 4,
-                  border: "1px solid rgba(128,128,128,0.25)",
-                  background: p === page ? "rgba(0,0,0,0.85)" : "transparent",
-                  color: p === page ? "white" : "inherit",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 44,
+                  minHeight: 44,
+                  padding: "0 0.75rem",
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--color-border)",
+                  background: isActive ? "var(--color-text)" : "transparent",
+                  color: isActive ? "var(--color-background)" : "inherit",
                   textDecoration: "none",
-                  fontSize: "0.85rem",
+                  fontSize: "0.9rem",
+                  fontWeight: isActive ? 600 : 400,
                 }}
               >
                 {p}

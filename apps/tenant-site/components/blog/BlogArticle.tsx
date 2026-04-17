@@ -27,12 +27,15 @@ export function BlogArticle({
     <article
       style={{ maxWidth: 720, margin: "0 auto", padding: "3rem 1.25rem 5rem" }}
     >
-      <nav style={{ marginBottom: "2rem" }}>
+      <nav aria-label="Blog navigation" style={{ marginBottom: "2rem" }}>
         <Link
           href="/blog"
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: 44,
             fontSize: "0.85rem",
-            color: "rgba(0,0,0,0.55)",
+            color: "var(--color-muted)",
             textDecoration: "none",
           }}
         >
@@ -47,7 +50,7 @@ export function BlogArticle({
             textTransform: "uppercase",
             fontSize: "0.75rem",
             letterSpacing: "0.08em",
-            color: "rgba(0,0,0,0.55)",
+            color: "var(--color-muted)",
             textDecoration: "none",
           }}
         >
@@ -72,7 +75,7 @@ export function BlogArticle({
           style={{
             fontSize: "1.15rem",
             lineHeight: 1.5,
-            color: "rgba(0,0,0,0.7)",
+            color: "var(--color-muted)",
             marginBottom: "1.5rem",
           }}
         >
@@ -83,23 +86,34 @@ export function BlogArticle({
       <div
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: "1.25rem",
           fontSize: "0.85rem",
-          color: "rgba(0,0,0,0.55)",
-          borderBottom: "1px solid rgba(128,128,128,0.2)",
+          color: "var(--color-muted)",
+          borderBottom: "1px solid var(--color-border)",
           paddingBottom: "1.25rem",
           marginBottom: "2rem",
         }}
       >
         {post.authorName && <span>By {post.authorName}</span>}
-        {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
-        {post.readingMinutes && <span>{post.readingMinutes} min read</span>}
+        {post.publishedAt && (
+          <time dateTime={post.publishedAt}>
+            {formatDate(post.publishedAt)}
+          </time>
+        )}
+        {post.readingMinutes && (
+          <span aria-label={`${post.readingMinutes} minute read`}>
+            {post.readingMinutes} min read
+          </span>
+        )}
       </div>
 
       {post.heroImageUrl && (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={post.heroImageUrl}
-          alt={post.title}
+          alt=""
+          aria-hidden="true"
           loading="lazy"
           decoding="async"
           sizes="(max-width: 768px) 100vw, 720px"
@@ -122,10 +136,14 @@ export function BlogArticle({
                 key={t}
                 href={`/blog/tag/${encodeURIComponent(t)}`}
                 style={{
-                  padding: "0.35rem 0.75rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "0.5rem 0.85rem",
+                  minHeight: 44,
                   borderRadius: 999,
-                  background: "rgba(128,128,128,0.1)",
-                  fontSize: "0.75rem",
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  fontSize: "0.8rem",
                   color: "inherit",
                   textDecoration: "none",
                 }}
@@ -139,10 +157,11 @@ export function BlogArticle({
 
       {related.length > 0 && (
         <section
+          aria-label="Related posts"
           style={{
             marginTop: "4rem",
             paddingTop: "2.5rem",
-            borderTop: "1px solid rgba(128,128,128,0.2)",
+            borderTop: "1px solid var(--color-border)",
           }}
         >
           <h2 style={{ fontSize: "1.25rem", marginBottom: "1.5rem" }}>

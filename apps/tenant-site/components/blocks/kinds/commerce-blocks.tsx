@@ -196,7 +196,11 @@ export async function ProductGridBlock({
             <Link
               href={props.viewMoreHref}
               style={{
-                padding: "0.6rem 1.5rem",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.75rem 1.5rem",
+                minHeight: 44,
                 border: "1px solid var(--color-border)",
                 borderRadius: "var(--radius)",
                 color: "var(--color-text)",

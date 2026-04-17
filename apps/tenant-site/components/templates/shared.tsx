@@ -94,10 +94,11 @@ export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
           color: "var(--color-text)",
         }}
       >
-        {}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logo}
-          alt={name}
+          alt=""
+          aria-hidden="true"
           // Responsive height: clamps between 28px (small phones) and 40px
           // (wide desktops). Fixed pixel heights blow up the header on
           // narrow viewports because `width: auto` keeps the aspect ratio.
@@ -177,7 +178,9 @@ function NavCtaButton({
   const base: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
-    padding: "0.5rem 1.1rem",
+    justifyContent: "center",
+    padding: "0.6rem 1.1rem",
+    minHeight: 44,
     fontSize: "0.85rem",
     fontWeight: 600,
     borderRadius: "var(--radius)",
@@ -236,9 +239,26 @@ function NavItemView({ item }: { item: NavItem }) {
   }
   if (item.kind === "dropdown") {
     // Phase 2: a simple CSS hover dropdown. No JS, works server-rendered.
+    // Trigger is a <button> so keyboard users can focus it; the panel
+    // opens via `:focus-within` in globals.css.
     return (
       <div className="tpl-dropdown" style={{ position: "relative" }}>
-        <span style={{ ...linkStyle, cursor: "pointer" }}>{item.label} ▾</span>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          style={{
+            ...linkStyle,
+            minHeight: 44,
+            padding: "0 0.25rem",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          {item.label} <span aria-hidden="true">▾</span>
+        </button>
         <div
           className="tpl-dropdown-panel"
           style={{
@@ -268,7 +288,22 @@ function NavItemView({ item }: { item: NavItem }) {
   if (item.kind === "mega-column") {
     return (
       <div className="tpl-dropdown" style={{ position: "relative" }}>
-        <span style={{ ...linkStyle, cursor: "pointer" }}>{item.label} ▾</span>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          style={{
+            ...linkStyle,
+            minHeight: 44,
+            padding: "0 0.25rem",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          {item.label} <span aria-hidden="true">▾</span>
+        </button>
         <div
           className="tpl-dropdown-panel"
           style={{
@@ -389,6 +424,7 @@ function SiteHeaderFromConfig({
         >
           <BrandMark site={site} host={host} />
           <nav
+            aria-label="Primary"
             className="tpl-nav"
             style={{
               display: "flex",
@@ -421,11 +457,16 @@ function SiteHeaderFromConfig({
             gap: "2rem",
           }}
         >
-          <nav className="tpl-nav" style={{ display: "flex", gap: "1.5rem" }}>
+          <nav
+            aria-label="Primary left"
+            className="tpl-nav"
+            style={{ display: "flex", gap: "1.5rem" }}
+          >
             {renderNavList(left)}
           </nav>
           <BrandMark site={site} host={host} />
           <nav
+            aria-label="Primary right"
             className="tpl-nav"
             style={{
               display: "flex",
@@ -484,6 +525,7 @@ function SiteHeaderFromConfig({
       >
         <BrandMark site={site} host={host} />
         <nav
+          aria-label="Primary"
           className="tpl-nav"
           style={{
             display: "flex",
@@ -562,6 +604,7 @@ export async function SiteHeader({
         >
           <BrandMark site={site} host={host} />
           <nav
+            aria-label="Primary"
             className="tpl-nav"
             style={{
               display: "flex",
@@ -599,7 +642,11 @@ export async function SiteHeader({
             gap: "2rem",
           }}
         >
-          <nav className="tpl-nav" style={{ display: "flex", gap: "1.5rem" }}>
+          <nav
+            aria-label="Primary left"
+            className="tpl-nav"
+            style={{ display: "flex", gap: "1.5rem" }}
+          >
             {left.map((l) => (
               <Link key={l.href} href={l.href} style={navLinkStyle}>
                 {l.label}
@@ -608,6 +655,7 @@ export async function SiteHeader({
           </nav>
           <BrandMark site={site} host={host} />
           <nav
+            aria-label="Primary right"
             className="tpl-nav"
             style={{
               display: "flex",
@@ -644,6 +692,7 @@ export async function SiteHeader({
       >
         <BrandMark site={site} host={host} />
         <nav
+          aria-label="Primary"
           className="tpl-nav"
           style={{
             display: "flex",
@@ -827,7 +876,8 @@ export function Hero({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imageUrl}
-        alt="Hero banner"
+        alt=""
+        aria-hidden="true"
         decoding="async"
         fetchPriority="high"
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -1151,8 +1201,8 @@ function SocialsRow({
             rel="noopener noreferrer"
             aria-label={label}
             style={{
-              width: 32,
-              height: 32,
+              width: 44,
+              height: 44,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1918,7 +1968,8 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={product.photoUrl}
-              alt={product.name}
+              alt=""
+              aria-hidden="true"
               style={{
                 width: "100%",
                 height: "100%",
@@ -1975,11 +2026,15 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
               marginBottom: "2rem",
             }}
           >
-            <span style={{ fontWeight: 700 }}>
+            <span
+              aria-label={`Price: ${Number(product.finalSp).toLocaleString("en-IN")} rupees`}
+              style={{ fontWeight: 700 }}
+            >
               ₹{Number(product.finalSp).toLocaleString("en-IN")}
             </span>
             {Number(product.finalSp) < Number(product.mrp) && (
               <span
+                aria-label={`Original price: ${Number(product.mrp).toLocaleString("en-IN")} rupees`}
                 style={{
                   textDecoration: "line-through",
                   color: "var(--color-muted)",

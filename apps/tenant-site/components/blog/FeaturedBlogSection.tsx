@@ -28,6 +28,10 @@ export function FeaturedBlogSection({
           <Link
             href="/blog"
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              minHeight: 44,
+              padding: "0 0.5rem",
               fontSize: "0.85rem",
               color: "var(--color-muted)",
               textDecoration: "none",
@@ -57,9 +61,11 @@ export function FeaturedBlogSection({
               }}
             >
               {p.heroImageUrl && (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={p.heroImageUrl}
-                  alt={p.title}
+                  alt=""
+                  aria-hidden="true"
                   loading="lazy"
                   decoding="async"
                   sizes="(max-width: 768px) 100vw, 33vw"
@@ -97,7 +103,7 @@ export function FeaturedBlogSection({
                 <p
                   style={{
                     fontSize: "0.9rem",
-                    color: "rgba(0,0,0,0.65)",
+                    color: "var(--color-muted)",
                     margin: 0,
                     lineHeight: 1.5,
                   }}

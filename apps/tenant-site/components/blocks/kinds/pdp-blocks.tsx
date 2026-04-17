@@ -338,18 +338,33 @@ export function BreadcrumbsBlock({
           padding: 0,
         }}
       >
-        {crumbs.map((c, i) => (
-          <li key={i} style={{ display: "inline-flex", alignItems: "center" }}>
-            {i > 0 && <span style={{ margin: "0 0.5rem" }}>›</span>}
-            {c.href ? (
-              <Link href={c.href} style={{ color: "inherit" }}>
-                {c.label}
-              </Link>
-            ) : (
-              <span style={{ color: "var(--color-text)" }}>{c.label}</span>
-            )}
-          </li>
-        ))}
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          return (
+            <li
+              key={i}
+              style={{ display: "inline-flex", alignItems: "center" }}
+            >
+              {i > 0 && (
+                <span aria-hidden="true" style={{ margin: "0 0.5rem" }}>
+                  ›
+                </span>
+              )}
+              {c.href ? (
+                <Link href={c.href} style={{ color: "inherit" }}>
+                  {c.label}
+                </Link>
+              ) : (
+                <span
+                  aria-current={isLast ? "page" : undefined}
+                  style={{ color: "var(--color-text)" }}
+                >
+                  {c.label}
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ol>
     </nav>
   );

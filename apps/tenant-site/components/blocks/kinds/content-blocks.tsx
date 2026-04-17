@@ -69,7 +69,10 @@ export function SectionBlock({
   const sectionStyle: React.CSSProperties = {
     padding,
     background: hasBgImage ? undefined : background,
-    color: hasBgImage && props.backgroundOverlay === "dark" ? "#fff" : color,
+    color:
+      hasBgImage && props.backgroundOverlay === "dark"
+        ? "var(--color-background)"
+        : color,
     ...(hasBgImage
       ? {
           backgroundImage: overlayGradient
@@ -285,11 +288,14 @@ export function ButtonBlock({ props }: BlockComponentProps<ButtonProps>) {
   const base: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
+    justifyContent: "center",
     padding: BUTTON_PADDING[props.size ?? "md"],
+    minHeight: 44,
     borderRadius: "var(--radius)",
     fontWeight: 600,
     textDecoration: "none",
     fontSize: props.size === "sm" ? "0.85rem" : "0.95rem",
+    lineHeight: 1.2,
   };
   const themed: Record<ButtonProps["style"], React.CSSProperties> = {
     primary: {

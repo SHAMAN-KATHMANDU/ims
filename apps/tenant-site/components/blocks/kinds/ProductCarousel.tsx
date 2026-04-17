@@ -60,10 +60,16 @@ export function ProductCarousel({
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Products"
+      style={{ position: "relative" }}
+    >
       <button
         type="button"
-        aria-label="Scroll left"
+        aria-label="Scroll products left"
+        aria-controls="product-carousel-track"
         onClick={() => scrollBy(-1)}
         style={{ ...navBtn, left: 0 }}
       >
@@ -71,7 +77,8 @@ export function ProductCarousel({
       </button>
       <button
         type="button"
-        aria-label="Scroll right"
+        aria-label="Scroll products right"
+        aria-controls="product-carousel-track"
         onClick={() => scrollBy(1)}
         style={{ ...navBtn, right: 0 }}
       >
@@ -79,6 +86,9 @@ export function ProductCarousel({
       </button>
       <div
         ref={trackRef}
+        id="product-carousel-track"
+        tabIndex={0}
+        aria-label="Product list"
         style={{
           display: "flex",
           gap: "1.25rem",
@@ -94,6 +104,8 @@ export function ProductCarousel({
         {products.map((p) => (
           <div
             key={p.id}
+            role="group"
+            aria-roledescription="slide"
             style={{
               flex: "0 0 auto",
               width: "clamp(240px, 28vw, 320px)",
@@ -120,8 +132,8 @@ const navBtn: React.CSSProperties = {
   top: "50%",
   transform: "translateY(-50%)",
   zIndex: 2,
-  width: 40,
-  height: 40,
+  width: 44,
+  height: 44,
   borderRadius: "999px",
   border: "1px solid var(--color-border)",
   background: "var(--color-background)",

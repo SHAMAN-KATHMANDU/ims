@@ -56,6 +56,7 @@ export function AnnouncementBarBlock({
   );
   const content = props.marquee ? (
     <div
+      className="announcement-marquee-track"
       style={{
         display: "flex",
         width: "max-content",
@@ -92,7 +93,7 @@ export function AnnouncementBarBlock({
     >
       <style>
         {
-          "@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }"
+          "@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } } @media (prefers-reduced-motion: reduce) { .announcement-marquee-track { animation: none !important; } }"
         }
       </style>
       {content}
@@ -201,7 +202,8 @@ function CollectionCard({
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={card.imageUrl}
-          alt={card.title}
+          alt=""
+          aria-hidden="true"
           loading="lazy"
           decoding="async"
           style={{
@@ -398,13 +400,29 @@ export function FaqBlock({ props }: BlockComponentProps<FaqProps>) {
               <summary
                 style={{
                   padding: "1.1rem 1.25rem",
+                  minHeight: 44,
                   cursor: "pointer",
                   listStyle: "none",
                   fontWeight: 500,
                   color: "var(--color-text)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "1rem",
                 }}
               >
-                {item.question}
+                <span>{item.question}</span>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    color: "var(--color-muted)",
+                    fontSize: "1.1rem",
+                    lineHeight: 1,
+                  }}
+                >
+                  +
+                </span>
               </summary>
               <div
                 style={{

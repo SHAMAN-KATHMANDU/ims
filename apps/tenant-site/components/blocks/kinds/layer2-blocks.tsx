@@ -139,7 +139,7 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
       >
         <iframe
           src={src}
-          title="Video"
+          title={props.caption ?? "Video"}
           allowFullScreen
           loading="lazy"
           allow="autoplay; encrypted-media; picture-in-picture"
@@ -207,12 +207,28 @@ export function AccordionBlock({ props }: BlockComponentProps<AccordionProps>) {
               <summary
                 style={{
                   padding: "1.1rem 1.25rem",
+                  minHeight: 44,
                   cursor: "pointer",
                   fontWeight: 500,
                   color: "var(--color-text)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "1rem",
                 }}
               >
-                {item.title}
+                <span>{item.title}</span>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    color: "var(--color-muted)",
+                    fontSize: "1.1rem",
+                    lineHeight: 1,
+                  }}
+                >
+                  +
+                </span>
               </summary>
               <div
                 style={{

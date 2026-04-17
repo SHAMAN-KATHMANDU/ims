@@ -45,6 +45,7 @@ export function BlogListBlock({
                 border: "1px solid var(--color-border)",
                 overflow: "hidden",
                 color: "var(--color-text)",
+                textDecoration: "none",
               }}
             >
               <div
@@ -58,7 +59,8 @@ export function BlogListBlock({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={post.heroImageUrl}
-                    alt={post.title}
+                    alt=""
+                    aria-hidden="true"
                     loading="lazy"
                     style={{
                       width: "100%",
@@ -83,16 +85,16 @@ export function BlogListBlock({
                     {post.category.name}
                   </div>
                 )}
-                <div
+                <h3
                   style={{
                     fontWeight: 600,
                     fontSize: "1.05rem",
                     lineHeight: 1.3,
-                    marginBottom: "0.4rem",
+                    margin: "0 0 0.4rem",
                   }}
                 >
                   {post.title}
-                </div>
+                </h3>
                 {post.excerpt && (
                   <p
                     style={{
