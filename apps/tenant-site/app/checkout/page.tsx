@@ -2,11 +2,27 @@ import { getTenantContext } from "@/lib/tenant";
 import { getSite, getCategories, getNavPages } from "@/lib/api";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { CheckoutForm } from "@/components/cart/CheckoutForm";
+import { brandingDisplayName } from "@/lib/theme";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Checkout" };
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const ctx = await getTenantContext();
+    const site = await getSite(ctx.host, ctx.tenantId);
+    if (!site) return { title: "Checkout" };
+    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    return {
+      title: `Checkout · ${name}`,
+      description: `Complete your order at ${name}.`,
+      robots: { index: false, follow: true },
+    };
+  } catch {
+    return { title: "Checkout" };
+  }
+}
 
 export default async function CheckoutRoute() {
   const ctx = await getTenantContext();

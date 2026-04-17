@@ -205,14 +205,13 @@ export function CheckoutForm({
       // shared globals.css media query — fixes the mobile checkout where
       // the form was wrapping awkwardly inside a 2-col layout that ignored
       // viewport width.
-      className="tpl-stack"
+      className="tpl-stack checkout-grid"
       style={{
         display: "grid",
         gridTemplateColumns: "2fr 1fr",
         gap: "2.5rem",
         alignItems: "start",
       }}
-      data-checkout-layout="desktop"
     >
       <form
         onSubmit={handleSubmit}
@@ -430,7 +429,7 @@ export function CheckoutForm({
         >
           {cart.items.map((i) => (
             <li
-              key={i.productId}
+              key={`${i.productId}:${i.variationId ?? ""}:${i.subVariationId ?? ""}`}
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -444,7 +443,9 @@ export function CheckoutForm({
                   textOverflow: "ellipsis",
                 }}
               >
-                {i.productName} × {i.quantity}
+                {i.productName}
+                {i.variationLabel ? ` (${i.variationLabel})` : ""} ×{" "}
+                {i.quantity}
               </span>
               <span style={{ fontVariantNumeric: "tabular-nums" }}>
                 {formatPrice(i.unitPrice * i.quantity, cart.currency)}

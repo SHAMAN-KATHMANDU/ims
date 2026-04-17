@@ -242,6 +242,14 @@ hr {
   }
 }
 
+/* Checkout: show order summary above the form on mobile so customers see
+   what they're paying for before filling in details. */
+@media (max-width: 768px) {
+  .checkout-grid > aside {
+    order: -1 !important;
+  }
+}
+
 /* `tpl-nav` — shrinks header nav spacing and wraps on mobile so links don't
    spill off the edge. Used by SiteHeader. */
 @media (max-width: 768px) {
