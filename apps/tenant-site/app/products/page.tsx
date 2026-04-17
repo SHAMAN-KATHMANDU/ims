@@ -13,11 +13,28 @@ import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
+import { brandingDisplayName } from "@/lib/theme";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
+import type { Metadata } from "next";
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const ctx = await getTenantContext();
+    const site = await getSite(ctx.host, ctx.tenantId);
+    if (!site) return { title: "Products" };
+    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    return {
+      title: `Products · ${name}`,
+      description: `Browse products at ${name}.`,
+    };
+  } catch {
+    return { title: "Products" };
+  }
 }
 
 /**
