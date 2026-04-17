@@ -139,7 +139,11 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
           </div>
 
           {submitError && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20"
+            >
               <strong>Error:</strong> {submitError}
             </div>
           )}

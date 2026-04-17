@@ -217,6 +217,8 @@ export function WebsiteOrdersPage({
             </TabsList>
           </Tabs>
           <Input
+            type="search"
+            aria-label="Search orders by code, name, or phone"
             placeholder="Search by order code, name, phone…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -225,7 +227,13 @@ export function WebsiteOrdersPage({
         </CardHeader>
         <CardContent>
           {ordersQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading orders…</p>
+            <p
+              className="text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              Loading orders…
+            </p>
           ) : (
             <Tabs value={tab}>
               {TABS.map((t) => (

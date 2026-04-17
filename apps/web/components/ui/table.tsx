@@ -106,6 +106,11 @@ function SortableTableHead({
     currentSortBy === sortKey &&
     currentSortOrder !== undefined &&
     currentSortOrder !== "none";
+  const ariaSort: "ascending" | "descending" | "none" = isActive
+    ? currentSortOrder === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
   const handleClick = () => {
     if (!isActive) {
       onSort(sortKey, "asc");
@@ -119,6 +124,7 @@ function SortableTableHead({
   };
   return (
     <TableHead
+      aria-sort={ariaSort}
       className={cn("cursor-pointer select-none hover:bg-muted/50", className)}
       {...props}
     >

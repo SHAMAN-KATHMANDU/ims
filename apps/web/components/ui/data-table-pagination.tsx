@@ -66,7 +66,12 @@ export function DataTablePagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-4">
       {/* Items info */}
-      <div className="text-sm text-muted-foreground order-2 sm:order-1">
+      <div
+        className="text-sm text-muted-foreground order-2 sm:order-1"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {totalItems === 0 ? (
           `No ${itemLabel}`
         ) : (
@@ -92,7 +97,10 @@ export function DataTablePagination({
               onValueChange={(value) => onPageSizeChange(Number(value))}
               disabled={isLoading}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger
+                className="h-8 w-[70px]"
+                aria-label="Rows per page"
+              >
                 <SelectValue placeholder={itemsPerPage} />
               </SelectTrigger>
               <SelectContent side="top">
