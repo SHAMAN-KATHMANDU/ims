@@ -212,8 +212,9 @@ export function CartPage() {
                 >
                   <button
                     type="button"
-                    aria-label="Decrease quantity"
+                    aria-label={`Decrease quantity of ${item.productName}`}
                     className="btn btn-ghost"
+                    disabled={item.quantity <= 1}
                     onClick={() =>
                       updateQty(
                         {
@@ -225,16 +226,22 @@ export function CartPage() {
                       )
                     }
                     style={{
-                      padding: "0.25rem 0.5rem",
-                      minWidth: 32,
+                      padding: "0.5rem",
+                      minWidth: 44,
+                      minHeight: 44,
                       border: "1px solid var(--color-border)",
+                      opacity: item.quantity <= 1 ? 0.5 : 1,
+                      cursor: item.quantity <= 1 ? "not-allowed" : "pointer",
                     }}
                   >
                     <Minus />
                   </button>
                   <span
+                    aria-live="polite"
+                    aria-atomic="true"
+                    aria-label={`Quantity ${item.quantity}`}
                     style={{
-                      minWidth: 28,
+                      minWidth: 32,
                       textAlign: "center",
                       fontVariantNumeric: "tabular-nums",
                     }}
@@ -243,7 +250,7 @@ export function CartPage() {
                   </span>
                   <button
                     type="button"
-                    aria-label="Increase quantity"
+                    aria-label={`Increase quantity of ${item.productName}`}
                     className="btn btn-ghost"
                     onClick={() =>
                       updateQty(
@@ -256,8 +263,9 @@ export function CartPage() {
                       )
                     }
                     style={{
-                      padding: "0.25rem 0.5rem",
-                      minWidth: 32,
+                      padding: "0.5rem",
+                      minWidth: 44,
+                      minHeight: 44,
                       border: "1px solid var(--color-border)",
                     }}
                   >
@@ -279,7 +287,7 @@ export function CartPage() {
                 </div>
                 <button
                   type="button"
-                  aria-label={`Remove ${item.productName}`}
+                  aria-label={`Remove ${item.productName} from cart`}
                   onClick={() =>
                     removeItem({
                       productId: item.productId,
@@ -294,8 +302,10 @@ export function CartPage() {
                     color: "var(--color-muted)",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "0.25rem",
+                    gap: "0.35rem",
                     fontSize: "0.8rem",
+                    minHeight: 44,
+                    padding: "0.5rem 0.25rem",
                   }}
                 >
                   <Trash2 />
@@ -356,7 +366,7 @@ export function CartPage() {
           <p
             style={{
               fontSize: "0.75rem",
-              color: "#16a34a",
+              color: "var(--color-success)",
               marginBottom: "0.5rem",
               fontWeight: 500,
             }}

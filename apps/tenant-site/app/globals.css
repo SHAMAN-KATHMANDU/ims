@@ -25,6 +25,10 @@
   --color-error-bg: rgba(220, 38, 38, 0.08);
   --color-error-border: rgba(220, 38, 38, 0.3);
 
+  /* ---------- Success / Warning (status tokens for UI feedback) ---------- */
+  --color-success: #16a34a;
+  --color-warning: #c2410c;
+
   /* ---------- Phase-A back-compat aliases ----------
      These short names are still read by MinimalLayout / StandardLayout /
      LuxuryLayout / BoutiqueLayout until they are rewritten in Phase C.3. */
@@ -331,7 +335,9 @@ hr {
 .tpl-product-card:hover .tpl-product-card-img {
   transform: scale(1.04);
 }
-.tpl-product-card:hover .tpl-quick-add {
+.tpl-product-card:hover .tpl-quick-add,
+.tpl-product-card:focus-within .tpl-quick-add,
+.tpl-quick-add:focus-visible {
   opacity: 1 !important;
   transform: translateY(0) !important;
 }

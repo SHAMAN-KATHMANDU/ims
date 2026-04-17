@@ -30,12 +30,16 @@ export function QuickAddButton({
       type="button"
       onClick={handleClick}
       className="tpl-quick-add"
+      aria-label={
+        added ? `${productName} added to cart` : `Add ${productName} to cart`
+      }
       style={{
         position: "absolute",
         bottom: "0.75rem",
         left: "0.75rem",
         right: "0.75rem",
-        padding: "0.55rem",
+        padding: "0.75rem",
+        minHeight: 44,
         textAlign: "center",
         background: "var(--color-primary)",
         color: "var(--color-on-primary, #fff)",

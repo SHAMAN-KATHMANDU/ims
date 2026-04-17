@@ -63,8 +63,11 @@ export function AddToCartButton({
         className="btn"
         onClick={handleAdd}
         disabled={!hydrated || disabled}
+        aria-disabled={!hydrated || disabled}
+        aria-live="polite"
         style={{
           minWidth: 180,
+          minHeight: 44,
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? "not-allowed" : "pointer",
         }}
@@ -78,11 +81,21 @@ export function AddToCartButton({
             fontSize: "0.85rem",
             color: "var(--color-primary)",
             textDecoration: "underline",
+            minHeight: 44,
+            display: "inline-flex",
+            alignItems: "center",
           }}
         >
           View cart
         </Link>
       )}
+      <span className="sr-only" role="status" aria-live="polite">
+        {status === "added"
+          ? `${productName} added to cart`
+          : disabled
+            ? "Out of stock"
+            : ""}
+      </span>
     </div>
   );
 }

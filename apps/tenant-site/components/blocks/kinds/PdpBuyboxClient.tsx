@@ -211,13 +211,15 @@ export function PdpBuyboxClient({
           )}
           {stockWarning && (
             <span
+              role="status"
+              aria-live="polite"
               style={{
                 fontSize: "0.78rem",
                 fontWeight: 600,
                 color:
                   activeVariation?.stockQuantity === 0
-                    ? "var(--color-destructive, #b91c1c)"
-                    : "var(--color-accent, #c2410c)",
+                    ? "var(--color-error)"
+                    : "var(--color-warning)",
               }}
             >
               {stockWarning}
@@ -242,64 +244,74 @@ export function PdpBuyboxClient({
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
           >
-            {attributeGroups.map((group) => (
-              <div key={group.typeId}>
-                <div
-                  style={{
-                    fontSize: "0.72rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    color: "var(--color-muted)",
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  {group.typeName}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "0.5rem",
-                  }}
-                >
-                  {group.values.map((v) => {
-                    const isActive = selected[group.typeId] === v.valueId;
-                    return (
-                      <button
-                        key={v.valueId}
-                        type="button"
-                        onClick={() =>
-                          setSelected((prev) => ({
-                            ...prev,
-                            [group.typeId]: v.valueId,
-                          }))
-                        }
-                        style={{
-                          padding: "0.5rem 0.9rem",
-                          border: `1px solid ${
-                            isActive
+            {attributeGroups.map((group) => {
+              const groupLabelId = `variant-group-${group.typeId}`;
+              return (
+                <div key={group.typeId}>
+                  <div
+                    id={groupLabelId}
+                    style={{
+                      fontSize: "0.72rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: "var(--color-muted)",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    {group.typeName}
+                  </div>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby={groupLabelId}
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    {group.values.map((v) => {
+                      const isActive = selected[group.typeId] === v.valueId;
+                      return (
+                        <button
+                          key={v.valueId}
+                          type="button"
+                          role="radio"
+                          aria-checked={isActive}
+                          aria-label={`${group.typeName}: ${v.value}`}
+                          onClick={() =>
+                            setSelected((prev) => ({
+                              ...prev,
+                              [group.typeId]: v.valueId,
+                            }))
+                          }
+                          style={{
+                            padding: "0.6rem 0.9rem",
+                            minHeight: 44,
+                            border: `1px solid ${
+                              isActive
+                                ? "var(--color-text)"
+                                : "var(--color-border)"
+                            }`,
+                            background: isActive
                               ? "var(--color-text)"
-                              : "var(--color-border)"
-                          }`,
-                          background: isActive
-                            ? "var(--color-text)"
-                            : "transparent",
-                          color: isActive
-                            ? "var(--color-background)"
-                            : "var(--color-text)",
-                          borderRadius: "var(--radius)",
-                          cursor: "pointer",
-                          fontSize: "0.85rem",
-                          letterSpacing: "0.02em",
-                        }}
-                      >
-                        {v.value}
-                      </button>
-                    );
-                  })}
+                              : "transparent",
+                            color: isActive
+                              ? "var(--color-background)"
+                              : "var(--color-text)",
+                            borderRadius: "var(--radius)",
+                            cursor: "pointer",
+                            fontSize: "0.85rem",
+                            letterSpacing: "0.02em",
+                          }}
+                        >
+                          {v.value}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -364,18 +376,26 @@ export function PdpBuyboxClient({
           >
             <button
               type="button"
+              aria-label="Decrease quantity"
+              disabled={qty <= 1}
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               style={{
                 padding: "0.5rem 0.75rem",
+                minWidth: 44,
+                minHeight: 44,
                 background: "none",
                 border: "none",
-                cursor: "pointer",
+                cursor: qty <= 1 ? "not-allowed" : "pointer",
+                opacity: qty <= 1 ? 0.5 : 1,
                 fontSize: "1rem",
               }}
             >
               −
             </button>
             <span
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label={`Quantity ${qty}`}
               style={{
                 minWidth: "2.5rem",
                 textAlign: "center",
@@ -387,12 +407,17 @@ export function PdpBuyboxClient({
             </span>
             <button
               type="button"
+              aria-label="Increase quantity"
+              disabled={qty >= 99}
               onClick={() => setQty((q) => Math.min(99, q + 1))}
               style={{
                 padding: "0.5rem 0.75rem",
+                minWidth: 44,
+                minHeight: 44,
                 background: "none",
                 border: "none",
-                cursor: "pointer",
+                cursor: qty >= 99 ? "not-allowed" : "pointer",
+                opacity: qty >= 99 ? 0.5 : 1,
                 fontSize: "1rem",
               }}
             >
@@ -482,6 +507,7 @@ function SubVariationPicker({
   return (
     <div>
       <div
+        id="subvariant-group-label"
         style={{
           fontSize: "0.72rem",
           textTransform: "uppercase",
@@ -492,16 +518,23 @@ function SubVariationPicker({
       >
         Option
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+      <div
+        role="radiogroup"
+        aria-labelledby="subvariant-group-label"
+        style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}
+      >
         {items.map((s) => {
           const isActive = s.id === selectedId;
           return (
             <button
               key={s.id}
               type="button"
+              role="radio"
+              aria-checked={isActive}
               onClick={() => onChange(s.id)}
               style={{
-                padding: "0.5rem 0.9rem",
+                padding: "0.6rem 0.9rem",
+                minHeight: 44,
                 border: `1px solid ${
                   isActive ? "var(--color-text)" : "var(--color-border)"
                 }`,
