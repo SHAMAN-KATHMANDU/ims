@@ -327,7 +327,8 @@ export function ProductTable({
             <div className="relative w-full min-w-0 md:max-w-[280px] md:flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
-                type="text"
+                type="search"
+                aria-label="Search products by name"
                 placeholder="Search product name"
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -919,7 +920,7 @@ export function ProductTable({
                                                     onClick={() =>
                                                       onEdit(sheetProduct)
                                                     }
-                                                    aria-label="Edit product"
+                                                    aria-label={`Edit ${sheetProduct.name}`}
                                                   >
                                                     <Edit2 className="h-4 w-4" />
                                                   </Button>
@@ -944,7 +945,7 @@ export function ProductTable({
                                                         variation.id,
                                                       )
                                                     }
-                                                    aria-label="Delete variation"
+                                                    aria-label={`Delete variation ${getVariationAttributeDisplay(variation) || variation.id}`}
                                                   >
                                                     <Trash2 className="h-4 w-4" />
                                                   </Button>

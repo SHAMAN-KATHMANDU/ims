@@ -308,6 +308,8 @@ export function MembersPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              type="search"
+              aria-label="Search members by phone, name, or email"
               placeholder="Search by phone, name, or email..."
               value={search}
               onChange={handleSearchChange}
@@ -318,7 +320,10 @@ export function MembersPage() {
             value={memberStatusFilter}
             onValueChange={handleMemberStatusChange}
           >
-            <SelectTrigger className="h-9 w-[160px] shrink-0 gap-2 text-sm">
+            <SelectTrigger
+              className="h-9 w-[160px] shrink-0 gap-2 text-sm"
+              aria-label="Filter by member status"
+            >
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -333,8 +338,14 @@ export function MembersPage() {
             value={`${sortBy}_${sortOrder}`}
             onValueChange={handleSortChange}
           >
-            <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
-              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+            <SelectTrigger
+              className="h-9 w-[200px] shrink-0 gap-2 text-sm"
+              aria-label="Sort members"
+            >
+              <ArrowUpDown
+                className="h-3.5 w-3.5 text-muted-foreground"
+                aria-hidden="true"
+              />
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
