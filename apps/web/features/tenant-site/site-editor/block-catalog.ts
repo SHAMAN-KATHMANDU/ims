@@ -244,6 +244,67 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
 
   // Marketing
   {
+    kind: "product-filters",
+    label: "Product filters",
+    description:
+      "Sidebar with category / price / brand / attribute facets. Pair with a product-listing block inside a columns container on the products page.",
+    category: "commerce",
+    scopes: ["products-index"],
+    createDefaultProps: () => ({
+      heading: "Filters",
+      show: {
+        category: true,
+        priceRange: true,
+        brand: true,
+      },
+      stickyOffset: 96,
+    }),
+  },
+  {
+    kind: "collection-cards",
+    label: "Collection cards",
+    description:
+      '2–4 big image-text cards linking to collections / categories (e.g. "Elevare Favourites").',
+    category: "marketing",
+    createDefaultProps: () => ({
+      heading: "Shop by collection",
+      aspectRatio: "portrait",
+      overlay: true,
+      cards: [
+        {
+          title: "Featured",
+          subtitle: "Our editor's picks this season",
+          ctaLabel: "Shop featured",
+          ctaHref: "/collections/featured",
+        },
+        {
+          title: "Exclusives",
+          subtitle: "Only here — nowhere else",
+          ctaLabel: "Shop exclusives",
+          ctaHref: "/collections/exclusives",
+        },
+      ],
+    }),
+  },
+  {
+    kind: "announcement-bar",
+    label: "Announcement bar",
+    description:
+      "Top-of-page strip (shipping, launch, promo) — static or scrolling marquee.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      text: "Free shipping across Nepal · Cash on delivery available",
+      marquee: true,
+      tone: "default",
+      items: [
+        "Free shipping across Nepal",
+        "Cash on delivery",
+        "Authentic brands only",
+        "Scheduled delivery",
+      ],
+    }),
+  },
+  {
     kind: "trust-strip",
     label: "Trust strip",
     description: "Value-prop strip (shipping, returns, support).",
@@ -376,10 +437,15 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
   {
     kind: "pdp-buybox",
     label: "PDP buybox",
-    description: "Name, price, Add to Cart.",
+    description: "Name, price, variant picker (chips), quantity, Add to Cart.",
     category: "pdp",
     scopes: ["product-detail"],
-    createDefaultProps: () => ({ showSku: true, showCategory: true }),
+    createDefaultProps: () => ({
+      showSku: true,
+      showCategory: true,
+      showVariantPicker: true,
+      variantDisplay: "chips",
+    }),
   },
   {
     kind: "pdp-details",

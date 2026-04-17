@@ -192,6 +192,17 @@ export function CartPage() {
                 >
                   {item.productName}
                 </Link>
+                {item.variationLabel && (
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--color-muted)",
+                      marginBottom: "0.35rem",
+                    }}
+                  >
+                    {item.variationLabel}
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",
@@ -203,7 +214,16 @@ export function CartPage() {
                     type="button"
                     aria-label="Decrease quantity"
                     className="btn btn-ghost"
-                    onClick={() => updateQty(item.productId, item.quantity - 1)}
+                    onClick={() =>
+                      updateQty(
+                        {
+                          productId: item.productId,
+                          variationId: item.variationId ?? null,
+                          subVariationId: item.subVariationId ?? null,
+                        },
+                        item.quantity - 1,
+                      )
+                    }
                     style={{
                       padding: "0.25rem 0.5rem",
                       minWidth: 32,
@@ -225,7 +245,16 @@ export function CartPage() {
                     type="button"
                     aria-label="Increase quantity"
                     className="btn btn-ghost"
-                    onClick={() => updateQty(item.productId, item.quantity + 1)}
+                    onClick={() =>
+                      updateQty(
+                        {
+                          productId: item.productId,
+                          variationId: item.variationId ?? null,
+                          subVariationId: item.subVariationId ?? null,
+                        },
+                        item.quantity + 1,
+                      )
+                    }
                     style={{
                       padding: "0.25rem 0.5rem",
                       minWidth: 32,
@@ -251,7 +280,13 @@ export function CartPage() {
                 <button
                   type="button"
                   aria-label={`Remove ${item.productName}`}
-                  onClick={() => removeItem(item.productId)}
+                  onClick={() =>
+                    removeItem({
+                      productId: item.productId,
+                      variationId: item.variationId ?? null,
+                      subVariationId: item.subVariationId ?? null,
+                    })
+                  }
                   style={{
                     background: "transparent",
                     border: "none",

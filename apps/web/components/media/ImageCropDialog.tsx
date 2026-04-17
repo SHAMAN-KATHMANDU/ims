@@ -58,6 +58,13 @@ export function ImageCropDialog({
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [aspect, setAspect] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
+  // Start with crossOrigin="anonymous" so the canvas stays un-tainted and
+  // toBlob succeeds. If the S3/CDN origin doesn't return CORS-allowed
+  // headers the image won't render (browser shows a broken-image "?"),
+  // so we fall back to a plain load. Cropping may then fail with a
+  // tainted-canvas error — caught in handleCrop.
+  const [useCors, setUseCors] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -176,20 +183,48 @@ export function ImageCropDialog({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              // Keyed on useCors so the browser re-fetches without the
+              // Origin header when the first attempt failed.
+              key={useCors ? "cors" : "nocors"}
               src={imageUrl}
               alt="Crop preview"
-              onLoad={onImageLoad}
+              onLoad={(e) => {
+                setLoadFailed(false);
+                onImageLoad(e);
+              }}
+              onError={() => {
+                if (useCors) {
+                  // First load tried anonymous CORS and failed — retry
+                  // without crossOrigin so at least the image renders.
+                  setUseCors(false);
+                } else {
+                  setLoadFailed(true);
+                }
+              }}
               style={{ maxHeight: "60vh", maxWidth: "100%" }}
-              crossOrigin="anonymous"
+              crossOrigin={useCors ? "anonymous" : undefined}
             />
           </ReactCrop>
         </div>
+
+        {loadFailed && (
+          <p className="text-xs text-destructive">
+            Could not load the image preview. You can still skip the crop and
+            use the original file.
+          </p>
+        )}
+        {!useCors && !loadFailed && (
+          <p className="text-[11px] text-muted-foreground">
+            Loaded without cross-origin headers — cropping may be unavailable
+            for this image; use Skip crop if the apply step fails.
+          </p>
+        )}
 
         <DialogFooter className="gap-2">
           <Button variant="ghost" onClick={handleSkip} disabled={saving}>
             Skip crop
           </Button>
-          <Button onClick={handleCrop} disabled={saving}>
+          <Button onClick={handleCrop} disabled={saving || loadFailed}>
             {saving ? "Uploading…" : "Apply crop"}
           </Button>
         </DialogFooter>

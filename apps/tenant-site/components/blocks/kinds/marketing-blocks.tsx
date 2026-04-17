@@ -16,6 +16,8 @@ import {
   ContactBlock as SharedContactBlock,
 } from "@/components/templates/shared";
 import type {
+  AnnouncementBarProps,
+  CollectionCardsProps,
   TrustStripProps,
   StorySplitProps,
   BentoShowcaseProps,
@@ -26,8 +28,258 @@ import type {
   TestimonialsProps,
   LogoCloudProps,
 } from "@repo/shared";
+import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
+
+const TONE_BG: Record<
+  NonNullable<AnnouncementBarProps["tone"]>,
+  { bg: string; fg: string }
+> = {
+  default: { bg: "var(--color-text)", fg: "var(--color-background)" },
+  muted: { bg: "var(--color-surface)", fg: "var(--color-text)" },
+  accent: { bg: "var(--color-accent)", fg: "var(--color-background)" },
+};
+
+export function AnnouncementBarBlock({
+  props,
+}: BlockComponentProps<AnnouncementBarProps>) {
+  const tone = TONE_BG[props.tone ?? "default"] ?? TONE_BG.default;
+  const items: string[] =
+    props.items && props.items.length > 0 ? props.items : [props.text];
+  const inner = (
+    <span style={{ display: "inline-flex", gap: "3rem", paddingRight: "3rem" }}>
+      {items.map((item: string, i: number) => (
+        <span key={i}>{item}</span>
+      ))}
+    </span>
+  );
+  const content = props.marquee ? (
+    <div
+      style={{
+        display: "flex",
+        width: "max-content",
+        animation: "announcement-marquee 30s linear infinite",
+      }}
+    >
+      {/* Duplicated track so the loop stays seamless. */}
+      {inner}
+      {inner}
+    </div>
+  ) : (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        textAlign: "center",
+      }}
+    >
+      <span>{props.text}</span>
+    </div>
+  );
+
+  const body = (
+    <div
+      style={{
+        background: tone.bg,
+        color: tone.fg,
+        fontSize: "0.8rem",
+        letterSpacing: "0.04em",
+        padding: "0.55rem 0",
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <style>
+        {
+          "@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }"
+        }
+      </style>
+      {content}
+    </div>
+  );
+
+  if (props.link) {
+    return (
+      <a href={props.link} style={{ display: "block", color: "inherit" }}>
+        {body}
+      </a>
+    );
+  }
+  return body;
+}
+
+const ASPECT_MAP = {
+  square: "1 / 1",
+  portrait: "3 / 4",
+  landscape: "16 / 9",
+} as const;
+
+export function CollectionCardsBlock({
+  props,
+}: BlockComponentProps<CollectionCardsProps>) {
+  const aspect = ASPECT_MAP[props.aspectRatio ?? "portrait"];
+  const overlay = props.overlay !== false;
+  const columns = Math.max(1, Math.min(props.cards.length, 4));
+  return (
+    <section style={{ padding: "var(--section-padding) 0" }}>
+      <div className="container">
+        {(props.eyebrow || props.heading) && (
+          <div style={{ marginBottom: "2rem", textAlign: "center" }}>
+            {props.eyebrow && (
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  color: "var(--color-muted)",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {props.eyebrow}
+              </div>
+            )}
+            {props.heading && (
+              <h2
+                style={{
+                  fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
+                  fontFamily: "var(--font-display)",
+                  margin: 0,
+                }}
+              >
+                {props.heading}
+              </h2>
+            )}
+          </div>
+        )}
+        <div
+          style={{
+            display: "grid",
+            gap: "1rem",
+            gridTemplateColumns: `repeat(auto-fit, minmax(260px, 1fr))`,
+            ["--count" as string]: columns,
+          }}
+        >
+          {props.cards.map((card, i) => (
+            <CollectionCard
+              key={`${i}-${card.title}`}
+              card={card}
+              aspect={aspect}
+              overlay={overlay}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CollectionCard({
+  card,
+  aspect,
+  overlay,
+}: {
+  card: CollectionCardsProps["cards"][number];
+  aspect: string;
+  overlay: boolean;
+}) {
+  const href = card.ctaHref && card.ctaHref.length > 0 ? card.ctaHref : null;
+  const hasImage = !!card.imageUrl;
+  const sharedStyle: React.CSSProperties = {
+    position: "relative",
+    display: "block",
+    overflow: "hidden",
+    borderRadius: "var(--radius)",
+    aspectRatio: aspect,
+    background: "var(--color-surface)",
+    color: "var(--color-text)",
+    textDecoration: "none",
+  };
+  const body = (
+    <>
+      {hasImage && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={card.imageUrl}
+          alt={card.title}
+          loading="lazy"
+          decoding="async"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transition: "transform 0.6s ease",
+          }}
+        />
+      )}
+      {overlay && hasImage && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.55) 100%)",
+          }}
+        />
+      )}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          padding: "1.25rem",
+          color: overlay && hasImage ? "#fff" : "var(--color-text)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.25rem",
+            fontWeight: 600,
+            marginBottom: card.subtitle ? "0.25rem" : 0,
+          }}
+        >
+          {card.title}
+        </div>
+        {card.subtitle && (
+          <div
+            style={{
+              fontSize: "0.9rem",
+              opacity: overlay && hasImage ? 0.9 : 0.75,
+              marginBottom: card.ctaLabel ? "0.75rem" : 0,
+            }}
+          >
+            {card.subtitle}
+          </div>
+        )}
+        {card.ctaLabel && (
+          <span
+            style={{
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {card.ctaLabel} →
+          </span>
+        )}
+      </div>
+    </>
+  );
+  if (href) {
+    return (
+      <Link href={href} style={sharedStyle}>
+        {body}
+      </Link>
+    );
+  }
+  return <div style={sharedStyle}>{body}</div>;
+}
 
 export function TrustStripBlock({
   props,

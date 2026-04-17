@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/useToast";
 import {
   ContactFormSchema,
   type ContactFormInput,
+  SOCIAL_KEYS,
+  type SocialKey,
   contactFromJson,
   contactToJson,
 } from "../validation";
@@ -34,6 +36,26 @@ interface SiteContactFormProps {
   contact: Record<string, unknown> | null;
   disabled?: boolean;
 }
+
+const SOCIAL_LABELS: Record<SocialKey, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  whatsapp: "WhatsApp",
+  x: "X (Twitter)",
+  linkedin: "LinkedIn",
+};
+
+const SOCIAL_PLACEHOLDERS: Record<SocialKey, string> = {
+  facebook: "https://facebook.com/acme",
+  instagram: "https://instagram.com/acme",
+  tiktok: "https://tiktok.com/@acme",
+  youtube: "https://youtube.com/@acme",
+  whatsapp: "https://wa.me/9779800000000",
+  x: "https://x.com/acme",
+  linkedin: "https://linkedin.com/company/acme",
+};
 
 export function SiteContactForm({ contact, disabled }: SiteContactFormProps) {
   const { toast } = useToast();
@@ -129,6 +151,32 @@ export function SiteContactForm({ contact, disabled }: SiteContactFormProps) {
                 Optional — adds a &ldquo;Get directions&rdquo; link to the
                 contact block.
               </p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <div className="mb-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Social links
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {SOCIAL_KEYS.map((key) => (
+                  <div key={key} className="space-y-1.5">
+                    <Label htmlFor={`contact-${key}`}>
+                      {SOCIAL_LABELS[key]}
+                    </Label>
+                    <Input
+                      id={`contact-${key}`}
+                      placeholder={SOCIAL_PLACEHOLDERS[key]}
+                      disabled={disabled}
+                      {...form.register(key)}
+                    />
+                    {form.formState.errors[key] && (
+                      <p className="text-sm text-destructive">
+                        {form.formState.errors[key]?.message}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-end justify-end border-t border-border pt-4 sm:col-span-2">

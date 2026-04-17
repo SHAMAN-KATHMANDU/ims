@@ -21,7 +21,7 @@
  * This is the Phase 4 floor — we extend it as new block shapes land.
  */
 
-import { useMemo, useState } from "react";
+import { Component, useMemo, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { BlockPropsSchemas } from "@repo/shared";
 import type { BlockNode } from "@repo/shared";
@@ -71,13 +71,57 @@ export function BlockInspector() {
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
-        <VisibilitySection block={selected} />
-        <StyleOverrideSection block={selected} />
-        <BlockForm block={selected} />
-        <AdvancedSection block={selected} />
+        <InspectorBoundary label="Visibility">
+          <VisibilitySection block={selected} />
+        </InspectorBoundary>
+        <InspectorBoundary label="Style">
+          <StyleOverrideSection block={selected} />
+        </InspectorBoundary>
+        <InspectorBoundary label="Block fields">
+          <BlockForm block={selected} />
+        </InspectorBoundary>
+        <InspectorBoundary label="Advanced">
+          <AdvancedSection block={selected} />
+        </InspectorBoundary>
       </div>
     </div>
   );
+}
+
+// React's error boundaries still require a class component. Renders an inline
+// error notice with the section label + message so one bad section doesn't
+// blank the whole inspector pane.
+class InspectorBoundary extends Component<
+  { label: string; children: ReactNode },
+  { err: Error | null }
+> {
+  state: { err: Error | null } = { err: null };
+  static getDerivedStateFromError(err: Error) {
+    return { err };
+  }
+  componentDidCatch(err: Error) {
+    console.error("[BlockInspector]", this.props.label, err);
+  }
+  render() {
+    if (this.state.err) {
+      return (
+        <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
+          <div className="font-semibold text-destructive">
+            {this.props.label} failed to render
+          </div>
+          <div className="text-muted-foreground">{this.state.err.message}</div>
+          <button
+            type="button"
+            onClick={() => this.setState({ err: null })}
+            className="text-[11px] underline hover:text-foreground"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function VisibilitySection({ block }: { block: BlockNode }) {
@@ -134,8 +178,13 @@ function VisibilitySection({ block }: { block: BlockNode }) {
   );
 }
 
+// Radix's <Select.Item /> forbids empty-string values, so we use a sentinel
+// to represent "no override / inherit from theme" and map it to undefined
+// on the way out.
+const DEFAULT_SENTINEL = "__default__";
+
 const THEME_TOKEN_OPTIONS = [
-  { value: "", label: "Default" },
+  { value: DEFAULT_SENTINEL, label: "Default" },
   { value: "color-primary", label: "Primary" },
   { value: "color-secondary", label: "Secondary" },
   { value: "color-accent", label: "Accent" },
@@ -144,6 +193,14 @@ const THEME_TOKEN_OPTIONS = [
   { value: "color-text", label: "Text" },
   { value: "color-muted", label: "Muted" },
 ];
+
+function fromSentinel(v: string): string | undefined {
+  return v === DEFAULT_SENTINEL || v === "" ? undefined : v;
+}
+
+function toSentinel(v: string | undefined): string {
+  return v ?? DEFAULT_SENTINEL;
+}
 
 function StyleOverrideSection({ block }: { block: BlockNode }) {
   const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
@@ -158,10 +215,10 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         <div className="space-y-1">
           <Label className="text-xs">Alignment</Label>
           <Select
-            value={style.alignment ?? ""}
+            value={toSentinel(style.alignment)}
             onValueChange={(v) =>
               updateBlockStyle(block.id, {
-                alignment: (v || undefined) as typeof style.alignment,
+                alignment: fromSentinel(v) as typeof style.alignment,
               })
             }
           >
@@ -169,7 +226,7 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
               <SelectValue placeholder="Default" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Default</SelectItem>
+              <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
               <SelectItem value="start">Left</SelectItem>
               <SelectItem value="center">Center</SelectItem>
               <SelectItem value="end">Right</SelectItem>
@@ -180,10 +237,10 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         <div className="space-y-1">
           <Label className="text-xs">Padding Y</Label>
           <Select
-            value={style.paddingY ?? ""}
+            value={toSentinel(style.paddingY)}
             onValueChange={(v) =>
               updateBlockStyle(block.id, {
-                paddingY: (v || undefined) as typeof style.paddingY,
+                paddingY: fromSentinel(v) as typeof style.paddingY,
               })
             }
           >
@@ -191,7 +248,7 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
               <SelectValue placeholder="Default" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Default</SelectItem>
+              <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="compact">Compact</SelectItem>
               <SelectItem value="balanced">Balanced</SelectItem>
@@ -203,10 +260,10 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         <div className="space-y-1">
           <Label className="text-xs">Max Width</Label>
           <Select
-            value={style.maxWidth ?? ""}
+            value={toSentinel(style.maxWidth)}
             onValueChange={(v) =>
               updateBlockStyle(block.id, {
-                maxWidth: (v || undefined) as typeof style.maxWidth,
+                maxWidth: fromSentinel(v) as typeof style.maxWidth,
               })
             }
           >
@@ -214,7 +271,7 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
               <SelectValue placeholder="Default" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Default</SelectItem>
+              <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
               <SelectItem value="narrow">Narrow (640px)</SelectItem>
               <SelectItem value="default">Default (1200px)</SelectItem>
               <SelectItem value="wide">Wide (1440px)</SelectItem>
@@ -226,10 +283,10 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         <div className="space-y-1">
           <Label className="text-xs">Background</Label>
           <Select
-            value={style.backgroundToken ?? ""}
+            value={toSentinel(style.backgroundToken)}
             onValueChange={(v) =>
               updateBlockStyle(block.id, {
-                backgroundToken: v || undefined,
+                backgroundToken: fromSentinel(v),
               })
             }
           >
@@ -249,10 +306,10 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         <div className="space-y-1">
           <Label className="text-xs">Text Color</Label>
           <Select
-            value={style.textToken ?? ""}
+            value={toSentinel(style.textToken)}
             onValueChange={(v) =>
               updateBlockStyle(block.id, {
-                textToken: v || undefined,
+                textToken: fromSentinel(v),
               })
             }
           >
@@ -566,20 +623,24 @@ function FieldRenderer({
     );
   }
   if (field.kind === "enum" && field.options) {
-    const current = value === undefined || value === null ? "" : String(value);
+    // Radix's controlled Select accepts value="" as "no value" but some
+    // versions still warn; pass undefined so the placeholder renders clean.
+    const current =
+      value === undefined || value === null || value === ""
+        ? undefined
+        : String(value);
     return (
       <div className="space-y-1">
         <Label>{labelText}</Label>
         <Select
           value={current}
           onValueChange={(v) => {
-            // Coerce back to number if the original option was numeric.
             const asNum = Number(v);
             onChange(Number.isFinite(asNum) && String(asNum) === v ? asNum : v);
           }}
         >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder={field.optional ? "Default" : undefined} />
           </SelectTrigger>
           <SelectContent>
             {field.options.map((opt) => (

@@ -107,6 +107,31 @@ export interface PublicCategory {
   description: string | null;
 }
 
+export interface PublicProductVariationAttribute {
+  typeId: string;
+  typeName: string;
+  typeCode: string;
+  valueId: string;
+  value: string;
+}
+
+export interface PublicProductSubVariation {
+  id: string;
+  name: string;
+}
+
+export interface PublicProductVariation {
+  id: string;
+  name: string;
+  sku: string | null;
+  finalSp: string;
+  mrp: string;
+  stockQuantity: number;
+  attributes: PublicProductVariationAttribute[];
+  subVariations: PublicProductSubVariation[];
+  photoUrls: string[];
+}
+
 export interface PublicProduct {
   id: string;
   name: string;
@@ -135,6 +160,44 @@ export interface PublicProduct {
   breadth?: number | null;
   height?: number | null;
   weight?: number | null;
+  /**
+   * Variation summary for cards. Present on list + detail. When > 1 the
+   * card can render "From NPR X" via priceFrom/priceTo.
+   */
+  variationCount?: number;
+  priceFrom?: string;
+  priceTo?: string;
+  /**
+   * Full active-variation set — only populated on the detail endpoint.
+   * The PDP buybox consumes this to render attribute-grouped chips.
+   */
+  variations?: PublicProductVariation[];
+}
+
+export interface PublicProductFacetValue {
+  valueId: string;
+  value: string;
+  count: number;
+}
+
+export interface PublicProductFacetAttribute {
+  typeId: string;
+  typeName: string;
+  typeCode: string;
+  values: PublicProductFacetValue[];
+}
+
+export interface PublicProductBrandFacet {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export interface PublicProductFacets {
+  brands: PublicProductBrandFacet[];
+  priceMin: string | null;
+  priceMax: string | null;
+  attributes: PublicProductFacetAttribute[];
 }
 
 export interface PublicProductList {
@@ -142,6 +205,14 @@ export interface PublicProductList {
   total: number;
   page: number;
   limit: number;
+  facets?: PublicProductFacets;
+}
+
+export interface PublicCollection {
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  products: PublicProduct[];
 }
 
 export interface PublicNavPage {
@@ -220,6 +291,13 @@ export function getProducts(
     search?: string;
     minPrice?: number;
     maxPrice?: number;
+    vendorId?: string;
+    /**
+     * EAV attribute filter. Keys are attribute-type IDs, values are
+     * selected attribute-value IDs. Sent to the API as
+     * `attr[<typeId>]=<valueId>` per Express's qs-nested parsing.
+     */
+    attr?: Record<string, string>;
   } = {},
 ) {
   const params = new URLSearchParams();
@@ -230,6 +308,12 @@ export function getProducts(
   if (query.search) params.set("search", query.search);
   if (query.minPrice != null) params.set("minPrice", String(query.minPrice));
   if (query.maxPrice != null) params.set("maxPrice", String(query.maxPrice));
+  if (query.vendorId) params.set("vendorId", query.vendorId);
+  if (query.attr) {
+    for (const [typeId, valueId] of Object.entries(query.attr)) {
+      if (valueId) params.append(`attr[${typeId}]`, valueId);
+    }
+  }
   const suffix = params.toString() ? `?${params.toString()}` : "";
 
   return publicFetch<PublicProductList>(`/public/products${suffix}`, {
@@ -237,6 +321,48 @@ export function getProducts(
     tenantId,
     tags: [`tenant:${tenantId}:products`],
   });
+}
+
+/**
+ * Active-discount product list for the /offers route and product-grid
+ * blocks with `source="offers"`. Shape matches the main product list
+ * so cards render identically.
+ */
+export function getOffers(
+  host: string,
+  tenantId: string,
+  query: { page?: number; limit?: number } = {},
+) {
+  const params = new URLSearchParams();
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return publicFetch<PublicProductList>(`/public/offers${suffix}`, {
+    host,
+    tenantId,
+    tags: [`tenant:${tenantId}:offers`],
+  });
+}
+
+/**
+ * Curated collection lookup. Returns null when the slug doesn't exist
+ * (or is inactive) so the block falls back to an empty render.
+ */
+export function getCollection(
+  host: string,
+  tenantId: string,
+  slug: string,
+  limit = 24,
+) {
+  const suffix = `?limit=${limit}`;
+  return publicFetch<{ collection: PublicCollection } | PublicCollection>(
+    `/public/collections/${encodeURIComponent(slug)}${suffix}`,
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:collection:${slug}`],
+    },
+  );
 }
 
 export function getProduct(host: string, tenantId: string, id: string) {
@@ -291,6 +417,10 @@ export type GuestOrderCartItem = {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /** Customer-selected variation — null for legacy carts. */
+  variationId?: string | null;
+  subVariationId?: string | null;
+  variationLabel?: string | null;
 };
 
 export interface GuestOrderPayload {

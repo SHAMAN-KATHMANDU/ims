@@ -115,9 +115,16 @@ export interface ProductGridProps {
     | "newest"
     | "on-sale"
     | "price-low"
-    | "price-high";
+    | "price-high"
+    | "collection"
+    | "offers";
   categoryId?: string;
   productIds?: string[];
+  /**
+   * When `source === "collection"`, identifies which admin-curated
+   * collection to pull from. Ignored for other sources.
+   */
+  collectionSlug?: string;
   limit: number;
   columns: 2 | 3 | 4 | 5;
   cardVariant: "bordered" | "bare" | "card";
@@ -127,6 +134,19 @@ export interface ProductGridProps {
   showPrice?: boolean;
   showDiscount?: boolean;
   cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
+  /**
+   * Grid (default) keeps the existing N-column layout. Carousel
+   * switches to a horizontally scrolling row with scroll-snap and
+   * prev/next controls — matches the "Featured / Exclusives / Top
+   * Picks" carousels on reference designs.
+   */
+  layout?: "grid" | "carousel";
+  /**
+   * Optional "View more" link (e.g. /offers, /collections/exclusives).
+   * Rendered as a small button under the carousel/grid.
+   */
+  viewMoreHref?: string;
+  viewMoreLabel?: string;
 }
 
 export interface CategoryTilesProps {
@@ -150,6 +170,55 @@ export interface ProductListingProps {
 }
 
 // Marketing ------------------------------------------------------------------
+
+export interface AnnouncementBarProps {
+  text: string;
+  link?: string;
+  marquee: boolean;
+  tone?: "default" | "muted" | "accent";
+  /**
+   * Optional repeating strip of short claims (e.g. "Across Qatar ·
+   * Exclusive Brands · Scheduled Delivery"). When non-empty, `items`
+   * takes precedence over `text` in the rendered marquee.
+   */
+  items?: string[];
+}
+
+export interface CollectionCardItem {
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+export interface CollectionCardsProps {
+  heading?: string;
+  eyebrow?: string;
+  /** 2–4 cards. Each card links to a collection, category, or landing. */
+  cards: CollectionCardItem[];
+  aspectRatio?: "square" | "portrait" | "landscape";
+  overlay?: boolean;
+}
+
+export interface ProductFiltersProps {
+  heading?: string;
+  show: {
+    category: boolean;
+    priceRange: boolean;
+    brand: boolean;
+    /**
+     * Attribute-type IDs whose facets should render. Empty = show every
+     * attribute returned in the facet payload.
+     */
+    attributes?: string[];
+  };
+  /**
+   * Sticky offset in pixels when the sidebar is nested in a columns
+   * container. Default: 96 (below the tenant header). `0` disables stick.
+   */
+  stickyOffset?: number;
+}
 
 export interface TrustStripProps {
   items: { label: string; value: string }[];
@@ -253,6 +322,13 @@ export interface PdpBuyboxProps {
   showAddToCart?: boolean;
   showDescription?: boolean;
   priceSize?: "sm" | "md" | "lg";
+  /**
+   * Render attribute-grouped chips (or a dropdown) for products with
+   * multiple active variations. Default: true — variants hide on
+   * single-variation products automatically.
+   */
+  showVariantPicker?: boolean;
+  variantDisplay?: "chips" | "dropdown";
 }
 
 export interface PdpDetailsProps {
@@ -375,6 +451,9 @@ export interface BlockPropsMap {
   "category-tiles": CategoryTilesProps;
   "product-listing": ProductListingProps;
   // Marketing
+  "announcement-bar": AnnouncementBarProps;
+  "collection-cards": CollectionCardsProps;
+  "product-filters": ProductFiltersProps;
   "trust-strip": TrustStripProps;
   "story-split": StorySplitProps;
   "bento-showcase": BentoShowcaseProps;
@@ -553,9 +632,12 @@ export const BlockPropsSchemas = {
         "on-sale",
         "price-low",
         "price-high",
+        "collection",
+        "offers",
       ]),
       categoryId: optStr(80),
       productIds: z.array(z.string().max(80)).max(50).optional(),
+      collectionSlug: optStr(60),
       limit: z.number().int().min(1).max(50),
       columns: z.union([
         z.literal(2),
@@ -570,6 +652,9 @@ export const BlockPropsSchemas = {
       showPrice: z.boolean().optional(),
       showDiscount: z.boolean().optional(),
       cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
+      layout: z.enum(["grid", "carousel"]).optional(),
+      viewMoreHref: optStr(200),
+      viewMoreLabel: optStr(50),
     })
     .strict(),
   "category-tiles": z
@@ -592,6 +677,51 @@ export const BlockPropsSchemas = {
       showPrice: z.boolean().optional(),
       showDiscount: z.boolean().optional(),
       cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
+    })
+    .strict(),
+  "announcement-bar": z
+    .object({
+      text: str(200),
+      link: optStr(1000),
+      marquee: z.boolean(),
+      tone: z.enum(["default", "muted", "accent"]).optional(),
+      items: z.array(str(80)).max(12).optional(),
+    })
+    .strict(),
+  "collection-cards": z
+    .object({
+      heading: optStr(200),
+      eyebrow: optStr(100),
+      cards: z
+        .array(
+          z
+            .object({
+              title: str(120),
+              subtitle: optStr(200),
+              imageUrl: optStr(1000),
+              ctaLabel: optStr(60),
+              ctaHref: optStr(1000),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(4),
+      aspectRatio: z.enum(["square", "portrait", "landscape"]).optional(),
+      overlay: z.boolean().optional(),
+    })
+    .strict(),
+  "product-filters": z
+    .object({
+      heading: optStr(80),
+      show: z
+        .object({
+          category: z.boolean(),
+          priceRange: z.boolean(),
+          brand: z.boolean(),
+          attributes: z.array(z.string().max(80)).max(20).optional(),
+        })
+        .strict(),
+      stickyOffset: z.number().int().min(0).max(400).optional(),
     })
     .strict(),
   "trust-strip": z
@@ -733,6 +863,8 @@ export const BlockPropsSchemas = {
       showAddToCart: z.boolean().optional(),
       showDescription: z.boolean().optional(),
       priceSize: z.enum(["sm", "md", "lg"]).optional(),
+      showVariantPicker: z.boolean().optional(),
+      variantDisplay: z.enum(["chips", "dropdown"]).optional(),
     })
     .strict(),
   "pdp-details": z.object({ tabs: z.boolean().optional() }).strict(),

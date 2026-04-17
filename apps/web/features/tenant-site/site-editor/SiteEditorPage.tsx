@@ -14,7 +14,7 @@
  * deep-links into the right document.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Card,
@@ -62,6 +62,7 @@ import {
 } from "../hooks/use-site-layouts";
 import { useSiteConfig } from "../hooks/use-tenant-site";
 import { useTenantPages } from "@/features/tenant-pages/hooks/use-tenant-pages";
+import { useProductsPaginated } from "@/features/products/hooks/use-products";
 import { useEditorStore, selectBlocks, selectDirty } from "./editor-store";
 import { BlockTreePanel } from "./BlockTreePanel";
 import { BlockInspector } from "./BlockInspector";
@@ -144,6 +145,29 @@ export function SiteEditorPage() {
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [refreshKey, setRefreshKey] = useState(0);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+
+  // When scope=product-detail the preview service needs a concrete productId
+  // to hydrate the PDP blocks. We auto-pick the first product and expose a
+  // picker so the admin can flip between products to see how each renders.
+  const [previewProductId, setPreviewProductId] = useState<string | null>(null);
+  const pdpProductsQuery = useProductsPaginated({
+    page: 1,
+    limit: 50,
+  });
+  // Memoize so the identity stays stable when tanstack-query returns
+  // the same reference — otherwise the useEffect below sees a "new"
+  // array every render and fires repeatedly.
+  const pdpProducts = useMemo(
+    () => pdpProductsQuery.data?.data ?? [],
+    [pdpProductsQuery.data?.data],
+  );
+  useEffect(() => {
+    if (scope !== "product-detail") return;
+    if (previewProductId) return;
+    if (pdpProducts.length === 0) return;
+    const first = pdpProducts[0];
+    if (first) setPreviewProductId(first.id);
+  }, [scope, previewProductId, pdpProducts]);
 
   const layoutQuery = useSiteLayout(scope, pageId ?? undefined);
   const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
@@ -386,6 +410,32 @@ export function SiteEditorPage() {
                 )}
               </SelectContent>
             </Select>
+            {scope === "product-detail" && (
+              <Select
+                value={previewProductId ?? undefined}
+                onValueChange={(v) => setPreviewProductId(v)}
+                disabled={pdpProducts.length === 0}
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue
+                    placeholder={
+                      pdpProductsQuery.isLoading
+                        ? "Loading products…"
+                        : pdpProducts.length === 0
+                          ? "No products yet"
+                          : "Pick a product"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {pdpProducts.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button
               size="icon"
               variant="ghost"
@@ -475,6 +525,7 @@ export function SiteEditorPage() {
               onRefresh={() => setRefreshKey((k) => k + 1)}
               device={device}
               onDeviceChange={setDevice}
+              productId={scope === "product-detail" ? previewProductId : null}
             />
           </CardContent>
         </Card>
@@ -501,6 +552,7 @@ export function SiteEditorPage() {
               onRefresh={() => setRefreshKey((k) => k + 1)}
               device={device}
               onDeviceChange={setDevice}
+              productId={scope === "product-detail" ? previewProductId : null}
             />
           </CardContent>
         </Card>
@@ -528,6 +580,7 @@ export function SiteEditorPage() {
               onRefresh={() => setRefreshKey((k) => k + 1)}
               device={device}
               onDeviceChange={setDevice}
+              productId={scope === "product-detail" ? previewProductId : null}
             />
           </CardContent>
         </Card>

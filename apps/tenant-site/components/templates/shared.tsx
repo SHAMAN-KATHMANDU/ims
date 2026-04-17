@@ -32,6 +32,49 @@ import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
+import { ThemeToggle } from "@/components/templates/ThemeToggle";
+import type { LucideIcon } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Linkedin,
+  MessageCircle,
+  Music2,
+  Twitter,
+  Youtube,
+} from "lucide-react";
+
+type SocialKey =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "whatsapp"
+  | "x"
+  | "linkedin";
+
+// lucide-react has icons for most networks. TikTok and WhatsApp aren't in the
+// set, so we reuse Music2 and MessageCircle as recognizable stand-ins; X is
+// the rebranded Twitter, so we use Twitter's bird glyph.
+const SOCIAL_META: Record<SocialKey, { label: string; Icon: LucideIcon }> = {
+  facebook: { label: "Facebook", Icon: Facebook },
+  instagram: { label: "Instagram", Icon: Instagram },
+  tiktok: { label: "TikTok", Icon: Music2 },
+  youtube: { label: "YouTube", Icon: Youtube },
+  whatsapp: { label: "WhatsApp", Icon: MessageCircle },
+  x: { label: "X", Icon: Twitter },
+  linkedin: { label: "LinkedIn", Icon: Linkedin },
+};
+
+const SOCIAL_ORDER: SocialKey[] = [
+  "facebook",
+  "instagram",
+  "tiktok",
+  "youtube",
+  "x",
+  "linkedin",
+  "whatsapp",
+];
 
 // ============================================================================
 // Brand + header
@@ -326,6 +369,7 @@ function SiteHeaderFromConfig({
           style={config.cta.style}
         />
       )}
+      <ThemeToggle />
       {config.showCart && <CartBadge />}
       <MobileNavDrawer items={items} drawerStyle={config.mobile.drawerStyle} />
     </>
@@ -532,6 +576,7 @@ export async function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <ThemeToggle />
             <CartBadge />
           </nav>
         </div>
@@ -576,6 +621,7 @@ export async function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <ThemeToggle />
             <CartBadge />
           </nav>
         </div>
@@ -614,6 +660,7 @@ export async function SiteHeader({
           <span className="tpl-nav-search">
             <SearchBar />
           </span>
+          <ThemeToggle />
           <CartBadge />
         </nav>
       </div>
@@ -833,225 +880,15 @@ export function Hero({
 // Products
 // ============================================================================
 
-export function ProductCard({
-  product,
-  variant = "bordered",
-  showCategory,
-  showPrice,
-  showDiscount,
-  aspectRatio = "3 / 4",
-}: {
-  product: PublicProduct;
-  variant?: "bordered" | "bare" | "card";
-  showCategory?: boolean;
-  showPrice?: boolean;
-  showDiscount?: boolean;
-  aspectRatio?: string;
-}) {
-  const hasDiscount =
-    product.finalSp &&
-    product.mrp &&
-    Number(product.finalSp) < Number(product.mrp);
-
-  const isNew =
-    product.dateCreated &&
-    new Date(product.dateCreated).getTime() >
-      Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-  // Editorial Vercel-Commerce aesthetic: bigger photo surface, more
-  // breathing room in the text block, bolder name + price, hover lift
-  // instead of border-color wobble.
-  const border =
-    variant === "bare"
-      ? "none"
-      : variant === "card"
-        ? "1px solid var(--color-border)"
-        : "1px solid var(--color-border)";
-  const background =
-    variant === "card" ? "var(--color-surface)" : "var(--color-background)";
-  const boxShadow = variant === "card" ? "0 2px 14px rgba(0,0,0,0.06)" : "none";
-
-  return (
-    <Link
-      href={`/products/${product.id}`}
-      className="tpl-product-card"
-      style={{
-        display: "block",
-        borderRadius: "var(--radius)",
-        border,
-        background,
-        boxShadow,
-        overflow: "hidden",
-        color: "var(--color-text)",
-        textDecoration: "none",
-        transition:
-          "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease",
-      }}
-    >
-      <div
-        style={{
-          position: "relative",
-          aspectRatio,
-          background: "var(--color-surface)",
-          overflow: "hidden",
-        }}
-      >
-        {product.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.photoUrl}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="tpl-product-card-img"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-              transition: "transform 0.45s ease",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.78rem",
-              color: "var(--color-muted)",
-              fontFamily: "var(--font-heading)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
-            {product.imsCode}
-          </div>
-        )}
-        {showDiscount !== false && hasDiscount && (
-          <span
-            style={{
-              position: "absolute",
-              top: "0.85rem",
-              left: "0.85rem",
-              padding: "0.3rem 0.65rem",
-              background: "var(--color-text)",
-              color: "var(--color-background)",
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              borderRadius: 999,
-            }}
-          >
-            {Math.round(
-              (1 - Number(product.finalSp) / Number(product.mrp)) * 100,
-            )}
-            % OFF
-          </span>
-        )}
-        {isNew && (
-          <span
-            style={{
-              position: "absolute",
-              top: "0.85rem",
-              right: "0.85rem",
-              padding: "0.3rem 0.65rem",
-              background: "var(--color-primary)",
-              color: "var(--color-primary-foreground, #fff)",
-              fontSize: "0.68rem",
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              borderRadius: 999,
-            }}
-          >
-            New
-          </span>
-        )}
-        <QuickAddButton
-          productId={product.id}
-          productName={product.name}
-          unitPrice={Number(product.finalSp)}
-          imageUrl={product.photoUrl ?? null}
-        />
-      </div>
-      <div
-        style={{
-          padding: "1.25rem 1.35rem 1.5rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.4rem",
-        }}
-      >
-        {showCategory !== false && product.category && (
-          <div
-            style={{
-              fontSize: "0.66rem",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "var(--color-muted)",
-              fontWeight: 500,
-            }}
-          >
-            {product.category.name}
-          </div>
-        )}
-        <div
-          style={{
-            fontWeight: 500,
-            fontSize: "1.08rem",
-            lineHeight: 1.3,
-            color: "var(--color-text)",
-            fontFamily: "var(--font-heading)",
-            // Two-line clamp so long product names don't break the grid.
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {product.name}
-        </div>
-        {showPrice !== false && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: "0.65rem",
-              fontSize: "1.02rem",
-              marginTop: "0.25rem",
-            }}
-          >
-            <span
-              style={{
-                fontWeight: 600,
-                color: "var(--color-text)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              ₹{Number(product.finalSp).toLocaleString("en-IN")}
-            </span>
-            {hasDiscount && (
-              <span
-                style={{
-                  textDecoration: "line-through",
-                  color: "var(--color-muted)",
-                  fontSize: "0.88rem",
-                }}
-              >
-                ₹{Number(product.mrp).toLocaleString("en-IN")}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </Link>
-  );
-}
+// ProductCard (and its PriceDisplay / formatPrice helpers) live in a
+// dedicated module so client components (e.g. ProductCarousel) can
+// import the card without transitively loading this file's server-only
+// nav helpers (which touch next/headers and break the client bundle).
+// We both re-export it (so `shared` stays the canonical import path
+// for existing server callers) and pull in a local binding so
+// ProductGrid below can reference ProductCard by name.
+import { ProductCard } from "./ProductCard";
+export { ProductCard };
 
 export function ProductGrid({
   products,
@@ -1286,6 +1123,53 @@ function FooterColumn({
   );
 }
 
+function SocialsRow({
+  socials,
+}: {
+  socials: Partial<Record<SocialKey, string>>;
+}) {
+  const entries = SOCIAL_ORDER.filter(
+    (k) => typeof socials[k] === "string" && (socials[k] as string).length > 0,
+  );
+  if (entries.length === 0) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.75rem",
+        marginTop: "1rem",
+        flexWrap: "wrap",
+      }}
+    >
+      {entries.map((key) => {
+        const { label, Icon } = SOCIAL_META[key];
+        return (
+          <a
+            key={key}
+            href={socials[key]}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={label}
+            style={{
+              width: 32,
+              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-muted)",
+              transition: "color 0.2s, border-color 0.2s",
+            }}
+          >
+            <Icon size={16} />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 export async function SiteFooter({
   site,
   host,
@@ -1300,7 +1184,9 @@ export async function SiteFooter({
     email?: string;
     phone?: string;
     address?: string;
+    socials?: Partial<Record<SocialKey, string>>;
   };
+  const socials = contact.socials ?? {};
 
   // Phase 2: tenant-editable footer columns. `footer-1` replaces the built-in
   // "Shop" column; `footer-2` replaces the "About" column (which today auto-
@@ -1358,6 +1244,7 @@ export async function SiteFooter({
               {brandingTagline(site.branding)}
             </p>
           )}
+          <SocialsRow socials={socials} />
         </div>
 
         <FooterColumn

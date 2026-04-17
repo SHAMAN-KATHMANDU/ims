@@ -27,10 +27,6 @@ export function PdpBuyboxBlock({
 }: BlockComponentProps<PdpBuyboxProps>) {
   const product = dataContext.activeProduct;
   if (!product) return null;
-  const hasDiscount =
-    product.finalSp &&
-    product.mrp &&
-    Number(product.finalSp) < Number(product.mrp);
   return (
     <div>
       {props.showCategory !== false && product.category && (
@@ -49,55 +45,25 @@ export function PdpBuyboxBlock({
       <h1
         style={{
           fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-          marginBottom: "0.5rem",
+          marginBottom: "1.25rem",
           fontFamily: "var(--font-heading)",
           lineHeight: 1.15,
         }}
       >
         {product.name}
       </h1>
-      {props.showSku !== false && (
-        <div
-          style={{
-            fontSize: "0.8rem",
-            color: "var(--color-muted)",
-            marginBottom: "1rem",
-            fontFamily: "var(--font-heading)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          SKU: {product.imsCode}
-        </div>
-      )}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: "0.75rem",
-          fontSize: "1.35rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <span style={{ fontWeight: 700 }}>
-          ₹{Number(product.finalSp).toLocaleString("en-IN")}
-        </span>
-        {hasDiscount && (
-          <span
-            style={{
-              textDecoration: "line-through",
-              color: "var(--color-muted)",
-              fontSize: "1rem",
-            }}
-          >
-            ₹{Number(product.mrp).toLocaleString("en-IN")}
-          </span>
-        )}
-      </div>
       <PdpBuyboxClient
         productId={product.id}
         productName={product.name}
-        unitPrice={Number(product.finalSp)}
+        baseUnitPrice={Number(product.finalSp)}
+        baseMrp={Number(product.mrp)}
         imageUrl={product.photoUrl ?? null}
+        baseSku={product.imsCode}
+        variations={product.variations ?? []}
+        showSku={props.showSku !== false}
+        showVariantPicker={props.showVariantPicker !== false}
+        variantDisplay={props.variantDisplay ?? "chips"}
+        priceSize={props.priceSize ?? "md"}
       />
     </div>
   );

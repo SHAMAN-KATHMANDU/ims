@@ -97,6 +97,9 @@ model Tenant {
   siteLayouts SiteLayout[]
   navMenus    NavMenu[]
 
+  // Curated product groupings ("Featured", "Exclusives", "Top Picks", ...)
+  collections Collection[]
+
   // Guest orders placed through the tenant-site cart
   websiteOrders WebsiteOrder[]
 
@@ -301,9 +304,9 @@ model TenantPage {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent       TenantPage?  @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children     TenantPage[] @relation("PageHierarchy")
+  tenant       Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent       TenantPage?             @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     TenantPage[]            @relation("PageHierarchy")
   siteLayouts  SiteLayout[]
   translations TenantPageTranslation[]
 
@@ -317,19 +320,19 @@ model TenantPage {
 /// The renderer checks for a translation matching the active locale and
 /// falls back to the base TenantPage content when none exists.
 model TenantPageTranslation {
-  id           String   @id @default(uuid())
-  tenantId     String   @map("tenant_id")
-  pageId       String   @map("page_id")
-  locale       String   @db.VarChar(10)
-  title        String   @db.VarChar(200)
-  bodyMarkdown String   @map("body_markdown")
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  pageId         String   @map("page_id")
+  locale         String   @db.VarChar(10)
+  title          String   @db.VarChar(200)
+  bodyMarkdown   String   @map("body_markdown")
   /// Translated block tree (overrides the base SiteLayout blocks for
   /// this locale when present). Null = use the base tree unchanged.
-  blocks       Json?
-  seoTitle     String?  @map("seo_title") @db.VarChar(200)
-  seoDescription String? @map("seo_description")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  blocks         Json?
+  seoTitle       String?  @map("seo_title") @db.VarChar(200)
+  seoDescription String?  @map("seo_description")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   page   TenantPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
@@ -371,6 +374,47 @@ model SiteLayout {
   @@map("site_layouts")
 }
 
+/// Curated product grouping. Each tenant seeds three defaults
+/// (`featured`, `exclusives`, `top-picks`) when their website is first
+/// enabled; admins can rename titles, reorder, or add more. Products
+/// are linked via the ProductCollection join table which carries a
+/// display position so the admin can sort items inside the collection.
+model Collection {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  slug      String   @db.VarChar(60)
+  title     String   @db.VarChar(120)
+  subtitle  String?  @db.VarChar(300)
+  sort      Int      @default(0)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products ProductCollection[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive, sort])
+  @@map("collections")
+}
+
+/// Join table: which products belong to which collections + their
+/// display order inside that collection.
+model ProductCollection {
+  collectionId String   @map("collection_id")
+  productId    String   @map("product_id")
+  position     Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, productId])
+  @@index([productId])
+  @@index([collectionId, position])
+  @@map("product_collections")
+}
+
 /// Per-tenant navigation menu. Slot identifies where the menu appears:
 ///   "header-primary" | "footer-1" | "footer-2" | "mobile-drawer"
 /// `items` is a NavItem[] (see packages/shared/src/site-schema) — a
@@ -396,7 +440,7 @@ model FormSubmission {
   id        String   @id @default(uuid())
   tenantId  String   @map("tenant_id")
   fields    Json
-  submitTo  String   @default("email") @db.VarChar(20)
+  submitTo  String   @default("email") @map("submit_to") @db.VarChar(20)
   leadId    String?  @map("lead_id")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -700,6 +744,7 @@ model Product {
   promoCodes            PromoCodeProduct[]
   productAttributeTypes ProductAttributeType[]
   dealLineItems         DealLineItem[]
+  collections           ProductCollection[]
 
   @@map("products")
 }

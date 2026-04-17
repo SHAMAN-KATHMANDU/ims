@@ -74,12 +74,23 @@ function loadOrCreateSessionKey(): string {
  * re-trigger unnecessarily.
  */
 
+/** Tuple that identifies a specific cart line (product + variation). */
+export type CartLineRef = {
+  productId: string;
+  variationId?: string | null;
+  subVariationId?: string | null;
+};
+
 export interface CartContextValue {
   cart: CartState;
   hydrated: boolean;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
-  removeItem: (productId: string) => void;
-  updateQty: (productId: string, quantity: number) => void;
+  /**
+   * Remove a cart line. Pass just a productId to remove every line for
+   * the product; pass a CartLineRef to target a specific variation.
+   */
+  removeItem: (target: string | CartLineRef) => void;
+  updateQty: (target: string | CartLineRef, quantity: number) => void;
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
@@ -182,12 +193,27 @@ export function CartProvider({
     [],
   );
   const removeItem = useCallback<CartContextValue["removeItem"]>(
-    (productId) => setCart((c) => removeItemPure(c, productId)),
+    (target) =>
+      setCart((c) =>
+        typeof target === "string"
+          ? removeItemPure(c, target)
+          : removeItemPure(c, target.productId, {
+              variationId: target.variationId ?? null,
+              subVariationId: target.subVariationId ?? null,
+            }),
+      ),
     [],
   );
   const updateQty = useCallback<CartContextValue["updateQty"]>(
-    (productId, quantity) =>
-      setCart((c) => updateQtyPure(c, productId, quantity)),
+    (target, quantity) =>
+      setCart((c) =>
+        typeof target === "string"
+          ? updateQtyPure(c, target, quantity)
+          : updateQtyPure(c, target.productId, quantity, {
+              variationId: target.variationId ?? null,
+              subVariationId: target.subVariationId ?? null,
+            }),
+      ),
     [],
   );
   const clearCart = useCallback<CartContextValue["clearCart"]>(

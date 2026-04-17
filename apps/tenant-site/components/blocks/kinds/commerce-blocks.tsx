@@ -7,6 +7,7 @@
  * the same visual output during Phase 8's migration window.
  */
 
+import Link from "next/link";
 import {
   Hero,
   ProductGrid,
@@ -19,7 +20,9 @@ import type {
   CategoryTilesProps,
 } from "@repo/shared";
 import type { PublicProduct } from "@/lib/api";
+import { getCollection, getOffers } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
+import { ProductCarousel } from "./ProductCarousel";
 
 export function HeroBlock({
   props,
@@ -84,15 +87,48 @@ function selectProducts(
   return all.slice(0, opts.limit);
 }
 
-export function ProductGridBlock({
-  props,
-  dataContext,
-}: BlockComponentProps<ProductGridProps>) {
-  const products = selectProducts(dataContext.products, props.source, {
+/**
+ * Fetch the right product set for the grid's `source`. For the two new
+ * sources (`collection`, `offers`) we hit dedicated endpoints so the
+ * home page doesn't have to preload every possible dataset. For legacy
+ * sources we keep reading from `dataContext.products`.
+ */
+async function resolveProducts(
+  props: ProductGridProps,
+  dataContext: BlockComponentProps<ProductGridProps>["dataContext"],
+): Promise<PublicProduct[]> {
+  if (props.source === "offers") {
+    const res = await getOffers(dataContext.host, dataContext.tenantId, {
+      limit: props.limit,
+    });
+    return res?.products ?? [];
+  }
+  if (props.source === "collection") {
+    if (!props.collectionSlug) return [];
+    const res = await getCollection(
+      dataContext.host,
+      dataContext.tenantId,
+      props.collectionSlug,
+      props.limit,
+    );
+    if (!res) return [];
+    const collection = "collection" in res ? res.collection : res;
+    return collection.products ?? [];
+  }
+  return selectProducts(dataContext.products, props.source, {
     categoryId: props.categoryId,
     productIds: props.productIds,
     limit: props.limit,
   });
+}
+
+export async function ProductGridBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<ProductGridProps>) {
+  const products = await resolveProducts(props, dataContext);
+  const layout = props.layout ?? "grid";
+
   return (
     <section style={{ padding: "var(--section-padding) 0" }}>
       <div className="container">
@@ -129,15 +165,49 @@ export function ProductGridBlock({
             )}
           </div>
         )}
-        <ProductGrid
-          products={products}
-          columns={props.columns}
-          variant={props.cardVariant}
-          showCategory={props.showCategory}
-          showPrice={props.showPrice}
-          showDiscount={props.showDiscount}
-          cardAspectRatio={props.cardAspectRatio}
-        />
+        {layout === "carousel" ? (
+          <ProductCarousel
+            products={products}
+            cardVariant={props.cardVariant}
+            showCategory={props.showCategory}
+            showPrice={props.showPrice}
+            showDiscount={props.showDiscount}
+            cardAspectRatio={props.cardAspectRatio}
+          />
+        ) : (
+          <ProductGrid
+            products={products}
+            columns={props.columns}
+            variant={props.cardVariant}
+            showCategory={props.showCategory}
+            showPrice={props.showPrice}
+            showDiscount={props.showDiscount}
+            cardAspectRatio={props.cardAspectRatio}
+          />
+        )}
+        {props.viewMoreHref && (
+          <div
+            style={{
+              marginTop: "2rem",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <Link
+              href={props.viewMoreHref}
+              style={{
+                padding: "0.6rem 1.5rem",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius)",
+                color: "var(--color-text)",
+                fontSize: "0.9rem",
+                textDecoration: "none",
+              }}
+            >
+              {props.viewMoreLabel ?? "View more"}
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );
