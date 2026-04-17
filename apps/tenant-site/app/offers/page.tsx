@@ -10,6 +10,7 @@
  */
 
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import { getSite, getCategories, getNavPages, getOffers } from "@/lib/api";
 import {
@@ -17,11 +18,27 @@ import {
   SiteFooter,
   ProductGrid,
 } from "@/components/templates/shared";
+import { brandingDisplayName } from "@/lib/theme";
 
-export const metadata = {
-  title: "Offers",
-  description: "Products currently on discount.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const ctx = await getTenantContext();
+    const site = await getSite(ctx.host, ctx.tenantId);
+    if (!site) {
+      return {
+        title: "Offers",
+        description: "Products currently on discount.",
+      };
+    }
+    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    return {
+      title: `Offers · ${name}`,
+      description: `Products currently on discount at ${name}.`,
+    };
+  } catch {
+    return { title: "Offers", description: "Products currently on discount." };
+  }
+}
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
