@@ -1633,8 +1633,12 @@ export function NewSaleForm({
                                       size="icon"
                                       className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
                                       onClick={() => handleRemoveItem(index)}
+                                      aria-label={`Remove ${item.productName}`}
                                     >
-                                      <Trash2 className="h-3.5 w-3.5" />
+                                      <Trash2
+                                        className="h-3.5 w-3.5"
+                                        aria-hidden="true"
+                                      />
                                     </Button>
                                   </div>
 
@@ -1648,10 +1652,18 @@ export function NewSaleForm({
                                         handleQuantityChange(index, -1)
                                       }
                                       disabled={item.quantity <= 1}
+                                      aria-label={`Decrease quantity of ${item.productName}`}
                                     >
-                                      <Minus className="h-3 w-3" />
+                                      <Minus
+                                        className="h-3 w-3"
+                                        aria-hidden="true"
+                                      />
                                     </Button>
-                                    <span className="w-10 text-center tabular-nums font-semibold text-foreground">
+                                    <span
+                                      className="w-10 text-center tabular-nums font-semibold text-foreground"
+                                      aria-live="polite"
+                                      aria-label={`Quantity: ${item.quantity}`}
+                                    >
                                       {item.quantity}
                                     </span>
                                     <Button
@@ -1665,8 +1677,12 @@ export function NewSaleForm({
                                       disabled={
                                         item.quantity >= item.maxQuantity
                                       }
+                                      aria-label={`Increase quantity of ${item.productName}`}
                                     >
-                                      <Plus className="h-3 w-3" />
+                                      <Plus
+                                        className="h-3 w-3"
+                                        aria-hidden="true"
+                                      />
                                     </Button>
                                   </div>
 
@@ -2073,8 +2089,12 @@ export function NewSaleForm({
                                         onClick={() =>
                                           handleRemovePayment(p.id)
                                         }
+                                        aria-label={`Remove ${paymentMethodLabelMap.get(p.method) ?? p.method} payment of ${formatCurrency(p.amount)}`}
                                       >
-                                        <Trash2 className="h-3 w-3" />
+                                        <Trash2
+                                          className="h-3 w-3"
+                                          aria-hidden="true"
+                                        />
                                       </Button>
                                     </div>
                                   </div>

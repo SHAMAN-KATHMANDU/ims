@@ -492,6 +492,8 @@ export function DiscountsTab() {
         <div className="relative flex-1 min-w-[180px] max-w-[280px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
+            type="search"
+            aria-label="Search discounts by product or type"
             placeholder="Search product or type..."
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -710,16 +712,24 @@ export function DiscountsTab() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => openEditDialog(discount)}
+                              aria-label={`Edit discount for ${discount.product.name}`}
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
                               onClick={() => openDeleteDialog(discount)}
+                              aria-label={`Delete discount for ${discount.product.name}`}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
                             </Button>
                           </div>
                         </TableCell>
