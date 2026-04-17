@@ -134,7 +134,8 @@ function GalleryWithThumbs({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
-              alt={`Photo ${i + 1}`}
+              alt=""
+              aria-hidden="true"
               style={{
                 width: "100%",
                 height: "100%",
@@ -164,18 +165,26 @@ function GalleryWithThumbs({
 
   return (
     <div
-      tabIndex={0}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={`${productName} product images`}
       onKeyDown={handleKeyDown}
       style={{
         display: "grid",
         gridTemplateColumns: thumbsLeft ? "auto 1fr" : "1fr",
         gap: "1rem",
-        outline: "none",
       }}
     >
       {thumbsLeft && thumbs}
       <div>
-        {mainPhoto}
+        <div
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`Image ${activeIdx + 1} of ${photos.length}`}
+          aria-live="polite"
+        >
+          {mainPhoto}
+        </div>
         {!thumbsLeft && photos.length > 1 && (
           <div style={{ marginTop: "0.75rem" }}>{thumbs}</div>
         )}

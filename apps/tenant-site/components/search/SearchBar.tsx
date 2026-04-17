@@ -23,22 +23,30 @@ export function SearchBar({ className }: { className?: string }) {
     <form
       onSubmit={submit}
       className={className}
+      role="search"
+      aria-label="Product search"
       style={{ position: "relative" }}
     >
+      <label htmlFor="site-search-input" className="sr-only">
+        Search products
+      </label>
       <input
         ref={inputRef}
+        id="site-search-input"
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search products..."
+        enterKeyHint="search"
         style={{
           width: "100%",
-          padding: "0.45rem 0.75rem 0.45rem 2.1rem",
-          fontSize: "0.85rem",
+          padding: "0.65rem 2.25rem 0.65rem 2.1rem",
+          minHeight: 44,
+          fontSize: "0.9rem",
           borderRadius: "var(--radius, 6px)",
-          border: "1px solid var(--color-border, #e5e5e5)",
-          background: "var(--color-surface, #fafafa)",
-          color: "var(--color-text, #111)",
+          border: "1px solid var(--color-border)",
+          background: "var(--color-surface)",
+          color: "var(--color-text)",
           outline: "none",
           transition: "border-color 0.15s ease",
         }}
@@ -47,6 +55,7 @@ export function SearchBar({ className }: { className?: string }) {
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
+        aria-hidden="true"
         style={{
           position: "absolute",
           left: "0.6rem",
@@ -54,7 +63,7 @@ export function SearchBar({ className }: { className?: string }) {
           transform: "translateY(-50%)",
           width: "1rem",
           height: "1rem",
-          color: "var(--color-muted, #888)",
+          color: "var(--color-muted)",
           pointerEvents: "none",
         }}
       >
@@ -67,18 +76,24 @@ export function SearchBar({ className }: { className?: string }) {
       {query && (
         <button
           type="button"
-          onClick={() => setQuery("")}
+          onClick={() => {
+            setQuery("");
+            inputRef.current?.focus();
+          }}
           style={{
             position: "absolute",
-            right: "0.5rem",
+            right: "0.25rem",
             top: "50%",
             transform: "translateY(-50%)",
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: "var(--color-muted, #888)",
-            padding: "0.2rem",
+            color: "var(--color-muted)",
+            padding: "0.5rem",
+            minWidth: 32,
+            minHeight: 32,
             lineHeight: 1,
+            fontSize: "1.1rem",
           }}
           aria-label="Clear search"
         >
@@ -95,6 +110,7 @@ export function SearchToggle() {
   if (expanded) {
     return (
       <div
+        role="search"
         style={{
           position: "absolute",
           top: 0,
@@ -104,7 +120,7 @@ export function SearchToggle() {
           display: "flex",
           alignItems: "center",
           padding: "0 1rem",
-          background: "var(--color-background, #fff)",
+          background: "var(--color-background)",
           zIndex: 50,
         }}
       >
@@ -112,14 +128,17 @@ export function SearchToggle() {
         <button
           type="button"
           onClick={() => setExpanded(false)}
+          aria-label="Close search"
           style={{
             marginLeft: "0.5rem",
             background: "none",
             border: "none",
             cursor: "pointer",
-            fontSize: "0.85rem",
-            color: "var(--color-text, #111)",
-            padding: "0.4rem",
+            fontSize: "0.9rem",
+            color: "var(--color-text)",
+            padding: "0.5rem",
+            minHeight: 44,
+            minWidth: 44,
           }}
         >
           Cancel
@@ -136,17 +155,22 @@ export function SearchToggle() {
         background: "none",
         border: "none",
         cursor: "pointer",
-        color: "var(--color-text, #111)",
-        padding: "0.3rem",
+        color: "var(--color-text)",
+        padding: "0.5rem",
+        minWidth: 44,
+        minHeight: 44,
         display: "inline-flex",
         alignItems: "center",
+        justifyContent: "center",
       }}
-      aria-label="Search"
+      aria-label="Open search"
+      aria-expanded={false}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
+        aria-hidden="true"
         style={{ width: "1.15rem", height: "1.15rem" }}
       >
         <path

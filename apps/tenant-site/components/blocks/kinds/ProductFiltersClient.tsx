@@ -98,6 +98,7 @@ export function ProductFiltersClient({
 
   return (
     <aside
+      aria-label={heading}
       style={{
         position: stickyOffset > 0 ? "sticky" : "static",
         top: stickyOffset,
@@ -117,28 +118,31 @@ export function ProductFiltersClient({
           borderBottom: "1px solid var(--color-border)",
         }}
       >
-        <span
+        <h2
           style={{
             fontSize: "0.72rem",
             textTransform: "uppercase",
             letterSpacing: "0.12em",
             color: "var(--color-muted)",
             fontWeight: 600,
+            margin: 0,
           }}
         >
           {heading}
-        </span>
+        </h2>
         {hasAnyFilter && (
           <button
             type="button"
             onClick={clearAll}
+            aria-label="Clear all filters"
             style={{
               background: "transparent",
               border: "none",
               color: "var(--color-primary)",
-              fontSize: "0.78rem",
+              fontSize: "0.82rem",
               cursor: "pointer",
-              padding: 0,
+              padding: "0.35rem 0.5rem",
+              minHeight: 32,
             }}
           >
             Clear all
@@ -221,21 +225,25 @@ function FilterGroup({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+  const panelId = `filter-panel-${label.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <div>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={panelId}
         style={{
           width: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0.35rem 0",
+          padding: "0.5rem 0",
+          minHeight: 44,
           background: "transparent",
           border: "none",
           color: "var(--color-text)",
-          fontSize: "0.82rem",
+          fontSize: "0.85rem",
           fontWeight: 600,
           letterSpacing: "0.04em",
           cursor: "pointer",
@@ -243,7 +251,7 @@ function FilterGroup({
       >
         <span>{label}</span>
         <span
-          aria-hidden
+          aria-hidden="true"
           style={{
             fontSize: "0.75rem",
             color: "var(--color-muted)",
@@ -254,11 +262,17 @@ function FilterGroup({
           ▾
         </span>
       </button>
-      {open && (
-        <div style={{ marginTop: "0.5rem", display: "grid", gap: "0.4rem" }}>
-          {children}
-        </div>
-      )}
+      <div
+        id={panelId}
+        hidden={!open}
+        style={{
+          marginTop: open ? "0.5rem" : 0,
+          display: "grid",
+          gap: "0.4rem",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -273,13 +287,16 @@ function FacetList({
   onChange: (id: string) => void;
 }) {
   return (
-    <div style={{ display: "grid", gap: "0.25rem" }}>
+    <div role="group" style={{ display: "grid", gap: "0.25rem" }}>
       {options.map((o) => {
         const isSelected = o.id === selected;
+        const countLabel = o.count != null ? `, ${o.count} items` : "";
         return (
           <button
             key={o.id || "__all__"}
             type="button"
+            aria-pressed={isSelected}
+            aria-label={`${o.label}${countLabel}`}
             onClick={() => onChange(o.id)}
             style={{
               display: "flex",
@@ -287,7 +304,8 @@ function FacetList({
               justifyContent: "space-between",
               gap: "0.5rem",
               width: "100%",
-              padding: "0.35rem 0.5rem",
+              padding: "0.5rem 0.6rem",
+              minHeight: 40,
               textAlign: "left",
               borderRadius: "var(--radius)",
               border: "1px solid transparent",
@@ -303,6 +321,7 @@ function FacetList({
             </span>
             {o.count != null && (
               <span
+                aria-hidden="true"
                 style={{
                   fontSize: "0.72rem",
                   color: "var(--color-muted)",
@@ -348,6 +367,7 @@ function PriceFields({
       <input
         type="number"
         min={0}
+        aria-label="Minimum price"
         placeholder={`Min (${formatAbbrev(minPlaceholder)})`}
         value={min}
         onChange={(e) => setMin(e.target.value)}
@@ -355,10 +375,13 @@ function PriceFields({
         onKeyDown={(e) => handleKey(e, () => onApplyMin(min))}
         style={inputStyle}
       />
-      <span style={{ color: "var(--color-muted)" }}>–</span>
+      <span aria-hidden="true" style={{ color: "var(--color-muted)" }}>
+        –
+      </span>
       <input
         type="number"
         min={0}
+        aria-label="Maximum price"
         placeholder={`Max (${formatAbbrev(maxPlaceholder)})`}
         value={max}
         onChange={(e) => setMax(e.target.value)}
@@ -380,11 +403,12 @@ function formatAbbrev(raw: string): string {
 const inputStyle: React.CSSProperties = {
   flex: 1,
   minWidth: 0,
-  padding: "0.45rem 0.6rem",
+  padding: "0.6rem 0.75rem",
+  minHeight: 44,
   borderRadius: "var(--radius)",
   border: "1px solid var(--color-border)",
   background: "var(--color-background)",
   color: "var(--color-text)",
-  fontSize: "0.85rem",
+  fontSize: "0.9rem",
   fontFamily: "inherit",
 };

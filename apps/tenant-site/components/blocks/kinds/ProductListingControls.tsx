@@ -132,14 +132,18 @@ export function ProductListingControls({
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-filter-drawer"
           style={{
             width: "100%",
-            padding: "0.7rem 1rem",
+            padding: "0.75rem 1rem",
+            minHeight: 44,
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius)",
             background: "var(--color-surface)",
             color: "var(--color-text)",
-            fontSize: "0.85rem",
+            fontSize: "0.9rem",
             fontWeight: 500,
             fontFamily: "inherit",
             cursor: "pointer",
@@ -150,6 +154,7 @@ export function ProductListingControls({
           }}
         >
           <svg
+            aria-hidden="true"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -173,6 +178,7 @@ export function ProductListingControls({
           {/* Backdrop */}
           <div
             onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
             style={{
               position: "fixed",
               inset: 0,
@@ -182,6 +188,10 @@ export function ProductListingControls({
           />
           {/* Panel */}
           <div
+            id="mobile-filter-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-filter-title"
             style={{
               position: "fixed",
               bottom: 0,
@@ -207,9 +217,12 @@ export function ProductListingControls({
                 marginBottom: "0.5rem",
               }}
             >
-              <span style={{ fontWeight: 600, fontSize: "1.05rem" }}>
+              <h2
+                id="mobile-filter-title"
+                style={{ fontWeight: 600, fontSize: "1.05rem", margin: 0 }}
+              >
                 Filters &amp; Sort
-              </span>
+              </h2>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
@@ -217,8 +230,10 @@ export function ProductListingControls({
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontSize: "1.25rem",
+                  fontSize: "1.5rem",
                   color: "var(--color-text)",
+                  minWidth: 44,
+                  minHeight: 44,
                 }}
                 aria-label="Close filters"
               >
@@ -280,6 +295,7 @@ function PriceRangeFilter({
       <input
         type="number"
         min={0}
+        aria-label="Minimum price"
         placeholder="Min"
         value={min}
         onChange={(e) => setMin(e.target.value)}
@@ -287,10 +303,13 @@ function PriceRangeFilter({
         onKeyDown={(e) => handleKey(e, applyMin)}
         style={{ ...inputStyle, width: "5.5rem" }}
       />
-      <span style={{ color: "var(--color-muted)" }}>&ndash;</span>
+      <span aria-hidden="true" style={{ color: "var(--color-muted)" }}>
+        &ndash;
+      </span>
       <input
         type="number"
         min={0}
+        aria-label="Maximum price"
         placeholder="Max"
         value={max}
         onChange={(e) => setMax(e.target.value)}
@@ -303,21 +322,23 @@ function PriceRangeFilter({
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: "0.45rem 0.75rem",
+  padding: "0.6rem 0.75rem",
+  minHeight: 40,
   borderRadius: "var(--radius)",
   border: "1px solid var(--color-border)",
   background: "var(--color-background)",
   color: "var(--color-text)",
-  fontSize: "0.85rem",
+  fontSize: "0.9rem",
   fontFamily: "inherit",
 };
 
 const selectStyle: React.CSSProperties = {
-  padding: "0.45rem 0.75rem",
+  padding: "0.6rem 0.75rem",
+  minHeight: 40,
   borderRadius: "var(--radius)",
   border: "1px solid var(--color-border)",
   background: "var(--color-background)",
   color: "var(--color-text)",
-  fontSize: "0.85rem",
+  fontSize: "0.9rem",
   fontFamily: "inherit",
 };

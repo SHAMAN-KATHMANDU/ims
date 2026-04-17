@@ -38,8 +38,12 @@ function PriceDisplay({
 
   if (isRange) {
     return (
-      <span style={priceStyle}>
+      <span
+        style={priceStyle}
+        aria-label={`Price from ${formatPrice(priceFrom)}`}
+      >
         <span
+          aria-hidden="true"
           style={{
             fontSize: "0.72em",
             letterSpacing: "0.06em",
@@ -50,16 +54,22 @@ function PriceDisplay({
         >
           From
         </span>
-        {formatPrice(priceFrom)}
+        <span aria-hidden="true">{formatPrice(priceFrom)}</span>
       </span>
     );
   }
 
   return (
     <>
-      <span style={priceStyle}>{formatPrice(product.finalSp)}</span>
+      <span
+        style={priceStyle}
+        aria-label={`Price ${formatPrice(product.finalSp)}`}
+      >
+        {formatPrice(product.finalSp)}
+      </span>
       {hasDiscount && (
         <span
+          aria-label={`Original price ${formatPrice(product.mrp)}`}
           style={{
             textDecoration: "line-through",
             color: "var(--color-muted)",
@@ -108,11 +118,18 @@ export function ProductCard({
     variant === "card" ? "var(--color-surface)" : "var(--color-background)";
   const boxShadow = variant === "card" ? "0 2px 14px rgba(0,0,0,0.06)" : "none";
 
+  const showQuickAdd = !(
+    (product.variationCount ?? 0) > 1 &&
+    product.priceFrom !== undefined &&
+    product.priceTo !== undefined &&
+    product.priceFrom !== product.priceTo
+  );
+
   return (
-    <Link
-      href={`/products/${product.id}`}
+    <article
       className="tpl-product-card"
       style={{
+        position: "relative",
         display: "block",
         borderRadius: "var(--radius)",
         border,
@@ -120,7 +137,6 @@ export function ProductCard({
         boxShadow,
         overflow: "hidden",
         color: "var(--color-text)",
-        textDecoration: "none",
         transition:
           "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease",
       }}
@@ -137,7 +153,8 @@ export function ProductCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.photoUrl}
-            alt={product.name}
+            alt=""
+            aria-hidden="true"
             loading="lazy"
             decoding="async"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -152,6 +169,7 @@ export function ProductCard({
           />
         ) : (
           <div
+            aria-hidden="true"
             style={{
               position: "absolute",
               inset: 0,
@@ -170,6 +188,9 @@ export function ProductCard({
         )}
         {showDiscount !== false && hasDiscount && (
           <span
+            aria-label={`${Math.round(
+              (1 - Number(product.finalSp) / Number(product.mrp)) * 100,
+            )} percent off`}
             style={{
               position: "absolute",
               top: "0.85rem",
@@ -211,21 +232,35 @@ export function ProductCard({
         )}
         {/* Skip QuickAdd when the product has multiple variations with
             diverging prices — the card shows "From X" but we don't know
-            which variant the customer wants, and the base finalSp may
-            not match the displayed price. The full <Link> wrapping this
-            card takes them to the PDP where they can pick. */}
-        {!(
-          (product.variationCount ?? 0) > 1 &&
-          product.priceFrom !== undefined &&
-          product.priceTo !== undefined &&
-          product.priceFrom !== product.priceTo
-        ) && (
-          <QuickAddButton
-            productId={product.id}
-            productName={product.name}
-            unitPrice={Number(product.finalSp)}
-            imageUrl={product.photoUrl ?? null}
-          />
+            which variant the customer wants. The overlay link takes them
+            to the PDP where they can pick. QuickAdd sits on TOP of the
+            link via higher z-index so clicks/keyboard hits reach it. */}
+        {showQuickAdd && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 2,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                pointerEvents: "auto",
+              }}
+            >
+              <QuickAddButton
+                productId={product.id}
+                productName={product.name}
+                unitPrice={Number(product.finalSp)}
+                imageUrl={product.photoUrl ?? null}
+              />
+            </div>
+          </div>
         )}
       </div>
       <div
@@ -249,7 +284,7 @@ export function ProductCard({
             {product.category.name}
           </div>
         )}
-        <div
+        <h3
           style={{
             fontWeight: 500,
             fontSize: "1.08rem",
@@ -261,10 +296,30 @@ export function ProductCard({
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
+            margin: 0,
           }}
         >
-          {product.name}
-        </div>
+          <Link
+            href={`/products/${product.id}`}
+            style={{
+              color: "inherit",
+              textDecoration: "none",
+              // Overlay link: stretches over the whole card so the entire
+              // article is clickable, but QuickAdd (higher z-index) wins.
+              outlineOffset: "2px",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 1,
+              }}
+            />
+            {product.name}
+          </Link>
+        </h3>
         {showPrice !== false && (
           <div
             style={{
@@ -279,6 +334,6 @@ export function ProductCard({
           </div>
         )}
       </div>
-    </Link>
+    </article>
   );
 }
