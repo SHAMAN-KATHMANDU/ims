@@ -14,7 +14,7 @@
  * deep-links into the right document.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Card,
@@ -154,7 +154,13 @@ export function SiteEditorPage() {
     page: 1,
     limit: 50,
   });
-  const pdpProducts = pdpProductsQuery.data?.data ?? [];
+  // Memoize so the identity stays stable when tanstack-query returns
+  // the same reference — otherwise the useEffect below sees a "new"
+  // array every render and fires repeatedly.
+  const pdpProducts = useMemo(
+    () => pdpProductsQuery.data?.data ?? [],
+    [pdpProductsQuery.data?.data],
+  );
   useEffect(() => {
     if (scope !== "product-detail") return;
     if (previewProductId) return;

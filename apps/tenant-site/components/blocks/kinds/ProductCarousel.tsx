@@ -11,7 +11,10 @@
  */
 
 import { useCallback, useRef } from "react";
-import { ProductCard } from "@/components/templates/shared";
+// Direct import from the card module (not shared.tsx) so this client
+// component doesn't drag the server-only nav loaders into the browser
+// bundle — which would break the Next.js build.
+import { ProductCard } from "@/components/templates/ProductCard";
 import type { PublicProduct } from "@/lib/api";
 
 type Props = {
