@@ -2,11 +2,27 @@ import { getTenantContext } from "@/lib/tenant";
 import { getSite, getCategories, getNavPages } from "@/lib/api";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { CartPage } from "@/components/cart/CartPage";
+import { brandingDisplayName } from "@/lib/theme";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Cart" };
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const ctx = await getTenantContext();
+    const site = await getSite(ctx.host, ctx.tenantId);
+    if (!site) return { title: "Cart" };
+    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    return {
+      title: `Cart · ${name}`,
+      description: `Review the items in your cart at ${name}.`,
+      robots: { index: false, follow: true },
+    };
+  } catch {
+    return { title: "Cart" };
+  }
+}
 
 export default async function CartRoute() {
   const ctx = await getTenantContext();
