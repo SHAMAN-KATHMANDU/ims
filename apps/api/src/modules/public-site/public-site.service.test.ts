@@ -24,6 +24,8 @@ function config(overrides: Record<string, unknown> = {}) {
     features: { hero: true },
     seo: { title: "Home" },
     isPublished: true,
+    locales: ["en", "ne"],
+    defaultLocale: "en",
     createdAt: new Date(),
     updatedAt: new Date(),
     template: {
@@ -84,6 +86,35 @@ describe("PublicSiteService", () => {
       await expect(service.getSite("t1")).rejects.toMatchObject({
         statusCode: 404,
       });
+    });
+  });
+
+  describe("getSite locale", () => {
+    it("returns defaultLocale + locales when both are set", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: ["en", "ne", "hi"], defaultLocale: "ne" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("ne");
+      expect(result.locales).toEqual(["en", "ne", "hi"]);
+    });
+
+    it("falls back to first locale when defaultLocale is null", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: ["ne", "en"], defaultLocale: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("ne");
+      expect(result.locales).toEqual(["ne", "en"]);
+    });
+
+    it('falls back to "en" when locales empty and defaultLocale null', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: [], defaultLocale: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("en");
+      expect(result.locales).toEqual([]);
     });
   });
 
@@ -194,11 +225,12 @@ describe("PublicSiteService", () => {
         config(),
       );
       (mockRepo.listCategories as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { id: "c1", name: "Chairs" },
+        { id: "c1", name: "Chairs", description: null, productCount: 7 },
       ]);
 
       const result = await service.listCategories("t1");
       expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "c1", productCount: 7 });
     });
 
     it("throws 404 when not published", async () => {

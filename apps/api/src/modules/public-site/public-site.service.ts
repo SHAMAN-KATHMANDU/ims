@@ -34,8 +34,12 @@ export class PublicSiteService {
     seo: unknown;
     themeTokens: unknown;
     template: PublicSiteConfig["template"];
+    locale: string;
+    locales: string[];
   }> {
     const config = await this.ensurePublished(tenantId);
+    const locales = config.locales ?? [];
+    const locale = config.defaultLocale ?? locales[0] ?? "en";
     return {
       branding: config.branding,
       contact: config.contact,
@@ -43,6 +47,8 @@ export class PublicSiteService {
       seo: config.seo,
       themeTokens: config.themeTokens,
       template: config.template,
+      locale,
+      locales,
     };
   }
 
