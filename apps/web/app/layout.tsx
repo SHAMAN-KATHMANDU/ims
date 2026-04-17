@@ -32,9 +32,12 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard App",
-  description: "Modern dashboard with Next.js",
-  generator: "v0.app",
+  title: {
+    template: "%s | Dashboard",
+    default: "Dashboard",
+  },
+  description: "Admin dashboard for managing your storefront.",
+  robots: { index: false, follow: false },
   icons: {
     icon: [
       {
