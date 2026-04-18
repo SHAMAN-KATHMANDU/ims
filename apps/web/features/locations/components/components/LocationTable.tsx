@@ -44,6 +44,8 @@ interface LocationTableProps {
   onRestore?: (location: Location) => void;
   selectedLocations?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 function LocationMobileCard({
@@ -195,6 +197,8 @@ export function LocationTable({
   onRestore,
   selectedLocations = new Set(),
   onSelectionChange,
+  hasActiveFilters,
+  onClearFilters,
 }: LocationTableProps) {
   const canSort = Boolean(onSort);
   const showCheckboxes = canManage && Boolean(onSelectionChange);
@@ -301,10 +305,33 @@ export function LocationTable({
   }
 
   if (locations.length === 0) {
+    if (hasActiveFilters) {
+      return (
+        <div className="rounded-md border p-8 text-center">
+          <Warehouse className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">
+            No locations match your filters
+          </h3>
+          <p className="text-muted-foreground mt-2">
+            Try adjusting your search or filters.
+          </p>
+          {onClearFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="rounded-md border p-8 text-center">
         <Warehouse className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">No locations found</h3>
+        <h3 className="mt-4 text-lg font-semibold">No locations yet</h3>
         <p className="text-muted-foreground mt-2">
           Get started by creating a warehouse or showroom.
         </p>

@@ -53,6 +53,8 @@ interface TransferTableProps {
   onStartTransit: (transfer: Transfer) => void;
   onComplete: (transfer: Transfer) => void;
   onCancel: (transfer: Transfer) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 function getStatusBadgeVariant(
@@ -88,6 +90,8 @@ export function TransferTable({
   onStartTransit,
   onComplete,
   onCancel,
+  hasActiveFilters,
+  onClearFilters,
 }: TransferTableProps) {
   const canSort = Boolean(onSort);
   if (isLoading) {
@@ -138,10 +142,33 @@ export function TransferTable({
   }
 
   if (transfers.length === 0) {
+    if (hasActiveFilters) {
+      return (
+        <div className="rounded-md border p-8 text-center">
+          <Package className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">
+            No transfers match your filters
+          </h3>
+          <p className="text-muted-foreground mt-2">
+            Try adjusting your search or filters.
+          </p>
+          {onClearFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="rounded-md border p-8 text-center">
         <Package className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">No transfers found</h3>
+        <h3 className="mt-4 text-lg font-semibold">No transfers yet</h3>
         <p className="text-muted-foreground mt-2">
           Create a transfer to move products between locations.
         </p>

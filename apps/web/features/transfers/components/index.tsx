@@ -427,6 +427,8 @@ export function TransfersPage() {
         onStartTransit={handleStartTransit}
         onComplete={handleComplete}
         onCancel={handleCancelClick}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
       />
 
       {pagination && (

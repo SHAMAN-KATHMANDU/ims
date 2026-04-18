@@ -141,6 +141,16 @@ export function LocationsPage() {
     setPage(DEFAULT_PAGE);
   }, []);
 
+  const hasActiveFilters =
+    search !== "" || typeFilter !== "all" || statusFilter !== "all";
+
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
   const handleSort = useCallback(
     (newSortBy: string, newSortOrder: "asc" | "desc" | "none") => {
       if (newSortOrder === "none") {
@@ -437,6 +447,8 @@ export function LocationsPage() {
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
         onRestore={canManageLocations ? handleRestore : undefined}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
         {...(canManageLocations && {
           selectedLocations: selectedLocationIds,
           onSelectionChange: setLocations,
