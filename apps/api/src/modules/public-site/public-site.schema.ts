@@ -15,6 +15,14 @@ export const PRODUCT_SORTS = [
   "price-asc",
   "price-desc",
   "name-asc",
+  /**
+   * Rank products by units sold in a trailing 90-day window (counted from
+   * SaleItem rows on non-deleted sales). Products with zero sales in the
+   * window are excluded; if *no* tenant sales fall in the window the
+   * endpoint returns an empty result set (not newest) so the "best sellers"
+   * label never silently lies.
+   */
+  "best-selling",
 ] as const;
 
 export type ProductSort = (typeof PRODUCT_SORTS)[number];

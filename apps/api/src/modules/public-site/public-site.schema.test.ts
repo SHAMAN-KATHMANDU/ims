@@ -44,6 +44,17 @@ describe("ListProductsQuerySchema", () => {
     expect(result.search).toBe("chair");
   });
 
+  describe("sort", () => {
+    it("accepts best-selling as a valid sort", () => {
+      const result = ListProductsQuerySchema.parse({ sort: "best-selling" });
+      expect(result.sort).toBe("best-selling");
+    });
+
+    it("rejects unknown sort values", () => {
+      expect(() => ListProductsQuerySchema.parse({ sort: "random" })).toThrow();
+    });
+  });
+
   describe("includeFacets", () => {
     it("defaults to false when omitted", () => {
       const result = ListProductsQuerySchema.parse({});
