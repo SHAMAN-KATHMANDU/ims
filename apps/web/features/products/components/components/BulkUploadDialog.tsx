@@ -140,7 +140,10 @@ export function BulkUploadDialog({
             <input {...getInputProps()} disabled={isUploading} />
             <div className="flex flex-col items-center gap-4">
               <div className="rounded-full bg-primary/10 p-4">
-                <FileSpreadsheet className="h-8 w-8 text-primary" />
+                <FileSpreadsheet
+                  className="h-8 w-8 text-primary"
+                  aria-hidden="true"
+                />
               </div>
               {selectedFile ? (
                 <div className="space-y-2">
@@ -157,7 +160,7 @@ export function BulkUploadDialog({
                         setSelectedFile(null);
                       }}
                     >
-                      <X className="h-4 w-4 mr-2" />
+                      <X className="h-4 w-4 mr-2" aria-hidden="true" />
                       Remove
                     </Button>
                   )}
@@ -239,12 +242,15 @@ export function BulkUploadDialog({
 
         {/* Upload Progress */}
         {isUploading && (
-          <div className="space-y-2">
+          <div className="space-y-2" role="status" aria-live="polite">
             <div className="flex items-center justify-between text-sm">
               <span>Uploading...</span>
               <span>{uploadProgress}%</span>
             </div>
-            <Progress value={uploadProgress} />
+            <Progress
+              value={uploadProgress}
+              aria-label={`Upload progress: ${uploadProgress}%`}
+            />
           </div>
         )}
 
@@ -423,7 +429,7 @@ export function BulkUploadDialog({
                 onClick={() => downloadBulkUploadTemplate()}
                 disabled={isUploading}
               >
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                 Download template
               </Button>
               <Button
@@ -437,7 +443,7 @@ export function BulkUploadDialog({
                 onClick={handleUpload}
                 disabled={!selectedFile || isUploading}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                 Upload
               </Button>
             </>
