@@ -91,6 +91,19 @@ export interface PublicSiteProduct {
    * format the label identically.
    */
   discountLabel: string | null;
+  /**
+   * Average customer rating (1–5, fractional allowed). Always `null`
+   * today: there is no ProductReview table yet. The field is on the
+   * wire contract so the tenant-site star-rating UI can bind to the
+   * final shape now and flip to a real aggregate the moment the
+   * reviews feature lands — no client redeploy required.
+   */
+  avgRating: number | null;
+  /**
+   * Number of customer ratings contributing to `avgRating`. Always
+   * `null` until a reviews table exists (see `avgRating` above).
+   */
+  ratingCount: number | null;
 }
 
 /** Structured attribute payload used by the PDP buybox chip selector. */
@@ -225,6 +238,18 @@ function priceStats(
     priceTo: prices[maxIdx]!,
   };
 }
+
+/**
+ * Placeholder rating payload used on every product row. Reviews aren't
+ * implemented yet (see `avgRating` on `PublicSiteProduct`), so every
+ * row ships null/null today. Centralized so the day the reviews table
+ * lands we flip the source here instead of hunting through each
+ * construction site.
+ */
+const NULL_RATINGS = {
+  avgRating: null as number | null,
+  ratingCount: null as number | null,
+};
 
 function primaryPhotoFromList(variations: ListVariationRow[]): string | null {
   const variation = variations[0];
@@ -441,6 +466,7 @@ export class PublicSiteRepository {
       photoUrl: primaryPhotoFromList(r.variations),
       ...priceStats(r.variations, r.finalSp),
       ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+      ...NULL_RATINGS,
     }));
     return [products, total, facets];
   }
@@ -728,6 +754,7 @@ export class PublicSiteRepository {
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
         ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...NULL_RATINGS,
       });
     }
 
@@ -878,6 +905,7 @@ export class PublicSiteRepository {
       variations,
       ...stats,
       ...deriveDiscount(row.mrp, row.finalSp, row.discounts.length > 0),
+      ...NULL_RATINGS,
     };
   }
 
@@ -966,6 +994,7 @@ export class PublicSiteRepository {
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
         ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...NULL_RATINGS,
       });
     }
     return ordered;

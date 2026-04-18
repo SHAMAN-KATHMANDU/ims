@@ -154,6 +154,11 @@ describe("PublicSiteRepository.listProducts payload", () => {
     const row = rows[0]!;
     expect(row).not.toHaveProperty("description");
     expect(row).not.toHaveProperty("subCategory");
+    // Rating stubs: always null until a reviews table exists, but present
+    // on the wire so the tenant-site star-rating UI can bind to the final
+    // contract today.
+    expect(row.avgRating).toBeNull();
+    expect(row.ratingCount).toBeNull();
     // Selected fields still on the wire contract.
     expect(row).toMatchObject({
       id: "p1",
@@ -432,6 +437,32 @@ describe("PublicSiteRepository.findProduct photo cap", () => {
     const repo = new PublicSiteRepository();
     const detail = await repo.findProduct("t1", "p1");
     expect(detail!.variations[0]!.photoUrls).toEqual(["https://cdn/a.jpg"]);
+  });
+
+  it("ships avgRating/ratingCount as null on the detail payload (no reviews table yet)", async () => {
+    prismaMock.product.findFirst.mockResolvedValueOnce({
+      id: "p1",
+      name: "Chair",
+      description: null,
+      imsCode: "C-001",
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      length: null,
+      breadth: null,
+      height: null,
+      weight: null,
+      categoryId: "cat1",
+      subCategory: null,
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      discounts: [],
+      variations: [],
+    });
+
+    const repo = new PublicSiteRepository();
+    const detail = await repo.findProduct("t1", "p1");
+    expect(detail!.avgRating).toBeNull();
+    expect(detail!.ratingCount).toBeNull();
   });
 });
 

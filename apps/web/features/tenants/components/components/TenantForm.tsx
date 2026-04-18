@@ -105,9 +105,13 @@ function TenantFormCreate({
           id="name"
           {...form.register("name")}
           placeholder="Acme Corp"
+          aria-invalid={form.formState.errors.name ? true : undefined}
+          aria-describedby={
+            form.formState.errors.name ? "create-name-error" : undefined
+          }
         />
         {form.formState.errors.name && (
-          <p className="text-sm text-destructive mt-1">
+          <p id="create-name-error" className="text-sm text-destructive mt-1">
             {form.formState.errors.name.message}
           </p>
         )}
@@ -127,15 +131,21 @@ function TenantFormCreate({
                   e.target.value.toLowerCase().replace(/\s+/g, "-"),
                 )
               }
+              aria-invalid={form.formState.errors.slug ? true : undefined}
+              aria-describedby={
+                form.formState.errors.slug
+                  ? "create-slug-error create-slug-hint"
+                  : "create-slug-hint"
+              }
             />
           )}
         />
         {form.formState.errors.slug && (
-          <p className="text-sm text-destructive mt-1">
+          <p id="create-slug-error" className="text-sm text-destructive mt-1">
             {form.formState.errors.slug.message}
           </p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p id="create-slug-hint" className="text-xs text-muted-foreground">
           Lowercase letters, numbers, hyphens only (e.g. acme, my-org).
         </p>
       </div>
@@ -146,7 +156,7 @@ function TenantFormCreate({
           control={form.control}
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="plan">
+              <SelectTrigger id="plan" aria-label="Plan">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -166,9 +176,20 @@ function TenantFormCreate({
           id="adminUsername"
           {...form.register("adminUsername")}
           placeholder="admin"
+          aria-invalid={
+            form.formState.errors.adminUsername ? true : undefined
+          }
+          aria-describedby={
+            form.formState.errors.adminUsername
+              ? "create-adminUsername-error"
+              : undefined
+          }
         />
         {form.formState.errors.adminUsername && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="create-adminUsername-error"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.adminUsername.message}
           </p>
         )}
@@ -180,9 +201,26 @@ function TenantFormCreate({
           type="password"
           {...form.register("adminPassword")}
           placeholder="••••••••"
+          aria-invalid={
+            form.formState.errors.adminPassword ? true : undefined
+          }
+          aria-describedby={
+            form.formState.errors.adminPassword
+              ? "create-adminPassword-error create-adminPassword-hint"
+              : "create-adminPassword-hint"
+          }
         />
+        <p
+          id="create-adminPassword-hint"
+          className="text-xs text-muted-foreground"
+        >
+          Must be at least 8 characters.
+        </p>
         {form.formState.errors.adminPassword && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="create-adminPassword-error"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.adminPassword.message}
           </p>
         )}
@@ -229,9 +267,16 @@ function TenantFormEdit({
     <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
       <div className="space-y-2">
         <Label htmlFor="name">Organization name</Label>
-        <Input id="name" {...form.register("name")} />
+        <Input
+          id="name"
+          {...form.register("name")}
+          aria-invalid={form.formState.errors.name ? true : undefined}
+          aria-describedby={
+            form.formState.errors.name ? "edit-name-error" : undefined
+          }
+        />
         {form.formState.errors.name && (
-          <p className="text-sm text-destructive mt-1">
+          <p id="edit-name-error" className="text-sm text-destructive mt-1">
             {form.formState.errors.name.message}
           </p>
         )}
@@ -248,11 +293,15 @@ function TenantFormEdit({
               onChange={(e) =>
                 field.onChange(e.target.value.toLowerCase())
               }
+              aria-invalid={form.formState.errors.slug ? true : undefined}
+              aria-describedby={
+                form.formState.errors.slug ? "edit-slug-error" : undefined
+              }
             />
           )}
         />
         {form.formState.errors.slug && (
-          <p className="text-sm text-destructive mt-1">
+          <p id="edit-slug-error" className="text-sm text-destructive mt-1">
             {form.formState.errors.slug.message}
           </p>
         )}
@@ -285,7 +334,10 @@ function TenantFormEdit({
                 field.onChange(v as TenantEditFormInput["subscriptionStatus"])
               }
             >
-              <SelectTrigger id="subscriptionStatus">
+              <SelectTrigger
+                id="subscriptionStatus"
+                aria-label="Subscription status"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -299,7 +351,7 @@ function TenantFormEdit({
           )}
         />
         {form.formState.errors.subscriptionStatus && (
-          <p className="text-sm text-destructive mt-1">
+          <p className="text-sm text-destructive mt-1" role="alert">
             {form.formState.errors.subscriptionStatus.message}
           </p>
         )}
