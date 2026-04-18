@@ -45,6 +45,23 @@ export const BEST_SELLER_WINDOW_DAYS = 90;
 export const BEST_SELLER_CAP = 500;
 
 /**
+ * Trailing window used for the frequently-bought-with recommendation.
+ * Wider than best-sellers (90d) because co-purchase signal is sparser
+ * per-product and we need more sales to build a stable ranking. A
+ * 180-day window gives two seasonal cycles of coverage without pulling
+ * in stale buying patterns.
+ */
+export const FBT_WINDOW_DAYS = 180;
+
+/**
+ * Max number of frequently-bought-with results returned per product.
+ * 10 is deep enough for a "You might also like" row on a PDP but small
+ * enough that hydrating the full PublicSiteProduct payloads stays a
+ * single fast findMany.
+ */
+export const FBT_MAX_RESULTS = 10;
+
+/**
  * Shape of a product in a list response — flat, renderer-friendly.
  *
  * Intentionally omits `description` and `subCategory`: neither is rendered
@@ -1173,6 +1190,136 @@ export class PublicSiteRepository {
         id: r.id,
         status: r.status as "PENDING" | "APPROVED" | "REJECTED",
       }));
+  }
+
+  /**
+   * Frequently-bought-with for a PDP. Ranks *other* products by how many
+   * distinct sales (within the trailing FBT_WINDOW_DAYS) contained both
+   * the target product and the other product. Counting by distinct saleId
+   * — not by line quantity — stops a single bulk order from dominating
+   * the list.
+   *
+   * Returns an empty array when the target has no in-window sales or none
+   * of the co-purchased products are still hydratable (deleted, archived,
+   * cross-tenant). Doesn't fall back to newest/best-seller on empty
+   * signal, so the "frequently bought with" label never silently lies.
+   */
+  async listFrequentlyBoughtWith(
+    tenantId: string,
+    productId: string,
+    limit: number = FBT_MAX_RESULTS,
+  ): Promise<PublicSiteProduct[]> {
+    const now = new Date();
+    const windowStart = new Date(
+      now.getTime() - FBT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    // 1) Distinct saleIds that contain the target product in the window.
+    const targetSaleRows = await prisma.saleItem.findMany({
+      where: {
+        variation: { productId, tenantId },
+        sale: {
+          tenantId,
+          deletedAt: null,
+          createdAt: { gte: windowStart },
+        },
+      },
+      distinct: ["saleId"],
+      select: { saleId: true },
+    });
+    if (targetSaleRows.length === 0) return [];
+
+    // 2) Co-items in those sales (excluding target's own variations).
+    const coItems = await prisma.saleItem.findMany({
+      where: {
+        saleId: { in: targetSaleRows.map((r) => r.saleId) },
+        variation: { productId: { not: productId }, tenantId },
+      },
+      select: { saleId: true, variationId: true },
+    });
+    if (coItems.length === 0) return [];
+
+    // 3) Resolve variation → product so we count by product (not variation).
+    const variationIds = Array.from(new Set(coItems.map((c) => c.variationId)));
+    const variationRows = await prisma.productVariation.findMany({
+      where: { id: { in: variationIds } },
+      select: { id: true, productId: true },
+    });
+    const variationToProduct = new Map(
+      variationRows.map((v) => [v.id, v.productId]),
+    );
+
+    // 4) Count *distinct saleIds* per co-purchased product.
+    const salesPerProduct = new Map<string, Set<string>>();
+    for (const c of coItems) {
+      const pid = variationToProduct.get(c.variationId);
+      if (!pid) continue;
+      let set = salesPerProduct.get(pid);
+      if (!set) {
+        set = new Set<string>();
+        salesPerProduct.set(pid, set);
+      }
+      set.add(c.saleId);
+    }
+
+    // Tie-break on productId so order is stable run-to-run.
+    const rankedProductIds = Array.from(salesPerProduct.entries())
+      .map(([pid, set]) => [pid, set.size] as const)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, Math.max(1, limit))
+      .map(([id]) => id);
+    if (rankedProductIds.length === 0) return [];
+
+    // 5) Hydrate to PublicSiteProduct — same select shape as list paths.
+    const rows = await prisma.product.findMany({
+      where: {
+        id: { in: rankedProductIds },
+        tenantId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        imsCode: true,
+        mrp: true,
+        finalSp: true,
+        categoryId: true,
+        dateCreated: true,
+        category: { select: { id: true, name: true } },
+        ...LIST_VARIATION_SELECT,
+        discounts: {
+          where: activeDiscountWhere(now),
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    const ordered: PublicSiteProduct[] = [];
+    for (const pid of rankedProductIds) {
+      const r = rowById.get(pid);
+      if (!r) continue;
+      ordered.push({
+        id: r.id,
+        name: r.name,
+        imsCode: r.imsCode,
+        mrp: r.mrp.toString(),
+        finalSp: r.finalSp.toString(),
+        categoryId: r.categoryId,
+        dateCreated: r.dateCreated,
+        category: r.category,
+        photoUrl: primaryPhotoFromList(r.variations),
+        ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
+      });
+    }
+    return ordered;
   }
 }
 

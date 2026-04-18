@@ -22,6 +22,7 @@ const prismaMock = vi.hoisted(() => ({
   },
   saleItem: {
     groupBy: vi.fn(),
+    findMany: vi.fn(),
   },
   vendor: {
     findMany: vi.fn(),
@@ -53,6 +54,8 @@ import {
   PublicSiteRepository,
   PDP_PHOTO_CAP,
   BEST_SELLER_WINDOW_DAYS,
+  FBT_WINDOW_DAYS,
+  FBT_MAX_RESULTS,
 } from "./public-site.repository";
 
 describe("deriveDiscount", () => {
@@ -727,5 +730,119 @@ describe("PublicSiteRepository.listProducts best-selling sort", () => {
     expect(whereArg.categoryId).toBe("cat-specific");
     expect(whereArg.tenantId).toBe("t1");
     expect(whereArg.id).toEqual({ in: ["p1"] });
+  });
+});
+
+describe("PublicSiteRepository.listFrequentlyBoughtWith", () => {
+  function productRow(id: string) {
+    return {
+      id,
+      name: `Product ${id}`,
+      imsCode: `C-${id}`,
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      categoryId: "cat1",
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      variations: [],
+      discounts: [],
+    };
+  }
+
+  it("ranks co-purchased products by distinct-sale count with stable tie-break and honors the window + tenant scope", async () => {
+    // Target product "pTarget" shipped in sales s1..s3.
+    prismaMock.saleItem.findMany
+      .mockResolvedValueOnce([
+        { saleId: "s1" },
+        { saleId: "s2" },
+        { saleId: "s3" },
+      ])
+      // Co-items: pA co-occurs in s1,s2,s3 (3 distinct); pB in s1,s2 (2);
+      // pC in s3 only (1). Ties broken by productId asc.
+      .mockResolvedValueOnce([
+        { saleId: "s1", variationId: "vA" },
+        { saleId: "s2", variationId: "vA" },
+        { saleId: "s3", variationId: "vA2" },
+        { saleId: "s1", variationId: "vB" },
+        { saleId: "s2", variationId: "vB" },
+        { saleId: "s3", variationId: "vC" },
+        // Duplicate line within the same sale must NOT double-count.
+        { saleId: "s1", variationId: "vB" },
+      ]);
+    prismaMock.productVariation.findMany.mockResolvedValueOnce([
+      { id: "vA", productId: "pA" },
+      { id: "vA2", productId: "pA" },
+      { id: "vB", productId: "pB" },
+      { id: "vC", productId: "pC" },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("pA"),
+      productRow("pB"),
+      productRow("pC"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
+
+    expect(result.map((r) => r.id)).toEqual(["pA", "pB", "pC"]);
+
+    // 1st findMany: distinct saleIds for target + window + tenant scope.
+    const targetArg = prismaMock.saleItem.findMany.mock.calls[0]![0];
+    expect(targetArg.distinct).toEqual(["saleId"]);
+    expect(targetArg.where.variation.productId).toBe("pTarget");
+    expect(targetArg.where.variation.tenantId).toBe("t1");
+    expect(targetArg.where.sale.tenantId).toBe("t1");
+    expect(targetArg.where.sale.deletedAt).toBeNull();
+    const since: Date = targetArg.where.sale.createdAt.gte;
+    const windowMs = FBT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    expect(Date.now() - since.getTime()).toBeGreaterThanOrEqual(
+      windowMs - 1000,
+    );
+
+    // 2nd findMany: excludes the target's own variations.
+    const coArg = prismaMock.saleItem.findMany.mock.calls[1]![0];
+    expect(coArg.where.saleId).toEqual({ in: ["s1", "s2", "s3"] });
+    expect(coArg.where.variation.productId).toEqual({ not: "pTarget" });
+    expect(coArg.where.variation.tenantId).toBe("t1");
+  });
+
+  it("returns [] when the target has no in-window sales (no silent fallback)", async () => {
+    prismaMock.saleItem.findMany.mockResolvedValueOnce([]);
+
+    const repo = new PublicSiteRepository();
+    const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
+
+    expect(result).toEqual([]);
+    // Short-circuit: no co-item query, no product hydrate.
+    expect(prismaMock.saleItem.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.productVariation.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.product.findMany).not.toHaveBeenCalled();
+  });
+
+  it("caps results at FBT_MAX_RESULTS", async () => {
+    prismaMock.saleItem.findMany
+      .mockResolvedValueOnce([{ saleId: "s1" }])
+      .mockResolvedValueOnce(
+        Array.from({ length: 15 }, (_, i) => ({
+          saleId: "s1",
+          variationId: `v${i}`,
+        })),
+      );
+    prismaMock.productVariation.findMany.mockResolvedValueOnce(
+      Array.from({ length: 15 }, (_, i) => ({
+        id: `v${i}`,
+        productId: `p${String(i).padStart(2, "0")}`,
+      })),
+    );
+    prismaMock.product.findMany.mockResolvedValueOnce(
+      Array.from({ length: 15 }, (_, i) =>
+        productRow(`p${String(i).padStart(2, "0")}`),
+      ),
+    );
+
+    const repo = new PublicSiteRepository();
+    const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
+
+    expect(result).toHaveLength(FBT_MAX_RESULTS);
   });
 });
