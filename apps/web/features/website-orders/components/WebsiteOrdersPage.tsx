@@ -70,14 +70,38 @@ function formatDate(iso: string): string {
 function OrdersTable({
   orders,
   detailHref,
+  search,
+  onClearSearch,
+  tabLabel,
 }: {
   orders: WebsiteOrderListItem[];
   detailHref: (id: string) => string;
+  search: string;
+  onClearSearch: () => void;
+  tabLabel: string;
 }) {
   if (orders.length === 0) {
+    if (search.trim()) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-12 text-center">
+          <p className="text-sm font-medium">No orders match your search</p>
+          <p className="text-sm text-muted-foreground">
+            Try a different order code, name, or phone.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={onClearSearch}
+          >
+            Clear search
+          </Button>
+        </div>
+      );
+    }
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
-        No orders here.
+        No {tabLabel.toLowerCase()} orders yet.
       </p>
     );
   }
@@ -238,7 +262,13 @@ export function WebsiteOrdersPage({
             <Tabs value={tab}>
               {TABS.map((t) => (
                 <TabsContent key={t.key} value={t.key}>
-                  <OrdersTable orders={orders} detailHref={detailHref} />
+                  <OrdersTable
+                    orders={orders}
+                    detailHref={detailHref}
+                    search={search}
+                    onClearSearch={() => setSearch("")}
+                    tabLabel={t.label}
+                  />
                 </TabsContent>
               ))}
             </Tabs>
