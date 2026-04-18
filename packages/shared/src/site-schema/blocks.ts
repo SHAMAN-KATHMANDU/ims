@@ -10,18 +10,22 @@
  */
 
 import { z } from "zod";
+import {
+  BlockStyleOverrideSchema,
+  type BlockStyleOverride,
+} from "./block-styles";
+
+export type { BlockStyle, BlockStyleOverride } from "./block-styles";
+export {
+  BlockStyleSchema,
+  BlockStyleOverrideSchema,
+  DEFAULT_BLOCK_STYLE,
+  resolveBlockStyle,
+} from "./block-styles";
 
 // ---------------------------------------------------------------------------
 // Structural types shared across blocks
 // ---------------------------------------------------------------------------
-
-export interface BlockStyleOverride {
-  backgroundToken?: string;
-  textToken?: string;
-  paddingY?: "none" | "compact" | "balanced" | "spacious";
-  maxWidth?: "narrow" | "default" | "wide" | "full";
-  alignment?: "start" | "center" | "end";
-}
 
 export interface BlockVisibility {
   mobile?: boolean;
@@ -580,16 +584,6 @@ export interface BlockNode<K extends BlockKind = BlockKind> {
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
-
-export const BlockStyleOverrideSchema: z.ZodType<BlockStyleOverride> = z
-  .object({
-    backgroundToken: z.string().max(80).optional(),
-    textToken: z.string().max(80).optional(),
-    paddingY: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
-    maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
-    alignment: z.enum(["start", "center", "end"]).optional(),
-  })
-  .strict();
 
 export const BlockVisibilitySchema: z.ZodType<BlockVisibility> = z
   .object({
