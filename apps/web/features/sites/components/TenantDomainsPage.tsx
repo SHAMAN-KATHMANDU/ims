@@ -130,8 +130,12 @@ export function TenantDomainsPage() {
         </CardHeader>
         <CardContent>
           {domainsQuery.isLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Loading…
+            <p
+              className="py-6 text-center text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              Loading domains…
             </p>
           ) : domains.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -170,12 +174,18 @@ export function TenantDomainsPage() {
                       <TableCell>
                         {d.verifiedAt ? (
                           <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                            <ShieldCheck className="h-3.5 w-3.5" />
+                            <ShieldCheck
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
                             Verified
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                            <ShieldAlert className="h-3.5 w-3.5" />
+                            <ShieldAlert
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
                             Pending
                           </span>
                         )}
@@ -186,6 +196,7 @@ export function TenantDomainsPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              aria-label={`Verify ${d.hostname}`}
                               onClick={() => setVerifyingDomain(d)}
                             >
                               Verify
