@@ -286,6 +286,7 @@ function NavItemView({ item }: { item: NavItem }) {
     );
   }
   if (item.kind === "mega-column") {
+    const columnCount = item.columns.length + (item.featured ? 1 : 0);
     return (
       <div className="tpl-dropdown" style={{ position: "relative" }}>
         <button
@@ -315,11 +316,71 @@ function NavItemView({ item }: { item: NavItem }) {
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius)",
             display: "grid",
-            gridTemplateColumns: `repeat(${item.columns.length}, minmax(160px, 1fr))`,
+            gridTemplateColumns: `repeat(${columnCount}, minmax(160px, 1fr))`,
             gap: "2rem",
             zIndex: 30,
           }}
         >
+          {item.featured && (
+            <Link
+              href={item.featured.href}
+              style={{
+                display: "block",
+                borderRadius: "var(--radius)",
+                overflow: "hidden",
+                textDecoration: "none",
+                color: "var(--color-text)",
+                minWidth: 220,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "4 / 3",
+                  backgroundImage: `url(${item.featured.imageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderRadius: "var(--radius)",
+                  marginBottom: "0.75rem",
+                }}
+                role="img"
+                aria-label={item.featured.heading ?? item.featured.ctaLabel ?? "Featured"}
+              />
+              {item.featured.heading && (
+                <div
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "0.95rem",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  {item.featured.heading}
+                </div>
+              )}
+              {item.featured.subtitle && (
+                <div
+                  style={{
+                    fontSize: "0.82rem",
+                    color: "var(--color-muted)",
+                    marginBottom: "0.4rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {item.featured.subtitle}
+                </div>
+              )}
+              <span
+                style={{
+                  fontSize: "0.82rem",
+                  color: "var(--color-text)",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "3px",
+                }}
+              >
+                {item.featured.ctaLabel ?? "Shop now"} →
+              </span>
+            </Link>
+          )}
           {item.columns.map((col, ci) => (
             <div key={ci}>
               <div
