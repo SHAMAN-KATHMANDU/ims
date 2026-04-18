@@ -100,10 +100,27 @@ function productsIndexLayout(): BlockNode[] {
 }
 
 function productDetailLayout(): BlockNode[] {
+  const galleryCol = block("pdp-gallery", {
+    layout: "thumbs-below",
+    enableZoom: true,
+  });
+  const buyboxCol = block("pdp-buybox", {
+    showSku: true,
+    showCategory: true,
+  });
+  const galleryBuyboxRow: BlockNode = {
+    ...block("columns", {
+      count: 2,
+      gap: "lg",
+      verticalAlign: "start",
+      stackBelow: "lg",
+      stickyFirst: true,
+    }),
+    children: [galleryCol, buyboxCol],
+  };
   return [
     block("breadcrumbs", { scope: "product" }),
-    block("pdp-gallery", { layout: "thumbs-below", enableZoom: true }),
-    block("pdp-buybox", { showSku: true, showCategory: true }),
+    galleryBuyboxRow,
     block("pdp-details", { tabs: false }),
     block("pdp-related", {
       heading: "You may also like",

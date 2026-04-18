@@ -428,6 +428,12 @@ export interface ColumnsProps {
   gap?: "sm" | "md" | "lg";
   verticalAlign?: "start" | "center" | "end";
   stackBelow?: "sm" | "md" | "lg";
+  /**
+   * When true, the first child becomes `position: sticky` at the viewport
+   * top (with a small offset) on breakpoints where the grid is active.
+   * Matches the standard PDP gallery-on-left pattern.
+   */
+  stickyFirst?: boolean;
 }
 
 export interface GalleryProps {
@@ -1031,6 +1037,7 @@ export const BlockPropsSchemas = {
       gap: z.enum(["sm", "md", "lg"]).optional(),
       verticalAlign: z.enum(["start", "center", "end"]).optional(),
       stackBelow: z.enum(["sm", "md", "lg"]).optional(),
+      stickyFirst: z.boolean().optional(),
     })
     .strict(),
   gallery: z

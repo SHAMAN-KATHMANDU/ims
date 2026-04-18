@@ -112,6 +112,9 @@ model Tenant {
   // Page translations (i18n)
   pageTranslations TenantPageTranslation[]
 
+  // Customer-submitted product reviews (moderated)
+  productReviews ProductReview[]
+
   @@map("tenants")
 }
 
@@ -749,6 +752,7 @@ model Product {
   productAttributeTypes ProductAttributeType[]
   dealLineItems         DealLineItem[]
   collections           ProductCollection[]
+  reviews               ProductReview[]
 
   @@map("products")
 }
@@ -874,6 +878,54 @@ model VariationPhoto {
   variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
 
   @@map("variation_photos")
+}
+
+// ============================================
+// PRODUCT REVIEWS (customer-submitted, moderated)
+// ============================================
+
+/// Moderation gate for a customer-submitted review. PENDING is the default on
+/// POST so no review ever hits the public storefront until a tenant moderator
+/// (or an automation) flips it to APPROVED. REJECTED keeps the row around for
+/// audit trail rather than hard-deleting — admins can still see why something
+/// was filtered out. The aggregate endpoints (`avgRating`, `ratingCount`) only
+/// count APPROVED rows.
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("review_status")
+}
+
+/// Customer review on a product. No auth required to submit (tenants moderate
+/// what goes live), so we capture `authorName` / `authorEmail` as loose
+/// metadata — no FK to User. `body` is optional so a customer can leave a
+/// star-only rating. Composite index on (productId, status) powers the
+/// approved-only aggregate query that PublicSiteProduct.avgRating reads.
+model ProductReview {
+  id          String       @id @default(uuid()) @map("product_review_id")
+  tenantId    String       @map("tenant_id")
+  productId   String       @map("product_id")
+  rating      Int          @db.SmallInt
+  body        String?      @db.Text
+  authorName  String?      @map("author_name") @db.VarChar(120)
+  authorEmail String?      @map("author_email") @db.VarChar(255)
+  /// IP address the submission came from. Used for the POST rate-limit
+  /// (stashed here alongside express-rate-limit in case moderators want to
+  /// batch-reject a spam burst later).
+  submittedIp String?      @map("submitted_ip") @db.VarChar(64)
+  status      ReviewStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId, status])
+  @@map("product_reviews")
 }
 
 model DiscountType {
