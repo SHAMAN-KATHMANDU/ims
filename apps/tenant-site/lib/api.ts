@@ -423,6 +423,29 @@ export function getProductReviews(
   );
 }
 
+export function getFrequentlyBoughtWith(
+  host: string,
+  tenantId: string,
+  productId: string,
+): Promise<PublicProduct[]> {
+  return publicFetch<{ products: PublicProduct[] } | PublicProduct[]>(
+    `/public/products/${encodeURIComponent(productId)}/frequently-bought-with`,
+    {
+      host,
+      tenantId,
+      tags: [
+        `tenant:${tenantId}:product:${productId}:fbt`,
+        `tenant:${tenantId}:products`,
+      ],
+    },
+  ).then((resp) => {
+    if (!resp) return [];
+    return Array.isArray(resp)
+      ? resp
+      : ((resp as { products: PublicProduct[] }).products ?? []);
+  });
+}
+
 export function getCategories(host: string, tenantId: string) {
   return publicFetch<{ categories: PublicCategory[] } | PublicCategory[]>(
     "/public/categories",

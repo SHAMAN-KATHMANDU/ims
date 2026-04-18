@@ -396,6 +396,19 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface FbtProps {
+  heading?: string;
+  /**
+   * Source of the anchor product. `current-pdp` reads activeProduct;
+   * `explicit` uses productId.
+   */
+  productIdSource?: "current-pdp" | "explicit";
+  productId?: string;
+  limit?: number;
+  columns?: 2 | 3 | 4;
+  cardVariant?: "bordered" | "bare" | "card";
+}
+
 export interface ReviewsListProps {
   heading?: string;
   /**
@@ -557,6 +570,7 @@ export interface BlockPropsMap {
   "pdp-details": PdpDetailsProps;
   "pdp-related": PdpRelatedProps;
   "reviews-list": ReviewsListProps;
+  fbt: FbtProps;
   breadcrumbs: BreadcrumbsProps;
   // Layer 2
   embed: EmbedProps;
@@ -1006,6 +1020,16 @@ export const BlockPropsSchemas = {
       pageSize: z.number().int().min(1).max(50).optional(),
       emptyMessage: optStr(300),
       showRatingSummary: z.boolean().optional(),
+    })
+    .strict(),
+  fbt: z
+    .object({
+      heading: optStr(200),
+      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
+      productId: optStr(80),
+      limit: z.number().int().min(1).max(12).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
+      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
     })
     .strict(),
   // Layer 2
