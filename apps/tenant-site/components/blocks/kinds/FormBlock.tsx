@@ -13,11 +13,16 @@ import { useState } from "react";
 import type { FormBlockProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
 
-export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
+export function FormBlock({
+  node,
+  props,
+}: BlockComponentProps<FormBlockProps>) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const sectionPad = wrapperHasPadY ? undefined : "var(--section-padding) 0";
 
   const updateField = (label: string, value: string) => {
     setValues((v) => ({ ...v, [label]: value }));
@@ -56,10 +61,7 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
 
   if (submitted) {
     return (
-      <section
-        aria-live="polite"
-        style={{ padding: "var(--section-padding) 0" }}
-      >
+      <section aria-live="polite" style={{ padding: sectionPad }}>
         <div
           className="container"
           style={{ maxWidth: 640, textAlign: "center" }}
@@ -83,7 +85,7 @@ export function FormBlock({ props }: BlockComponentProps<FormBlockProps>) {
   }
 
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section style={{ padding: sectionPad }}>
       <div className="container" style={{ maxWidth: 640 }}>
         {props.heading && (
           <h2

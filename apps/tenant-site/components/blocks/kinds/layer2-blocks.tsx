@@ -170,10 +170,18 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
 
 // ---------- accordion -------------------------------------------------------
 
-export function AccordionBlock({ props }: BlockComponentProps<AccordionProps>) {
+export function AccordionBlock({
+  node,
+  props,
+}: BlockComponentProps<AccordionProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container" style={{ maxWidth: 820 }}>
         {props.heading && (
           <h2
