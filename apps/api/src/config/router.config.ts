@@ -65,6 +65,7 @@ import publicSiteLayoutsRouter from "@/modules/site-layouts/public-site-layouts.
 import navMenusRouter from "@/modules/nav-menus/nav-menus.router";
 import publicNavMenusRouter from "@/modules/nav-menus/public-nav-menus.router";
 import collectionsRouter from "@/modules/collections/collections.router";
+import reviewsRouter from "@/modules/reviews/reviews.router";
 import publicFormSubmissionsRouter from "@/modules/public-form-submissions/public-form-submissions.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
@@ -157,6 +158,7 @@ router.use("/pages", pagesRouter);
 router.use("/site-layouts", siteLayoutsRouter);
 router.use("/nav-menus", navMenusRouter);
 router.use("/collections", collectionsRouter);
+router.use("/reviews", reviewsRouter);
 router.use("/website-orders", websiteOrdersRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);
