@@ -28,6 +28,7 @@ const SORT_LABELS: Record<ProductSort, string> = {
 };
 
 export function ProductListingBlock({
+  node,
   props,
   dataContext,
 }: BlockComponentProps<ProductListingProps>) {
@@ -44,9 +45,14 @@ export function ProductListingBlock({
 
   const total = dataContext.productsTotal ?? dataContext.products.length;
   const totalPages = Math.max(1, Math.ceil(total / props.pageSize));
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
 
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {(props.showSort || props.categoryFilter) && (
           <ProductListingControls

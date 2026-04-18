@@ -138,14 +138,20 @@ async function resolveProducts(
 }
 
 export async function ProductGridBlock({
+  node,
   props,
   dataContext,
 }: BlockComponentProps<ProductGridProps>) {
   const products = await resolveProducts(props, dataContext);
   const layout = props.layout ?? "grid";
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
 
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {(props.eyebrow || props.heading) && (
           <div
