@@ -240,11 +240,12 @@ function priceStats(
 }
 
 /**
- * Placeholder rating payload used on every product row. Reviews aren't
- * implemented yet (see `avgRating` on `PublicSiteProduct`), so every
- * row ships null/null today. Centralized so the day the reviews table
- * lands we flip the source here instead of hunting through each
- * construction site.
+ * Default rating payload used when a product has zero APPROVED reviews.
+ * The type is `number | null` so the wire shape stays stable; when no
+ * reviews exist yet, both fields are null rather than { null, 0 } so
+ * tenant-sites pre-review can't distinguish "feature just shipped" from
+ * "this specific product has no reviews yet" — either way they hide the
+ * rating block. The helper below overlays real values on top.
  */
 const NULL_RATINGS = {
   avgRating: null as number | null,
@@ -454,6 +455,10 @@ export class PublicSiteRepository {
         : Promise.resolve(null),
     ]);
 
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
     const products: PublicSiteProduct[] = rows.map((r) => ({
       id: r.id,
       name: r.name,
@@ -466,7 +471,7 @@ export class PublicSiteRepository {
       photoUrl: primaryPhotoFromList(r.variations),
       ...priceStats(r.variations, r.finalSp),
       ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
-      ...NULL_RATINGS,
+      ...(ratings.get(r.id) ?? NULL_RATINGS),
     }));
     return [products, total, facets];
   }
@@ -737,6 +742,10 @@ export class PublicSiteRepository {
         : Promise.resolve(null),
     ]);
 
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
     const rowById = new Map(rows.map((r) => [r.id, r]));
     const orderedFull: PublicSiteProduct[] = [];
     for (const pid of rankedProductIds) {
@@ -754,7 +763,7 @@ export class PublicSiteRepository {
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
         ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
-        ...NULL_RATINGS,
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
       });
     }
 
@@ -885,6 +894,8 @@ export class PublicSiteRepository {
       row.finalSp,
     );
 
+    const ratings = await this.loadRatingForProduct(tenantId, row.id);
+
     return {
       id: row.id,
       name: row.name,
@@ -905,7 +916,7 @@ export class PublicSiteRepository {
       variations,
       ...stats,
       ...deriveDiscount(row.mrp, row.finalSp, row.discounts.length > 0),
-      ...NULL_RATINGS,
+      ...ratings,
     };
   }
 
@@ -978,6 +989,10 @@ export class PublicSiteRepository {
     });
 
     const byId = new Map(rows.map((r) => [r.id, r]));
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
     const ordered: PublicSiteProduct[] = [];
     for (const j of joinRows) {
       const r = byId.get(j.productId);
@@ -994,7 +1009,7 @@ export class PublicSiteRepository {
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
         ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
-        ...NULL_RATINGS,
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
       });
     }
     return ordered;
@@ -1058,6 +1073,75 @@ export class PublicSiteRepository {
       where: { id: productId, tenantId, deletedAt: null },
       select: { id: true },
     });
+  }
+
+  /**
+   * Aggregate APPROVED reviews for a batch of productIds in a single
+   * groupBy round-trip. Returns a Map keyed by productId so callers can
+   * overlay ratings onto the row payload without a second query per row.
+   * Products with zero APPROVED reviews are absent from the Map — the
+   * caller falls back to NULL_RATINGS.
+   */
+  async loadRatingsByProduct(
+    tenantId: string,
+    productIds: string[],
+  ): Promise<
+    Map<string, { avgRating: number | null; ratingCount: number | null }>
+  > {
+    const map = new Map<
+      string,
+      { avgRating: number | null; ratingCount: number | null }
+    >();
+    if (productIds.length === 0) return map;
+    const grouped = await prisma.productReview.groupBy({
+      by: ["productId"],
+      where: {
+        tenantId,
+        productId: { in: productIds },
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    for (const row of grouped) {
+      const avg = row._avg.rating;
+      const count = row._count.rating ?? 0;
+      if (count === 0) continue;
+      map.set(row.productId, {
+        avgRating: avg !== null ? Math.round(avg * 10) / 10 : null,
+        ratingCount: count,
+      });
+    }
+    return map;
+  }
+
+  /**
+   * Single-product rating aggregate — used by findProduct so the PDP gets
+   * the real average without a batch groupBy. Returns null-rating when
+   * the product has no APPROVED reviews yet.
+   */
+  async loadRatingForProduct(
+    tenantId: string,
+    productId: string,
+  ): Promise<{ avgRating: number | null; ratingCount: number | null }> {
+    const agg = await prisma.productReview.aggregate({
+      where: {
+        tenantId,
+        productId,
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const count = agg._count.rating ?? 0;
+    if (count === 0) return { ...NULL_RATINGS };
+    const avg = agg._avg.rating;
+    return {
+      avgRating: avg !== null ? Math.round(avg * 10) / 10 : null,
+      ratingCount: count,
+    };
   }
 
   createPendingReview(

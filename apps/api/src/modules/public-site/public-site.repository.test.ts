@@ -35,6 +35,10 @@ const prismaMock = vi.hoisted(() => ({
   attributeValue: {
     findMany: vi.fn(),
   },
+  productReview: {
+    groupBy: vi.fn(),
+    aggregate: vi.fn(),
+  },
 }));
 vi.mock("@/config/prisma", () => ({ default: prismaMock }));
 
@@ -114,6 +118,13 @@ beforeEach(() => {
     Object.values(group).forEach((fn) => {
       (fn as ReturnType<typeof vi.fn>).mockReset();
     });
+  });
+  // Defaults: no reviews anywhere. Tests that want to assert real ratings
+  // override these explicitly.
+  prismaMock.productReview.groupBy.mockResolvedValue([]);
+  prismaMock.productReview.aggregate.mockResolvedValue({
+    _avg: { rating: null },
+    _count: { rating: 0 },
   });
 });
 
@@ -463,6 +474,95 @@ describe("PublicSiteRepository.findProduct photo cap", () => {
     const detail = await repo.findProduct("t1", "p1");
     expect(detail!.avgRating).toBeNull();
     expect(detail!.ratingCount).toBeNull();
+  });
+
+  it("ships real avgRating/ratingCount on the detail payload when APPROVED reviews exist", async () => {
+    prismaMock.product.findFirst.mockResolvedValueOnce({
+      id: "p1",
+      name: "Chair",
+      description: null,
+      imsCode: "C-001",
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      length: null,
+      breadth: null,
+      height: null,
+      weight: null,
+      categoryId: "cat1",
+      subCategory: null,
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      discounts: [],
+      variations: [],
+    });
+    prismaMock.productReview.aggregate.mockResolvedValueOnce({
+      _avg: { rating: 4.33 },
+      _count: { rating: 9 },
+    });
+
+    const repo = new PublicSiteRepository();
+    const detail = await repo.findProduct("t1", "p1");
+    // Rounded to one decimal (4.33 → 4.3), count is real.
+    expect(detail!.avgRating).toBe(4.3);
+    expect(detail!.ratingCount).toBe(9);
+    // Aggregate query is tenant-scoped + APPROVED + not deleted.
+    const aggArg = prismaMock.productReview.aggregate.mock.calls[0]![0];
+    expect(aggArg.where).toMatchObject({
+      tenantId: "t1",
+      productId: "p1",
+      status: "APPROVED",
+      deletedAt: null,
+    });
+  });
+});
+
+describe("PublicSiteRepository.listProducts ratings overlay", () => {
+  const baseRow = {
+    id: "p1",
+    name: "Chair",
+    imsCode: "C-001",
+    mrp: { toString: () => "200" },
+    finalSp: { toString: () => "150" },
+    categoryId: "cat1",
+    dateCreated: new Date("2026-01-01"),
+    category: null,
+    variations: [],
+    discounts: [],
+  };
+
+  it("overlays real ratings from the groupBy batch", async () => {
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      baseRow,
+      { ...baseRow, id: "p2" },
+    ]);
+    prismaMock.product.count.mockResolvedValueOnce(2);
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([
+      { productId: "p1", _avg: { rating: 4.5 }, _count: { rating: 4 } },
+      // p2 has no groupBy row → falls back to NULL_RATINGS.
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const [rows] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      includeFacets: false,
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ id: "p1", avgRating: 4.5, ratingCount: 4 });
+    expect(rows[1]).toMatchObject({
+      id: "p2",
+      avgRating: null,
+      ratingCount: null,
+    });
+    // groupBy query scoped to this tenant, APPROVED, not-deleted, keyed by productId.
+    const groupArg = prismaMock.productReview.groupBy.mock.calls[0]![0];
+    expect(groupArg.by).toEqual(["productId"]);
+    expect(groupArg.where).toMatchObject({
+      tenantId: "t1",
+      status: "APPROVED",
+      deletedAt: null,
+    });
+    expect(groupArg.where.productId.in).toEqual(["p1", "p2"]);
   });
 });
 
