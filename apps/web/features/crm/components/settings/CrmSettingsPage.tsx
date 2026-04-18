@@ -635,8 +635,9 @@ function PipelineSettings() {
                           variant="ghost"
                           className="h-8 w-8"
                           onClick={() => openEdit(p)}
+                          aria-label={`Edit pipeline ${p.name}`}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                         <Button
                           size="icon"
@@ -649,8 +650,13 @@ function PipelineSettings() {
                               ? "Cannot delete default pipeline"
                               : "Delete pipeline"
                           }
+                          aria-label={
+                            p.isDefault
+                              ? `Cannot delete default pipeline ${p.name}`
+                              : `Delete pipeline ${p.name}`
+                          }
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
                     </TableCell>
@@ -688,8 +694,14 @@ function PipelineSettings() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Pipeline Name</label>
+              <label
+                htmlFor="pipeline-name-create"
+                className="text-sm font-medium"
+              >
+                Pipeline Name
+              </label>
               <Input
+                id="pipeline-name-create"
                 placeholder="e.g. Sales Pipeline"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -782,8 +794,14 @@ function PipelineSettings() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Pipeline Name</label>
+              <label
+                htmlFor="pipeline-name-edit"
+                className="text-sm font-medium"
+              >
+                Pipeline Name
+              </label>
               <Input
+                id="pipeline-name-edit"
                 placeholder="Pipeline name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -1007,8 +1025,9 @@ function ListSettings({
                       setEditItem(item);
                       setEditName(item.name);
                     }}
+                    aria-label={`Edit ${item.name}`}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                   <Button
                     size="icon"
@@ -1016,8 +1035,9 @@ function ListSettings({
                     className="h-7 w-7 text-destructive hover:text-destructive"
                     onClick={() => onDelete(item.id)}
                     disabled={isDeleting}
+                    aria-label={`Delete ${item.name}`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
