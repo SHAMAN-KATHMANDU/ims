@@ -278,7 +278,7 @@ export function DealsKanbanPage() {
           }}
           trigger={
             <Button>
-              <LayoutDashboard className="h-4 w-4 mr-2" />
+              <LayoutDashboard className="h-4 w-4 mr-2" aria-hidden="true" />
               Create pipeline
             </Button>
           }
@@ -327,16 +327,16 @@ export function DealsKanbanPage() {
                     className="shrink-0"
                     aria-label="Pipeline options"
                   >
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => setEditPipelineOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" />
+                    <Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
                     Edit pipeline
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setEditStagesOpen(true)}>
-                    <ListOrdered className="h-4 w-4 mr-2" />
+                    <ListOrdered className="h-4 w-4 mr-2" aria-hidden="true" />
                     Edit stages
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -352,13 +352,16 @@ export function DealsKanbanPage() {
             }}
             trigger={
               <Button variant="outline" size="sm">
-                <LayoutDashboard className="h-4 w-4 mr-1.5" />
+                <LayoutDashboard
+                  className="h-4 w-4 mr-1.5"
+                  aria-hidden="true"
+                />
                 New pipeline
               </Button>
             }
           />
           <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
             New Deal
           </Button>
           {currentPipeline && (
@@ -591,7 +594,7 @@ function DroppableStageColumn({
       </h3>
       {transitionInfo && (
         <div className="mb-2 flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 px-2 py-1.5 text-xs text-blue-700 dark:text-blue-300">
-          <ArrowRight className="h-3 w-3 shrink-0" />
+          <ArrowRight className="h-3 w-3 shrink-0" aria-hidden="true" />
           <span>{transitionInfo.description}</span>
         </div>
       )}
@@ -692,7 +695,7 @@ function DealCard({
             className="touch-none shrink-0 mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
             onClick={(e) => e.preventDefault()}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className="h-4 w-4" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             {onView ? (
@@ -730,7 +733,7 @@ function DealCard({
                 }}
                 aria-label="Edit deal"
               >
-                <Pencil className="h-3.5 w-3.5" />
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
             )}
             {onDelete && (
@@ -747,7 +750,7 @@ function DealCard({
                 disabled={isDeleting}
                 aria-label="Delete deal"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
           </div>
@@ -1205,7 +1208,7 @@ function EditPipelineStagesDialog({
                 size="sm"
                 onClick={addStage}
               >
-                <Plus className="h-4 w-4 mr-1" />
+                <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                 Add stage
               </Button>
             </div>
@@ -1235,7 +1238,7 @@ function EditPipelineStagesDialog({
                       disabled={index === 0}
                       aria-label="Move up"
                     >
-                      <ChevronUp className="h-4 w-4" />
+                      <ChevronUp className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button
                       type="button"
@@ -1246,7 +1249,7 @@ function EditPipelineStagesDialog({
                       disabled={index === stages.length - 1}
                       aria-label="Move down"
                     >
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button
                       type="button"
@@ -1257,7 +1260,7 @@ function EditPipelineStagesDialog({
                       disabled={stages.length <= 1}
                       aria-label="Remove stage"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </div>
                 </div>
