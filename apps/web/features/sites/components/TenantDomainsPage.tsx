@@ -94,7 +94,7 @@ export function TenantDomainsPage() {
       <div className="flex items-center gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link href={`/${workspace}/platform/tenants`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
             Tenants
           </Link>
         </Button>
@@ -124,7 +124,7 @@ export function TenantDomainsPage() {
             </CardDescription>
           </div>
           <Button onClick={() => setAddOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             Add domain
           </Button>
         </CardHeader>
@@ -209,7 +209,7 @@ export function TenantDomainsPage() {
                             className="h-8 w-8"
                             aria-label={`Delete ${d.hostname}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
                       </TableCell>
