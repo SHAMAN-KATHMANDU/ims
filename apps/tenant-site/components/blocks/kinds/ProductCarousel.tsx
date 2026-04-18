@@ -101,7 +101,7 @@ export function ProductCarousel({
           scrollbarWidth: "none",
         }}
       >
-        {products.map((p) => (
+        {products.map((p, i) => (
           <div
             key={p.id}
             role="group"
@@ -118,6 +118,7 @@ export function ProductCarousel({
               showCategory={showCategory}
               showPrice={showPrice}
               showDiscount={showDiscount}
+              priority={i === 0}
               {...(cardAspectRatio ? { aspectRatio: cardAspectRatio } : {})}
             />
           </div>

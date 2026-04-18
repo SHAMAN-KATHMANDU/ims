@@ -984,7 +984,7 @@ export function ProductGrid({
         gap: "2.25rem 1.75rem",
       }}
     >
-      {products.map((p) => (
+      {products.map((p, i) => (
         <ProductCard
           key={p.id}
           product={p}
@@ -993,6 +993,7 @@ export function ProductGrid({
           showPrice={showPrice}
           showDiscount={showDiscount}
           aspectRatio={cardAspectRatio}
+          priority={i < 2}
         />
       ))}
     </div>

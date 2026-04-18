@@ -90,6 +90,7 @@ export function ProductCard({
   showPrice,
   showDiscount,
   aspectRatio = "3 / 4",
+  priority = false,
 }: {
   product: PublicProduct;
   variant?: "bordered" | "bare" | "card";
@@ -97,6 +98,7 @@ export function ProductCard({
   showPrice?: boolean;
   showDiscount?: boolean;
   aspectRatio?: string;
+  priority?: boolean;
 }) {
   const hasDiscount =
     product.finalSp &&
@@ -155,7 +157,8 @@ export function ProductCard({
             src={product.photoUrl}
             alt=""
             aria-hidden="true"
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="tpl-product-card-img"
