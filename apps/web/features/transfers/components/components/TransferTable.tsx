@@ -145,7 +145,10 @@ export function TransferTable({
     if (hasActiveFilters) {
       return (
         <div className="rounded-md border p-8 text-center">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground" />
+          <Package
+            className="mx-auto h-12 w-12 text-muted-foreground"
+            aria-hidden="true"
+          />
           <h3 className="mt-4 text-lg font-semibold">
             No transfers match your filters
           </h3>
@@ -167,7 +170,10 @@ export function TransferTable({
     }
     return (
       <div className="rounded-md border p-8 text-center">
-        <Package className="mx-auto h-12 w-12 text-muted-foreground" />
+        <Package
+          className="mx-auto h-12 w-12 text-muted-foreground"
+          aria-hidden="true"
+        />
         <h3 className="mt-4 text-lg font-semibold">No transfers yet</h3>
         <p className="text-muted-foreground mt-2">
           Create a transfer to move products between locations.
@@ -249,7 +255,10 @@ export function TransferTable({
               </TableCell>
               <TableCell className="font-medium text-sm">
                 <span className="inline-flex items-center gap-1.5">
-                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <ArrowRight
+                    className="h-3 w-3 text-muted-foreground shrink-0"
+                    aria-hidden="true"
+                  />
                   {transfer.toLocation.name}
                 </span>
               </TableCell>
@@ -265,14 +274,18 @@ export function TransferTable({
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Actions for transfer ${transfer.transferCode}`}
+                    >
+                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                       <span className="sr-only">Actions</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => onView(transfer)}>
-                      <Eye className="mr-2 h-4 w-4" />
+                      <Eye className="mr-2 h-4 w-4" aria-hidden="true" />
                       View Details
                     </DropdownMenuItem>
                     {canManage && (
@@ -283,7 +296,10 @@ export function TransferTable({
                             disabled={fulfillingTransferId === transfer.id}
                             onClick={() => onApproveAndFulfill(transfer)}
                           >
-                            <PackageCheck className="mr-2 h-4 w-4" />
+                            <PackageCheck
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Approve &amp; move stock
                           </DropdownMenuItem>
                         )}
@@ -292,7 +308,10 @@ export function TransferTable({
                             disabled={fulfillingTransferId === transfer.id}
                             onClick={() => onApprove(transfer)}
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <CheckCircle
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Approve only
                           </DropdownMenuItem>
                         )}
@@ -300,7 +319,10 @@ export function TransferTable({
                           <DropdownMenuItem
                             onClick={() => onStartTransit(transfer)}
                           >
-                            <Truck className="mr-2 h-4 w-4" />
+                            <Truck
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Start Transit
                           </DropdownMenuItem>
                         )}
@@ -308,7 +330,10 @@ export function TransferTable({
                           <DropdownMenuItem
                             onClick={() => onComplete(transfer)}
                           >
-                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <CheckCircle
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Complete
                           </DropdownMenuItem>
                         )}
@@ -317,7 +342,10 @@ export function TransferTable({
                             variant="destructive"
                             onClick={() => onCancel(transfer)}
                           >
-                            <XCircle className="mr-2 h-4 w-4" />
+                            <XCircle
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Cancel
                           </DropdownMenuItem>
                         )}
