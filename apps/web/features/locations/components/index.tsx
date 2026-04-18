@@ -317,7 +317,10 @@ export function LocationsPage() {
               <Label htmlFor="locations-search" className="sr-only">
                 Search by name or address
               </Label>
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 id="locations-search"
                 placeholder="Search by name or address..."
@@ -372,7 +375,7 @@ export function LocationsPage() {
                     <TooltipTrigger asChild>
                       <span>
                         <Button disabled className="gap-2">
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-4 w-4" aria-hidden="true" />
                           Add Location
                         </Button>
                       </span>
