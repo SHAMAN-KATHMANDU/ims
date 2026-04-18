@@ -576,13 +576,37 @@ export default function WorkflowEditorPage() {
               </p>
             </div>
           ) : workflows.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">
-              <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">
-                No workflows yet. Open <strong>Browse templates</strong> above
-                or create a custom workflow to automate deal actions.
-              </p>
-            </div>
+            search !== "" || isActiveFilter !== "all" ? (
+              <div className="text-center py-10">
+                <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm font-medium">
+                  No workflows match your filters
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Try a different search or status.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    setSearch("");
+                    setIsActiveFilter("all");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-muted-foreground">
+                <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">
+                  No workflows yet. Open <strong>Browse templates</strong> above
+                  or create a custom workflow to automate deal actions.
+                </p>
+              </div>
+            )
           ) : (
             <>
               <div className="overflow-x-auto">
