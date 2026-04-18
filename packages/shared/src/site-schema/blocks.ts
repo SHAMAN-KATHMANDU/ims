@@ -396,6 +396,24 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface RecentlyViewedProps {
+  heading?: string;
+  limit?: number;
+  columns?: 2 | 3 | 4;
+  cardVariant?: "bordered" | "bare" | "card";
+  /**
+   * Hide the block entirely when the shopper has no recently-viewed
+   * history yet. When false, renders an empty placeholder heading (rare
+   * use — typically want `true`).
+   */
+  hideWhenEmpty?: boolean;
+  /**
+   * When mounted on a PDP, skip the currently-viewed product so the
+   * strip only shows other items. Defaults to true.
+   */
+  excludeCurrent?: boolean;
+}
+
 export interface FbtProps {
   heading?: string;
   /**
@@ -571,6 +589,7 @@ export interface BlockPropsMap {
   "pdp-related": PdpRelatedProps;
   "reviews-list": ReviewsListProps;
   fbt: FbtProps;
+  "recently-viewed": RecentlyViewedProps;
   breadcrumbs: BreadcrumbsProps;
   // Layer 2
   embed: EmbedProps;
@@ -1030,6 +1049,16 @@ export const BlockPropsSchemas = {
       limit: z.number().int().min(1).max(12).optional(),
       columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
       cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
+    })
+    .strict(),
+  "recently-viewed": z
+    .object({
+      heading: optStr(200),
+      limit: z.number().int().min(1).max(12).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
+      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
+      hideWhenEmpty: z.boolean().optional(),
+      excludeCurrent: z.boolean().optional(),
     })
     .strict(),
   // Layer 2
