@@ -299,7 +299,10 @@ export function SettingsPage() {
           className="block rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50"
         >
           <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <div
+              aria-hidden="true"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
+            >
               <Globe className="h-5 w-5" />
             </div>
             <div className="flex-1">
@@ -308,7 +311,10 @@ export function SettingsPage() {
                 Branding, template, and publishing for your public storefront
               </div>
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            <ChevronRight
+              className="h-5 w-5 text-muted-foreground"
+              aria-hidden="true"
+            />
           </div>
         </Link>
       )}
@@ -372,6 +378,10 @@ export function SettingsPage() {
                   placeholder="Enter your current password"
                   disabled={isSubmitting}
                   className="pr-10"
+                  aria-invalid={errors.currentPassword ? true : undefined}
+                  aria-describedby={
+                    errors.currentPassword ? "currentPassword-error" : undefined
+                  }
                   {...register("currentPassword")}
                 />
                 <Button
@@ -386,14 +396,24 @@ export function SettingsPage() {
                   }
                 >
                   {showCurrentPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   )}
                 </Button>
               </div>
               {errors.currentPassword && (
-                <p className="text-sm text-destructive">
+                <p
+                  id="currentPassword-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {errors.currentPassword.message}
                 </p>
               )}
@@ -408,6 +428,10 @@ export function SettingsPage() {
                   placeholder="Enter your new password"
                   disabled={isSubmitting}
                   className="pr-10"
+                  aria-invalid={errors.newPassword ? true : undefined}
+                  aria-describedby={
+                    errors.newPassword ? "newPassword-error" : undefined
+                  }
                   {...register("newPassword")}
                 />
                 <Button
@@ -422,14 +446,24 @@ export function SettingsPage() {
                   }
                 >
                   {showNewPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   )}
                 </Button>
               </div>
               {errors.newPassword && (
-                <p className="text-sm text-destructive">
+                <p
+                  id="newPassword-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {errors.newPassword.message}
                 </p>
               )}
@@ -444,6 +478,10 @@ export function SettingsPage() {
                   placeholder="Confirm your new password"
                   disabled={isSubmitting}
                   className="pr-10"
+                  aria-invalid={errors.confirmPassword ? true : undefined}
+                  aria-describedby={
+                    errors.confirmPassword ? "confirmPassword-error" : undefined
+                  }
                   {...register("confirmPassword")}
                 />
                 <Button
@@ -458,14 +496,24 @@ export function SettingsPage() {
                   }
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                   )}
                 </Button>
               </div>
               {errors.confirmPassword && (
-                <p className="text-sm text-destructive">
+                <p
+                  id="confirmPassword-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {errors.confirmPassword.message}
                 </p>
               )}
@@ -491,11 +539,13 @@ export function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
             <Input
+              aria-label="New payment method label"
               placeholder="Label (e.g. Bank Transfer)"
               value={newMethodLabel}
               onChange={(e) => setNewMethodLabel(e.target.value)}
             />
             <Input
+              aria-label="New payment method code"
               placeholder="Code (e.g. BANK_TRANSFER)"
               value={newMethodCode}
               onChange={(e) =>
@@ -505,13 +555,19 @@ export function SettingsPage() {
               }
             />
             <Button type="button" onClick={addPaymentMethod} className="gap-2">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Add
             </Button>
           </div>
 
           {paymentMethodsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading methods...</p>
+            <p
+              role="status"
+              aria-live="polite"
+              className="text-sm text-muted-foreground"
+            >
+              Loading methods...
+            </p>
           ) : (
             <div className="space-y-2">
               {draftMethods.map((method, index) => (
@@ -520,10 +576,12 @@ export function SettingsPage() {
                   className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2 items-center border rounded-md p-2"
                 >
                   <Input
+                    aria-label={`Label for ${method.label || method.code}`}
                     value={method.label}
                     onChange={(e) => updateLabel(method.id, e.target.value)}
                   />
                   <Input
+                    aria-label={`Code for ${method.label || method.code}`}
                     value={method.code}
                     onChange={(e) => updateCode(method.id, e.target.value)}
                   />
@@ -531,6 +589,8 @@ export function SettingsPage() {
                     type="button"
                     variant={method.enabled ? "default" : "outline"}
                     onClick={() => toggleEnabled(method.id)}
+                    aria-pressed={method.enabled}
+                    aria-label={`${method.enabled ? "Disable" : "Enable"} ${method.label || method.code}`}
                   >
                     {method.enabled ? "Enabled" : "Disabled"}
                   </Button>
@@ -540,8 +600,9 @@ export function SettingsPage() {
                     size="icon"
                     onClick={() => moveMethod(index, -1)}
                     disabled={index === 0}
+                    aria-label={`Move ${method.label || method.code} up`}
                   >
-                    <ArrowUp className="h-4 w-4" />
+                    <ArrowUp className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Button
                     type="button"
@@ -549,16 +610,18 @@ export function SettingsPage() {
                     size="icon"
                     onClick={() => moveMethod(index, 1)}
                     disabled={index === draftMethods.length - 1}
+                    aria-label={`Move ${method.label || method.code} down`}
                   >
-                    <ArrowDown className="h-4 w-4" />
+                    <ArrowDown className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
                     onClick={() => removeMethod(method.id)}
+                    aria-label={`Remove ${method.label || method.code}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               ))}
