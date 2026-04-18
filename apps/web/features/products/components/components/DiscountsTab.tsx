@@ -461,7 +461,7 @@ export function DiscountsTab() {
           </p>
         </div>
         <Button onClick={openAddDialog} size="sm" className="gap-1.5 shrink-0">
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Add Product Discount
         </Button>
       </div>
@@ -478,7 +478,7 @@ export function DiscountsTab() {
             onClick={() => setBulkDeleteState(true)}
             disabled={updateProductMutation.isPending}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
+            <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
             Delete selected
           </Button>
           <Button size="sm" variant="ghost" onClick={clearSelection}>
@@ -490,7 +490,10 @@ export function DiscountsTab() {
       {/* Minimal filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             type="search"
             aria-label="Search discounts by product or type"
@@ -503,7 +506,7 @@ export function DiscountsTab() {
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm">
-              <Filter className="h-3.5 w-3.5" />
+              <Filter className="h-3.5 w-3.5" aria-hidden="true" />
               Filters
             </Button>
           </PopoverTrigger>
@@ -613,8 +616,16 @@ export function DiscountsTab() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div
+              className="flex items-center justify-center py-12"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="sr-only">Loading discounts…</span>
+              <Loader2
+                className="h-8 w-8 animate-spin text-muted-foreground"
+                aria-hidden="true"
+              />
             </div>
           ) : (
             <>
@@ -873,7 +884,7 @@ export function DiscountsTab() {
               }
             >
               {updateProductMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Add"
               )}
@@ -990,7 +1001,7 @@ export function DiscountsTab() {
               }
             >
               {updateProductMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Save"
               )}
@@ -1024,7 +1035,7 @@ export function DiscountsTab() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {updateProductMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Remove"
               )}
@@ -1052,7 +1063,7 @@ export function DiscountsTab() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {updateProductMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Delete selected"
               )}
