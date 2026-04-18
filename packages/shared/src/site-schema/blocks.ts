@@ -262,7 +262,26 @@ export interface NewsletterProps {
   title?: string;
   subtitle?: string;
   cta?: string;
-  variant?: "inline" | "card" | "banner";
+  variant?: "inline" | "card" | "banner" | "modal";
+  dark?: boolean;
+  /** Modal-only: seconds before first auto-open (0 disables auto-open). */
+  modalDelaySeconds?: number;
+  /** Modal-only: show on exit-intent (desktop). */
+  modalExitIntent?: boolean;
+}
+
+export interface PolicyItem {
+  label: string;
+  detail?: string;
+  icon?: "shipping" | "returns" | "secure" | "support" | "warranty" | "gift";
+  href?: string;
+}
+
+export interface PolicyStripProps {
+  heading?: string;
+  items: PolicyItem[];
+  layout?: "inline" | "grid";
+  columns?: 2 | 3 | 4;
   dark?: boolean;
 }
 
@@ -431,6 +450,20 @@ export interface CssGridProps {
   tabletColumns?: number;
 }
 
+// Utility -------------------------------------------------------------------
+
+export interface EmptyStateProps {
+  /** Preset that influences default copy / illustration. */
+  kind?: "not-found" | "empty-search" | "empty-cart" | "generic";
+  heading: string;
+  subtitle?: string;
+  illustration?: "none" | "package" | "magnifier" | "cart" | "alert";
+  ctaLabel?: string;
+  ctaHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+}
+
 // ---------------------------------------------------------------------------
 // The full map
 // ---------------------------------------------------------------------------
@@ -459,6 +492,7 @@ export interface BlockPropsMap {
   "bento-showcase": BentoShowcaseProps;
   "stats-band": StatsBandProps;
   newsletter: NewsletterProps;
+  "policy-strip": PolicyStripProps;
   "contact-block": ContactBlockProps;
   faq: FaqProps;
   testimonials: TestimonialsProps;
@@ -481,6 +515,8 @@ export interface BlockPropsMap {
   form: FormBlockProps;
   // Layer 3
   "css-grid": CssGridProps;
+  // Utility
+  "empty-state": EmptyStateProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
@@ -777,7 +813,39 @@ export const BlockPropsSchemas = {
       title: optStr(200),
       subtitle: optStr(400),
       cta: optStr(40),
-      variant: z.enum(["inline", "card", "banner"]).optional(),
+      variant: z.enum(["inline", "card", "banner", "modal"]).optional(),
+      dark: z.boolean().optional(),
+      modalDelaySeconds: z.number().int().min(0).max(600).optional(),
+      modalExitIntent: z.boolean().optional(),
+    })
+    .strict(),
+  "policy-strip": z
+    .object({
+      heading: optStr(120),
+      items: z
+        .array(
+          z
+            .object({
+              label: str(80),
+              detail: optStr(200),
+              icon: z
+                .enum([
+                  "shipping",
+                  "returns",
+                  "secure",
+                  "support",
+                  "warranty",
+                  "gift",
+                ])
+                .optional(),
+              href: optStr(1000),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(8),
+      layout: z.enum(["inline", "grid"]).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
       dark: z.boolean().optional(),
     })
     .strict(),
@@ -1001,6 +1069,23 @@ export const BlockPropsSchemas = {
       minRowHeight: z.string().max(20).optional(),
       mobileColumns: z.number().int().min(1).max(12).optional(),
       tabletColumns: z.number().int().min(1).max(12).optional(),
+    })
+    .strict(),
+  // Utility
+  "empty-state": z
+    .object({
+      kind: z
+        .enum(["not-found", "empty-search", "empty-cart", "generic"])
+        .optional(),
+      heading: str(200),
+      subtitle: optStr(400),
+      illustration: z
+        .enum(["none", "package", "magnifier", "cart", "alert"])
+        .optional(),
+      ctaLabel: optStr(60),
+      ctaHref: optStr(1000),
+      secondaryLabel: optStr(60),
+      secondaryHref: optStr(1000),
     })
     .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;

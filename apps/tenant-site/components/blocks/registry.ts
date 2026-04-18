@@ -76,6 +76,10 @@ import { GalleryBlock } from "./kinds/GalleryBlock";
 import { TabsBlock } from "./kinds/TabsBlock";
 import { FormBlock } from "./kinds/FormBlock";
 
+// Utility / new gap blocks
+import { PolicyStripBlock } from "./kinds/PolicyStripBlock";
+import { EmptyStateBlock } from "./kinds/EmptyStateBlock";
+
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
   props: P;
@@ -115,6 +119,7 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "bento-showcase": { component: BentoShowcaseBlock },
   "stats-band": { component: StatsBandBlock },
   newsletter: { component: NewsletterBlock },
+  "policy-strip": { component: PolicyStripBlock },
   "contact-block": { component: ContactBlockBlock },
   faq: { component: FaqBlock },
   testimonials: { component: TestimonialsBlock },
@@ -137,4 +142,6 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   form: { component: FormBlock },
   // Layer 3
   "css-grid": { component: CssGridBlock, container: true },
+  // Utility
+  "empty-state": { component: EmptyStateBlock },
 };
