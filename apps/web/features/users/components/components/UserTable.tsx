@@ -26,6 +26,8 @@ interface UserTableProps {
   onDelete: (user: User) => void;
   selectedUsers?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 export function UserTable({
@@ -38,6 +40,8 @@ export function UserTable({
   onDelete,
   selectedUsers = new Set(),
   onSelectionChange,
+  hasActiveFilters,
+  onClearFilters,
 }: UserTableProps) {
   const canSort = Boolean(onSort);
 
@@ -133,11 +137,29 @@ export function UserTable({
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell
-                colSpan={columnCount}
-                className="text-center text-muted-foreground py-8"
-              >
-                No users found.
+              <TableCell colSpan={columnCount} className="text-center py-10">
+                {hasActiveFilters ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-sm font-medium">
+                      No users match your filters
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Try a different search or role.
+                    </p>
+                    {onClearFilters && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={onClearFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No users yet</p>
+                )}
               </TableCell>
             </TableRow>
           </TableBody>

@@ -338,6 +338,12 @@ export function UsersPage() {
               onDelete={handleDeleteClick}
               selectedUsers={selectedUserIds}
               onSelectionChange={setUsers}
+              hasActiveFilters={search !== "" || roleFilter !== "all"}
+              onClearFilters={() => {
+                setSearch("");
+                setRoleFilter("all");
+                setPage(DEFAULT_PAGE);
+              }}
             />
             {usersResult?.pagination && (
               <DataTablePagination
