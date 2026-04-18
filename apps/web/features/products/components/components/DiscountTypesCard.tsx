@@ -194,7 +194,7 @@ export function DiscountTypesCard() {
               disabled={createMutation.isPending || !name.trim()}
             >
               {createMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Add discount"
               )}
@@ -202,8 +202,16 @@ export function DiscountTypesCard() {
           </form>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div
+              className="flex items-center justify-center py-8"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="sr-only">Loading discount types…</span>
+              <Loader2
+                className="h-6 w-6 animate-spin text-muted-foreground"
+                aria-hidden="true"
+              />
             </div>
           ) : (
             <Table>
@@ -242,16 +250,24 @@ export function DiscountTypesCard() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => openEdit(dt)}
+                            aria-label={`Edit ${dt.name}`}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => setDeleteId(dt.id)}
+                            aria-label={`Delete ${dt.name}`}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
                           </Button>
                         </div>
                       </TableCell>
@@ -326,7 +342,10 @@ export function DiscountTypesCard() {
               </Button>
               <Button type="submit" disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
                   "Save"
                 )}
@@ -352,7 +371,7 @@ export function DiscountTypesCard() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Delete"
               )}
