@@ -344,7 +344,9 @@ function NavItemView({ item }: { item: NavItem }) {
                   marginBottom: "0.75rem",
                 }}
                 role="img"
-                aria-label={item.featured.heading ?? item.featured.ctaLabel ?? "Featured"}
+                aria-label={
+                  item.featured.heading ?? item.featured.ctaLabel ?? "Featured"
+                }
               />
               {item.featured.heading && (
                 <div
@@ -1193,6 +1195,7 @@ export function ProductGrid({
   showPrice,
   showDiscount,
   cardAspectRatio,
+  formatOpts,
 }: {
   products: PublicProduct[];
   columns?: number;
@@ -1201,6 +1204,7 @@ export function ProductGrid({
   showPrice?: boolean;
   showDiscount?: boolean;
   cardAspectRatio?: string;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
 }) {
   if (products.length === 0) {
     return (
@@ -1239,6 +1243,7 @@ export function ProductGrid({
           showDiscount={showDiscount}
           aspectRatio={cardAspectRatio}
           priority={i < 2}
+          formatOpts={formatOpts}
         />
       ))}
     </div>

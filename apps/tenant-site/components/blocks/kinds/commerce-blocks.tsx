@@ -21,6 +21,7 @@ import type {
 } from "@repo/shared";
 import type { PublicProduct } from "@/lib/api";
 import { getCollection, getOffers } from "@/lib/api";
+import { getSiteFormatOptions } from "@/lib/format";
 import type { BlockComponentProps } from "../registry";
 import { ProductCarousel } from "./ProductCarousel";
 
@@ -145,6 +146,7 @@ export async function ProductGridBlock({
   const products = await resolveProducts(props, dataContext);
   const layout = props.layout ?? "grid";
   const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const formatOpts = getSiteFormatOptions(dataContext.site);
 
   return (
     <section
@@ -194,6 +196,7 @@ export async function ProductGridBlock({
             showPrice={props.showPrice}
             showDiscount={props.showDiscount}
             cardAspectRatio={props.cardAspectRatio}
+            formatOpts={formatOpts}
           />
         ) : (
           <ProductGrid
@@ -204,6 +207,7 @@ export async function ProductGridBlock({
             showPrice={props.showPrice}
             showDiscount={props.showDiscount}
             cardAspectRatio={props.cardAspectRatio}
+            formatOpts={formatOpts}
           />
         )}
         {props.viewMoreHref && (

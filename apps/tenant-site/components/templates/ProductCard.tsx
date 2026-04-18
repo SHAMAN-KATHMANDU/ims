@@ -12,17 +12,17 @@ import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
 import { StarRating } from "@/components/blocks/kinds/StarRating";
-
-function formatPrice(value: string | number): string {
-  return `₹${Number(value).toLocaleString("en-IN")}`;
-}
+import { formatPrice } from "@/lib/format";
+import type { FormatPriceOptions } from "@/lib/format";
 
 function PriceDisplay({
   product,
   hasDiscount,
+  formatOpts,
 }: {
   product: PublicProduct;
   hasDiscount: boolean;
+  formatOpts?: FormatPriceOptions;
 }) {
   const priceFrom = product.priceFrom ?? product.finalSp;
   const priceTo = product.priceTo ?? product.finalSp;
@@ -41,7 +41,7 @@ function PriceDisplay({
     return (
       <span
         style={priceStyle}
-        aria-label={`Price from ${formatPrice(priceFrom)}`}
+        aria-label={`Price from ${formatPrice(priceFrom, formatOpts)}`}
       >
         <span
           aria-hidden="true"
@@ -55,7 +55,7 @@ function PriceDisplay({
         >
           From
         </span>
-        <span aria-hidden="true">{formatPrice(priceFrom)}</span>
+        <span aria-hidden="true">{formatPrice(priceFrom, formatOpts)}</span>
       </span>
     );
   }
@@ -64,20 +64,20 @@ function PriceDisplay({
     <>
       <span
         style={priceStyle}
-        aria-label={`Price ${formatPrice(product.finalSp)}`}
+        aria-label={`Price ${formatPrice(product.finalSp, formatOpts)}`}
       >
-        {formatPrice(product.finalSp)}
+        {formatPrice(product.finalSp, formatOpts)}
       </span>
       {hasDiscount && (
         <span
-          aria-label={`Original price ${formatPrice(product.mrp)}`}
+          aria-label={`Original price ${formatPrice(product.mrp, formatOpts)}`}
           style={{
             textDecoration: "line-through",
             color: "var(--color-muted)",
             fontSize: "0.88rem",
           }}
         >
-          {formatPrice(product.mrp)}
+          {formatPrice(product.mrp, formatOpts)}
         </span>
       )}
     </>
@@ -92,6 +92,7 @@ export function ProductCard({
   showDiscount,
   aspectRatio = "3 / 4",
   priority = false,
+  formatOpts,
 }: {
   product: PublicProduct;
   variant?: "bordered" | "bare" | "card";
@@ -100,6 +101,7 @@ export function ProductCard({
   showDiscount?: boolean;
   aspectRatio?: string;
   priority?: boolean;
+  formatOpts?: FormatPriceOptions;
 }) {
   const hasDiscount =
     product.finalSp &&
@@ -363,7 +365,11 @@ export function ProductCard({
               marginTop: "0.25rem",
             }}
           >
-            <PriceDisplay product={product} hasDiscount={!!hasDiscount} />
+            <PriceDisplay
+              product={product}
+              hasDiscount={!!hasDiscount}
+              formatOpts={formatOpts}
+            />
           </div>
         )}
       </div>
