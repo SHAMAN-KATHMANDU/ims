@@ -2,6 +2,8 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { PlanLimitsPage } from "@/features/plan-limits";
 
+export const metadata = { title: "Plan limits" };
+
 /** Platform plan limits – platformAdmin only. */
 export default function PlatformPlanLimitsRoute() {
   return (
