@@ -54,11 +54,13 @@ export function EditVendorPage() {
             href={`${basePath}/vendors`}
             className="inline-flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to vendors
           </Link>
         </Button>
-        <div className="text-muted-foreground">Loading vendor...</div>
+        <div className="text-muted-foreground" role="status" aria-live="polite">
+          Loading vendor...
+        </div>
       </div>
     );
   }
@@ -70,7 +72,7 @@ export function EditVendorPage() {
           href={`${basePath}/vendors`}
           className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to vendors
         </Link>
       </Button>
