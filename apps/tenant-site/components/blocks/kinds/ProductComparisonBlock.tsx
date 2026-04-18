@@ -11,6 +11,8 @@ import Link from "next/link";
 import type { ProductComparisonProps } from "@repo/shared";
 import { getProduct } from "@/lib/api";
 import type { PublicProduct } from "@/lib/api";
+import { formatPrice, getSiteFormatOptions } from "@/lib/format";
+import type { FormatPriceOptions } from "@/lib/format";
 import { StarRating } from "./StarRating";
 import type { BlockComponentProps } from "../registry";
 
@@ -35,18 +37,14 @@ const ATTR_LABEL: Record<
   description: "About",
 };
 
-function formatPrice(value: string | number | undefined): string {
-  if (value == null) return "—";
-  return `₹${Number(value).toLocaleString("en-IN")}`;
-}
-
 function renderAttr(
   key: NonNullable<ProductComparisonProps["attributes"]>[number],
   product: PublicProduct,
+  formatOpts: FormatPriceOptions,
 ): React.ReactNode {
   switch (key) {
     case "price":
-      return formatPrice(product.finalSp);
+      return formatPrice(product.finalSp, formatOpts);
     case "category":
       return product.category?.name ?? "—";
     case "rating":
@@ -108,6 +106,7 @@ export async function ProductComparisonBlock({
   if (products.length < 2) return null;
 
   const attrs = props.attributes ?? DEFAULT_ATTRIBUTES;
+  const formatOpts = getSiteFormatOptions(dataContext.site);
   const wrapperHasPadY = node.style?.paddingY !== undefined;
 
   return (
@@ -252,7 +251,7 @@ export async function ProductComparisonBlock({
                         verticalAlign: "top",
                       }}
                     >
-                      {renderAttr(attr, p)}
+                      {renderAttr(attr, p, formatOpts)}
                     </td>
                   ))}
                 </tr>

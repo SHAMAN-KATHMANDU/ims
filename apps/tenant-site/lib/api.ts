@@ -99,6 +99,12 @@ export interface PublicSite {
   /** Structured design tokens (Phase 7+). Preferred over branding when set. */
   themeTokens?: Record<string, unknown> | null;
   template: PublicTemplate | null;
+  /** BCP-47 tag: tenant's default locale (drives Intl formatting). */
+  locale?: string | null;
+  /** All locales the tenant has configured content for. */
+  locales?: string[];
+  /** ISO 4217 code (INR, NPR, USD, …) — drives price formatting. */
+  currency?: string | null;
 }
 
 export interface PublicCategory {
