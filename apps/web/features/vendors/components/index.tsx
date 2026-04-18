@@ -611,9 +611,33 @@ export function VendorPage() {
                   <TableRow>
                     <TableCell
                       colSpan={tableColumnCount}
-                      className="text-center py-8"
+                      className="text-center py-10"
                     >
-                      No vendors found.
+                      {hasActiveFilters ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-sm font-medium">
+                            No vendors match your search
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Try a different search term.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={clearAllFilters}
+                          >
+                            Clear search
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <p className="text-sm font-medium">No vendors yet</p>
+                          <p className="text-sm text-muted-foreground">
+                            Add a vendor to get started.
+                          </p>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
