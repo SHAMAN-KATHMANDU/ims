@@ -419,7 +419,7 @@ export function SalesPage() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                     Download
                     {selectedSaleIds.size > 0 && (
                       <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
@@ -433,14 +433,17 @@ export function SalesPage() {
                     onClick={() => handleExport("excel")}
                     disabled={salesLoading}
                   >
-                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    <FileSpreadsheet
+                      className="h-4 w-4 mr-2"
+                      aria-hidden="true"
+                    />
                     Download as Excel
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => handleExport("csv")}
                     disabled={salesLoading}
                   >
-                    <FileText className="h-4 w-4 mr-2" />
+                    <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                     Download as CSV
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -450,7 +453,7 @@ export function SalesPage() {
                   {isMobile ? (
                     <Button variant="outline" asChild>
                       <Link href={`${basePath}/sales/bulk-upload`}>
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                         Bulk Upload
                       </Link>
                     </Button>
@@ -459,7 +462,7 @@ export function SalesPage() {
                       variant="outline"
                       onClick={() => setBulkUploadDialog(true)}
                     >
-                      <Upload className="h-4 w-4 mr-2" />
+                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                       Bulk Upload
                     </Button>
                   )}
@@ -471,7 +474,7 @@ export function SalesPage() {
             (isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/sales/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   New Sale
                 </Link>
               </Button>
@@ -538,7 +541,7 @@ export function SalesPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download
                     </Button>
                   </DropdownMenuTrigger>
@@ -547,14 +550,17 @@ export function SalesPage() {
                       onClick={() => handleExport("excel")}
                       disabled={salesLoading}
                     >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <FileSpreadsheet
+                        className="h-4 w-4 mr-2"
+                        aria-hidden="true"
+                      />
                       Download as Excel
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleExport("csv")}
                       disabled={salesLoading}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download as CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -567,7 +573,7 @@ export function SalesPage() {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
