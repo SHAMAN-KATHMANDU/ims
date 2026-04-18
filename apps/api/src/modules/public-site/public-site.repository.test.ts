@@ -776,6 +776,118 @@ describe("PublicSiteRepository.listProducts best-selling sort", () => {
   });
 });
 
+describe("PublicSiteRepository.listProducts rating sort", () => {
+  function productRow(id: string) {
+    return {
+      id,
+      name: `Product ${id}`,
+      imsCode: `C-${id}`,
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      categoryId: "cat1",
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      variations: [],
+      discounts: [],
+    };
+  }
+
+  it("ranks by avgRating desc, ratingCount desc tiebreaker, then productId asc", async () => {
+    // p1 4.5 avg / 10 count
+    // p2 5.0 avg / 2 count  ← highest avg wins
+    // p3 4.5 avg / 10 count (tie w/ p1) → productId asc: p1 before p3
+    // p4 3.0 avg / 100 count ← lowest avg, count doesn't rescue
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([
+      { productId: "p1", _avg: { rating: 4.5 }, _count: { rating: 10 } },
+      { productId: "p3", _avg: { rating: 4.5 }, _count: { rating: 10 } },
+      { productId: "p2", _avg: { rating: 5 }, _count: { rating: 2 } },
+      { productId: "p4", _avg: { rating: 3 }, _count: { rating: 100 } },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("p1"),
+      productRow("p2"),
+      productRow("p3"),
+      productRow("p4"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const [rows, total, facets] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      sort: "rating",
+      includeFacets: false,
+    });
+
+    expect(total).toBe(4);
+    expect(facets).toBeNull();
+    expect(rows.map((r) => r.id)).toEqual(["p2", "p1", "p3", "p4"]);
+
+    const groupArg = prismaMock.productReview.groupBy.mock.calls[0]![0];
+    expect(groupArg.where).toMatchObject({
+      tenantId: "t1",
+      status: "APPROVED",
+      deletedAt: null,
+    });
+  });
+
+  it("excludes products whose approved-review count is zero", async () => {
+    // p1 has reviews; p2 shows up with 0 count (shouldn't happen from the
+    // WHERE but the defensive filter keeps it out anyway).
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([
+      { productId: "p1", _avg: { rating: 4.2 }, _count: { rating: 3 } },
+      { productId: "p2", _avg: { rating: null }, _count: { rating: 0 } },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([productRow("p1")]);
+
+    const repo = new PublicSiteRepository();
+    const [rows] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      sort: "rating",
+    });
+
+    expect(rows.map((r) => r.id)).toEqual(["p1"]);
+    const findArg = prismaMock.product.findMany.mock.calls[0]![0];
+    expect(findArg.where.id).toEqual({ in: ["p1"] });
+  });
+
+  it("returns empty page (no fallback to newest) when no approved reviews exist", async () => {
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([]);
+
+    const repo = new PublicSiteRepository();
+    const [rows, total, facets] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      sort: "rating",
+    });
+
+    expect(rows).toEqual([]);
+    expect(total).toBe(0);
+    expect(facets).toBeNull();
+    expect(prismaMock.product.findMany).not.toHaveBeenCalled();
+  });
+
+  it("intersects rating rank with the caller filter (categoryId, etc.)", async () => {
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([
+      { productId: "p1", _avg: { rating: 5 }, _count: { rating: 3 } },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([productRow("p1")]);
+
+    const repo = new PublicSiteRepository();
+    await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      sort: "rating",
+      categoryId: "cat-kitchen",
+    });
+
+    const whereArg = prismaMock.product.findMany.mock.calls[0]![0].where;
+    expect(whereArg.categoryId).toBe("cat-kitchen");
+    expect(whereArg.tenantId).toBe("t1");
+    expect(whereArg.id).toEqual({ in: ["p1"] });
+  });
+});
+
 describe("PublicSiteRepository.listFrequentlyBoughtWith", () => {
   function productRow(id: string) {
     return {

@@ -23,6 +23,14 @@ export const PRODUCT_SORTS = [
    * label never silently lies.
    */
   "best-selling",
+  /**
+   * Rank products by average APPROVED customer rating (desc), with
+   * ratingCount desc as a tiebreaker so a 5★ product with 100 reviews
+   * ranks above one with a single 5★. Products with zero approved
+   * reviews are excluded; if *no* tenant reviews exist the endpoint
+   * returns empty — same "don't silently lie" policy as best-selling.
+   */
+  "rating",
 ] as const;
 
 export type ProductSort = (typeof PRODUCT_SORTS)[number];

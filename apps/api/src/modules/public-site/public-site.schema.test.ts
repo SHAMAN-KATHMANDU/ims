@@ -54,6 +54,11 @@ describe("ListProductsQuerySchema", () => {
       expect(result.sort).toBe("best-selling");
     });
 
+    it("accepts rating as a valid sort", () => {
+      const result = ListProductsQuerySchema.parse({ sort: "rating" });
+      expect(result.sort).toBe("rating");
+    });
+
     it("rejects unknown sort values", () => {
       expect(() => ListProductsQuerySchema.parse({ sort: "random" })).toThrow();
     });

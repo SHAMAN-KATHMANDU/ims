@@ -45,6 +45,14 @@ export const BEST_SELLER_WINDOW_DAYS = 90;
 export const BEST_SELLER_CAP = 500;
 
 /**
+ * Matches BEST_SELLER_CAP: the rating-sort path fetches at most this many
+ * reviewed productIds in rank order, then paginates in JS. 500 keeps
+ * limit=100 page 5 fully available without pulling in the entire catalog
+ * of reviewed SKUs.
+ */
+export const RATING_SORT_CAP = 500;
+
+/**
  * Trailing window used for the frequently-bought-with recommendation.
  * Wider than best-sellers (90d) because co-purchase signal is sparser
  * per-product and we need more sales to build a stable ranking. A
@@ -348,7 +356,8 @@ export class PublicSiteRepository {
         | "price-asc"
         | "price-desc"
         | "name-asc"
-        | "best-selling";
+        | "best-selling"
+        | "rating";
       minPrice?: number;
       maxPrice?: number;
       vendorId?: string;
@@ -432,6 +441,10 @@ export class PublicSiteRepository {
 
     if (opts.sort === "best-selling") {
       return this.listBestSellingProducts(tenantId, where, opts, now);
+    }
+
+    if (opts.sort === "rating") {
+      return this.listRatingSortedProducts(tenantId, where, opts, now);
     }
 
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
@@ -788,6 +801,115 @@ export class PublicSiteRepository {
     const rowById = new Map(rows.map((r) => [r.id, r]));
     const orderedFull: PublicSiteProduct[] = [];
     for (const pid of rankedProductIds) {
+      const r = rowById.get(pid);
+      if (!r) continue;
+      orderedFull.push({
+        id: r.id,
+        name: r.name,
+        imsCode: r.imsCode,
+        mrp: r.mrp.toString(),
+        finalSp: r.finalSp.toString(),
+        categoryId: r.categoryId,
+        dateCreated: r.dateCreated,
+        category: r.category,
+        photoUrl: primaryPhotoFromList(r.variations),
+        ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
+      });
+    }
+
+    const total = orderedFull.length;
+    const start = (opts.page - 1) * opts.limit;
+    const page = orderedFull.slice(start, start + opts.limit);
+    return [page, total, facets];
+  }
+
+  /**
+   * Rating-sort path. Ranks reviewed products globally by avgRating (desc),
+   * ratingCount (desc tiebreaker), then productId asc so page order is
+   * stable run-to-run. Products with zero approved reviews are excluded —
+   * a "rating" sort that lists unrated SKUs first is a lie. Empty review
+   * corpus returns an empty page; the caller shouldn't fall back to
+   * "newest" behind the user's back.
+   */
+  private async listRatingSortedProducts(
+    tenantId: string,
+    where: Prisma.ProductWhereInput,
+    opts: { page: number; limit: number; includeFacets?: boolean },
+    now: Date,
+  ): Promise<[PublicSiteProduct[], number, PublicSiteFacets | null]> {
+    const grouped = await prisma.productReview.groupBy({
+      by: ["productId"],
+      where: {
+        tenantId,
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    if (grouped.length === 0) {
+      const facets = opts.includeFacets
+        ? await this.computeFacets(tenantId, where)
+        : null;
+      return [[], 0, facets];
+    }
+
+    const ranked = grouped
+      .map((g) => ({
+        productId: g.productId,
+        avg: g._avg.rating ?? 0,
+        count: g._count.rating ?? 0,
+      }))
+      .filter((r) => r.count > 0)
+      .sort(
+        (a, b) =>
+          b.avg - a.avg ||
+          b.count - a.count ||
+          a.productId.localeCompare(b.productId),
+      )
+      .slice(0, RATING_SORT_CAP)
+      .map((r) => r.productId);
+
+    const restrictedWhere: Prisma.ProductWhereInput = {
+      ...where,
+      id: { in: ranked },
+    };
+
+    const [rows, facets] = await Promise.all([
+      prisma.product.findMany({
+        where: restrictedWhere,
+        select: {
+          id: true,
+          name: true,
+          imsCode: true,
+          mrp: true,
+          finalSp: true,
+          categoryId: true,
+          dateCreated: true,
+          category: { select: { id: true, name: true } },
+          ...LIST_VARIATION_SELECT,
+          discounts: {
+            where: activeDiscountWhere(now),
+            select: { id: true },
+            take: 1,
+          },
+        },
+      }),
+      opts.includeFacets
+        ? this.computeFacets(tenantId, where)
+        : Promise.resolve(null),
+    ]);
+
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    const orderedFull: PublicSiteProduct[] = [];
+    for (const pid of ranked) {
       const r = rowById.get(pid);
       if (!r) continue;
       orderedFull.push({
