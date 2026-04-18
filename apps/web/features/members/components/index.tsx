@@ -463,6 +463,8 @@ export function MembersPage() {
         // Selection props
         selectedMembers={selectedMemberIds}
         onSelectionChange={setSelectedMemberIds}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
       />
 
       {/* Pagination */}

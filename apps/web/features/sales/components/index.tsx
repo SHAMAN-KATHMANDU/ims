@@ -498,6 +498,8 @@ export function SalesPage() {
         itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}
         selectedSales={selectedSaleIds}
         onSelectionChange={setSelectedSaleIds}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
       />
 
       {/* Pagination */}
