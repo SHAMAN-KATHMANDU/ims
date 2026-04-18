@@ -317,13 +317,16 @@ export function ProductForm({
       </div>
 
       {form.errors._form && (
-        <p className="text-sm text-destructive mt-4">{form.errors._form}</p>
+        <p role="alert" className="text-sm text-destructive mt-4">
+          {form.errors._form}
+        </p>
       )}
       <div className="flex gap-2 justify-between mt-6 border-t pt-4">
         <div className="flex gap-2">
           {canGoPrev && (
             <Button type="button" variant="outline" onClick={handlePrev}>
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              <ChevronLeft className="h-4 w-4 mr-1" aria-hidden="true" />{" "}
+              Previous
             </Button>
           )}
         </div>
@@ -333,7 +336,7 @@ export function ProductForm({
           </Button>
           {canGoNext ? (
             <Button type="button" onClick={handleNext}>
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+              Next <ChevronRight className="h-4 w-4 ml-1" aria-hidden="true" />
             </Button>
           ) : (
             <Button type="submit" disabled={form.isLoading}>
@@ -369,7 +372,7 @@ export function ProductForm({
             className="gap-2"
             disabled={addDisabled}
           >
-            <Plus className="h-4 w-4" /> Add Product
+            <Plus className="h-4 w-4" aria-hidden="true" /> Add Product
           </Button>
         </DialogTrigger>
       )}
