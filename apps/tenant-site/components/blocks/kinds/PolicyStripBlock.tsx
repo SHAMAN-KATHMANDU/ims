@@ -19,6 +19,7 @@ const ICON_GLYPH: Record<string, string> = {
 };
 
 export function PolicyStripBlock({
+  node,
   props,
 }: BlockComponentProps<PolicyStripProps>) {
   const items = props.items ?? [];
@@ -27,6 +28,7 @@ export function PolicyStripBlock({
   const layout = props.layout ?? "inline";
   const columns = props.columns ?? Math.min(4, Math.max(2, items.length));
   const dark = props.dark ?? false;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
 
   const bg = dark ? "var(--color-text)" : "var(--color-surface)";
   const fg = dark ? "var(--color-background)" : "var(--color-text)";
@@ -40,7 +42,7 @@ export function PolicyStripBlock({
       style={{
         background: bg,
         color: fg,
-        padding: "var(--section-padding) 0",
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
       }}
     >
       <div className="container">

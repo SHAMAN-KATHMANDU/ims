@@ -130,13 +130,19 @@ const ASPECT_MAP = {
 } as const;
 
 export function CollectionCardsBlock({
+  node,
   props,
 }: BlockComponentProps<CollectionCardsProps>) {
   const aspect = ASPECT_MAP[props.aspectRatio ?? "portrait"];
   const overlay = props.overlay !== false;
   const columns = Math.max(1, Math.min(props.cards.length, 4));
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {(props.eyebrow || props.heading) && (
           <div style={{ marginBottom: "2rem", textAlign: "center" }}>
@@ -388,10 +394,15 @@ export function ContactBlock({
 
 // ---------- FAQ (new) -------------------------------------------------------
 
-export function FaqBlock({ props }: BlockComponentProps<FaqProps>) {
+export function FaqBlock({ node, props }: BlockComponentProps<FaqProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container" style={{ maxWidth: 820 }}>
         {props.heading && (
           <h2
@@ -469,13 +480,15 @@ export function FaqBlock({ props }: BlockComponentProps<FaqProps>) {
 // ---------- Testimonials (new) ----------------------------------------------
 
 export function TestimonialsBlock({
+  node,
   props,
 }: BlockComponentProps<TestimonialsProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
     <section
       style={{
-        padding: "var(--section-padding) 0",
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
         background: "var(--color-surface)",
       }}
     >
