@@ -143,7 +143,10 @@ export function TransferDetail({
                     {transfer.fromLocation.type}
                   </Badge>
                 </div>
-                <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                <ArrowRight
+                  className="h-6 w-6 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">To</p>
                   <p className="font-semibold">{transfer.toLocation.name}</p>
@@ -233,7 +236,10 @@ export function TransferDetail({
                 <h4 className="font-semibold">History</h4>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-muted-foreground" />
+                    <User
+                      className="h-4 w-4 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                     <span className="text-muted-foreground">Created by</span>
                     <span className="font-medium">
                       {transfer.createdBy.username}
@@ -249,7 +255,10 @@ export function TransferDetail({
 
                   {transfer.approvedBy && transfer.approvedAt && (
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle
+                        className="h-4 w-4 text-green-500"
+                        aria-hidden="true"
+                      />
                       <span className="text-muted-foreground">Approved by</span>
                       <span className="font-medium">
                         {transfer.approvedBy.username}
@@ -266,7 +275,10 @@ export function TransferDetail({
 
                   {transfer.completedAt && (
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle
+                        className="h-4 w-4 text-green-500"
+                        aria-hidden="true"
+                      />
                       <span className="text-muted-foreground">
                         Completed on
                       </span>
@@ -290,7 +302,10 @@ export function TransferDetail({
                           key={log.id}
                           className="flex items-start gap-2 text-xs border-l-2 border-muted pl-3 py-1"
                         >
-                          <Clock className="h-3 w-3 mt-0.5 text-muted-foreground" />
+                          <Clock
+                            className="h-3 w-3 mt-0.5 text-muted-foreground"
+                            aria-hidden="true"
+                          />
                           <div>
                             <span className="font-medium">{log.action}</span>
                             <span className="text-muted-foreground"> by </span>
@@ -320,7 +335,10 @@ export function TransferDetail({
                             disabled={actionLoading || fulfilling}
                             className="gap-2"
                           >
-                            <PackageCheck className="h-4 w-4" />
+                            <PackageCheck
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
                             {fulfilling
                               ? "Moving stock…"
                               : "Approve & move stock"}
@@ -332,7 +350,7 @@ export function TransferDetail({
                           variant="secondary"
                           className="gap-2"
                         >
-                          <CheckCircle className="h-4 w-4" />
+                          <CheckCircle className="h-4 w-4" aria-hidden="true" />
                           Approve only
                         </Button>
                       </>
@@ -344,7 +362,7 @@ export function TransferDetail({
                         variant="secondary"
                         className="gap-2"
                       >
-                        <Truck className="h-4 w-4" />
+                        <Truck className="h-4 w-4" aria-hidden="true" />
                         Start Transit
                       </Button>
                     )}
@@ -365,7 +383,7 @@ export function TransferDetail({
                         variant="destructive"
                         className="gap-2"
                       >
-                        <XCircle className="h-4 w-4" />
+                        <XCircle className="h-4 w-4" aria-hidden="true" />
                         Cancel Transfer
                       </Button>
                     )}
