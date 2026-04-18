@@ -752,6 +752,34 @@ describe("PublicSiteRepository.listProducts best-selling sort", () => {
     expect(rows.map((r) => r.id)).toEqual(["p3"]);
   });
 
+  it("drops ranked products that hydration filters out (deleted / cross-tenant) without shifting ranks", async () => {
+    // p1 > p2 > p3 by sale count, but p2 is soft-deleted so product.findMany
+    // doesn't return it. Output should keep [p1, p3] in rank order, no hole.
+    prismaMock.saleItem.groupBy.mockResolvedValueOnce([
+      { variationId: "v1", _count: { _all: 10 } },
+      { variationId: "v2", _count: { _all: 5 } },
+      { variationId: "v3", _count: { _all: 1 } },
+    ]);
+    prismaMock.productVariation.findMany.mockResolvedValueOnce([
+      { id: "v1", productId: "p1" },
+      { id: "v2", productId: "p2" },
+      { id: "v3", productId: "p3" },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("p1"),
+      productRow("p3"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const [rows] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      sort: "best-selling",
+    });
+
+    expect(rows.map((r) => r.id)).toEqual(["p1", "p3"]);
+  });
+
   it("intersects best-seller rank with the existing filter WHERE", async () => {
     prismaMock.saleItem.groupBy.mockResolvedValueOnce([
       { variationId: "v1", _count: { _all: 3 } },
@@ -886,6 +914,30 @@ describe("PublicSiteRepository.listProducts rating sort", () => {
     expect(whereArg.tenantId).toBe("t1");
     expect(whereArg.id).toEqual({ in: ["p1"] });
   });
+
+  it("paginates the ranked list in memory (page 2 slices correctly)", async () => {
+    prismaMock.productReview.groupBy.mockResolvedValueOnce([
+      { productId: "p1", _avg: { rating: 5 }, _count: { rating: 10 } },
+      { productId: "p2", _avg: { rating: 4 }, _count: { rating: 10 } },
+      { productId: "p3", _avg: { rating: 3 }, _count: { rating: 10 } },
+    ]);
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("p1"),
+      productRow("p2"),
+      productRow("p3"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const [rows, total] = await repo.listProducts("t1", {
+      page: 2,
+      limit: 2,
+      sort: "rating",
+    });
+
+    expect(total).toBe(3);
+    // Page 1 would be [p1, p2]; page 2 is the tail [p3].
+    expect(rows.map((r) => r.id)).toEqual(["p3"]);
+  });
 });
 
 describe("PublicSiteRepository.listFrequentlyBoughtWith", () => {
@@ -999,5 +1051,68 @@ describe("PublicSiteRepository.listFrequentlyBoughtWith", () => {
     const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
 
     expect(result).toHaveLength(FBT_MAX_RESULTS);
+  });
+
+  it("preserves ranking order even when product.findMany returns rows in a different order", async () => {
+    // Rank: pA (3 distinct sales), pB (2), pC (1)
+    prismaMock.saleItem.findMany
+      .mockResolvedValueOnce([
+        { saleId: "s1" },
+        { saleId: "s2" },
+        { saleId: "s3" },
+      ])
+      .mockResolvedValueOnce([
+        { saleId: "s1", variationId: "vA" },
+        { saleId: "s2", variationId: "vA" },
+        { saleId: "s3", variationId: "vA" },
+        { saleId: "s1", variationId: "vB" },
+        { saleId: "s2", variationId: "vB" },
+        { saleId: "s3", variationId: "vC" },
+      ]);
+    prismaMock.productVariation.findMany.mockResolvedValueOnce([
+      { id: "vA", productId: "pA" },
+      { id: "vB", productId: "pB" },
+      { id: "vC", productId: "pC" },
+    ]);
+    // DB returns rows in arbitrary order (here: reversed from the rank).
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("pC"),
+      productRow("pB"),
+      productRow("pA"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
+
+    expect(result.map((r) => r.id)).toEqual(["pA", "pB", "pC"]);
+  });
+
+  it("drops ranked products that hydration filters out (deleted / cross-tenant) without shifting ranks", async () => {
+    prismaMock.saleItem.findMany
+      .mockResolvedValueOnce([{ saleId: "s1" }, { saleId: "s2" }])
+      .mockResolvedValueOnce([
+        { saleId: "s1", variationId: "vA" },
+        { saleId: "s2", variationId: "vA" },
+        { saleId: "s1", variationId: "vB" },
+        { saleId: "s2", variationId: "vB" },
+        { saleId: "s1", variationId: "vC" },
+      ]);
+    prismaMock.productVariation.findMany.mockResolvedValueOnce([
+      { id: "vA", productId: "pA" },
+      { id: "vB", productId: "pDeleted" },
+      { id: "vC", productId: "pC" },
+    ]);
+    // pDeleted is in the ranked list but absent here — soft-deleted or
+    // wrong-tenant — the `where: { deletedAt: null, tenantId }` filter
+    // already dropped it. Should not leave a hole in the output.
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      productRow("pA"),
+      productRow("pC"),
+    ]);
+
+    const repo = new PublicSiteRepository();
+    const result = await repo.listFrequentlyBoughtWith("t1", "pTarget");
+
+    expect(result.map((r) => r.id)).toEqual(["pA", "pC"]);
   });
 });

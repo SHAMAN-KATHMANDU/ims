@@ -317,6 +317,15 @@ function darkHome(): BlockNode[] {
       body: "Every piece takes a position. We're not interested in the middle.",
       imageSide: "left",
     }),
+    block("policy-strip", {
+      layout: "inline",
+      dark: true,
+      items: [
+        { label: "Free shipping", detail: "Over ₹5,000", icon: "shipping" },
+        { label: "Secure checkout", detail: "256-bit SSL", icon: "secure" },
+        { label: "30-day returns", detail: "No questions", icon: "returns" },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Get notified",
@@ -429,6 +438,24 @@ function coastalHome(): BlockNode[] {
       heading: "Favorites",
       source: "featured",
       limit: 5,
+    }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹3,000",
+          icon: "shipping",
+        },
+        { label: "Easy returns", detail: "30-day window", icon: "returns" },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
     }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
@@ -579,6 +606,19 @@ function artisanHome(): BlockNode[] {
       columns: 4,
       cardVariant: "bordered",
     }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Handmade", detail: "Signed by the maker", icon: "warranty" },
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹5,000",
+          icon: "shipping",
+        },
+        { label: "Gift-ready", detail: "Complimentary wrap", icon: "gift" },
+        { label: "Lifetime care", detail: "Repairs at cost", icon: "support" },
+      ],
+    }),
     block("testimonials", {
       heading: "From our collectors",
       items: [
@@ -641,6 +681,18 @@ function galleryHome(): BlockNode[] {
       title: "A small, independent space",
       body: "We show work by artists we know personally. The roster is small on purpose.",
       imageSide: "right",
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Insured shipping", detail: "Worldwide", icon: "shipping" },
+        {
+          label: "Certificate",
+          detail: "Provenance included",
+          icon: "warranty",
+        },
+        { label: "Private viewing", detail: "By appointment", icon: "support" },
+      ],
     }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
