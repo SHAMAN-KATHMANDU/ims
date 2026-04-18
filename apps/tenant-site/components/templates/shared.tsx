@@ -726,7 +726,8 @@ export type HeroVariant =
   | "standard"
   | "luxury"
   | "boutique"
-  | "editorial";
+  | "editorial"
+  | "video";
 
 export function Hero({
   site,
@@ -738,6 +739,8 @@ export function Hero({
   subtitle,
   imageUrl,
   heroLayout = "centered",
+  videoUrl,
+  videoPoster,
 }: {
   site: PublicSite;
   host: string;
@@ -748,9 +751,94 @@ export function Hero({
   subtitle?: string;
   imageUrl?: string;
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
+  videoUrl?: string;
+  videoPoster?: string;
 }) {
   const name = title ?? brandingDisplayName(site.branding, host);
   const tagline = subtitle ?? brandingTagline(site.branding);
+
+  if (variant === "video" && videoUrl) {
+    return (
+      <section
+        className="tpl-hero tpl-hero-video"
+        style={{
+          position: "relative",
+          minHeight: "min(80vh, 720px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          color: "#fff",
+          textAlign: "center",
+        }}
+      >
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={videoPoster}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        >
+          <source src={videoUrl} />
+        </video>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55))",
+          }}
+        />
+        <div
+          className="container"
+          style={{
+            position: "relative",
+            padding: "6rem 1rem",
+            maxWidth: 860,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "clamp(2.75rem, 6vw, 5rem)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.05,
+              marginBottom: "1.25rem",
+            }}
+          >
+            {name}
+          </h1>
+          {tagline && (
+            <p
+              style={{
+                fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
+                color: "rgba(255,255,255,0.88)",
+                maxWidth: 620,
+                margin: "0 auto 2rem",
+                lineHeight: 1.55,
+              }}
+            >
+              {tagline}
+            </p>
+          )}
+          <Link href={ctaHref} className="btn">
+            {ctaLabel}
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   // Bigger, more editorial padding across the board — matches the Vercel
   // Commerce / Shopify Dawn scale where the hero actually dominates the
@@ -1971,6 +2059,10 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
               src={product.photoUrl}
               alt=""
               aria-hidden="true"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
               style={{
                 width: "100%",
                 height: "100%",

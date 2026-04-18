@@ -39,6 +39,8 @@ export function HeroBlock({
       subtitle={props.subtitle}
       imageUrl={props.imageUrl}
       heroLayout={props.heroLayout}
+      videoUrl={props.videoUrl}
+      videoPoster={props.videoPoster}
     />
   );
 }

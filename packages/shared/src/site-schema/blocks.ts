@@ -98,13 +98,23 @@ export interface MarkdownBodyProps {
 // Commerce -------------------------------------------------------------------
 
 export interface HeroProps {
-  variant: "minimal" | "standard" | "luxury" | "boutique" | "editorial";
+  variant:
+    | "minimal"
+    | "standard"
+    | "luxury"
+    | "boutique"
+    | "editorial"
+    | "video";
   title?: string;
   subtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
   imageUrl?: string;
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
+  /** video variant only: mp4/webm source. Required when variant = "video". */
+  videoUrl?: string;
+  /** video variant only: poster image shown before playback. */
+  videoPoster?: string;
 }
 
 export interface ProductGridProps {
@@ -647,6 +657,7 @@ export const BlockPropsSchemas = {
         "luxury",
         "boutique",
         "editorial",
+        "video",
       ]),
       title: optStr(200),
       subtitle: optStr(400),
@@ -656,6 +667,8 @@ export const BlockPropsSchemas = {
       heroLayout: z
         .enum(["centered", "split-left", "split-right", "overlay"])
         .optional(),
+      videoUrl: optStr(2000),
+      videoPoster: optStr(1000),
     })
     .strict(),
   "product-grid": z
