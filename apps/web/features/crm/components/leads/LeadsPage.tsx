@@ -460,8 +460,24 @@ export function LeadsPage() {
             </div>
           ))
         ) : leads.length === 0 ? (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No leads found
+          <div className="rounded-md border py-8 px-4 text-center">
+            {leadsEmptyNoResults ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No leads match your search or filters.
+                </p>
+                <Button variant="outline" size="sm" onClick={clearLeadsFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1 text-muted-foreground">
+                <p className="font-medium text-foreground">No leads yet</p>
+                <p className="text-sm">
+                  Add a lead to start tracking prospects.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           leads.map((lead) => (

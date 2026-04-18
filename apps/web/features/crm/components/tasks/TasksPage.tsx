@@ -144,6 +144,22 @@ export function TasksPage() {
   const updateMutation = useUpdateTask();
 
   const tasks = data?.data ?? [];
+  const tasksEmptyNoResults =
+    !isLoading &&
+    tasks.length === 0 &&
+    (debouncedSearch.length > 0 ||
+      taskTab !== "all" ||
+      dueToday ||
+      orphanedOnly ||
+      assignedToFilter !== "all");
+  const clearTasksFilters = () => {
+    setSearch("");
+    setTaskTab("all");
+    setDueToday(false);
+    setOrphanedOnly(false);
+    setAssignedToFilter("all");
+    setPage(DEFAULT_PAGE);
+  };
   const pagination = data?.pagination
     ? ({
         currentPage: data.pagination.currentPage,
@@ -353,8 +369,24 @@ export function TasksPage() {
             </div>
           ))
         ) : tasks.length === 0 ? (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No tasks found
+          <div className="rounded-md border py-8 px-4 text-center">
+            {tasksEmptyNoResults ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No tasks match your search or filters.
+                </p>
+                <Button variant="outline" size="sm" onClick={clearTasksFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1 text-muted-foreground">
+                <p className="font-medium text-foreground">No tasks yet</p>
+                <p className="text-sm">
+                  Create a task to start tracking follow-ups.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           tasks.map((task) => (
@@ -542,9 +574,31 @@ export function TasksPage() {
               <TableRow>
                 <TableCell
                   colSpan={dealsEnabled ? 8 : 7}
-                  className="text-center py-8 text-muted-foreground"
+                  className="text-center py-8 px-4"
                 >
-                  No tasks found
+                  {tasksEmptyNoResults ? (
+                    <div className="space-y-3">
+                      <p className="text-muted-foreground text-sm">
+                        No tasks match your search or filters.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearTasksFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 text-muted-foreground">
+                      <p className="font-medium text-foreground">
+                        No tasks yet
+                      </p>
+                      <p className="text-sm">
+                        Create a task to start tracking follow-ups.
+                      </p>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
