@@ -330,7 +330,7 @@ export function EditTenantPage() {
             href={`${basePath}/platform/tenants`}
             className="inline-flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to tenants
           </Link>
         </Button>
@@ -348,7 +348,7 @@ export function EditTenantPage() {
           href={`${basePath}/platform/tenants`}
           className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to tenants
         </Link>
       </Button>
@@ -388,12 +388,12 @@ export function EditTenantPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>New plan</Label>
+            <Label htmlFor="new-plan">New plan</Label>
             <Select
               value={selectedPlan ?? ""}
               onValueChange={(v) => setSelectedPlan(v as PlanTier)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="new-plan" aria-label="New plan">
                 <SelectValue placeholder="Select plan" />
               </SelectTrigger>
               <SelectContent>
@@ -539,7 +539,7 @@ export function EditTenantPage() {
             variant="outline"
             onClick={() => setCreateUserOpen(true)}
           >
-            <UserPlus className="mr-1 h-4 w-4" />
+            <UserPlus className="mr-1 h-4 w-4" aria-hidden="true" />
             Add user
           </Button>
         </CardContent>
@@ -578,7 +578,7 @@ export function EditTenantPage() {
                       })
                     }
                   >
-                    <KeyRound className="mr-1 h-4 w-4" />
+                    <KeyRound className="mr-1 h-4 w-4" aria-hidden="true" />
                     Reset password
                   </Button>
                 </div>

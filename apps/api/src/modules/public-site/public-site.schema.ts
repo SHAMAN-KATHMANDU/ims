@@ -55,6 +55,46 @@ const IncludeFacetsSchema = z
     return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
   });
 
+/**
+ * Paginated public reviews list — only APPROVED rows are ever returned,
+ * regardless of what the caller passes. Rating sort lives in the service
+ * layer (createdAt desc is the default).
+ */
+export const ListReviewsPublicQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type ListReviewsPublicQuery = z.infer<
+  typeof ListReviewsPublicQuerySchema
+>;
+
+/**
+ * Public review-submission payload. Rating is 1–5; body is optional but
+ * capped so a single post can't flood the moderation queue. Author fields
+ * are optional because tenants may want fully anonymous reviews.
+ */
+const emptyStringToUndefined = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+export const SubmitReviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  body: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().max(2000).optional(),
+  ),
+  authorName: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().max(120).optional(),
+  ),
+  authorEmail: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().email().max(255).optional(),
+  ),
+});
+
+export type SubmitReviewInput = z.infer<typeof SubmitReviewSchema>;
+
 export const ListProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(24),

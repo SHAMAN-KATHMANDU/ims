@@ -999,6 +999,97 @@ export class PublicSiteRepository {
     }
     return ordered;
   }
+
+  /**
+   * Public product reviews — APPROVED + not-deleted only. The repository is
+   * the only layer that talks to `productReview`, so the public surface
+   * cannot accidentally leak PENDING or REJECTED rows.
+   */
+  async listApprovedReviews(
+    tenantId: string,
+    productId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    rows: {
+      id: string;
+      rating: number;
+      body: string | null;
+      authorName: string | null;
+      createdAt: Date;
+    }[];
+    total: number;
+  }> {
+    const where = {
+      tenantId,
+      productId,
+      status: "APPROVED" as const,
+      deletedAt: null,
+    };
+    const [rows, total] = await Promise.all([
+      prisma.productReview.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          rating: true,
+          body: true,
+          authorName: true,
+          createdAt: true,
+        },
+      }),
+      prisma.productReview.count({ where }),
+    ]);
+    return { rows, total };
+  }
+
+  /**
+   * Verify that a product exists (non-deleted, in this tenant) before the
+   * service accepts a public review submission. Returns just the id so the
+   * submit path can avoid an extra hydration round-trip.
+   */
+  findProductIdForTenant(
+    tenantId: string,
+    productId: string,
+  ): Promise<{ id: string } | null> {
+    return prisma.product.findFirst({
+      where: { id: productId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  createPendingReview(
+    tenantId: string,
+    input: {
+      productId: string;
+      rating: number;
+      body: string | null;
+      authorName: string | null;
+      authorEmail: string | null;
+      submittedIp: string | null;
+    },
+  ): Promise<{ id: string; status: "PENDING" | "APPROVED" | "REJECTED" }> {
+    return prisma.productReview
+      .create({
+        data: {
+          tenantId,
+          productId: input.productId,
+          rating: input.rating,
+          body: input.body,
+          authorName: input.authorName,
+          authorEmail: input.authorEmail,
+          submittedIp: input.submittedIp,
+          status: "PENDING",
+        },
+        select: { id: true, status: true },
+      })
+      .then((r) => ({
+        id: r.id,
+        status: r.status as "PENDING" | "APPROVED" | "REJECTED",
+      }));
+  }
 }
 
 export default new PublicSiteRepository();

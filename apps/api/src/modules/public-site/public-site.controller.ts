@@ -9,7 +9,11 @@ import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import service from "./public-site.service";
-import { ListProductsQuerySchema } from "./public-site.schema";
+import {
+  ListProductsQuerySchema,
+  ListReviewsPublicQuerySchema,
+  SubmitReviewSchema,
+} from "./public-site.schema";
 
 function getTenantId(req: Request): string {
   const tenantId = req.tenant?.id;
@@ -112,6 +116,49 @@ class PublicSiteController {
       return (
         handleAppError(res, error) ??
         sendControllerError(req, res, error, "List public offers error")
+      );
+    }
+  };
+
+  listProductReviews = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const id = getParam(req, "id");
+      const query = ListReviewsPublicQuerySchema.parse(req.query);
+      const result = await service.listProductReviews(tenantId, id, query);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "List product reviews error")
+      );
+    }
+  };
+
+  submitProductReview = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const id = getParam(req, "id");
+      const body = SubmitReviewSchema.parse(req.body);
+      // req.ip honors trust-proxy; we truncate to 64 chars to match the
+      // submitted_ip column and avoid accidental IPv6 overflow.
+      const ip = (req.ip ?? "").slice(0, 64) || null;
+      const review = await service.submitProductReview(tenantId, id, body, ip);
+      return res.status(201).json({ message: "Review submitted", review });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Submit product review error")
       );
     }
   };

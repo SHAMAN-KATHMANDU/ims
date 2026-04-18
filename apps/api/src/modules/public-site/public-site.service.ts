@@ -7,7 +7,11 @@
 
 import { createError } from "@/middlewares/errorHandler";
 import defaultRepo, { type PublicSiteConfig } from "./public-site.repository";
-import type { ListProductsQuery } from "./public-site.schema";
+import type {
+  ListProductsQuery,
+  ListReviewsPublicQuery,
+  SubmitReviewInput,
+} from "./public-site.schema";
 import defaultCollectionsRepo from "@/modules/collections/collections.repository";
 
 type Repo = typeof defaultRepo;
@@ -155,6 +159,63 @@ export class PublicSiteService {
       subtitle: collection.subtitle,
       products,
     };
+  }
+
+  /**
+   * Public product reviews — APPROVED only. Does not 404 when the product
+   * is missing or unpublished; returns an empty list so the PDP can render
+   * even if the product was just soft-deleted mid-page-load. Rating sort
+   * is createdAt desc so newest reviews surface first.
+   */
+  async listProductReviews(
+    tenantId: string,
+    productId: string,
+    query: ListReviewsPublicQuery,
+  ): Promise<{
+    reviews: {
+      id: string;
+      rating: number;
+      body: string | null;
+      authorName: string | null;
+      createdAt: Date;
+    }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    await this.ensurePublished(tenantId);
+    const { rows, total } = await this.repo.listApprovedReviews(
+      tenantId,
+      productId,
+      query.page,
+      query.limit,
+    );
+    return { reviews: rows, total, page: query.page, limit: query.limit };
+  }
+
+  /**
+   * Accept a public review submission. Status is hard-coded to PENDING —
+   * admins flip it to APPROVED/REJECTED via the admin /reviews endpoints.
+   * The submitter's IP is captured for abuse review; it never leaves the
+   * moderation surface.
+   */
+  async submitProductReview(
+    tenantId: string,
+    productId: string,
+    input: SubmitReviewInput,
+    submittedIp: string | null,
+  ): Promise<{ id: string; status: "PENDING" | "APPROVED" | "REJECTED" }> {
+    await this.ensurePublished(tenantId);
+    const product = await this.repo.findProductIdForTenant(tenantId, productId);
+    if (!product) throw createError("Product not found", 404);
+    return this.repo.createPendingReview(tenantId, {
+      productId,
+      rating: input.rating,
+      body: input.body ?? null,
+      authorName: input.authorName ?? null,
+      authorEmail: input.authorEmail ?? null,
+      submittedIp,
+    });
   }
 }
 
