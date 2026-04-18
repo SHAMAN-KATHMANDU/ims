@@ -1120,7 +1120,10 @@ export function ProductPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total products
             </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight">
@@ -1140,7 +1143,10 @@ export function ProductPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Stock at minimum limit
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle
+              className="h-4 w-4 text-amber-500"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight">{lowStockCount}</p>
@@ -1163,7 +1169,7 @@ export function ProductPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download
                       {selectedProductIds.size > 0 && (
                         <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
@@ -1177,14 +1183,17 @@ export function ProductPage() {
                       onClick={() => handleExport("excel")}
                       disabled={isProductsLoading}
                     >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <FileSpreadsheet
+                        className="h-4 w-4 mr-2"
+                        aria-hidden="true"
+                      />
                       Download as Excel
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleExport("csv")}
                       disabled={isProductsLoading}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download as CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -1194,7 +1203,7 @@ export function ProductPage() {
                     {isMobile ? (
                       <Button variant="outline" asChild>
                         <Link href={`${basePath}/products/bulk-upload`}>
-                          <Upload className="h-4 w-4 mr-2" />
+                          <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                           Bulk Upload
                         </Link>
                       </Button>
@@ -1203,7 +1212,7 @@ export function ProductPage() {
                         variant="outline"
                         onClick={() => setBulkUploadDialog(true)}
                       >
-                        <Upload className="h-4 w-4 mr-2" />
+                        <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                         Bulk Upload
                       </Button>
                     )}
@@ -1212,7 +1221,7 @@ export function ProductPage() {
                 {isMobile ? (
                   atProductLimit ? (
                     <Button disabled className="gap-2">
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4" aria-hidden="true" />
                       Add Product
                     </Button>
                   ) : (
@@ -1296,7 +1305,10 @@ export function ProductPage() {
                 }}
               >
                 <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
-                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <ArrowUpDown
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1331,7 +1343,7 @@ export function ProductPage() {
                     size="sm"
                     className="h-9 gap-2 text-sm shrink-0"
                   >
-                    <Filter className="h-4 w-4" />
+                    <Filter className="h-4 w-4" aria-hidden="true" />
                     Filters
                   </Button>
                 </PopoverTrigger>
@@ -1437,7 +1449,7 @@ export function ProductPage() {
                   className="h-8 text-xs"
                   onClick={clearAllFilters}
                 >
-                  <X className="h-3.5 w-3.5 mr-2" />
+                  <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                   Clear filters
                 </Button>
               )}
@@ -1530,7 +1542,7 @@ export function ProductPage() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                         Download
                       </Button>
                     </DropdownMenuTrigger>
@@ -1539,14 +1551,17 @@ export function ProductPage() {
                         onClick={() => handleExport("excel")}
                         disabled={isProductsLoading}
                       >
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        <FileSpreadsheet
+                          className="h-4 w-4 mr-2"
+                          aria-hidden="true"
+                        />
                         Download as Excel
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => handleExport("csv")}
                         disabled={isProductsLoading}
                       >
-                        <FileText className="h-4 w-4 mr-2" />
+                        <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                         Download as CSV
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -1556,7 +1571,7 @@ export function ProductPage() {
                     size="sm"
                     onClick={() => setBulkDeleteOpen(true)}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                     Delete
                   </Button>
                 </>
@@ -1568,7 +1583,7 @@ export function ProductPage() {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
