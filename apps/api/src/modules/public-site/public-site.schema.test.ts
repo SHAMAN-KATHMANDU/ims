@@ -43,4 +43,47 @@ describe("ListProductsQuerySchema", () => {
     const result = ListProductsQuerySchema.parse({ search: "  chair " });
     expect(result.search).toBe("chair");
   });
+
+  describe("includeFacets", () => {
+    it("defaults to false when omitted", () => {
+      const result = ListProductsQuerySchema.parse({});
+      expect(result.includeFacets).toBe(false);
+    });
+
+    it('coerces "1" / "true" / "yes" (case-insensitive) to true', () => {
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "1" }).includeFacets,
+      ).toBe(true);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "true" }).includeFacets,
+      ).toBe(true);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "TRUE" }).includeFacets,
+      ).toBe(true);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "yes" }).includeFacets,
+      ).toBe(true);
+    });
+
+    it('coerces "0" / "false" / arbitrary strings to false', () => {
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "0" }).includeFacets,
+      ).toBe(false);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "false" }).includeFacets,
+      ).toBe(false);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: "nope" }).includeFacets,
+      ).toBe(false);
+    });
+
+    it("accepts raw booleans", () => {
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: true }).includeFacets,
+      ).toBe(true);
+      expect(
+        ListProductsQuerySchema.parse({ includeFacets: false }).includeFacets,
+      ).toBe(false);
+    });
+  });
 });

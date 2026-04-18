@@ -32,6 +32,21 @@ const AttributeFilterSchema = z
   .optional()
   .transform((v) => (v && Object.keys(v).length > 0 ? v : undefined));
 
+/**
+ * Opt-in flag for the (expensive) facet computation. Accepts "1"/"true"/"yes"
+ * as truthy so the tenant-site can set it from a simple query param. Default
+ * is false — facets cost three extra queries and only the products-index
+ * sidebar actually renders them.
+ */
+const IncludeFacetsSchema = z
+  .union([z.string(), z.boolean()])
+  .optional()
+  .transform((v) => {
+    if (typeof v === "boolean") return v;
+    if (typeof v !== "string") return false;
+    return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
+  });
+
 export const ListProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(24),
@@ -43,6 +58,7 @@ export const ListProductsQuerySchema = z.object({
   /** Brand / vendor filter. Products track brand via the vendor relation. */
   vendorId: z.string().uuid().optional(),
   attr: AttributeFilterSchema,
+  includeFacets: IncludeFacetsSchema,
 });
 
 export type ListProductsQuery = z.infer<typeof ListProductsQuerySchema>;

@@ -19,16 +19,21 @@ import sitesRepo from "@/modules/sites/sites.repository";
 
 export type PublicSiteConfig = SiteConfig & { template: SiteTemplate | null };
 
-/** Shape of a product in a list response — flat, renderer-friendly. */
+/**
+ * Shape of a product in a list response — flat, renderer-friendly.
+ *
+ * Intentionally omits `description` and `subCategory`: neither is rendered
+ * on any card/grid surface (PDP-only fields) and both were inflating list
+ * payloads by ~KB-per-row at scale. Consumers that need them fetch the
+ * `PublicSiteProductDetail` from `GET /public/products/:id`.
+ */
 export interface PublicSiteProduct {
   id: string;
   name: string;
-  description: string | null;
   imsCode: string;
   mrp: string;
   finalSp: string;
   categoryId: string;
-  subCategory: string | null;
   dateCreated: Date;
   category: { id: string; name: string } | null;
   /** Primary variation photo resolved server-side, or null if none. */
@@ -115,6 +120,10 @@ export interface PublicSiteFacets {
 }
 
 export interface PublicSiteProductDetail extends PublicSiteProduct {
+  /** PDP-only; intentionally not on the list row. */
+  description: string | null;
+  /** PDP-only; intentionally not on the list row. */
+  subCategory: string | null;
   length: Prisma.Decimal | null;
   breadth: Prisma.Decimal | null;
   height: Prisma.Decimal | null;
@@ -366,12 +375,10 @@ export class PublicSiteRepository {
         select: {
           id: true,
           name: true,
-          description: true,
           imsCode: true,
           mrp: true,
           finalSp: true,
           categoryId: true,
-          subCategory: true,
           dateCreated: true,
           category: { select: { id: true, name: true } },
           ...LIST_VARIATION_SELECT,
@@ -391,12 +398,10 @@ export class PublicSiteRepository {
     const products: PublicSiteProduct[] = rows.map((r) => ({
       id: r.id,
       name: r.name,
-      description: r.description,
       imsCode: r.imsCode,
       mrp: r.mrp.toString(),
       finalSp: r.finalSp.toString(),
       categoryId: r.categoryId,
-      subCategory: r.subCategory,
       dateCreated: r.dateCreated,
       category: r.category,
       photoUrl: primaryPhotoFromList(r.variations),
@@ -736,12 +741,10 @@ export class PublicSiteRepository {
       select: {
         id: true,
         name: true,
-        description: true,
         imsCode: true,
         mrp: true,
         finalSp: true,
         categoryId: true,
-        subCategory: true,
         dateCreated: true,
         category: { select: { id: true, name: true } },
         ...LIST_VARIATION_SELECT,
@@ -761,12 +764,10 @@ export class PublicSiteRepository {
       ordered.push({
         id: r.id,
         name: r.name,
-        description: r.description,
         imsCode: r.imsCode,
         mrp: r.mrp.toString(),
         finalSp: r.finalSp.toString(),
         categoryId: r.categoryId,
-        subCategory: r.subCategory,
         dateCreated: r.dateCreated,
         category: r.category,
         photoUrl: primaryPhotoFromList(r.variations),

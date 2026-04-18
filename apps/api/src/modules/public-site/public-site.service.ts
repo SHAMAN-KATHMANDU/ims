@@ -67,10 +67,10 @@ export class PublicSiteService {
     await this.ensurePublished(tenantId);
     const page = query.page ?? 1;
     const limit = query.limit ?? 24;
-    // The products-index route is the only caller that renders a
-    // facet sidebar, so it's also the only caller that pays for
-    // facet computation. Other consumers (home page grids, carousels,
-    // PDP related products, preview) get a null facets field.
+    // Facet computation adds three extra queries (brand groupBy, price
+    // aggregate, variation-attribute join) and is only rendered by the
+    // products-index sidebar. Every other consumer (home carousels, PDP
+    // related grid, previews) omits `?includeFacets=1` and gets `null`.
     const [products, total, facets] = await this.repo.listProducts(tenantId, {
       page,
       limit,
@@ -81,7 +81,7 @@ export class PublicSiteService {
       maxPrice: query.maxPrice,
       vendorId: query.vendorId,
       attr: query.attr,
-      includeFacets: true,
+      includeFacets: query.includeFacets === true,
     });
     return { products, total, page, limit, facets };
   }
