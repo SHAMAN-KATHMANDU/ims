@@ -184,7 +184,7 @@ export function BulkUploadDialog({
         {/* File Rejection Errors */}
         {fileRejections.length > 0 && fileRejections[0] && (
           <Alert variant="destructive" className="overflow-hidden">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
             <AlertTitle>File rejected</AlertTitle>
             <AlertDescription className="break-words min-w-0">
               {fileRejections[0].errors.map((error) => (
@@ -203,7 +203,7 @@ export function BulkUploadDialog({
         {/* Upload Error (e.g. wrong/missing columns) */}
         {bulkUploadMutation.isError && bulkUploadMutation.error ? (
           <Alert variant="destructive" className="overflow-hidden">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
             <AlertTitle>Upload failed</AlertTitle>
             <AlertDescription className="space-y-2 break-words overflow-auto max-h-48 min-w-0">
               <p>{(bulkUploadMutation.error as Error).message}</p>
@@ -267,7 +267,7 @@ export function BulkUploadDialog({
                     : "destructive"
                 }
               >
-                <AlertCircle className="h-4 w-4 shrink-0" />
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <AlertTitle>Upload Summary</AlertTitle>
                 <AlertDescription>
                   <div className="grid grid-cols-2 gap-2 mt-1 text-sm">
@@ -276,27 +276,39 @@ export function BulkUploadDialog({
                       {uploadResult.summary.total}
                     </div>
                     <div className="text-green-600">
-                      <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                      <CheckCircle2
+                        className="h-3 w-3 inline mr-1"
+                        aria-hidden="true"
+                      />
                       <span className="font-medium">Created:</span>{" "}
                       {uploadResult.summary.created}
                     </div>
                     {(uploadResult.summary.updated ?? 0) > 0 && (
                       <div className="text-blue-600">
-                        <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                        <CheckCircle2
+                          className="h-3 w-3 inline mr-1"
+                          aria-hidden="true"
+                        />
                         <span className="font-medium">Updated:</span>{" "}
                         {uploadResult.summary.updated}
                       </div>
                     )}
                     {uploadResult.summary.skipped > 0 && (
                       <div className="text-yellow-600">
-                        <AlertCircle className="h-3 w-3 inline mr-1" />
+                        <AlertCircle
+                          className="h-3 w-3 inline mr-1"
+                          aria-hidden="true"
+                        />
                         <span className="font-medium">Skipped:</span>{" "}
                         {uploadResult.summary.skipped}
                       </div>
                     )}
                     {uploadResult.summary.errors > 0 && (
                       <div className="text-red-600">
-                        <XCircle className="h-3 w-3 inline mr-1" />
+                        <XCircle
+                          className="h-3 w-3 inline mr-1"
+                          aria-hidden="true"
+                        />
                         <span className="font-medium">Errors:</span>{" "}
                         {uploadResult.summary.errors}
                       </div>
@@ -374,7 +386,10 @@ export function BulkUploadDialog({
                           key={idx}
                           className="flex min-w-0 items-center gap-1.5"
                         >
-                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <AlertCircle
+                            className="h-3 w-3 shrink-0"
+                            aria-hidden="true"
+                          />
                           <span className="min-w-0 truncate">
                             {(product as { imsCode?: string }).imsCode ??
                               product.name}{" "}
@@ -400,7 +415,10 @@ export function BulkUploadDialog({
                           key={idx}
                           className="flex min-w-0 items-center gap-1.5"
                         >
-                          <XCircle className="h-3 w-3 shrink-0" />
+                          <XCircle
+                            className="h-3 w-3 shrink-0"
+                            aria-hidden="true"
+                          />
                           <span className="min-w-0 truncate">
                             Row {error.row}
                             {error.field ? ` (${error.field})` : ""}:{" "}
