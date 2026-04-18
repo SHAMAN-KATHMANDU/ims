@@ -40,6 +40,8 @@ const prismaMock = vi.hoisted(() => ({
     groupBy: vi.fn(),
     aggregate: vi.fn(),
   },
+  // Tagged-template raw SQL; invoked by the refactored computeFacets.
+  $queryRaw: vi.fn(),
 }));
 vi.mock("@/config/prisma", () => ({ default: prismaMock }));
 
@@ -118,6 +120,11 @@ describe("deriveDiscount", () => {
 
 beforeEach(() => {
   Object.values(prismaMock).forEach((group) => {
+    // Top-level vi.fn stubs (e.g. $queryRaw) — reset directly.
+    if (typeof group === "function") {
+      (group as ReturnType<typeof vi.fn>).mockReset();
+      return;
+    }
     Object.values(group).forEach((fn) => {
       (fn as ReturnType<typeof vi.fn>).mockReset();
     });
@@ -129,6 +136,9 @@ beforeEach(() => {
     _avg: { rating: null },
     _count: { rating: 0 },
   });
+  // Default: empty attribute-tuple scope so tests that don't override
+  // $queryRaw explicitly behave as if nothing matched.
+  prismaMock.$queryRaw.mockResolvedValue([]);
 });
 
 describe("PublicSiteRepository.listProducts payload", () => {
@@ -194,14 +204,17 @@ describe("PublicSiteRepository.listProducts payload", () => {
   });
 
   it("computes facets when includeFacets=true", async () => {
-    prismaMock.product.findMany.mockResolvedValueOnce([]);
+    // product.findMany fires twice when facets are on: once for the page
+    // rows, once for the facet-scope productId lookup. Both empty here.
+    prismaMock.product.findMany
+      .mockResolvedValueOnce([]) // page rows
+      .mockResolvedValueOnce([]); // facet scope
     prismaMock.product.count.mockResolvedValueOnce(0);
     prismaMock.product.groupBy.mockResolvedValueOnce([]);
     prismaMock.product.aggregate.mockResolvedValueOnce({
       _min: { finalSp: null },
       _max: { finalSp: null },
     });
-    prismaMock.productVariationAttribute.findMany.mockResolvedValueOnce([]);
     prismaMock.attributeType.findMany.mockResolvedValueOnce([]);
     prismaMock.attributeValue.findMany.mockResolvedValueOnce([]);
 
@@ -220,66 +233,70 @@ describe("PublicSiteRepository.listProducts payload", () => {
     });
     expect(prismaMock.product.groupBy).toHaveBeenCalledTimes(1);
     expect(prismaMock.product.aggregate).toHaveBeenCalledTimes(1);
-    expect(prismaMock.productVariationAttribute.findMany).toHaveBeenCalledTimes(
-      1,
-    );
+    // Empty scope → raw attribute query is short-circuited, not issued.
+    expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    expect(
+      prismaMock.productVariationAttribute.findMany,
+    ).not.toHaveBeenCalled();
   });
 });
 
 describe("PublicSiteRepository.computeFacets query shape", () => {
-  it("selects only foreign keys + productId from productVariationAttribute (no nested meta)", async () => {
-    prismaMock.product.findMany.mockResolvedValueOnce([]);
+  it("does not touch productVariationAttribute.findMany any more — uses $queryRaw with DISTINCT", async () => {
+    prismaMock.product.findMany
+      .mockResolvedValueOnce([]) // page rows
+      .mockResolvedValueOnce([{ id: "p1" }, { id: "p2" }]); // scope
     prismaMock.product.count.mockResolvedValueOnce(0);
     prismaMock.product.groupBy.mockResolvedValueOnce([]);
     prismaMock.product.aggregate.mockResolvedValueOnce({
       _min: { finalSp: null },
       _max: { finalSp: null },
     });
-    prismaMock.productVariationAttribute.findMany.mockResolvedValueOnce([]);
+    prismaMock.$queryRaw.mockResolvedValueOnce([]);
     prismaMock.attributeType.findMany.mockResolvedValueOnce([]);
     prismaMock.attributeValue.findMany.mockResolvedValueOnce([]);
 
     const repo = new PublicSiteRepository();
     await repo.listProducts("t1", { page: 1, limit: 10, includeFacets: true });
 
-    const select =
-      prismaMock.productVariationAttribute.findMany.mock.calls[0]![0].select;
-    expect(select).toEqual({
-      attributeTypeId: true,
-      attributeValueId: true,
-      variation: { select: { productId: true } },
-    });
-    // Explicitly no longer pulling nested type/value meta on the big query.
-    expect(select).not.toHaveProperty("attributeType");
-    expect(select).not.toHaveProperty("attributeValue");
+    expect(
+      prismaMock.productVariationAttribute.findMany,
+    ).not.toHaveBeenCalled();
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
+    // The scope-fetching product.findMany query pulls only ids.
+    const scopeCall = prismaMock.product.findMany.mock.calls[1]![0];
+    expect(scopeCall.select).toEqual({ id: true });
+    expect(scopeCall.where.tenantId).toBe("t1");
   });
 
   it("bulk-fetches AttributeType/Value meta by distinct ids once per facet call", async () => {
-    prismaMock.product.findMany.mockResolvedValueOnce([]);
+    prismaMock.product.findMany
+      .mockResolvedValueOnce([]) // page rows
+      .mockResolvedValueOnce([{ id: "p1" }, { id: "p2" }]); // scope
     prismaMock.product.count.mockResolvedValueOnce(0);
     prismaMock.product.groupBy.mockResolvedValueOnce([]);
     prismaMock.product.aggregate.mockResolvedValueOnce({
       _min: { finalSp: null },
       _max: { finalSp: null },
     });
-    // Two products, same (typeId=color, valueId=red) tuple — the dedupe
-    // should hand attributeType/Value a single distinct id in the `in`
-    // clause for each, proving metadata isn't fetched per-row.
-    prismaMock.productVariationAttribute.findMany.mockResolvedValueOnce([
+    // Distinct (typeId, valueId, productId) tuples as Postgres would
+    // return after DISTINCT. (typeId=color,valueId=red) lands for both
+    // p1 and p2; attributeType/Value still see each id exactly once.
+    prismaMock.$queryRaw.mockResolvedValueOnce([
       {
         attributeTypeId: "type-color",
         attributeValueId: "val-red",
-        variation: { productId: "p1" },
+        productId: "p1",
       },
       {
         attributeTypeId: "type-color",
         attributeValueId: "val-red",
-        variation: { productId: "p2" },
+        productId: "p2",
       },
       {
         attributeTypeId: "type-size",
         attributeValueId: "val-m",
-        variation: { productId: "p1" },
+        productId: "p1",
       },
     ]);
     prismaMock.attributeType.findMany.mockResolvedValueOnce([
@@ -327,23 +344,25 @@ describe("PublicSiteRepository.computeFacets query shape", () => {
   });
 
   it("skips rows whose type or value metadata was deleted mid-flight", async () => {
-    prismaMock.product.findMany.mockResolvedValueOnce([]);
+    prismaMock.product.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "p1" }, { id: "p2" }]);
     prismaMock.product.count.mockResolvedValueOnce(0);
     prismaMock.product.groupBy.mockResolvedValueOnce([]);
     prismaMock.product.aggregate.mockResolvedValueOnce({
       _min: { finalSp: null },
       _max: { finalSp: null },
     });
-    prismaMock.productVariationAttribute.findMany.mockResolvedValueOnce([
+    prismaMock.$queryRaw.mockResolvedValueOnce([
       {
         attributeTypeId: "type-color",
         attributeValueId: "val-red",
-        variation: { productId: "p1" },
+        productId: "p1",
       },
       {
         attributeTypeId: "type-ghost",
         attributeValueId: "val-gone",
-        variation: { productId: "p2" },
+        productId: "p2",
       },
     ]);
     // type-ghost/val-gone weren't returned by the bulk meta fetch —
@@ -370,6 +389,30 @@ describe("PublicSiteRepository.computeFacets query shape", () => {
         values: [{ valueId: "val-red", value: "Red", count: 1 }],
       },
     ]);
+  });
+
+  it("skips the raw attribute query entirely when the scope has no products", async () => {
+    prismaMock.product.findMany
+      .mockResolvedValueOnce([]) // page
+      .mockResolvedValueOnce([]); // empty scope
+    prismaMock.product.count.mockResolvedValueOnce(0);
+    prismaMock.product.groupBy.mockResolvedValueOnce([]);
+    prismaMock.product.aggregate.mockResolvedValueOnce({
+      _min: { finalSp: null },
+      _max: { finalSp: null },
+    });
+    prismaMock.attributeType.findMany.mockResolvedValueOnce([]);
+    prismaMock.attributeValue.findMany.mockResolvedValueOnce([]);
+
+    const repo = new PublicSiteRepository();
+    const [, , facets] = await repo.listProducts("t1", {
+      page: 1,
+      limit: 10,
+      includeFacets: true,
+    });
+
+    expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    expect(facets!.attributes).toEqual([]);
   });
 });
 
