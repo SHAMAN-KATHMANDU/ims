@@ -273,7 +273,7 @@ export function BlogCategoryManager({
                           disabled={deleteMutation.isPending}
                           aria-label={`Delete ${c.name}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </TableCell>
                     </TableRow>
