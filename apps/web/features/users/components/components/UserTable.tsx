@@ -252,17 +252,20 @@ export function UserTable({
                   variant="ghost"
                   size="icon"
                   onClick={() => onEdit(user)}
-                  aria-label="Edit user"
+                  aria-label={`Edit ${user.username}`}
                 >
-                  <Edit2 className="h-4 w-4" />
+                  <Edit2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => onDelete(user)}
-                  aria-label="Delete user"
+                  aria-label={`Delete ${user.username}`}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2
+                    className="h-4 w-4 text-destructive"
+                    aria-hidden="true"
+                  />
                 </Button>
               </TableCell>
             </TableRow>
