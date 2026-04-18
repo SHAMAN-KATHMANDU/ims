@@ -11,6 +11,7 @@
 import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
+import { StarRating } from "@/components/blocks/kinds/StarRating";
 
 function formatPrice(value: string | number): string {
   return `₹${Number(value).toLocaleString("en-IN")}`;
@@ -323,6 +324,35 @@ export function ProductCard({
             {product.name}
           </Link>
         </h3>
+        {product.avgRating != null &&
+          product.ratingCount != null &&
+          product.ratingCount > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                marginTop: "0.15rem",
+              }}
+            >
+              <StarRating value={product.avgRating} size="sm" hideLabel />
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-muted)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+                aria-label={`Rated ${product.avgRating.toFixed(
+                  1,
+                )} out of 5 from ${product.ratingCount} ${
+                  product.ratingCount === 1 ? "review" : "reviews"
+                }`}
+              >
+                {product.avgRating.toFixed(1)}{" "}
+                <span aria-hidden="true">({product.ratingCount})</span>
+              </span>
+            </div>
+          )}
         {showPrice !== false && (
           <div
             style={{
