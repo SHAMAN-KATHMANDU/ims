@@ -54,10 +54,16 @@ export function TagCombobox({
           <span className="truncate">
             {selectedTag ? selectedTag.name : placeholder}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown
+            className="ml-2 h-4 w-4 shrink-0 opacity-50"
+            aria-hidden="true"
+          />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+      >
         <Command>
           <CommandInput placeholder="Search tags..." />
           <CommandList>
@@ -75,6 +81,7 @@ export function TagCombobox({
                     "mr-2 h-4 w-4",
                     !value ? "opacity-100" : "opacity-0",
                   )}
+                  aria-hidden="true"
                 />
                 All tags
               </CommandItem>
@@ -92,6 +99,7 @@ export function TagCombobox({
                       "mr-2 h-4 w-4",
                       value === tag.id ? "opacity-100" : "opacity-0",
                     )}
+                    aria-hidden="true"
                   />
                   {tag.name}
                 </CommandItem>
