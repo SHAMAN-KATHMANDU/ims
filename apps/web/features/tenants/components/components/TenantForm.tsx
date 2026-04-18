@@ -176,9 +176,7 @@ function TenantFormCreate({
           id="adminUsername"
           {...form.register("adminUsername")}
           placeholder="admin"
-          aria-invalid={
-            form.formState.errors.adminUsername ? true : undefined
-          }
+          aria-invalid={form.formState.errors.adminUsername ? true : undefined}
           aria-describedby={
             form.formState.errors.adminUsername
               ? "create-adminUsername-error"
@@ -201,9 +199,7 @@ function TenantFormCreate({
           type="password"
           {...form.register("adminPassword")}
           placeholder="••••••••"
-          aria-invalid={
-            form.formState.errors.adminPassword ? true : undefined
-          }
+          aria-invalid={form.formState.errors.adminPassword ? true : undefined}
           aria-describedby={
             form.formState.errors.adminPassword
               ? "create-adminPassword-error create-adminPassword-hint"
@@ -290,9 +286,7 @@ function TenantFormEdit({
             <Input
               id="slug"
               {...field}
-              onChange={(e) =>
-                field.onChange(e.target.value.toLowerCase())
-              }
+              onChange={(e) => field.onChange(e.target.value.toLowerCase())}
               aria-invalid={form.formState.errors.slug ? true : undefined}
               aria-describedby={
                 form.formState.errors.slug ? "edit-slug-error" : undefined
@@ -318,7 +312,10 @@ function TenantFormEdit({
             />
           )}
         />
-        <Label htmlFor="isActive" className="text-sm font-normal cursor-pointer">
+        <Label
+          htmlFor="isActive"
+          className="text-sm font-normal cursor-pointer"
+        >
           Active (tenant can access the system)
         </Label>
       </div>
