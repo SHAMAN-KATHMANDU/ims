@@ -50,7 +50,7 @@ export function NewVendorPage() {
           href={`${basePath}/vendors`}
           className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to vendors
         </Link>
       </Button>
