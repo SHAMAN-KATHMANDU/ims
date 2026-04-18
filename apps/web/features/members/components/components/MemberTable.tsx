@@ -292,17 +292,17 @@ export function MemberTable({
                     variant="ghost"
                     size="icon"
                     onClick={() => onView(member)}
-                    aria-label="View member"
+                    aria-label={`View ${member.phone}`}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => onEdit(member)}
-                    aria-label="Edit member"
+                    aria-label={`Edit ${member.phone}`}
                   >
-                    <Edit className="h-4 w-4" />
+                    <Edit className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               </TableCell>
