@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   product: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
     count: vi.fn(),
     groupBy: vi.fn(),
     aggregate: vi.fn(),
@@ -31,7 +32,11 @@ vi.mock("@/modules/sites/sites.repository", () => ({
   default: { findConfig: vi.fn() },
 }));
 
-import { deriveDiscount, PublicSiteRepository } from "./public-site.repository";
+import {
+  deriveDiscount,
+  PublicSiteRepository,
+  PDP_PHOTO_CAP,
+} from "./public-site.repository";
 
 describe("deriveDiscount", () => {
   it("returns no discount when finalSp equals mrp", () => {
@@ -184,6 +189,87 @@ describe("PublicSiteRepository.listProducts payload", () => {
     expect(prismaMock.productVariationAttribute.findMany).toHaveBeenCalledTimes(
       1,
     );
+  });
+});
+
+describe("PublicSiteRepository.findProduct photo cap", () => {
+  it("caps per-variation photoUrls to PDP_PHOTO_CAP in the prisma select", async () => {
+    prismaMock.product.findFirst.mockResolvedValueOnce({
+      id: "p1",
+      name: "Chair",
+      description: "desc",
+      imsCode: "C-001",
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      length: null,
+      breadth: null,
+      height: null,
+      weight: null,
+      categoryId: "cat1",
+      subCategory: null,
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      discounts: [],
+      variations: [
+        {
+          id: "v1",
+          finalSpOverride: null,
+          mrpOverride: null,
+          stockQuantity: 5,
+          photos: Array.from({ length: PDP_PHOTO_CAP }, (_, i) => ({
+            photoUrl: `https://cdn/${i}.jpg`,
+          })),
+          attributes: [],
+          subVariations: [],
+        },
+      ],
+    });
+
+    const repo = new PublicSiteRepository();
+    const detail = await repo.findProduct("t1", "p1");
+    expect(detail).not.toBeNull();
+    const selectArg = (prismaMock.product.findFirst as ReturnType<typeof vi.fn>)
+      .mock.calls[0]![0].select;
+    expect(selectArg.variations.select.photos.take).toBe(PDP_PHOTO_CAP);
+    expect(detail!.variations[0]!.photoUrls).toHaveLength(PDP_PHOTO_CAP);
+    // Top-level gallery (photoUrls) also bounded because it reads from
+    // the first variation's already-capped photos array.
+    expect(detail!.photoUrls.length).toBeLessThanOrEqual(PDP_PHOTO_CAP);
+  });
+
+  it("leaves short variation photo arrays intact", async () => {
+    prismaMock.product.findFirst.mockResolvedValueOnce({
+      id: "p1",
+      name: "Chair",
+      description: null,
+      imsCode: "C-001",
+      mrp: { toString: () => "200" },
+      finalSp: { toString: () => "150" },
+      length: null,
+      breadth: null,
+      height: null,
+      weight: null,
+      categoryId: "cat1",
+      subCategory: null,
+      dateCreated: new Date("2026-01-01"),
+      category: null,
+      discounts: [],
+      variations: [
+        {
+          id: "v1",
+          finalSpOverride: null,
+          mrpOverride: null,
+          stockQuantity: 5,
+          photos: [{ photoUrl: "https://cdn/a.jpg" }],
+          attributes: [],
+          subVariations: [],
+        },
+      ],
+    });
+
+    const repo = new PublicSiteRepository();
+    const detail = await repo.findProduct("t1", "p1");
+    expect(detail!.variations[0]!.photoUrls).toEqual(["https://cdn/a.jpg"]);
   });
 });
 

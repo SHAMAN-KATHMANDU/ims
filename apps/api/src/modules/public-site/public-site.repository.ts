@@ -20,6 +20,15 @@ import sitesRepo from "@/modules/sites/sites.repository";
 export type PublicSiteConfig = SiteConfig & { template: SiteTemplate | null };
 
 /**
+ * Per-variation photo cap on the PDP payload. Matches the gallery UX
+ * (lightbox + strip max out well below this) and protects the wire from
+ * catalog uploads that dump 30+ lifestyle shots onto a single variation.
+ * Photos are already ordered so the primary + early uploads win; the tail
+ * gets trimmed here, not in the client.
+ */
+export const PDP_PHOTO_CAP = 12;
+
+/**
  * Shape of a product in a list response — flat, renderer-friendly.
  *
  * Intentionally omits `description` and `subCategory`: neither is rendered
@@ -577,7 +586,9 @@ export class PublicSiteRepository {
         // Full active-variation set so the PDP buybox can render a chip
         // picker grouped by attribute type. Attributes + sub-variations
         // join through; photos are flattened to URL strings to keep the
-        // wire shape compact.
+        // wire shape compact. Per-variation photos are capped to match
+        // the PDP gallery (keeps the wire payload small on listings with
+        // dozens of lifestyle shots per SKU).
         variations: {
           where: { isActive: true },
           orderBy: { createdAt: "asc" },
@@ -588,6 +599,7 @@ export class PublicSiteRepository {
             stockQuantity: true,
             photos: {
               orderBy: [{ isPrimary: "desc" }, { uploadDate: "asc" }],
+              take: PDP_PHOTO_CAP,
               select: { photoUrl: true },
             },
             attributes: {
