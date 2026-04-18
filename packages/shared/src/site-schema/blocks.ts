@@ -198,6 +198,18 @@ export interface AnnouncementBarProps {
    * takes precedence over `text` in the rendered marquee.
    */
   items?: string[];
+  /**
+   * Presentation: "bar" (default) renders as a top strip; "modal"
+   * renders as a dismissible promo popup with a larger CTA. Modal
+   * dismissal is persisted in localStorage.
+   */
+  mode?: "bar" | "modal";
+  /** Modal-only: seconds before auto-open (0 = immediate). */
+  modalDelaySeconds?: number;
+  /** Modal-only: button label (falls back to "Shop now"). */
+  modalCtaLabel?: string;
+  /** Modal-only: optional heading shown above `text`. */
+  modalHeading?: string;
 }
 
 export interface CollectionCardItem {
@@ -743,6 +755,10 @@ export const BlockPropsSchemas = {
       marquee: z.boolean(),
       tone: z.enum(["default", "muted", "accent"]).optional(),
       items: z.array(str(80)).max(12).optional(),
+      mode: z.enum(["bar", "modal"]).optional(),
+      modalDelaySeconds: z.number().int().min(0).max(120).optional(),
+      modalCtaLabel: optStr(60),
+      modalHeading: optStr(120),
     })
     .strict(),
   "collection-cards": z

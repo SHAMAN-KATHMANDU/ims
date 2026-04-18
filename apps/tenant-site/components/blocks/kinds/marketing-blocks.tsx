@@ -32,6 +32,7 @@ import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
 import { NewsletterModal } from "./NewsletterModal";
+import { AnnouncementModal } from "./AnnouncementModal";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -45,6 +46,17 @@ const TONE_BG: Record<
 export function AnnouncementBarBlock({
   props,
 }: BlockComponentProps<AnnouncementBarProps>) {
+  if (props.mode === "modal") {
+    return (
+      <AnnouncementModal
+        heading={props.modalHeading}
+        text={props.text}
+        link={props.link}
+        ctaLabel={props.modalCtaLabel}
+        delaySeconds={props.modalDelaySeconds ?? 2}
+      />
+    );
+  }
   const tone = TONE_BG[props.tone ?? "default"] ?? TONE_BG.default;
   const items: string[] =
     props.items && props.items.length > 0 ? props.items : [props.text];
