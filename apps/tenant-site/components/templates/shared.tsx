@@ -727,7 +727,8 @@ export type HeroVariant =
   | "luxury"
   | "boutique"
   | "editorial"
-  | "video";
+  | "video"
+  | "shoppable";
 
 export function Hero({
   site,
@@ -741,6 +742,7 @@ export function Hero({
   heroLayout = "centered",
   videoUrl,
   videoPoster,
+  shoppableProducts,
 }: {
   site: PublicSite;
   host: string;
@@ -753,6 +755,7 @@ export function Hero({
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
   videoUrl?: string;
   videoPoster?: string;
+  shoppableProducts?: PublicProduct[];
 }) {
   const name = title ?? brandingDisplayName(site.branding, host);
   const tagline = subtitle ?? brandingTagline(site.branding);
@@ -831,6 +834,99 @@ export function Hero({
             >
               {tagline}
             </p>
+          )}
+          <Link href={ctaHref} className="btn">
+            {ctaLabel}
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (variant === "shoppable") {
+    const products = (shoppableProducts ?? []).slice(0, 4);
+    return (
+      <section
+        className="tpl-hero tpl-hero-shoppable"
+        style={{
+          position: "relative",
+          padding: "5rem 0 4rem",
+          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          color: imageUrl ? "#fff" : "var(--color-text)",
+        }}
+      >
+        {imageUrl && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55))",
+            }}
+          />
+        )}
+        <div
+          className="container"
+          style={{ position: "relative", textAlign: "center" }}
+        >
+          <h1
+            style={{
+              fontSize: "clamp(2.25rem, 5vw, 3.75rem)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.1,
+              marginBottom: "1rem",
+            }}
+          >
+            {name}
+          </h1>
+          {tagline && (
+            <p
+              style={{
+                fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
+                color: imageUrl
+                  ? "rgba(255,255,255,0.85)"
+                  : "var(--color-muted)",
+                maxWidth: 620,
+                margin: "0 auto 2rem",
+                lineHeight: 1.55,
+              }}
+            >
+              {tagline}
+            </p>
+          )}
+          {products.length > 0 && (
+            <div
+              role="list"
+              aria-label="Featured products"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(auto-fit, minmax(min(200px, 100%), 1fr))`,
+                gap: "1.25rem",
+                marginTop: "2.5rem",
+                marginBottom: "2rem",
+                background: imageUrl ? "rgba(255,255,255,0.96)" : "transparent",
+                padding: imageUrl ? "1.5rem" : 0,
+                borderRadius: imageUrl ? "var(--radius)" : 0,
+                color: "var(--color-text)",
+              }}
+            >
+              {products.map((p, i) => (
+                <div key={p.id} role="listitem">
+                  <ProductCard
+                    product={p}
+                    variant="bare"
+                    showPrice
+                    showDiscount
+                    priority={i < 2}
+                  />
+                </div>
+              ))}
+            </div>
           )}
           <Link href={ctaHref} className="btn">
             {ctaLabel}

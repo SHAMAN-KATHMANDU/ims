@@ -28,6 +28,18 @@ export function HeroBlock({
   props,
   dataContext,
 }: BlockComponentProps<HeroProps>) {
+  const shoppableProducts =
+    props.variant === "shoppable" && props.shoppableProductIds?.length
+      ? (() => {
+          const byId = new Map(
+            dataContext.products.map((p) => [p.id, p] as const),
+          );
+          return props.shoppableProductIds
+            .map((id) => byId.get(id))
+            .filter((p): p is PublicProduct => !!p);
+        })()
+      : undefined;
+
   return (
     <Hero
       site={dataContext.site}
@@ -41,6 +53,7 @@ export function HeroBlock({
       heroLayout={props.heroLayout}
       videoUrl={props.videoUrl}
       videoPoster={props.videoPoster}
+      shoppableProducts={shoppableProducts}
     />
   );
 }

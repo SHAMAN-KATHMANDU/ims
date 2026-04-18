@@ -104,7 +104,8 @@ export interface HeroProps {
     | "luxury"
     | "boutique"
     | "editorial"
-    | "video";
+    | "video"
+    | "shoppable";
   title?: string;
   subtitle?: string;
   ctaLabel?: string;
@@ -115,6 +116,11 @@ export interface HeroProps {
   videoUrl?: string;
   /** video variant only: poster image shown before playback. */
   videoPoster?: string;
+  /**
+   * shoppable variant only: product IDs to render as a compact shelf
+   * beneath the hero copy. Order is preserved; unknown IDs skipped.
+   */
+  shoppableProductIds?: string[];
 }
 
 export interface ProductGridProps {
@@ -658,6 +664,7 @@ export const BlockPropsSchemas = {
         "boutique",
         "editorial",
         "video",
+        "shoppable",
       ]),
       title: optStr(200),
       subtitle: optStr(400),
@@ -669,6 +676,7 @@ export const BlockPropsSchemas = {
         .optional(),
       videoUrl: optStr(2000),
       videoPoster: optStr(1000),
+      shoppableProductIds: z.array(z.string().max(80)).max(8).optional(),
     })
     .strict(),
   "product-grid": z
