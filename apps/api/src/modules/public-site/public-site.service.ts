@@ -217,6 +217,26 @@ export class PublicSiteService {
       submittedIp,
     });
   }
+
+  /**
+   * Frequently-bought-with for a PDP cross-sell row. 404s when the site
+   * isn't published; returns an empty list (not 404) when the product has
+   * no co-purchase signal yet, so the PDP can render a graceful "no
+   * recommendations" state without a second request.
+   */
+  async listFrequentlyBoughtWith(
+    tenantId: string,
+    productId: string,
+  ): Promise<{ products: unknown[] }> {
+    await this.ensurePublished(tenantId);
+    const product = await this.repo.findProductIdForTenant(tenantId, productId);
+    if (!product) throw createError("Product not found", 404);
+    const products = await this.repo.listFrequentlyBoughtWith(
+      tenantId,
+      productId,
+    );
+    return { products };
+  }
 }
 
 export default new PublicSiteService();

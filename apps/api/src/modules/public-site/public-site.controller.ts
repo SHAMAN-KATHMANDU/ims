@@ -163,6 +163,25 @@ class PublicSiteController {
     }
   };
 
+  listFrequentlyBoughtWith = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const id = getParam(req, "id");
+      const result = await service.listFrequentlyBoughtWith(tenantId, id);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(
+          req,
+          res,
+          error,
+          "List frequently-bought-with error",
+        )
+      );
+    }
+  };
+
   getCollectionBySlug = async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);

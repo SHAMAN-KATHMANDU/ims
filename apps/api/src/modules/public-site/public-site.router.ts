@@ -168,4 +168,24 @@ router.post(
   asyncHandler(controller.submitProductReview),
 );
 
+/**
+ * @swagger
+ * /public/products/{id}/frequently-bought-with:
+ *   get:
+ *     summary: Other products most often co-purchased with this one in the trailing 180 days
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Up to 10 co-purchased products ordered by distinct-sale count }
+ *       404: { description: Product not found or site not published }
+ */
+router.get(
+  "/products/:id/frequently-bought-with",
+  asyncHandler(controller.listFrequentlyBoughtWith),
+);
+
 export default router;
