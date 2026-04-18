@@ -11,6 +11,21 @@ import { z } from "zod";
 /** Free-form JSON payload (object or null). */
 const jsonObject = z.record(z.unknown()).nullable().optional();
 
+/**
+ * ISO-4217-style currency code. We don't enforce the full ISO-4217
+ * whitelist here because some tenants run in markets where the list
+ * changes faster than our deploys ("ZWL"/"ZWG" history, pegged/retired
+ * codes, etc.). Instead we keep the shape light: 3–8 chars, uppercase
+ * letters/digits. The DB column is VARCHAR(8) so this also matches the
+ * storage bound.
+ */
+const CurrencyCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{3,8}$/, "Currency must be 3–8 uppercase letters/digits")
+  .optional();
+
 export const UpdateSiteConfigSchema = z
   .object({
     branding: jsonObject,
@@ -18,6 +33,7 @@ export const UpdateSiteConfigSchema = z
     features: jsonObject,
     seo: jsonObject,
     themeTokens: jsonObject,
+    currency: CurrencyCode,
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "At least one field must be provided",

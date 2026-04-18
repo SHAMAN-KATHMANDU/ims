@@ -175,6 +175,10 @@ model SiteConfig {
   locales        String[] @default([])
   /// Default locale code. Null = English implied.
   defaultLocale  String?  @map("default_locale") @db.VarChar(10)
+  /// ISO-4217-ish currency code used by storefront price formatting.
+  /// Default "NPR" preserves existing behavior for tenants who predate
+  /// this column.
+  currency       String   @default("NPR") @map("currency") @db.VarChar(8)
   /// Tenant has clicked "publish" — only published sites are served publicly.
   isPublished    Boolean  @default(false) @map("is_published")
   createdAt      DateTime @default(now()) @map("created_at")

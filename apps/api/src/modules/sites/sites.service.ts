@@ -72,6 +72,7 @@ export class SitesService {
     if (input.seo !== undefined) data.seo = toJson(input.seo);
     if (input.themeTokens !== undefined)
       data.themeTokens = toJson(input.themeTokens);
+    if (input.currency !== undefined) data.currency = input.currency;
 
     const result = await this.repo.updateConfig(tenantId, data);
     await this.revalidate(tenantId);

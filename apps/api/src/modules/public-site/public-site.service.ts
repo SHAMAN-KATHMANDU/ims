@@ -36,6 +36,7 @@ export class PublicSiteService {
     template: PublicSiteConfig["template"];
     locale: string;
     locales: string[];
+    currency: string;
   }> {
     const config = await this.ensurePublished(tenantId);
     const locales = config.locales ?? [];
@@ -49,6 +50,7 @@ export class PublicSiteService {
       template: config.template,
       locale,
       locales,
+      currency: config.currency ?? "NPR",
     };
   }
 

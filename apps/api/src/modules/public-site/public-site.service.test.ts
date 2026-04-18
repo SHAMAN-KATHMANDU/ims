@@ -26,6 +26,7 @@ function config(overrides: Record<string, unknown> = {}) {
     isPublished: true,
     locales: ["en", "ne"],
     defaultLocale: "en",
+    currency: "NPR",
     createdAt: new Date(),
     updatedAt: new Date(),
     template: {
@@ -115,6 +116,32 @@ describe("PublicSiteService", () => {
       const result = await service.getSite("t1");
       expect(result.locale).toBe("en");
       expect(result.locales).toEqual([]);
+    });
+  });
+
+  describe("getSite currency", () => {
+    it("returns tenant-configured currency when set", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: "INR" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("INR");
+    });
+
+    it('falls back to "NPR" when currency column is at default', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: "NPR" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("NPR");
+    });
+
+    it('falls back to "NPR" when currency is nullish (defensive)', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("NPR");
     });
   });
 

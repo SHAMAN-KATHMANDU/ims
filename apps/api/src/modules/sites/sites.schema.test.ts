@@ -35,6 +35,30 @@ describe("UpdateSiteConfigSchema", () => {
       UpdateSiteConfigSchema.parse({ branding: "not an object" }),
     ).toThrow();
   });
+
+  it("accepts a valid currency code", () => {
+    const result = UpdateSiteConfigSchema.parse({ currency: "INR" });
+    expect(result.currency).toBe("INR");
+  });
+
+  it("uppercases + trims lowercase currency input", () => {
+    const result = UpdateSiteConfigSchema.parse({ currency: "  usd  " });
+    expect(result.currency).toBe("USD");
+  });
+
+  it("rejects too-short currency code", () => {
+    expect(() => UpdateSiteConfigSchema.parse({ currency: "US" })).toThrow();
+  });
+
+  it("rejects too-long currency code", () => {
+    expect(() =>
+      UpdateSiteConfigSchema.parse({ currency: "TOOLONGCODE" }),
+    ).toThrow();
+  });
+
+  it("rejects currency with non-alphanumeric chars", () => {
+    expect(() => UpdateSiteConfigSchema.parse({ currency: "US$" })).toThrow();
+  });
 });
 
 describe("PickTemplateSchema", () => {
