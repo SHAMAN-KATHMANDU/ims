@@ -315,8 +315,13 @@ export function CategoriesPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search
+            className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
+            type="search"
+            aria-label="Search categories"
             placeholder="Search categories..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -327,7 +332,10 @@ export function CategoriesPage() {
           value={listParams.status ?? "all"}
           onValueChange={(v) => handleStatusChange(v as CategoryStatusFilter)}
         >
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger
+            className="w-[140px]"
+            aria-label="Filter categories by status"
+          >
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -433,9 +441,13 @@ export function CategoriesPage() {
 
       {/* Sticky bulk action bar */}
       {selectedCategoryIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+        <div
+          role="region"
+          aria-label="Bulk selection actions"
+          className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg"
+        >
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium" aria-live="polite">
               {selectedCategoryIds.size} item
               {selectedCategoryIds.size !== 1 ? "s" : ""} selected
             </span>
@@ -446,7 +458,7 @@ export function CategoriesPage() {
                   size="sm"
                   onClick={handleBulkDeleteClick}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                   Delete
                 </Button>
               )}
@@ -457,7 +469,7 @@ export function CategoriesPage() {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
