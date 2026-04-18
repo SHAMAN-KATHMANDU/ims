@@ -46,13 +46,14 @@ export function TenantNavTabs({
   });
 
   return (
-    <nav className="flex gap-1 border-b">
+    <nav className="flex gap-1 border-b" aria-label="Tenant sections">
       {visibleTabs.map((tab) => {
         const isActive = tab.key === active;
         return (
           <Link
             key={tab.key}
             href={`/${workspace}/platform/tenants/${tenantId}/${tab.suffix}`}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
               "relative px-4 py-2 text-sm font-medium transition-colors",
               isActive
@@ -62,7 +63,10 @@ export function TenantNavTabs({
           >
             {tab.label}
             {isActive && (
-              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground"
+              />
             )}
           </Link>
         );
