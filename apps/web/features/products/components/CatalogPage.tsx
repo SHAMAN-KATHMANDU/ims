@@ -892,7 +892,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                   Download
                   {selectedProductIds.size > 0 && (
                     <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
@@ -906,14 +906,17 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   onClick={() => handleExport("excel")}
                   disabled={isProductsLoading}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  <FileSpreadsheet
+                    className="h-4 w-4 mr-2"
+                    aria-hidden="true"
+                  />
                   Download as Excel
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleExport("csv")}
                   disabled={isProductsLoading}
                 >
-                  <FileText className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                   Download as CSV
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -923,7 +926,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 {isMobile ? (
                   <Button variant="outline" asChild>
                     <Link href={`${basePath}/products/bulk-upload`}>
-                      <Upload className="h-4 w-4 mr-2" />
+                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                       Bulk Upload
                     </Link>
                   </Button>
@@ -932,7 +935,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                     variant="outline"
                     onClick={() => setBulkUploadDialog(true)}
                   >
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                     Bulk Upload
                   </Button>
                 )}
@@ -941,7 +944,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             {isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/products/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   Add Product
                 </Link>
               </Button>
@@ -1004,7 +1007,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   size="sm"
                   className="h-9 gap-2 text-sm shrink-0"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-4 w-4" aria-hidden="true" />
                   Filters
                 </Button>
               </PopoverTrigger>
@@ -1240,7 +1243,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download
                     </Button>
                   </DropdownMenuTrigger>
@@ -1249,14 +1252,17 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                       onClick={() => handleExport("excel")}
                       disabled={isProductsLoading}
                     >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <FileSpreadsheet
+                        className="h-4 w-4 mr-2"
+                        aria-hidden="true"
+                      />
                       Download as Excel
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleExport("csv")}
                       disabled={isProductsLoading}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download as CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -1269,7 +1275,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
