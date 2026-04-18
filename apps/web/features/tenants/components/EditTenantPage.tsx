@@ -334,7 +334,9 @@ export function EditTenantPage() {
             Back to tenants
           </Link>
         </Button>
-        <div className="text-muted-foreground">Loading tenant…</div>
+        <div className="text-muted-foreground" role="status" aria-live="polite">
+          Loading tenant…
+        </div>
       </div>
     );
   }
@@ -568,6 +570,7 @@ export function EditTenantPage() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    aria-label={`Reset password for ${user.username}`}
                     onClick={() =>
                       handleOpenResetPassword({
                         id: user.id,
@@ -605,9 +608,15 @@ export function EditTenantPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
                 minLength={6}
+                aria-describedby="newPassword-hint"
               />
+              <p
+                id="newPassword-hint"
+                className="text-xs text-muted-foreground"
+              >
+                Must be at least 6 characters.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
@@ -675,9 +684,15 @@ export function EditTenantPage() {
                 type="password"
                 value={createUserPassword}
                 onChange={(e) => setCreateUserPassword(e.target.value)}
-                placeholder="Min 6 characters"
                 minLength={6}
+                aria-describedby="createUserPassword-hint"
               />
+              <p
+                id="createUserPassword-hint"
+                className="text-xs text-muted-foreground"
+              >
+                Must be at least 6 characters.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="createUserConfirmPassword">
