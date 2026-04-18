@@ -67,6 +67,8 @@ import { ReviewsListBlock } from "./kinds/ReviewsListBlock";
 import { FbtBlock } from "./kinds/FbtBlock";
 import { RecentlyViewedBlock } from "./kinds/RecentlyViewedBlock";
 import { SizeGuideBlock } from "./kinds/SizeGuideBlock";
+import { ProductComparisonBlock } from "./kinds/ProductComparisonBlock";
+import { LookbookBlock } from "./kinds/LookbookBlock";
 
 // Layer 2
 import {
@@ -139,6 +141,8 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   fbt: { component: FbtBlock },
   "recently-viewed": { component: RecentlyViewedBlock },
   "size-guide": { component: SizeGuideBlock },
+  "product-comparison": { component: ProductComparisonBlock },
+  lookbook: { component: LookbookBlock },
   breadcrumbs: { component: BreadcrumbsBlock },
   // Layer 2
   embed: { component: EmbedBlock },

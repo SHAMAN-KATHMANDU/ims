@@ -396,6 +396,53 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface ProductComparisonProps {
+  heading?: string;
+  description?: string;
+  /** Explicit product IDs to render as columns (2–4). */
+  productIds: string[];
+  /**
+   * Which attribute rows to include. Defaults to the common set when
+   * omitted. Values match PublicProduct fields + a few synthetic ones
+   * ("price", "rating") resolved by the block.
+   */
+  attributes?: (
+    | "price"
+    | "category"
+    | "rating"
+    | "length"
+    | "breadth"
+    | "height"
+    | "weight"
+    | "description"
+  )[];
+}
+
+export interface LookbookPin {
+  /**
+   * Normalized coordinates 0–1 for both axes so the pin stays anchored
+   * on any aspect ratio.
+   */
+  x: number;
+  y: number;
+  productId: string;
+  label?: string;
+}
+
+export interface LookbookScene {
+  imageUrl: string;
+  alt?: string;
+  caption?: string;
+  pins: LookbookPin[];
+}
+
+export interface LookbookProps {
+  heading?: string;
+  description?: string;
+  scenes: LookbookScene[];
+  aspectRatio?: "16/9" | "4/5" | "3/4" | "1/1";
+}
+
 export interface SizeGuideRow {
   label: string;
   values: string[];
@@ -612,6 +659,8 @@ export interface BlockPropsMap {
   fbt: FbtProps;
   "recently-viewed": RecentlyViewedProps;
   "size-guide": SizeGuideProps;
+  "product-comparison": ProductComparisonProps;
+  lookbook: LookbookProps;
   breadcrumbs: BreadcrumbsProps;
   // Layer 2
   embed: EmbedProps;
@@ -1102,6 +1151,59 @@ export const BlockPropsSchemas = {
         .max(20),
       note: optStr(500),
       variant: z.enum(["inline", "modal"]).optional(),
+    })
+    .strict(),
+  "product-comparison": z
+    .object({
+      heading: optStr(200),
+      description: optStr(500),
+      productIds: z.array(z.string().max(80)).min(2).max(4),
+      attributes: z
+        .array(
+          z.enum([
+            "price",
+            "category",
+            "rating",
+            "length",
+            "breadth",
+            "height",
+            "weight",
+            "description",
+          ]),
+        )
+        .max(10)
+        .optional(),
+    })
+    .strict(),
+  lookbook: z
+    .object({
+      heading: optStr(200),
+      description: optStr(500),
+      scenes: z
+        .array(
+          z
+            .object({
+              imageUrl: str(1000),
+              alt: optStr(200),
+              caption: optStr(300),
+              pins: z
+                .array(
+                  z
+                    .object({
+                      x: z.number().min(0).max(1),
+                      y: z.number().min(0).max(1),
+                      productId: str(80),
+                      label: optStr(80),
+                    })
+                    .strict(),
+                )
+                .max(12),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(10),
+      aspectRatio: z.enum(["16/9", "4/5", "3/4", "1/1"]).optional(),
     })
     .strict(),
   // Layer 2
