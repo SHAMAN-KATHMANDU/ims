@@ -122,10 +122,32 @@ function productDetailLayout(): BlockNode[] {
     block("breadcrumbs", { scope: "product" }),
     galleryBuyboxRow,
     block("pdp-details", { tabs: false }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+      emptyMessage: "Be the first to review this product.",
+    }),
+    block("fbt", {
+      heading: "Frequently bought together",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+    }),
     block("pdp-related", {
       heading: "You may also like",
       limit: 4,
       columns: 4,
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
     }),
   ];
 }
