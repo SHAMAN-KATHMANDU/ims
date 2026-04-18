@@ -66,6 +66,7 @@ import { PdpGalleryBlock } from "./kinds/PdpGalleryBlock";
 import { ReviewsListBlock } from "./kinds/ReviewsListBlock";
 import { FbtBlock } from "./kinds/FbtBlock";
 import { RecentlyViewedBlock } from "./kinds/RecentlyViewedBlock";
+import { SizeGuideBlock } from "./kinds/SizeGuideBlock";
 
 // Layer 2
 import {
@@ -137,6 +138,7 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "reviews-list": { component: ReviewsListBlock },
   fbt: { component: FbtBlock },
   "recently-viewed": { component: RecentlyViewedBlock },
+  "size-guide": { component: SizeGuideBlock },
   breadcrumbs: { component: BreadcrumbsBlock },
   // Layer 2
   embed: { component: EmbedBlock },

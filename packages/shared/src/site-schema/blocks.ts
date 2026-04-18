@@ -396,6 +396,27 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface SizeGuideRow {
+  label: string;
+  values: string[];
+}
+
+export interface SizeGuideProps {
+  triggerLabel?: string;
+  heading?: string;
+  description?: string;
+  /** Column headers for the size table (e.g. ["S", "M", "L", "XL"]). */
+  columns: string[];
+  /** Rows e.g. [{ label: "Chest (cm)", values: ["86", "91", "96", "101"] }]. */
+  rows: SizeGuideRow[];
+  note?: string;
+  /**
+   * Render variant. `inline` drops the table straight into the page;
+   * `modal` hides it behind a trigger button that opens a dialog.
+   */
+  variant?: "inline" | "modal";
+}
+
 export interface RecentlyViewedProps {
   heading?: string;
   limit?: number;
@@ -590,6 +611,7 @@ export interface BlockPropsMap {
   "reviews-list": ReviewsListProps;
   fbt: FbtProps;
   "recently-viewed": RecentlyViewedProps;
+  "size-guide": SizeGuideProps;
   breadcrumbs: BreadcrumbsProps;
   // Layer 2
   embed: EmbedProps;
@@ -1059,6 +1081,27 @@ export const BlockPropsSchemas = {
       cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
       hideWhenEmpty: z.boolean().optional(),
       excludeCurrent: z.boolean().optional(),
+    })
+    .strict(),
+  "size-guide": z
+    .object({
+      triggerLabel: optStr(80),
+      heading: optStr(200),
+      description: optStr(500),
+      columns: z.array(str(30)).min(1).max(10),
+      rows: z
+        .array(
+          z
+            .object({
+              label: str(80),
+              values: z.array(str(30)).min(1).max(10),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(20),
+      note: optStr(500),
+      variant: z.enum(["inline", "modal"]).optional(),
     })
     .strict(),
   // Layer 2
