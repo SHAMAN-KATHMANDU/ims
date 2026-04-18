@@ -400,14 +400,14 @@ export function VendorPage() {
         {isMobile ? (
           <Button asChild>
             <Link href={`${basePath}/vendors/new`} className="gap-2">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               New Vendor
             </Link>
           </Button>
         ) : (
           <>
             <Button onClick={handleOpenCreate}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               New Vendor
             </Button>
             <VendorForm
@@ -449,7 +449,10 @@ export function VendorPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search
+                className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search products by name or product code..."
                 className="pl-8"
@@ -476,6 +479,8 @@ export function VendorPage() {
                       <TableCell
                         colSpan={4}
                         className="text-center py-6 text-muted-foreground"
+                        role="status"
+                        aria-live="polite"
                       >
                         Loading products…
                       </TableCell>
@@ -541,7 +546,10 @@ export function VendorPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search
+                className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search vendors..."
                 className="pl-8 w-[220px]"
@@ -556,7 +564,7 @@ export function VendorPage() {
                 className="h-8 text-xs"
                 onClick={clearAllFilters}
               >
-                <X className="h-3.5 w-3.5 mr-2" />
+                <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                 Clear filters
               </Button>
             )}
@@ -603,6 +611,8 @@ export function VendorPage() {
                     <TableCell
                       colSpan={tableColumnCount}
                       className="text-center py-8"
+                      role="status"
+                      aria-live="polite"
                     >
                       Loading vendors...
                     </TableCell>
@@ -703,22 +713,28 @@ export function VendorPage() {
                               setActiveVendorId(vendor.id);
                               setProductDialogOpen(true);
                             }}
+                            aria-label={`View products for ${vendor.name}`}
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleOpenEdit(vendor)}
+                            aria-label={`Edit ${vendor.name}`}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(vendor)}
+                            aria-label={`Delete ${vendor.name}`}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2
+                              className="h-4 w-4 text-destructive"
+                              aria-hidden="true"
+                            />
                           </Button>
                         </div>
                       </TableCell>
@@ -778,7 +794,7 @@ export function VendorPage() {
                 size="sm"
                 onClick={handleBulkDeleteClick}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 Delete
               </Button>
               <Button
@@ -788,7 +804,7 @@ export function VendorPage() {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
