@@ -396,6 +396,20 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface ReviewsListProps {
+  heading?: string;
+  /**
+   * Where the product id comes from. `current-pdp` uses the active
+   * product on the page; `explicit` requires `productId`. Defaults to
+   * `current-pdp` so the block is drop-in on PDP blueprints.
+   */
+  productIdSource?: "current-pdp" | "explicit";
+  productId?: string;
+  pageSize?: number;
+  emptyMessage?: string;
+  showRatingSummary?: boolean;
+}
+
 // Layer 2 blocks ---------------------------------------------------------------
 
 export interface EmbedProps {
@@ -542,6 +556,7 @@ export interface BlockPropsMap {
   "pdp-buybox": PdpBuyboxProps;
   "pdp-details": PdpDetailsProps;
   "pdp-related": PdpRelatedProps;
+  "reviews-list": ReviewsListProps;
   breadcrumbs: BreadcrumbsProps;
   // Layer 2
   embed: EmbedProps;
@@ -982,6 +997,16 @@ export const BlockPropsSchemas = {
     .strict(),
   breadcrumbs: z
     .object({ scope: z.enum(["product", "category", "page"]) })
+    .strict(),
+  "reviews-list": z
+    .object({
+      heading: optStr(200),
+      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
+      productId: optStr(80),
+      pageSize: z.number().int().min(1).max(50).optional(),
+      emptyMessage: optStr(300),
+      showRatingSummary: z.boolean().optional(),
+    })
     .strict(),
   // Layer 2
   embed: z

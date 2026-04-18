@@ -63,6 +63,7 @@ import {
   BreadcrumbsBlock,
 } from "./kinds/pdp-blocks";
 import { PdpGalleryBlock } from "./kinds/PdpGalleryBlock";
+import { ReviewsListBlock } from "./kinds/ReviewsListBlock";
 
 // Layer 2
 import {
@@ -131,6 +132,7 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "pdp-buybox": { component: PdpBuyboxBlock },
   "pdp-details": { component: PdpDetailsBlock },
   "pdp-related": { component: PdpRelatedBlock },
+  "reviews-list": { component: ReviewsListBlock },
   breadcrumbs: { component: BreadcrumbsBlock },
   // Layer 2
   embed: { component: EmbedBlock },

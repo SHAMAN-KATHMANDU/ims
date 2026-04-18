@@ -172,6 +172,27 @@ export interface PublicProduct {
    * The PDP buybox consumes this to render attribute-grouped chips.
    */
   variations?: PublicProductVariation[];
+  /**
+   * Aggregate APPROVED review rating (rounded to one decimal) or null
+   * when the product has no approved reviews yet.
+   */
+  avgRating?: number | null;
+  ratingCount?: number | null;
+}
+
+export interface PublicProductReview {
+  id: string;
+  rating: number;
+  body: string | null;
+  authorName: string | null;
+  createdAt: string;
+}
+
+export interface PublicProductReviewList {
+  reviews: PublicProductReview[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface PublicProductFacetValue {
@@ -379,6 +400,27 @@ export function getProduct(host: string, tenantId: string, id: string) {
       ? (resp as { product: PublicProduct }).product
       : (resp as PublicProduct);
   });
+}
+
+export function getProductReviews(
+  host: string,
+  tenantId: string,
+  productId: string,
+  page = 1,
+  limit = 10,
+): Promise<PublicProductReviewList | null> {
+  const qs = `?page=${page}&limit=${limit}`;
+  return publicFetch<PublicProductReviewList>(
+    `/public/products/${encodeURIComponent(productId)}/reviews${qs}`,
+    {
+      host,
+      tenantId,
+      tags: [
+        `tenant:${tenantId}:product:${productId}:reviews`,
+        `tenant:${tenantId}:reviews`,
+      ],
+    },
+  );
 }
 
 export function getCategories(host: string, tenantId: string) {
