@@ -269,13 +269,19 @@ export function PdpDetailsBlock({
 // ---------- pdp-related -----------------------------------------------------
 
 export function PdpRelatedBlock({
+  node,
   props,
   dataContext,
 }: BlockComponentProps<PdpRelatedProps>) {
   const related = (dataContext.relatedProducts ?? []).slice(0, props.limit);
   if (related.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         <h2
           style={{
