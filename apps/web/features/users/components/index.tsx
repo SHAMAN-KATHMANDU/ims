@@ -257,12 +257,12 @@ export function UsersPage() {
           {isMobile ? (
             atUserLimit ? (
               <Button disabled className="gap-2">
-                <Plus className="h-4 w-4" /> Add User
+                <Plus className="h-4 w-4" aria-hidden="true" /> Add User
               </Button>
             ) : (
               <Button asChild>
                 <Link href={`${basePath}/users/new`} className="gap-2">
-                  <Plus className="h-4 w-4" /> Add User
+                  <Plus className="h-4 w-4" aria-hidden="true" /> Add User
                 </Link>
               </Button>
             )
@@ -276,7 +276,7 @@ export function UsersPage() {
                 className="gap-2"
                 disabled={atUserLimit}
               >
-                <Plus className="h-4 w-4" /> Add User
+                <Plus className="h-4 w-4" aria-hidden="true" /> Add User
               </Button>
               <UserForm
                 open={userDialog}
@@ -296,7 +296,10 @@ export function UsersPage() {
             <CardDescription>Total: {totalItems}</CardDescription>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <Input
                   placeholder="Search by username..."
                   value={search}
@@ -398,7 +401,7 @@ export function UsersPage() {
                   onClick={() => setBulkChangePasswordOpen(true)}
                   disabled={bulkChangePasswordMutation.isPending}
                 >
-                  <KeyRound className="h-4 w-4 mr-2" />
+                  <KeyRound className="h-4 w-4 mr-2" aria-hidden="true" />
                   Change password
                 </Button>
                 <Button
@@ -406,7 +409,7 @@ export function UsersPage() {
                   size="sm"
                   onClick={handleBulkDeleteClick}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                   Delete
                 </Button>
                 <Button
@@ -416,7 +419,7 @@ export function UsersPage() {
                   className="shrink-0"
                   aria-label="Clear selection"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
