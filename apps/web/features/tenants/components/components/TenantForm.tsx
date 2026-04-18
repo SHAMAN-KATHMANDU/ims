@@ -111,7 +111,11 @@ function TenantFormCreate({
           }
         />
         {form.formState.errors.name && (
-          <p id="create-name-error" className="text-sm text-destructive mt-1">
+          <p
+            id="create-name-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.name.message}
           </p>
         )}
@@ -141,7 +145,11 @@ function TenantFormCreate({
           )}
         />
         {form.formState.errors.slug && (
-          <p id="create-slug-error" className="text-sm text-destructive mt-1">
+          <p
+            id="create-slug-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.slug.message}
           </p>
         )}
@@ -186,6 +194,7 @@ function TenantFormCreate({
         {form.formState.errors.adminUsername && (
           <p
             id="create-adminUsername-error"
+            role="alert"
             className="text-sm text-destructive mt-1"
           >
             {form.formState.errors.adminUsername.message}
@@ -215,6 +224,7 @@ function TenantFormCreate({
         {form.formState.errors.adminPassword && (
           <p
             id="create-adminPassword-error"
+            role="alert"
             className="text-sm text-destructive mt-1"
           >
             {form.formState.errors.adminPassword.message}
@@ -272,7 +282,11 @@ function TenantFormEdit({
           }
         />
         {form.formState.errors.name && (
-          <p id="edit-name-error" className="text-sm text-destructive mt-1">
+          <p
+            id="edit-name-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.name.message}
           </p>
         )}
@@ -295,7 +309,11 @@ function TenantFormEdit({
           )}
         />
         {form.formState.errors.slug && (
-          <p id="edit-slug-error" className="text-sm text-destructive mt-1">
+          <p
+            id="edit-slug-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.slug.message}
           </p>
         )}
