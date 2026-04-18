@@ -371,10 +371,27 @@ export function ProductTable({
 
         {/* Mobile: empty */}
         {!isLoading && products.length === 0 && (
-          <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground md:hidden">
-            {localSearch
-              ? "No products found matching your search."
-              : "No products found."}
+          <div className="rounded-lg border border-dashed py-10 text-center md:hidden">
+            {localSearch ? (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-sm font-medium">
+                  No products match your search
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Try a different search term.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={clearSearch}
+                >
+                  Clear search
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No products yet</p>
+            )}
           </div>
         )}
 
@@ -589,11 +606,30 @@ export function ProductTable({
                 <TableRow>
                   <TableCell
                     colSpan={columnCount}
-                    className="text-center text-muted-foreground py-8"
+                    className="text-center py-10"
                   >
-                    {localSearch
-                      ? "No products found matching your search."
-                      : "No products found."}
+                    {localSearch ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-sm font-medium">
+                          No products match your search
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Try a different search term.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={clearSearch}
+                        >
+                          Clear search
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No products yet
+                      </p>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
