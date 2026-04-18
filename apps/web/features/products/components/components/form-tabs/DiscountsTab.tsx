@@ -214,7 +214,7 @@ export function DiscountsTab({
 
       {canEdit && discounts.length > 0 && (
         <Button type="button" variant="outline" size="sm" onClick={addRow}>
-          <Plus className="h-3 w-3 mr-1" /> Add discount
+          <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add discount
         </Button>
       )}
     </div>
