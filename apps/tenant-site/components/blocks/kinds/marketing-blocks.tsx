@@ -31,6 +31,7 @@ import type {
 import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
+import { NewsletterModal } from "./NewsletterModal";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -347,6 +348,17 @@ export function StatsBandBlock({ props }: BlockComponentProps<StatsBandProps>) {
 export function NewsletterBlock({
   props,
 }: BlockComponentProps<NewsletterProps>) {
+  if (props.variant === "modal") {
+    return (
+      <NewsletterModal
+        title={props.title}
+        subtitle={props.subtitle}
+        cta={props.cta}
+        delaySeconds={props.modalDelaySeconds ?? 10}
+        exitIntent={props.modalExitIntent ?? true}
+      />
+    );
+  }
   return (
     <NewsletterBand
       title={props.title}
