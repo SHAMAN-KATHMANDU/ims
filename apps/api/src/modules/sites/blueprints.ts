@@ -795,6 +795,24 @@ function darkHome(): BlockNode[] {
       body: "Every piece takes a position. We're not interested in the middle.",
       imageSide: "left",
     }),
+    block("testimonials", {
+      heading: "Field notes",
+      layout: "grid",
+      items: [
+        {
+          quote:
+            "Nothing apologetic about this work. You can tell someone made a decision and committed.",
+          author: "Tomás R.",
+          role: "Barcelona",
+        },
+        {
+          quote:
+            "Bought the chair eighteen months ago. Still the best object in the house.",
+          author: "Nina K.",
+          role: "Berlin",
+        },
+      ],
+    }),
     block("policy-strip", {
       layout: "inline",
       dark: true,
@@ -1005,6 +1023,24 @@ function apothecaryHome(): BlockNode[] {
       imageSide: "left",
       ctaHref: "/about",
       ctaLabel: "Our story",
+    }),
+    block("testimonials", {
+      heading: "Kind words from the shelves",
+      layout: "stacked",
+      items: [
+        {
+          quote:
+            "The rosehip balm cleared up a dryness nothing else would touch. I buy it in threes now.",
+          author: "Leela N.",
+          role: "Goa",
+        },
+        {
+          quote:
+            "Everything smells like a garden, not a lab. My grandmother would approve.",
+          author: "Helen B.",
+          role: "Edinburgh",
+        },
+      ],
     }),
     block("faq", {
       heading: "Common questions",
