@@ -143,6 +143,10 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
     # Redis is started as a Docker service (pre-pulled image, no native conflict).
+    #
+    # ⚠ Switching back to ubuntu-latest requires two changes here:
+    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
+    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
     services:
       redis:
         image: redis:7-alpine
@@ -296,6 +300,10 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
     # Redis is started as a Docker service (pre-pulled image, no native conflict).
+    #
+    # ⚠ Switching back to ubuntu-latest requires two changes here:
+    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
+    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
     services:
       redis:
         image: redis:7-alpine
