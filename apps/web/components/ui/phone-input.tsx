@@ -183,7 +183,10 @@ export function PhoneInput({
                   +{getCountryCallingCode(country)}
                 </span>
               </span>
-              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+              <ChevronDown
+                className="h-4 w-4 shrink-0 opacity-50"
+                aria-hidden="true"
+              />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[240px] p-0" align="start">
