@@ -52,7 +52,7 @@ export function ReviewsPage() {
   const updateMutation = useUpdateReview();
   const deleteMutation = useDeleteReview();
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
