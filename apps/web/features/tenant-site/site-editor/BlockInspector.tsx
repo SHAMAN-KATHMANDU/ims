@@ -854,7 +854,7 @@ function FieldRenderer({
         <div className="flex items-center justify-between">
           <Label>{labelText}</Label>
           <Button size="sm" variant="outline" onClick={addItem}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
+            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Add
           </Button>
         </div>
@@ -871,7 +871,7 @@ function FieldRenderer({
                   onClick={() => removeItem(idx)}
                   aria-label="Remove item"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </div>
               {(field.itemFields ?? []).map((sub) => (
