@@ -122,7 +122,7 @@ export function TransferDetail({
               {(transfer.status === "PENDING" ||
                 transfer.status === "APPROVED") && (
                 <Alert>
-                  <Info className="h-4 w-4" />
+                  <Info className="h-4 w-4" aria-hidden="true" />
                   <AlertDescription>
                     Approving only authorizes the transfer. Stock is{" "}
                     <strong>deducted from the source</strong> when you start
@@ -372,7 +372,7 @@ export function TransferDetail({
                         disabled={actionLoading || fulfilling}
                         className="gap-2"
                       >
-                        <CheckCircle className="h-4 w-4" />
+                        <CheckCircle className="h-4 w-4" aria-hidden="true" />
                         Mark as Received
                       </Button>
                     )}
