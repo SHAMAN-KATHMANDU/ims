@@ -8,6 +8,7 @@
 
 import type { FbtProps } from "@repo/shared";
 import { getFrequentlyBoughtWith } from "@/lib/api";
+import { getSiteFormatOptions } from "@/lib/format";
 import { ProductGrid } from "@/components/templates/shared";
 import type { BlockComponentProps } from "../registry";
 
@@ -52,6 +53,7 @@ export async function FbtBlock({
           products={slice}
           columns={props.columns ?? 4}
           variant={props.cardVariant ?? "bordered"}
+          formatOpts={getSiteFormatOptions(dataContext.site)}
         />
       </div>
     </section>
