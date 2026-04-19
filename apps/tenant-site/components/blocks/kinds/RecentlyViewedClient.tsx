@@ -100,7 +100,78 @@ export function RecentlyViewedClient({
     setMounted(true);
   }, [currentSummary, excludeCurrent, limit]);
 
-  if (!mounted) return null;
+  // Pre-hydration paint: render a skeleton so the section doesn't snap
+  // in after mount. When the storage is actually empty + hideWhenEmpty
+  // is on, the effect above will flip to null below.
+  if (!mounted) {
+    return (
+      <section
+        style={{
+          padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+        }}
+        aria-hidden="true"
+      >
+        <div className="container">
+          <h2
+            style={{
+              fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
+              fontFamily: "var(--font-display)",
+              marginBottom: "1.75rem",
+              textAlign: "center",
+              color: "var(--color-muted)",
+            }}
+          >
+            {heading ?? "Recently viewed"}
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${columns}, 1fr)`,
+              gap: "1.5rem",
+            }}
+          >
+            {Array.from({ length: limit }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-background)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    aspectRatio: "3/4",
+                    background: "var(--color-surface)",
+                  }}
+                />
+                <div style={{ padding: "0.85rem 1rem 1.1rem" }}>
+                  <div
+                    style={{
+                      height: "0.95rem",
+                      width: "80%",
+                      background: "var(--color-surface)",
+                      borderRadius: 4,
+                      marginBottom: "0.5rem",
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: "0.85rem",
+                      width: "40%",
+                      background: "var(--color-surface)",
+                      borderRadius: 4,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
   if (items.length === 0 && hideWhenEmpty) return null;
 
   return (
