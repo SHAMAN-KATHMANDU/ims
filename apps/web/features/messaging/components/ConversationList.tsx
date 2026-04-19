@@ -51,7 +51,10 @@ export function ConversationList({
       <div className="shrink-0 border-b p-3">
         <h2 className="mb-3 text-lg font-semibold">Messages</h2>
         <div className="relative mb-2">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Search
+            className="absolute left-2.5 top-2.5 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input placeholder="Search conversations..." className="pl-8" />
         </div>
         <Select
@@ -88,7 +91,7 @@ export function ConversationList({
           </div>
         ) : sortedConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-muted-foreground">
-            <MessageSquare className="size-10 opacity-40" />
+            <MessageSquare className="size-10 opacity-40" aria-hidden="true" />
             <p className="text-sm">No conversations yet</p>
           </div>
         ) : (
