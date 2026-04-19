@@ -303,7 +303,7 @@ export function SettingsPage() {
               aria-hidden="true"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
             >
-              <Globe className="h-5 w-5" />
+              <Globe className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="flex-1">
               <div className="font-medium">Website</div>
