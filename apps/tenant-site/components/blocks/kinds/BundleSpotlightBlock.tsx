@@ -111,8 +111,11 @@ async function BundleSpotlightInner({
     : 0;
 
   const wrapperHasPadY = node.style?.paddingY !== undefined;
-  const layout = props.layout ?? "split";
   const showProducts = props.showProducts ?? true;
+  // Collapse split → stacked when the right column (product list) is hidden,
+  // otherwise the grid leaves half the row empty.
+  const layout =
+    (props.layout ?? "split") === "split" && showProducts ? "split" : "stacked";
   const buttonClass =
     props.buttonStyle === "outline"
       ? "btn btn-outline"
