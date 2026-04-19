@@ -52,7 +52,10 @@ export function UserPendingCredit({ basePath }: UserPendingCreditProps) {
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          <CreditCard
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           Pending credit payments
         </CardTitle>
         <Link
@@ -60,7 +63,7 @@ export function UserPendingCredit({ basePath }: UserPendingCreditProps) {
           className="text-xs font-medium text-primary hover:underline inline-flex items-center"
         >
           View all
-          <ArrowRight className="ml-1 h-3 w-3" />
+          <ArrowRight className="ml-1 h-3 w-3" aria-hidden="true" />
         </Link>
       </CardHeader>
       <CardContent>
