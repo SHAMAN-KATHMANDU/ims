@@ -234,7 +234,7 @@ export function TenantSitePage() {
                 onClick={handlePublish}
                 disabled={!canPublish || publishMutation.isPending}
               >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 {publishMutation.isPending ? "Publishing..." : "Publish"}
               </Button>
             )}
