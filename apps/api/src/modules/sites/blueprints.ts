@@ -732,6 +732,24 @@ function organicHome(): BlockNode[] {
         { label: "Ethical", value: "Supply chain" },
       ],
     }),
+    block("testimonials", {
+      heading: "What makers are saying",
+      layout: "grid",
+      items: [
+        {
+          quote:
+            "Every piece I send to their studio comes back with more soul than I gave it. A rare partnership.",
+          author: "Aanya Raut",
+          role: "Weaver, Kolhapur",
+        },
+        {
+          quote:
+            "They pay on time, order in small batches, and tell the story honestly. That is everything.",
+          author: "Deepak Lal",
+          role: "Potter, Pondicherry",
+        },
+      ],
+    }),
     block("newsletter", {
       title: "Grow with us",
       subtitle: "Seasonal notes, nothing else.",
@@ -898,6 +916,30 @@ function coastalHome(): BlockNode[] {
       heading: "Favorites",
       source: "featured",
       limit: 5,
+    }),
+    block("testimonials", {
+      heading: "Postcards from customers",
+      layout: "carousel",
+      items: [
+        {
+          quote:
+            "Wore the linen shirt straight from the plane to the beach and it looked better by sunset. Feels like summer.",
+          author: "Maya A.",
+          role: "Santa Monica",
+        },
+        {
+          quote:
+            "The towel set is now in every beach bag in our family. Good weight, dries fast, ages beautifully.",
+          author: "Ravi K.",
+          role: "Kovalam",
+        },
+        {
+          quote:
+            "Packaging is plastic-free and actually pretty. Small touches matter.",
+          author: "Jules P.",
+          role: "Bondi",
+        },
+      ],
     }),
     block("policy-strip", {
       layout: "grid",
