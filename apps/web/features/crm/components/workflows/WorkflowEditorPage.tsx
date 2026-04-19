@@ -744,7 +744,10 @@ export default function WorkflowEditorPage() {
                               disabled={deleteMutation.isPending}
                               aria-label={`Delete workflow ${w.name}`}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
                             </Button>
                           </div>
                         </TableCell>
