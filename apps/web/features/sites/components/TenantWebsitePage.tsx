@@ -195,7 +195,7 @@ export function TenantWebsitePage() {
               aria-hidden="true"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
             >
-              <Globe className="h-5 w-5" />
+              <Globe className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <CardTitle>Website feature</CardTitle>
