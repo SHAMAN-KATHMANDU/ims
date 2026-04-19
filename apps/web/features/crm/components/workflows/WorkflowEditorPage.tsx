@@ -528,13 +528,16 @@ export default function WorkflowEditorPage() {
               setShowCreate(true);
             }}
           >
-            <Plus className="h-4 w-4 mr-1" /> New Workflow
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> New Workflow
           </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-4 pb-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search by name..."
                 value={search}
@@ -578,7 +581,10 @@ export default function WorkflowEditorPage() {
           ) : workflows.length === 0 ? (
             search !== "" || isActiveFilter !== "all" ? (
               <div className="text-center py-10">
-                <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <Zap
+                  className="h-8 w-8 mx-auto mb-2 opacity-40"
+                  aria-hidden="true"
+                />
                 <p className="text-sm font-medium">
                   No workflows match your filters
                 </p>
@@ -600,7 +606,10 @@ export default function WorkflowEditorPage() {
               </div>
             ) : (
               <div className="text-center py-10 text-muted-foreground">
-                <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <Zap
+                  className="h-8 w-8 mx-auto mb-2 opacity-40"
+                  aria-hidden="true"
+                />
                 <p className="text-sm">
                   No workflows yet. Open <strong>Browse templates</strong> above
                   or create a custom workflow to automate deal actions.
@@ -722,7 +731,10 @@ export default function WorkflowEditorPage() {
                               onClick={() => setEditWorkflow(w)}
                               aria-label={`Edit workflow ${w.name}`}
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil
+                                className="h-3.5 w-3.5"
+                                aria-hidden="true"
+                              />
                             </Button>
                             <Button
                               size="icon"
