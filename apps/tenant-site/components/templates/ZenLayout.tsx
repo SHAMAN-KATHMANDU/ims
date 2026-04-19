@@ -10,6 +10,7 @@ import {
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 import { brandingDisplayName, brandingTagline } from "@/lib/theme";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * ZEN — Japanese-inspired. Ultra-wide whitespace, thin type, muted
@@ -31,6 +32,7 @@ export async function ZenLayout(props: TemplateProps) {
   } = props;
   const name = brandingDisplayName(site.branding, ctx.host);
   const tagline = brandingTagline(site.branding);
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="zen">
@@ -95,7 +97,12 @@ export async function ZenLayout(props: TemplateProps) {
                 className="container"
                 style={{ maxWidth: 880, margin: "0 auto" }}
               >
-                <ProductGrid products={products} columns={2} variant="bare" />
+                <ProductGrid
+                  products={products}
+                  columns={2}
+                  variant="bare"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -134,13 +141,18 @@ export async function ZenLayout(props: TemplateProps) {
             >
               The shop
             </h1>
-            <ProductGrid products={products} columns={2} variant="bare" />
+            <ProductGrid
+              products={products}
+              columns={2}
+              variant="bare"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

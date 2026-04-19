@@ -9,6 +9,7 @@ import {
   SiteFooter,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * MINIMAL — Clean, type-forward. Wide whitespace, thin type, small
@@ -27,6 +28,7 @@ export async function MinimalLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="minimal">
@@ -50,7 +52,12 @@ export async function MinimalLayout(props: TemplateProps) {
                 className="container"
                 style={{ maxWidth: 1100, margin: "0 auto" }}
               >
-                <ProductGrid products={products} columns={3} variant="bare" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="bare"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -80,13 +87,18 @@ export async function MinimalLayout(props: TemplateProps) {
             >
               Everything
             </h1>
-            <ProductGrid products={products} columns={3} variant="bare" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="bare"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

@@ -33,6 +33,7 @@ import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
 import { NewsletterModal } from "./NewsletterModal";
 import { AnnouncementModal } from "./AnnouncementModal";
+import { getSiteFormatOptions } from "@/lib/format";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -355,6 +356,7 @@ export function BentoShowcaseBlock({
       products={products}
       heading={props.heading}
       eyebrow={props.eyebrow}
+      formatOpts={getSiteFormatOptions(dataContext.site)}
     />
   );
 }

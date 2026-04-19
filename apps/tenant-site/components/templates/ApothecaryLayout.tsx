@@ -12,6 +12,7 @@ import {
   NewsletterBand,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * APOTHECARY — Cream + sage, pharmacy-counter nostalgia. Leads with
@@ -32,6 +33,7 @@ export async function ApothecaryLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="apothecary">
@@ -91,7 +93,12 @@ export async function ApothecaryLayout(props: TemplateProps) {
                     This week&apos;s preparations
                   </h2>
                 </div>
-                <ProductGrid products={products} columns={3} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -137,13 +144,18 @@ What happens next is slow, old-fashioned, and more or less the same as it was a 
             >
               The formulary
             </h1>
-            <ProductGrid products={products} columns={3} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

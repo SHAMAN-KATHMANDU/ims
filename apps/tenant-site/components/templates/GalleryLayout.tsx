@@ -10,6 +10,7 @@ import {
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 import { brandingDisplayName, brandingTagline } from "@/lib/theme";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * GALLERY — Product-as-art. Minimal chrome, oversized imagery via
@@ -30,6 +31,7 @@ export async function GalleryLayout(props: TemplateProps) {
   } = props;
   const name = brandingDisplayName(site.branding, ctx.host);
   const tagline = brandingTagline(site.branding);
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="gallery">
@@ -88,7 +90,11 @@ export async function GalleryLayout(props: TemplateProps) {
           )}
 
           {sections.bento && (
-            <BentoShowcase products={products} eyebrow="Selected works" />
+            <BentoShowcase
+              products={products}
+              eyebrow="Selected works"
+              formatOpts={formatOpts}
+            />
           )}
 
           {sections.products && (
@@ -123,7 +129,12 @@ export async function GalleryLayout(props: TemplateProps) {
                     {products.length} works
                   </div>
                 </div>
-                <ProductGrid products={products} columns={3} variant="bare" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="bare"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -149,13 +160,18 @@ export async function GalleryLayout(props: TemplateProps) {
             >
               Catalog
             </h1>
-            <ProductGrid products={products} columns={3} variant="bare" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="bare"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

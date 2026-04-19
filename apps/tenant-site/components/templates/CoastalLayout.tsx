@@ -11,6 +11,7 @@ import {
   NewsletterBand,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * COASTAL — Breezy, light serif, airy spacing. Blue/white palette,
@@ -29,6 +30,7 @@ export async function CoastalLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="coastal">
@@ -92,7 +94,12 @@ export async function CoastalLayout(props: TemplateProps) {
                     Made for warm afternoons
                   </h2>
                 </div>
-                <ProductGrid products={products} columns={3} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -127,13 +134,18 @@ export async function CoastalLayout(props: TemplateProps) {
             >
               The collection
             </h1>
-            <ProductGrid products={products} columns={3} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

@@ -11,6 +11,7 @@ import {
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 import { brandingDisplayName, brandingTagline } from "@/lib/theme";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * RETRO — 70s / 80s revival. Chunky type, rounded pills, bold colors,
@@ -31,6 +32,7 @@ export async function RetroLayout(props: TemplateProps) {
   } = props;
   const name = brandingDisplayName(site.branding, ctx.host);
   const tagline = brandingTagline(site.branding);
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="retro">
@@ -131,7 +133,12 @@ export async function RetroLayout(props: TemplateProps) {
                 >
                   Top sellers
                 </h2>
-                <ProductGrid products={products} columns={3} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -165,13 +172,18 @@ export async function RetroLayout(props: TemplateProps) {
             >
               The whole shop
             </h1>
-            <ProductGrid products={products} columns={3} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}
