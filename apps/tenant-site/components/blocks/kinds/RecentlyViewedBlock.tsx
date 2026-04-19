@@ -12,6 +12,7 @@
 
 import type { RecentlyViewedProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
+import { getSiteFormatOptions } from "@/lib/format";
 import { RecentlyViewedClient } from "./RecentlyViewedClient";
 
 export function RecentlyViewedBlock({
@@ -31,6 +32,7 @@ export function RecentlyViewedBlock({
       }
     : null;
   const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const formatOpts = getSiteFormatOptions(dataContext.site);
   return (
     <RecentlyViewedClient
       heading={props.heading}
@@ -40,6 +42,8 @@ export function RecentlyViewedBlock({
       excludeCurrent={props.excludeCurrent ?? true}
       currentSummary={currentSummary}
       wrapperHasPadY={wrapperHasPadY}
+      locale={formatOpts.locale}
+      currency={formatOpts.currency}
     />
   );
 }

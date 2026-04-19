@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCart } from "./CartProvider";
 import { postGuestOrder } from "@/lib/api";
+import { formatPrice as formatPriceShared } from "@/lib/format";
 
 function CheckIcon() {
   return (
@@ -38,15 +39,7 @@ function CheckIcon() {
  */
 
 function formatPrice(value: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${currency} ${value.toLocaleString("en-IN")}`;
-  }
+  return formatPriceShared(value, { currency, showDecimals: false });
 }
 
 export function CheckoutForm({

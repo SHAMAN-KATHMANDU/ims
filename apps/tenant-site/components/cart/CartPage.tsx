@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatPrice as formatPriceShared } from "@/lib/format";
 import { useCart } from "./CartProvider";
 
 // Inline icons — tenant-site doesn't depend on an icon library.
@@ -47,15 +48,7 @@ function Bag() {
 }
 
 function formatPrice(value: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(value);
-  } catch {
-    return `${currency} ${value.toLocaleString("en-IN")}`;
-  }
+  return formatPriceShared(value, { currency, showDecimals: false });
 }
 
 export function CartPage() {
@@ -359,7 +352,7 @@ export function CartPage() {
               marginBottom: "0.5rem",
             }}
           >
-            Add &#8377;{(5000 - subtotal).toLocaleString("en-IN")} more for free
+            Add {formatPrice(5000 - subtotal, cart.currency)} more for free
             shipping
           </p>
         ) : (

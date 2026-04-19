@@ -12,6 +12,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { formatPrice as formatPriceShared } from "@/lib/format";
 
 interface StoredProduct {
   id: string;
@@ -30,6 +31,8 @@ interface Props {
   excludeCurrent: boolean;
   currentSummary: StoredProduct | null;
   wrapperHasPadY: boolean;
+  locale?: string;
+  currency?: string;
 }
 
 const STORAGE_KEY = "recently-viewed-v1";
@@ -63,10 +66,6 @@ function writeQueue(queue: StoredProduct[]) {
   }
 }
 
-function formatPrice(value: string): string {
-  return `₹${Number(value).toLocaleString("en-IN")}`;
-}
-
 export function RecentlyViewedClient({
   heading,
   limit,
@@ -75,7 +74,11 @@ export function RecentlyViewedClient({
   excludeCurrent,
   currentSummary,
   wrapperHasPadY,
+  locale,
+  currency,
 }: Props) {
+  const formatOpts = { locale, currency };
+  const formatPrice = (value: string) => formatPriceShared(value, formatOpts);
   const [items, setItems] = useState<StoredProduct[]>([]);
   const [mounted, setMounted] = useState(false);
 
