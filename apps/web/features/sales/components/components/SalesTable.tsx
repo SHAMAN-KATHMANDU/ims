@@ -451,7 +451,7 @@ export function SalesTable({
                     onClick={() => onView(sale)}
                     aria-label={`View sale ${sale.saleCode}`}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </TableCell>
               </TableRow>
