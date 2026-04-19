@@ -56,7 +56,10 @@ export function AdminAlerts({ basePath }: AdminAlertsProps) {
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          <AlertTriangle
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           Alerts
         </CardTitle>
         <CardDescription>Items needing attention</CardDescription>
@@ -72,7 +75,7 @@ export function AdminAlerts({ basePath }: AdminAlertsProps) {
                   href={`${basePath}/products?lowStock=1`}
                   className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2"
                 >
-                  <Package className="h-4 w-4" />
+                  <Package className="h-4 w-4" aria-hidden="true" />
                   Low stock: {alerts.lowStockCount} item(s)
                 </Link>
               </li>
@@ -83,7 +86,7 @@ export function AdminAlerts({ basePath }: AdminAlertsProps) {
                   href={`${basePath}/sales?credit=credit`}
                   className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2"
                 >
-                  <CreditCard className="h-4 w-4" />
+                  <CreditCard className="h-4 w-4" aria-hidden="true" />
                   Overdue credit: {alerts.overdueCreditCount} sale(s)
                 </Link>
               </li>
@@ -94,7 +97,7 @@ export function AdminAlerts({ basePath }: AdminAlertsProps) {
                   href={`${basePath}/transfers`}
                   className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2"
                 >
-                  <Truck className="h-4 w-4" />
+                  <Truck className="h-4 w-4" aria-hidden="true" />
                   Cancelled transfers: {alerts.failedTransferCount}
                 </Link>
               </li>
