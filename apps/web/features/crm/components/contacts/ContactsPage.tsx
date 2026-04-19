@@ -322,15 +322,15 @@ export function ContactsPage() {
               size="sm"
               onClick={() => setImportOpen(true)}
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
               Import
             </Button>
             <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2" aria-hidden="true" />
               Export
             </Button>
             <Button onClick={openNew}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               Add Contact
             </Button>
           </>
@@ -339,7 +339,10 @@ export function ContactsPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Search
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+            aria-hidden="true"
+          />
           <Input
             placeholder="Search contacts…"
             value={search}
@@ -359,7 +362,7 @@ export function ContactsPage() {
           className="shrink-0 gap-2 sm:self-stretch"
           onClick={() => setFiltersOpen(true)}
         >
-          <SlidersHorizontal className="size-4" />
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filters
           {activeFilterCount > 0 ? (
             <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
@@ -384,7 +387,7 @@ export function ContactsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -400,7 +403,7 @@ export function ContactsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -416,7 +419,7 @@ export function ContactsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -432,7 +435,7 @@ export function ContactsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -448,7 +451,7 @@ export function ContactsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
