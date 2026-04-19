@@ -1,4 +1,5 @@
 # Build and push Docker images for staging. Tags: dev, dev-{commit_sha}.
+# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: self-hosted` with `runs-on: ubuntu-latest`.
 # Triggered by push to main or manual dispatch. Push to main fires when PRs are merged.
 # Watchtower on staging EC2 pulls :dev and restarts. No deployment or SSH.
 #
@@ -44,7 +45,7 @@ jobs:
   # Skipped entirely on workflow_dispatch (manual builds always run unconditionally).
   changes:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       api: ${{ steps.changes_filter.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web }}
@@ -71,7 +72,7 @@ jobs:
 
   build-api:
     name: Build API (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: always run when stage is 'api' or 'all'.
     # On push: run when the changes job detected api or shared file changes.
@@ -119,7 +120,7 @@ jobs:
 
   build-web:
     name: Build Web (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: always run when stage is 'web' or 'all'.
     # On push: run when the changes job detected web or shared file changes.
@@ -177,7 +178,7 @@ jobs:
 
   build-tenant-site:
     name: Build Tenant Site (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: run when stage is 'tenant-site' or 'all'.
     # On push: run when the changes job detected tenant-site or shared file changes.
