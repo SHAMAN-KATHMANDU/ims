@@ -4,6 +4,7 @@ import { buildSaleBulkTemplate } from "./sale.bulk.service";
 
 async function loadTemplate(buffer: Buffer): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
+  // @ts-expect-error ExcelJS xlsx.load types predate Buffer<T> generic introduced in @types/node v22
   await wb.xlsx.load(buffer);
   return wb;
 }
