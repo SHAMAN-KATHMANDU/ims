@@ -209,7 +209,7 @@ export function VendorForm({
       {renderTrigger && (
         <DialogTrigger asChild>
           <Button onClick={() => onReset()}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             New Vendor
           </Button>
         </DialogTrigger>
