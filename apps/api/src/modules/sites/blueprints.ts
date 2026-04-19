@@ -918,6 +918,13 @@ function zenHome(): BlockNode[] {
       columns: 3,
       cardVariant: "bare",
     }),
+    block("trust-strip", {
+      items: [
+        { label: "Shipping", value: "Worldwide, carbon-offset" },
+        { label: "Returns", value: "Thirty days, no questions" },
+        { label: "Questions", value: "Replies within a day" },
+      ],
+    }),
     block("stats-band", {
       items: [
         { value: "7", label: "Categories" },
