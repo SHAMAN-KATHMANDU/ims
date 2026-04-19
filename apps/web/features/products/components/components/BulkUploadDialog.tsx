@@ -330,7 +330,10 @@ export function BulkUploadDialog({
                           key={idx}
                           className="flex min-w-0 items-center gap-1.5"
                         >
-                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          <CheckCircle2
+                            className="h-3 w-3 shrink-0"
+                            aria-hidden="true"
+                          />
                           <span className="min-w-0 truncate">
                             {(product as { imsCode?: string }).imsCode ??
                               product.name}{" "}
@@ -357,7 +360,10 @@ export function BulkUploadDialog({
                           key={idx}
                           className="flex min-w-0 items-center gap-1.5"
                         >
-                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          <CheckCircle2
+                            className="h-3 w-3 shrink-0"
+                            aria-hidden="true"
+                          />
                           <span className="min-w-0 truncate">
                             {(product as { imsCode?: string }).imsCode ??
                               product.name}{" "}
