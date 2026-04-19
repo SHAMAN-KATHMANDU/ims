@@ -100,7 +100,7 @@ export function CartPage() {
 
   return (
     <div
-      className="container"
+      className="container tpl-stack"
       style={{
         padding: "var(--section-padding) 0",
         display: "grid",
