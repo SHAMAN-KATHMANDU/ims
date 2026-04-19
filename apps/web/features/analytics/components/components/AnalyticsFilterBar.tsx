@@ -68,7 +68,7 @@ export function AnalyticsFilterBar() {
             size="sm"
             className="h-9 gap-2 text-sm shrink-0"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
           </Button>
         </PopoverTrigger>
@@ -291,7 +291,7 @@ export function AnalyticsFilterBar() {
           className="h-8 text-xs"
           onClick={clearFilters}
         >
-          <X className="h-3.5 w-3.5 mr-2" />
+          <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
           Clear filters
         </Button>
       )}
