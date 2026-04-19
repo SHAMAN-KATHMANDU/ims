@@ -70,7 +70,7 @@ export function ReportErrorDialog({
       <DialogContent className="sm:max-w-md" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bug className="h-5 w-5" />
+            <Bug className="h-5 w-5" aria-hidden="true" />
             Report an error
           </DialogTitle>
           <DialogDescription>
