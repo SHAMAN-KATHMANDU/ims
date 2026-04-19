@@ -37,9 +37,9 @@ export function UserQuickActions({ basePath }: UserQuickActionsProps) {
             href={`${basePath}/sales`}
             className="inline-flex items-center gap-2"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-4 w-4" aria-hidden="true" />
             New sale
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </Button>
         <Button asChild variant="outline" size="sm">
@@ -47,7 +47,7 @@ export function UserQuickActions({ basePath }: UserQuickActionsProps) {
             href={`${basePath}/members`}
             className="inline-flex items-center gap-2"
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
             New member
           </Link>
         </Button>
