@@ -40,6 +40,47 @@ const MARGIN_Y_MAP: Record<NonNullable<BlockStyle["marginY"]>, string> = {
   lg: "3rem",
 };
 
+const GAP_MAP: Record<NonNullable<BlockStyle["gap"]>, string> = {
+  none: "0",
+  compact: "0.5rem",
+  balanced: "1rem",
+  spacious: "2rem",
+};
+
+const TEXT_SIZE_MAP: Record<NonNullable<BlockStyle["textSize"]>, string> = {
+  xs: "0.75rem",
+  sm: "0.875rem",
+  base: "1rem",
+  lg: "1.125rem",
+  xl: "1.25rem",
+  "2xl": "1.5rem",
+  "3xl": "1.875rem",
+};
+
+const TEXT_WEIGHT_MAP: Record<NonNullable<BlockStyle["textWeight"]>, number> = {
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+};
+
+const ITEMS_ALIGN_MAP: Record<NonNullable<BlockStyle["itemsAlign"]>, string> = {
+  start: "flex-start",
+  center: "center",
+  end: "flex-end",
+  stretch: "stretch",
+  baseline: "baseline",
+};
+
+const JUSTIFY_MAP: Record<NonNullable<BlockStyle["justify"]>, string> = {
+  start: "flex-start",
+  center: "center",
+  end: "flex-end",
+  between: "space-between",
+  around: "space-around",
+  evenly: "space-evenly",
+};
+
 const MAX_WIDTH_MAP: Record<NonNullable<BlockStyle["maxWidth"]>, string> = {
   narrow: "640px",
   default: "1200px",
@@ -111,9 +152,19 @@ export function applyBlockStyles(
     out.paddingLeft = PADDING_X_MAP[style.paddingX];
     out.paddingRight = PADDING_X_MAP[style.paddingX];
   }
+  if (style.margin) {
+    out.margin = MARGIN_Y_MAP[style.margin];
+  }
   if (style.marginY) {
     out.marginTop = MARGIN_Y_MAP[style.marginY];
     out.marginBottom = MARGIN_Y_MAP[style.marginY];
+  }
+  if (style.marginX) {
+    out.marginLeft = MARGIN_Y_MAP[style.marginX];
+    out.marginRight = MARGIN_Y_MAP[style.marginX];
+  }
+  if (style.gap) {
+    out.gap = GAP_MAP[style.gap];
   }
 
   // Background — overlay stacks over image (or over a color token).
@@ -137,7 +188,15 @@ export function applyBlockStyles(
 
   // Text
   if (style.textToken) out.color = `var(--${style.textToken})`;
+  if (style.textSize) out.fontSize = TEXT_SIZE_MAP[style.textSize];
+  if (style.textWeight) out.fontWeight = TEXT_WEIGHT_MAP[style.textWeight];
   if (style.alignment) out.textAlign = style.alignment;
+
+  // Flex alignment — only take effect when the block wraps children in a flex
+  // container. We emit them unconditionally; downstream renderers opt in by
+  // applying `display: flex` on the wrapper.
+  if (style.itemsAlign) out.alignItems = ITEMS_ALIGN_MAP[style.itemsAlign];
+  if (style.justify) out.justifyContent = JUSTIFY_MAP[style.justify];
 
   // Border / surface
   if (typeof style.borderWidth === "number" && style.borderWidth > 0) {
@@ -157,6 +216,12 @@ export function applyBlockStyles(
   }
   if (style.minHeight && style.minHeight !== "auto") {
     out.minHeight = MIN_HEIGHT_MAP[style.minHeight];
+  }
+  if (style.fullBleed) {
+    out.width = "100vw";
+    out.marginLeft = "calc(50% - 50vw)";
+    out.marginRight = "calc(50% - 50vw)";
+    out.maxWidth = "100vw";
   }
 
   return out;

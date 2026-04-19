@@ -30,6 +30,21 @@ export type BorderToneScale = "subtle" | "strong" | "accent";
 export type MinHeightScale = "auto" | "sm" | "md" | "lg" | "screen";
 export type Alignment = "start" | "center" | "end";
 export type OverlayScale = "none" | "light" | "dark" | "brand";
+export type ItemsAlignScale =
+  | "start"
+  | "center"
+  | "end"
+  | "stretch"
+  | "baseline";
+export type JustifyScale =
+  | "start"
+  | "center"
+  | "end"
+  | "between"
+  | "around"
+  | "evenly";
+export type TextSizeScale = "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
+export type TextWeightScale = "normal" | "medium" | "semibold" | "bold";
 
 /**
  * Universal style override. Attach to any BlockNode via `node.style`.
@@ -40,7 +55,10 @@ export interface BlockStyle {
   // Spacing
   paddingY?: SpacingScale;
   paddingX?: SpacingScale;
+  margin?: MarginScale;
+  marginX?: MarginScale;
   marginY?: MarginScale;
+  gap?: SpacingScale;
 
   // Background
   backgroundToken?: string;
@@ -49,7 +67,13 @@ export interface BlockStyle {
 
   // Text
   textToken?: string;
+  textSize?: TextSizeScale;
+  textWeight?: TextWeightScale;
   alignment?: Alignment;
+
+  // Flex/grid alignment (applies when the block wraps children in a flex container)
+  itemsAlign?: ItemsAlignScale;
+  justify?: JustifyScale;
 
   // Border / surface
   borderWidth?: 0 | 1 | 2 | 4;
@@ -60,6 +84,7 @@ export interface BlockStyle {
   // Layout envelope
   maxWidth?: MaxWidthScale;
   minHeight?: MinHeightScale;
+  fullBleed?: boolean;
 }
 
 /**
@@ -116,12 +141,23 @@ export const BlockStyleSchema: z.ZodType<BlockStyle> = z
   .object({
     paddingY: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
     paddingX: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
+    margin: z.enum(["none", "sm", "md", "lg"]).optional(),
+    marginX: z.enum(["none", "sm", "md", "lg"]).optional(),
     marginY: z.enum(["none", "sm", "md", "lg"]).optional(),
+    gap: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
     backgroundToken: z.string().trim().max(80).optional(),
     backgroundImage: z.string().trim().max(1000).optional(),
     backgroundOverlay: z.enum(["none", "light", "dark", "brand"]).optional(),
     textToken: z.string().trim().max(80).optional(),
+    textSize: z.enum(["xs", "sm", "base", "lg", "xl", "2xl", "3xl"]).optional(),
+    textWeight: z.enum(["normal", "medium", "semibold", "bold"]).optional(),
     alignment: z.enum(["start", "center", "end"]).optional(),
+    itemsAlign: z
+      .enum(["start", "center", "end", "stretch", "baseline"])
+      .optional(),
+    justify: z
+      .enum(["start", "center", "end", "between", "around", "evenly"])
+      .optional(),
     borderWidth: z
       .union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)])
       .optional(),
@@ -130,6 +166,7 @@ export const BlockStyleSchema: z.ZodType<BlockStyle> = z
     shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
     maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
     minHeight: z.enum(["auto", "sm", "md", "lg", "screen"]).optional(),
+    fullBleed: z.boolean().optional(),
   })
   .strict();
 
