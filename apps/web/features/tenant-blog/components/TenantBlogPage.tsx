@@ -41,7 +41,7 @@ function FeatureDisabledCard() {
     <Card>
       <CardHeader className="flex flex-row items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Lock className="h-5 w-5" />
+          <Lock className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <CardTitle>Website feature not enabled</CardTitle>
@@ -113,7 +113,7 @@ export function TenantBlogPage({
           </Button>
           <Button asChild>
             <Link href={newHref}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               New post
             </Link>
           </Button>
