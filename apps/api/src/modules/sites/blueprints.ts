@@ -1105,6 +1105,29 @@ function retroHome(): BlockNode[] {
         { label: "Secure", value: "Checkout" },
       ],
     }),
+    block("testimonials", {
+      heading: "Since day one",
+      layout: "carousel",
+      items: [
+        {
+          quote:
+            "Been buying here since the 80s. Same family, same quality, same welcome.",
+          author: "Harold C.",
+          role: "Hyderabad",
+        },
+        {
+          quote:
+            "You can't find this stuff anywhere else. Classic fit, built to outlast fashion.",
+          author: "Ellen M.",
+          role: "Dublin",
+        },
+        {
+          quote: "Perfect gift shop for the hard-to-please uncle.",
+          author: "Priyal S.",
+          role: "Pune",
+        },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Don't miss a drop",
@@ -1230,6 +1253,24 @@ function galleryHome(): BlockNode[] {
           icon: "warranty",
         },
         { label: "Private viewing", detail: "By appointment", icon: "support" },
+      ],
+    }),
+    block("testimonials", {
+      heading: "From our collectors",
+      layout: "stacked",
+      items: [
+        {
+          quote:
+            "The gallery pairs pieces with collectors carefully. What I left with felt chosen for me, not sold to me.",
+          author: "Rohan V.",
+          role: "Collector, Delhi",
+        },
+        {
+          quote:
+            "Every acquisition arrives with a letter from the artist. That kind of intimacy is rare now.",
+          author: "Claire D.",
+          role: "Collector, Montréal",
+        },
       ],
     }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
