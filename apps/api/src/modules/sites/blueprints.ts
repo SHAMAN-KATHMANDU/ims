@@ -561,14 +561,53 @@ function galleryPdp(): BlockNode[] {
 }
 
 function blankPdp(): BlockNode[] {
+  // New-tenant default PDP. Matches the home blueprint's "showcase every
+  // strong block" philosophy — tenants can delete reviews/fbt/recently
+  // if not relevant, but they see the full toolkit out of the box.
   return [
     block("breadcrumbs", { scope: "product" }),
-    pdpColumns("thumbs-below"),
-    block("pdp-details", { tabs: false }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+        priceSize: "lg",
+      },
+    }),
+    block("pdp-details", { tabs: true }),
+    block("trust-strip", {
+      items: [
+        { label: "Free shipping", value: "Over ₹2,000" },
+        { label: "30-day returns", value: "No questions" },
+        { label: "Secure payment", value: "SSL" },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+      emptyMessage: "Be the first to review this product.",
+    }),
+    block("fbt", {
+      heading: "Frequently bought together",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+    }),
     block("pdp-related", {
       heading: "You may also like",
       limit: 4,
       columns: 4,
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
     }),
   ];
 }
@@ -1125,20 +1164,93 @@ function galleryHome(): BlockNode[] {
 }
 
 function blankHome(): BlockNode[] {
+  // New-tenant default blueprint. Showcases the strongest blocks so a
+  // freshly-seeded store looks polished out of the box — tenants can
+  // delete what they don't want rather than starting from an empty
+  // canvas and wondering what's possible.
   return [
     block("hero", {
       variant: "standard",
-      title: "Your Brand",
-      subtitle: "Start building your store",
-      ctaLabel: "Shop now",
+      title: "Welcome to your store",
+      subtitle: "Replace this headline with your brand's promise.",
+      ctaLabel: "Shop the collection",
       ctaHref: "/products",
     }),
+    block("trust-strip", {
+      items: [
+        { label: "Free shipping", value: "Over ₹2,000" },
+        { label: "Easy returns", value: "30 days" },
+        { label: "Secure checkout", value: "SSL" },
+        { label: "Real support", value: "Mon–Sat" },
+      ],
+    }),
     block("product-grid", {
-      heading: "Featured products",
+      eyebrow: "Featured",
+      heading: "Shop our picks",
       source: "featured",
-      limit: 4,
+      limit: 8,
       columns: 4,
-      cardVariant: "bordered",
+      cardVariant: "card",
+    }),
+    block("story-split", {
+      eyebrow: "Our story",
+      title: "A short line about who you are",
+      body: "Use this space to tell visitors why your store exists — what you care about, who you make for, and what makes your picks different. Two or three sentences is plenty.",
+      imageSide: "right",
+      ctaHref: "/about",
+      ctaLabel: "Learn more",
+    }),
+    block("testimonials", {
+      heading: "What customers say",
+      layout: "grid",
+      columns: 3,
+      items: [
+        {
+          quote:
+            "Replace with a real customer quote once you have one — short, specific, and under 25 words works best.",
+          author: "A. Shopper",
+          role: "Verified buyer",
+        },
+        {
+          quote:
+            "A second quote helps buyers see themselves here. Two or three testimonials is the sweet spot.",
+          author: "B. Reviewer",
+          role: "Loyal customer",
+        },
+        {
+          quote: "Swap these placeholders for real reviews before you launch.",
+          author: "C. Fan",
+          role: "Repeat buyer",
+        },
+      ],
+    }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "On orders over ₹2,000",
+          icon: "shipping",
+        },
+        {
+          label: "30-day returns",
+          detail: "No-questions-asked",
+          icon: "returns",
+        },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
+    }),
+    block("newsletter", {
+      title: "Join the list",
+      subtitle: "Occasional updates — no spam.",
+      cta: "Subscribe",
+      variant: "inline",
     }),
   ];
 }
