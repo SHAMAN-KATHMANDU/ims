@@ -224,7 +224,7 @@ export function TasksPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Tasks</h1>
         <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
           New Task
         </Button>
       </div>
@@ -275,7 +275,7 @@ export function TasksPage() {
             }}
             title="Tasks with no contact (orphaned)"
           >
-            <AlertCircle className="h-4 w-4 mr-1" />
+            <AlertCircle className="h-4 w-4 mr-1" aria-hidden="true" />
             Orphaned
           </Button>
           <Select
@@ -327,7 +327,7 @@ export function TasksPage() {
             }}
             disabled={bulkCompleteMutation.isPending}
           >
-            <Check className="h-4 w-4 mr-1" />
+            <Check className="h-4 w-4 mr-1" aria-hidden="true" />
             Complete
           </Button>
           <Button
@@ -349,7 +349,7 @@ export function TasksPage() {
             }}
             disabled={bulkDeleteMutation.isPending}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
+            <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
             Delete
           </Button>
           <Button size="sm" variant="ghost" onClick={clearSelection}>
@@ -417,19 +417,19 @@ export function TasksPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {task.dueDate && (
                   <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
+                    <Calendar className="h-3 w-3" aria-hidden="true" />
                     {new Date(task.dueDate).toLocaleDateString()}
                   </span>
                 )}
                 {task.assignedTo && (
                   <span className="flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" />
+                    <UserIcon className="h-3 w-3" aria-hidden="true" />
                     {task.assignedTo.username}
                   </span>
                 )}
                 {!task.contact && (
                   <span className="flex items-center gap-1 text-amber-600">
-                    <AlertCircle className="h-3 w-3" />
+                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
                     Orphaned
                   </span>
                 )}
@@ -456,7 +456,7 @@ export function TasksPage() {
                   className="h-7 text-xs flex-1"
                   onClick={() => openEdit(task.id)}
                 >
-                  <Pencil className="h-3 w-3 mr-1" />
+                  <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
                   Edit
                 </Button>
                 {!task.completed && (
@@ -470,7 +470,7 @@ export function TasksPage() {
                       });
                     }}
                   >
-                    <Check className="h-3 w-3 mr-1" />
+                    <Check className="h-3 w-3 mr-1" aria-hidden="true" />
                     Done
                   </Button>
                 )}
@@ -479,8 +479,9 @@ export function TasksPage() {
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive"
                   onClick={() => setDeleteTaskId(task.id)}
+                  aria-label={`Delete ${task.title}`}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -620,7 +621,7 @@ export function TasksPage() {
                   <TableCell>
                     {!task.contact ? (
                       <span className="flex items-center gap-1 text-amber-600">
-                        <AlertCircle className="h-3 w-3" />
+                        <AlertCircle className="h-3 w-3" aria-hidden="true" />
                         Orphaned
                       </span>
                     ) : (
@@ -660,7 +661,7 @@ export function TasksPage() {
                         size="sm"
                         onClick={() => openEdit(task.id)}
                       >
-                        <Pencil className="h-4 w-4 mr-1" />
+                        <Pencil className="h-4 w-4 mr-1" aria-hidden="true" />
                         Edit
                       </Button>
                       {!task.completed && (
@@ -674,7 +675,7 @@ export function TasksPage() {
                             });
                           }}
                         >
-                          <Check className="h-4 w-4 mr-1" />
+                          <Check className="h-4 w-4 mr-1" aria-hidden="true" />
                           Complete
                         </Button>
                       )}
