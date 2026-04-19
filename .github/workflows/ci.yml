@@ -95,13 +95,13 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Guard Prisma migrations — tenant FK must reference tenants(id)
         run: |
           set -e
@@ -123,13 +123,13 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint Web (and shared if needed)
         run: pnpm exec turbo run lint --filter=web --filter=@repo/shared
         env:
@@ -144,9 +144,11 @@ jobs:
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
     # Redis is started as a Docker service (pre-pulled image, no native conflict).
     #
-    # ⚠ Switching back to ubuntu-latest requires two changes here:
+    # ⚠ Switching back to ubuntu-latest requires these changes:
     #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
     #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+    #   3. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   4. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     services:
       redis:
         image: redis:7-alpine
@@ -163,13 +165,13 @@ jobs:
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup and setup-node cache omitted — Node 20 + pnpm are pre-installed
+      # on the self-hosted runner and wired into PATH via ~/actions-runner/.env.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
       - name: Run migrations
@@ -187,13 +189,13 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Web tests
         run: pnpm exec turbo run test:unit --filter=web
         env:
@@ -277,13 +279,13 @@ jobs:
     if: needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
       - name: Type check
@@ -301,9 +303,11 @@ jobs:
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
     # Redis is started as a Docker service (pre-pulled image, no native conflict).
     #
-    # ⚠ Switching back to ubuntu-latest requires two changes here:
+    # ⚠ Switching back to ubuntu-latest requires these changes:
     #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
     #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+    #   3. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   4. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     services:
       redis:
         image: redis:7-alpine
