@@ -73,6 +73,9 @@ import mediaRouter from "@/modules/media/media.router";
 import bundleRouter, {
   publicBundleRouter,
 } from "@/modules/bundles/bundle.router";
+import giftCardRouter, {
+  publicGiftCardRouter,
+} from "@/modules/gift-cards/gift-card.router";
 
 const router = Router();
 
@@ -115,6 +118,7 @@ router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
 router.use("/public/form-submissions", publicFormSubmissionsRouter);
 router.use("/public/bundles", publicBundleRouter);
+router.use("/public/gift-cards", publicGiftCardRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
@@ -172,5 +176,6 @@ router.use("/messaging", messagingRouter);
 router.use("/ai-settings", aiSettingsRouter);
 router.use("/media", mediaRouter);
 router.use("/bundles", bundleRouter);
+router.use("/gift-cards", giftCardRouter);
 
 export default router;
