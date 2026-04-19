@@ -157,7 +157,7 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
         <CardContent className="flex flex-col items-start gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             </div>
             <div>
               <div className="font-semibold">Design your site with blocks</div>
@@ -170,7 +170,7 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
           <Button asChild>
             <Link href="site/design">
               Open design editor
-              <ArrowRight className="ml-1 h-4 w-4" />
+              <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
         </CardContent>
@@ -314,7 +314,10 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
         <div className="text-xs text-muted-foreground">{item.hint}</div>
       </div>
       {!item.done && !item.disabled && (
-        <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+        <ArrowRight
+          className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+          aria-hidden="true"
+        />
       )}
     </div>
   );
