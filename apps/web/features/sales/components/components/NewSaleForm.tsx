@@ -1159,12 +1159,18 @@ export function NewSaleForm({
                           {/* CRM Contact (primary customer selection) */}
                           <div className="space-y-2">
                             <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                              <UserRound className="h-3 w-3" />
+                              <UserRound
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
                               Customer (Contact)
                             </Label>
                             {contactId ? (
                               <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
-                                <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <UserRound
+                                  className="h-4 w-4 text-muted-foreground shrink-0"
+                                  aria-hidden="true"
+                                />
                                 <span className="flex-1 truncate">
                                   {contactOptions.find(
                                     (c) => c.id === contactId,
