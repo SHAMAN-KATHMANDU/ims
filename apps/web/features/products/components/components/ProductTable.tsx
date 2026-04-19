@@ -308,7 +308,10 @@ export function ProductTable({
             <CardTitle className="flex items-center gap-2 text-xl md:text-2xl">
               All Products
               {isFetching && !isLoading && (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <Loader2
+                  className="h-4 w-4 animate-spin text-muted-foreground"
+                  aria-label="Refreshing"
+                />
               )}
             </CardTitle>
             <CardDescription>
@@ -325,7 +328,10 @@ export function ProductTable({
               </div>
             ) : null}
             <div className="relative w-full min-w-0 md:max-w-[280px] md:flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+                aria-hidden="true"
+              />
               <Input
                 type="search"
                 aria-label="Search products by name"
@@ -343,7 +349,7 @@ export function ProductTable({
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8"
                   aria-label="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -983,7 +989,10 @@ export function ProductTable({
                                                     }
                                                     aria-label={`Delete variation ${getVariationAttributeDisplay(variation) || variation.id}`}
                                                   >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2
+                                                      className="h-4 w-4"
+                                                      aria-hidden="true"
+                                                    />
                                                   </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
