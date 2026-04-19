@@ -601,6 +601,43 @@ export interface CssGridProps {
   tabletColumns?: number;
 }
 
+// Commerce (bundles + gift cards) -------------------------------------------
+
+export interface BundleSpotlightProps {
+  /** Published bundle slug (required — the block fetches by slug). */
+  slug: string;
+  /** Override the heading. When omitted, uses the bundle name. */
+  heading?: string;
+  /** Optional eyebrow label displayed above the heading. */
+  eyebrow?: string;
+  /** Description override. When omitted, uses the bundle's own description. */
+  description?: string;
+  /** Layout of media + copy. */
+  layout?: "split" | "stacked";
+  /** Show individual products included in the bundle (with names + prices). */
+  showProducts?: boolean;
+  /** CTA label under the pricing panel. */
+  ctaLabel?: string;
+  /** CTA href — defaults to the first included product's PDP. */
+  ctaHref?: string;
+  /** Visual style of the CTA. */
+  buttonStyle?: "primary" | "outline" | "ghost";
+}
+
+export interface GiftCardRedeemProps {
+  heading?: string;
+  subtitle?: string;
+  /** Label on the code input. */
+  codeLabel?: string;
+  /** Label on the amount input (redemption amount in minor units). */
+  amountLabel?: string;
+  /** Submit button label. */
+  buttonLabel?: string;
+  /** Message rendered after a successful redeem (supports {balance} token). */
+  successMessage?: string;
+  variant?: "inline" | "card";
+}
+
 // Utility -------------------------------------------------------------------
 
 export interface EmptyStateProps {
@@ -662,6 +699,9 @@ export interface BlockPropsMap {
   "product-comparison": ProductComparisonProps;
   lookbook: LookbookProps;
   breadcrumbs: BreadcrumbsProps;
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": BundleSpotlightProps;
+  "gift-card-redeem": GiftCardRedeemProps;
   // Layer 2
   embed: EmbedProps;
   video: VideoProps;
@@ -1330,6 +1370,31 @@ export const BlockPropsSchemas = {
       minRowHeight: z.string().max(20).optional(),
       mobileColumns: z.number().int().min(1).max(12).optional(),
       tabletColumns: z.number().int().min(1).max(12).optional(),
+    })
+    .strict(),
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": z
+    .object({
+      slug: str(200),
+      heading: optStr(200),
+      eyebrow: optStr(100),
+      description: optStr(2000),
+      layout: z.enum(["split", "stacked"]).optional(),
+      showProducts: z.boolean().optional(),
+      ctaLabel: optStr(80),
+      ctaHref: optStr(1000),
+      buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
+    })
+    .strict(),
+  "gift-card-redeem": z
+    .object({
+      heading: optStr(200),
+      subtitle: optStr(400),
+      codeLabel: optStr(80),
+      amountLabel: optStr(80),
+      buttonLabel: optStr(80),
+      successMessage: optStr(400),
+      variant: z.enum(["inline", "card"]).optional(),
     })
     .strict(),
   // Utility
