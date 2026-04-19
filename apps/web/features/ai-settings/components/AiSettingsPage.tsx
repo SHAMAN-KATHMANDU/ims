@@ -90,7 +90,7 @@ export function AiSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
             <CardTitle>System Prompt</CardTitle>
           </div>
           <CardDescription>
