@@ -57,7 +57,7 @@ function NotificationsBell({ basePath }: { basePath: string }) {
           size="icon"
           className="relative h-9 w-9 md:h-10 md:w-10"
         >
-          <Bell className="h-4 w-4 md:h-5 md:w-5" />
+          <Bell className="h-4 w-4 md:h-5 md:w-5" aria-hidden="true" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -78,7 +78,7 @@ function NotificationsBell({ basePath }: { basePath: string }) {
                 onClick={() => deleteAll.mutate()}
                 disabled={deleteAll.isPending}
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                <Trash2 className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
                 Clear all
               </Button>
             )}
@@ -166,8 +166,9 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             size="icon"
             onClick={onMenuClick}
             className="h-9 w-9"
+            aria-label="Open menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" aria-hidden="true" />
           </Button>
         )}
       </div>
@@ -195,7 +196,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               <p>{username ? `@${username}` : "My Account"}</p>
               {tenant && (
                 <p className="text-xs font-normal text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />
+                  <Building2 className="h-3 w-3" aria-hidden="true" />
                   {tenant.name}
                 </p>
               )}
@@ -208,23 +209,23 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                   setMediaLibraryOpen(true);
                 }}
               >
-                <Images className="mr-2 h-4 w-4" />
+                <Images className="mr-2 h-4 w-4" aria-hidden="true" />
                 Media library
               </DropdownMenuItem>
             )}
             <DropdownMenuItem asChild>
               <Link href={settingsPath} className="flex items-center w-full">
-                <Settings className="mr-2 h-4 w-4" />
+                <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
                 Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setReportErrorOpen(true)}>
-              <Bug className="mr-2 h-4 w-4" />
+              <Bug className="mr-2 h-4 w-4" aria-hidden="true" />
               Report error
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
               {isLoggingOut ? "Logging out..." : "Logout"}
             </DropdownMenuItem>
           </DropdownMenuContent>
