@@ -110,7 +110,10 @@ export function AnalyticsFilterBar() {
                       !startDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {startDate ? format(startDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -141,7 +144,10 @@ export function AnalyticsFilterBar() {
                       !endDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {endDate ? format(endDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
