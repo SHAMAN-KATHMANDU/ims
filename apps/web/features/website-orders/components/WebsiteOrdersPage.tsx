@@ -39,7 +39,7 @@ function FeatureDisabledCard() {
     <Card>
       <CardHeader className="flex flex-row items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Lock className="h-5 w-5" />
+          <Lock className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <CardTitle>Website feature not enabled</CardTitle>
@@ -155,7 +155,7 @@ function OrdersTable({
                     href={detailHref(o.id)}
                     aria-label={`Open ${o.orderCode}`}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </TableCell>
