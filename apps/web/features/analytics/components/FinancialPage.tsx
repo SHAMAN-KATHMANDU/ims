@@ -156,7 +156,7 @@ export function FinancialPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" disabled={exporting}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2" aria-hidden="true" />
               {exporting ? "..." : "Download"}
             </Button>
           </DropdownMenuTrigger>
@@ -165,14 +165,14 @@ export function FinancialPage() {
               onClick={() => handleExport("excel")}
               disabled={exporting}
             >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              <FileSpreadsheet className="h-4 w-4 mr-2" aria-hidden="true" />
               Download as Excel
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleExport("csv")}
               disabled={exporting}
             >
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
               Download as CSV
             </DropdownMenuItem>
           </DropdownMenuContent>
