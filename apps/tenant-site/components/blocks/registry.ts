@@ -86,6 +86,10 @@ import { FormBlock } from "./kinds/FormBlock";
 import { PolicyStripBlock } from "./kinds/PolicyStripBlock";
 import { EmptyStateBlock } from "./kinds/EmptyStateBlock";
 
+// Commerce (bundles + gift cards)
+import { BundleSpotlightBlock } from "./kinds/BundleSpotlightBlock";
+import { GiftCardRedeemBlock } from "./kinds/GiftCardRedeemBlock";
+
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
   props: P;
@@ -156,4 +160,7 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "css-grid": { component: CssGridBlock, container: true },
   // Utility
   "empty-state": { component: EmptyStateBlock },
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": { component: BundleSpotlightBlock },
+  "gift-card-redeem": { component: GiftCardRedeemBlock },
 };
