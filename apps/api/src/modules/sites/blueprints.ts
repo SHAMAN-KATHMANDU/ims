@@ -872,6 +872,14 @@ function brutalistHome(): BlockNode[] {
       columns: 4,
       cardVariant: "bare",
     }),
+    block("stats-band", {
+      items: [
+        { value: "12", label: "Years making" },
+        { value: "3", label: "People" },
+        { value: "1", label: "Shop" },
+        { value: "0", label: "Bullshit" },
+      ],
+    }),
     block("story-split", {
       title: "No frills",
       body: "We make things. You buy them. That's the arrangement.",
