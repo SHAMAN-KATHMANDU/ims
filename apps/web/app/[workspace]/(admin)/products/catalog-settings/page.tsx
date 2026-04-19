@@ -25,28 +25,24 @@ export default function CatalogSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Catalog Settings
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">Catalog Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Manage product categories, subcategories, and attribute types.
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">
-          <TabsTrigger
-            value={CATEGORIES_TAB}
-            className="gap-2 shrink-0"
-          >
-            <Tags className="h-4 w-4" />
+          <TabsTrigger value={CATEGORIES_TAB} className="gap-2 shrink-0">
+            <Tags className="h-4 w-4" aria-hidden="true" />
             Categories
           </TabsTrigger>
-          <TabsTrigger
-            value={ATTRIBUTE_TYPES_TAB}
-            className="gap-2 shrink-0"
-          >
-            <Layers className="h-4 w-4" />
+          <TabsTrigger value={ATTRIBUTE_TYPES_TAB} className="gap-2 shrink-0">
+            <Layers className="h-4 w-4" aria-hidden="true" />
             Attribute Types
           </TabsTrigger>
         </TabsList>
