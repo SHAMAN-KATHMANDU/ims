@@ -964,7 +964,10 @@ export function ProductTable({
                                                     }
                                                     aria-label={`Edit ${sheetProduct.name}`}
                                                   >
-                                                    <Edit2 className="h-4 w-4" />
+                                                    <Edit2
+                                                      className="h-4 w-4"
+                                                      aria-hidden="true"
+                                                    />
                                                   </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
