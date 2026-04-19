@@ -387,7 +387,7 @@ export function LocationsPage() {
                 ) : (
                   <Button asChild>
                     <Link href={`${basePath}/locations/new`} className="gap-2">
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4" aria-hidden="true" />
                       Add Location
                     </Link>
                   </Button>
@@ -424,7 +424,7 @@ export function LocationsPage() {
             disabled={deleteLocationMutation.isPending}
             className="h-9 gap-1.5 text-destructive hover:text-destructive sm:h-7"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Deactivate
           </Button>
           <Button
@@ -434,7 +434,7 @@ export function LocationsPage() {
             className="h-9 gap-1.5 sm:h-7"
             aria-label="Clear selection"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
             Clear
           </Button>
         </div>
