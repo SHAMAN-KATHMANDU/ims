@@ -1348,10 +1348,12 @@ function galleryHome(): BlockNode[] {
 }
 
 function blankHome(): BlockNode[] {
-  // New-tenant default blueprint. Showcases the strongest blocks so a
-  // freshly-seeded store looks polished out of the box — tenants can
-  // delete what they don't want rather than starting from an empty
-  // canvas and wondering what's possible.
+  // New-tenant default blueprint. Deliberately NOT minimal — every new
+  // store gets a full, polished home out of the box (hero, trust-strip,
+  // product-grid, story-split, testimonials, policy-strip, newsletter).
+  // Tenants delete what they don't want rather than staring at an empty
+  // canvas and wondering what's possible. Keep copy as generic placeholders
+  // so it's obvious they need replacing before launch.
   return [
     block("hero", {
       variant: "standard",
