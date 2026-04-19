@@ -78,7 +78,7 @@ export function BlockTreePanel({ onOpenPalette }: Props) {
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <h3 className="text-sm font-semibold">Blocks</h3>
         <Button size="sm" onClick={onOpenPalette}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
+          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
           Add
         </Button>
       </div>
@@ -176,11 +176,13 @@ function TreeNode({
             type="button"
             onClick={() => setCollapsed((v) => !v)}
             className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground"
+            aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+            aria-expanded={!collapsed}
           >
             {collapsed ? (
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
             ) : (
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-3 w-3" aria-hidden="true" />
             )}
           </button>
         ) : (
@@ -194,7 +196,7 @@ function TreeNode({
           {...listeners}
           aria-label="Drag to reorder"
         >
-          <GripVertical className="h-3 w-3" />
+          <GripVertical className="h-3 w-3" aria-hidden="true" />
         </button>
 
         <button
@@ -227,18 +229,18 @@ function TreeNode({
           variant="ghost"
           className="h-6 w-6 shrink-0"
           onClick={() => onDuplicate(block.id)}
-          aria-label="Duplicate"
+          aria-label={`Duplicate ${label}`}
         >
-          <Copy className="h-3 w-3" />
+          <Copy className="h-3 w-3" aria-hidden="true" />
         </Button>
         <Button
           size="icon"
           variant="ghost"
           className="h-6 w-6 shrink-0"
           onClick={() => onRemove(block.id)}
-          aria-label="Delete"
+          aria-label={`Delete ${label}`}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3 w-3" aria-hidden="true" />
         </Button>
       </div>
 
