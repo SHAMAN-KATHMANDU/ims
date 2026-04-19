@@ -68,7 +68,7 @@ export function ForgotPasswordPage({ tenantSlug }: { tenantSlug: string }) {
         <CardContent>
           <Link href={getLoginPath(tenantSlug)}>
             <Button variant="outline" className="w-full">
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
               Back to sign in
             </Button>
           </Link>
