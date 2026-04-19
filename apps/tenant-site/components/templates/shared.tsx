@@ -2100,35 +2100,176 @@ export function NewsletterBand({
   title = "Stay in the loop",
   subtitle = "Occasional updates — no spam, ever.",
   cta = "Subscribe",
+  variant = "inline",
+  dark = false,
 }: {
   title?: string;
   subtitle?: string;
   cta?: string;
+  /**
+   * Visual presentation. `inline` is the original full-bleed band,
+   * `card` floats a bordered card on the page background, `banner` is
+   * a compact high-contrast strip with the form inline beside the copy.
+   * `modal` is handled by the NewsletterBlock router — it never reaches
+   * this component.
+   */
+  variant?: "inline" | "card" | "banner";
+  dark?: boolean;
 }) {
-  return (
-    <section
-      style={{
-        padding: "var(--section-padding) 0",
-        background: "var(--color-surface)",
-        borderTop: "1px solid var(--color-border)",
-        borderBottom: "1px solid var(--color-border)",
-      }}
-    >
-      <div className="container" style={{ maxWidth: 580, textAlign: "center" }}>
+  const bg = dark
+    ? "var(--color-text)"
+    : variant === "card"
+      ? "var(--color-background)"
+      : "var(--color-surface)";
+  const fg = dark ? "var(--color-background)" : "var(--color-text)";
+  const mutedFg = dark ? "var(--color-background)" : "var(--color-muted)";
+  const sectionStyle: React.CSSProperties =
+    variant === "card"
+      ? {
+          padding: "var(--section-padding) 0",
+          background: "var(--color-background)",
+        }
+      : variant === "banner"
+        ? {
+            padding: "2rem 0",
+            background: bg,
+            color: fg,
+            borderTop: dark ? "none" : "1px solid var(--color-border)",
+            borderBottom: dark ? "none" : "1px solid var(--color-border)",
+          }
+        : {
+            padding: "var(--section-padding) 0",
+            background: bg,
+            color: fg,
+            borderTop: "1px solid var(--color-border)",
+            borderBottom: "1px solid var(--color-border)",
+          };
+
+  const inner =
+    variant === "banner" ? (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "2rem",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ flex: "1 1 240px", minWidth: 240 }}>
+          <h2
+            style={{
+              fontSize: "clamp(1.15rem, 1.75vw, 1.5rem)",
+              margin: "0 0 0.25rem",
+              fontFamily: "var(--font-display)",
+              color: fg,
+            }}
+          >
+            {title}
+          </h2>
+          <p
+            style={{
+              color: mutedFg,
+              margin: 0,
+              opacity: dark ? 0.8 : 1,
+              fontSize: "0.9rem",
+            }}
+          >
+            {subtitle}
+          </p>
+        </div>
+        <form
+          method="get"
+          action=""
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            flex: "1 1 320px",
+            minWidth: 280,
+            maxWidth: 440,
+          }}
+        >
+          <label htmlFor="newsletter-email-banner" className="sr-only">
+            Email address
+          </label>
+          <input
+            id="newsletter-email-banner"
+            name="newsletter_email"
+            type="email"
+            placeholder="Enter your email"
+            style={{
+              height: 44,
+              padding: "0 1rem",
+              border: dark
+                ? "1px solid rgba(255,255,255,0.25)"
+                : "1px solid var(--color-border)",
+              borderRadius: "var(--radius, 6px)",
+              background: dark
+                ? "rgba(255,255,255,0.08)"
+                : "var(--color-background)",
+              color: fg,
+              fontSize: "0.9rem",
+              flex: 1,
+              minWidth: 0,
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              height: 44,
+              padding: "0 1.5rem",
+              background: dark
+                ? "var(--color-background)"
+                : "var(--color-primary)",
+              color: dark
+                ? "var(--color-text)"
+                : "var(--color-on-primary, #fff)",
+              border: "none",
+              borderRadius: "var(--radius, 6px)",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {cta}
+          </button>
+        </form>
+      </div>
+    ) : (
+      <div
+        style={
+          variant === "card"
+            ? {
+                maxWidth: 640,
+                margin: "0 auto",
+                background: dark ? "var(--color-text)" : "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius, 12px)",
+                padding: "3rem 2rem",
+                textAlign: "center",
+                color: fg,
+              }
+            : { maxWidth: 580, textAlign: "center", color: fg }
+        }
+      >
         <h2
           style={{
             fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
             marginBottom: "0.75rem",
             fontFamily: "var(--font-display)",
+            color: fg,
           }}
         >
           {title}
         </h2>
         <p
           style={{
-            color: "var(--color-muted)",
+            color: mutedFg,
             marginBottom: "1.75rem",
             lineHeight: 1.6,
+            opacity: dark ? 0.8 : 1,
           }}
         >
           {subtitle}
@@ -2159,10 +2300,14 @@ export function NewsletterBand({
             style={{
               height: 44,
               padding: "0 1rem",
-              border: "1px solid var(--color-border)",
+              border: dark
+                ? "1px solid rgba(255,255,255,0.25)"
+                : "1px solid var(--color-border)",
               borderRadius: "var(--radius, 6px)",
-              background: "var(--color-background)",
-              color: "var(--color-text)",
+              background: dark
+                ? "rgba(255,255,255,0.08)"
+                : "var(--color-background)",
+              color: fg,
               fontSize: "0.9rem",
               flex: 1,
               minWidth: 0,
@@ -2174,8 +2319,12 @@ export function NewsletterBand({
             style={{
               height: 44,
               padding: "0 1.5rem",
-              background: "var(--color-primary)",
-              color: "var(--color-on-primary, #fff)",
+              background: dark
+                ? "var(--color-background)"
+                : "var(--color-primary)",
+              color: dark
+                ? "var(--color-text)"
+                : "var(--color-on-primary, #fff)",
               border: "none",
               borderRadius: "var(--radius, 6px)",
               fontWeight: 600,
@@ -2188,6 +2337,11 @@ export function NewsletterBand({
           </button>
         </form>
       </div>
+    );
+
+  return (
+    <section style={sectionStyle}>
+      <div className="container">{inner}</div>
     </section>
   );
 }

@@ -384,6 +384,12 @@ export function NewsletterBlock({
       title={props.title}
       subtitle={props.subtitle}
       cta={props.cta}
+      variant={
+        props.variant === "card" || props.variant === "banner"
+          ? props.variant
+          : "inline"
+      }
+      dark={props.dark}
     />
   );
 }
