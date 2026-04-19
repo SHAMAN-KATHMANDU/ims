@@ -851,7 +851,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total products
             </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight">
@@ -871,7 +874,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Stock at minimum limit
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle
+              className="h-4 w-4 text-amber-500"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold tracking-tight">{lowStockCount}</p>
