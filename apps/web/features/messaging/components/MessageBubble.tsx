@@ -331,7 +331,7 @@ export function MessageBubble({
         aria-label="Reply"
         onClick={() => onReply(message)}
       >
-        <CornerUpLeft className="size-4" />
+        <CornerUpLeft className="size-4" aria-hidden="true" />
       </Button>
       <Popover open={reactPopoverOpen} onOpenChange={setReactPopoverOpen}>
         <PopoverTrigger asChild>
