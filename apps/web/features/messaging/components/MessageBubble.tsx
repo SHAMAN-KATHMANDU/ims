@@ -384,7 +384,7 @@ export function MessageBubble({
             aria-label="Message options"
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <ChevronDown className="size-4" />
+            <ChevronDown className="size-4" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-48" align="end">
