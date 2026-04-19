@@ -144,7 +144,7 @@ export function AiSettingsPage() {
                 onClick={handleResetToDefault}
                 className="gap-1.5"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                 Reset to Default
               </Button>
 
@@ -154,7 +154,10 @@ export function AiSettingsPage() {
               >
                 {updateMutation.isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2
+                      className="h-4 w-4 animate-spin mr-2"
+                      aria-hidden="true"
+                    />
                     Saving...
                   </>
                 ) : (
