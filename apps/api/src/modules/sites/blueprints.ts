@@ -99,47 +99,116 @@ function productsIndexLayout(): BlockNode[] {
   ];
 }
 
-function productDetailLayout(): BlockNode[] {
-  const galleryCol = block("pdp-gallery", {
-    layout: "thumbs-below",
-    enableZoom: true,
-  });
-  const buyboxCol = block("pdp-buybox", {
+// Shared gallery+buybox row builder. Each template's PDP factory picks
+// its own gallery layout / buybox options but the two-column scaffold
+// stays consistent (sticky gallery on the left, buybox stacks under on
+// mobile).
+function pdpColumns(
+  galleryLayout: BlockPropsMap["pdp-gallery"]["layout"] = "thumbs-below",
+  opts: {
+    enableZoom?: boolean;
+    galleryAspect?: BlockPropsMap["pdp-gallery"]["aspectRatio"];
+    buybox?: BlockPropsMap["pdp-buybox"];
+    stickyFirst?: boolean;
+  } = {},
+): BlockNode {
+  const galleryProps: BlockPropsMap["pdp-gallery"] = {
+    layout: galleryLayout,
+    enableZoom: opts.enableZoom ?? true,
+    ...(opts.galleryAspect ? { aspectRatio: opts.galleryAspect } : {}),
+  };
+  const buyboxProps: BlockPropsMap["pdp-buybox"] = {
     showSku: true,
     showCategory: true,
-  });
-  const galleryBuyboxRow: BlockNode = {
+    ...opts.buybox,
+  };
+  return {
     ...block("columns", {
       count: 2,
       gap: "lg",
       verticalAlign: "start",
       stackBelow: "lg",
-      stickyFirst: true,
+      stickyFirst: opts.stickyFirst ?? true,
     }),
-    children: [galleryCol, buyboxCol],
+    children: [
+      block("pdp-gallery", galleryProps),
+      block("pdp-buybox", buyboxProps),
+    ],
   };
+}
+
+// Per-template PDP layouts. Each composition is tuned to the template's
+// voice — apothecary leans on trust + FAQ, dark leans on drop urgency,
+// zen stays bare, gallery makes the image dominate, etc. All share the
+// breadcrumbs + gallery/buybox + pdp-details backbone so the tenant can
+// delete a section without breaking the rest of the page.
+
+function editorialPdp(): BlockNode[] {
   return [
     block("breadcrumbs", { scope: "product" }),
-    galleryBuyboxRow,
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "lg",
+        showDescription: true,
+        variantDisplay: "chips",
+      },
+    }),
+    block("pdp-details", { tabs: true }),
+    block("story-split", {
+      eyebrow: "On this piece",
+      title: "Chosen for a reason",
+      body: "Every object we carry has been handled, assessed, and selected. Read the note behind why this one made it in.",
+      imageSide: "right",
+    }),
+    block("reviews-list", {
+      heading: "From the readers",
+      productIdSource: "current-pdp",
+      pageSize: 6,
+      showRatingSummary: true,
+      emptyMessage: "No reviews yet — be the first to weigh in.",
+    }),
+    block("pdp-related", {
+      heading: "More from the collection",
+      limit: 4,
+      columns: 4,
+    }),
+  ];
+}
+
+function organicPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("stacked", {
+      buybox: { showSku: true, showCategory: true, showDescription: true },
+    }),
+    block("trust-strip", {
+      items: [
+        { label: "Naturally sourced", value: "100%" },
+        { label: "Small batch", value: "Always" },
+        { label: "Ethical", value: "Supply chain" },
+      ],
+    }),
     block("pdp-details", { tabs: false }),
+    block("story-split", {
+      eyebrow: "How it's made",
+      title: "Made the slow way",
+      body: "Each piece takes the time it takes — hours of hand-finishing, weeks of resting, months from source to shelf.",
+      imageSide: "left",
+    }),
     block("reviews-list", {
       heading: "Customer reviews",
       productIdSource: "current-pdp",
       pageSize: 5,
       showRatingSummary: true,
-      emptyMessage: "Be the first to review this product.",
     }),
     block("fbt", {
-      heading: "Frequently bought together",
+      heading: "Pairs well with",
       productIdSource: "current-pdp",
       limit: 4,
       columns: 4,
-      cardVariant: "bordered",
-    }),
-    block("pdp-related", {
-      heading: "You may also like",
-      limit: 4,
-      columns: 4,
+      cardVariant: "bare",
     }),
     block("recently-viewed", {
       heading: "Recently viewed",
@@ -148,6 +217,358 @@ function productDetailLayout(): BlockNode[] {
       cardVariant: "bare",
       hideWhenEmpty: true,
       excludeCurrent: true,
+    }),
+  ];
+}
+
+function darkPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "lg",
+        variantDisplay: "chips",
+      },
+      stickyFirst: true,
+    }),
+    block("stats-band", {
+      dark: true,
+      alignment: "center",
+      valueSize: "lg",
+      items: [
+        { value: "24h", label: "Dispatch" },
+        { value: "Limited", label: "Run" },
+        { value: "∞", label: "Replays" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("fbt", {
+      heading: "Completes the fit",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("bento-showcase", {
+      eyebrow: "This month",
+      heading: "Other drops",
+      source: "featured",
+      limit: 5,
+    }),
+    block("reviews-list", {
+      heading: "Reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+  ];
+}
+
+function brutalistPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: false,
+        variantDisplay: "dropdown",
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("pdp-related", { heading: "More", limit: 4, columns: 4 }),
+  ];
+}
+
+function zenPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: false,
+        showCategory: true,
+        priceSize: "md",
+        showDescription: true,
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("reviews-list", {
+      heading: "Notes from others",
+      productIdSource: "current-pdp",
+      pageSize: 4,
+      showRatingSummary: true,
+    }),
+    block("recently-viewed", {
+      heading: "Recently considered",
+      limit: 3,
+      columns: 3,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
+    }),
+  ];
+}
+
+function coastalPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", { galleryAspect: "4/5" }),
+    block("pdp-details", { tabs: false }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹3,000",
+          icon: "shipping",
+        },
+        { label: "Easy returns", detail: "30-day window", icon: "returns" },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "What buyers say",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Style it with",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
+    }),
+  ];
+}
+
+function apothecaryPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+      },
+    }),
+    block("trust-strip", {
+      columns: 4,
+      items: [
+        { label: "Botanical", value: "Sourced" },
+        { label: "Small batch", value: "Handmade" },
+        { label: "Third-party", value: "Tested" },
+        { label: "Cruelty", value: "Free" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("faq", {
+      heading: "Questions about this formula",
+      variant: "bordered",
+      items: [
+        {
+          question: "How should I store it?",
+          answer:
+            "Cool, dry, away from direct sun. Most products keep 12 months after opening.",
+        },
+        {
+          question: "Is it tested on animals?",
+          answer:
+            "Never. Every formula is cruelty-free and third-party verified.",
+        },
+        {
+          question: "Suitable for sensitive skin?",
+          answer:
+            "Most formulas are — the label calls out common allergens when they're present.",
+        },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Often paired with",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Free shipping", detail: "Over ₹2,000", icon: "shipping" },
+        { label: "30-day returns", detail: "Unopened", icon: "returns" },
+        { label: "Secure payment", detail: "SSL", icon: "secure" },
+      ],
+    }),
+  ];
+}
+
+function retroPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: { showSku: true, showCategory: true, priceSize: "lg" },
+    }),
+    block("stats-band", {
+      items: [
+        { value: "40 yrs", label: "Running" },
+        { value: "1k+", label: "Products" },
+        { value: "100%", label: "Ours" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("reviews-list", {
+      heading: "What the regulars say",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Grab these too",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("pdp-related", {
+      heading: "More classics",
+      limit: 4,
+      columns: 4,
+    }),
+    block("bento-showcase", {
+      heading: "This month's picks",
+      source: "featured",
+      limit: 5,
+    }),
+  ];
+}
+
+function artisanPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+        priceSize: "lg",
+      },
+    }),
+    block("story-split", {
+      eyebrow: "The maker",
+      title: "Every piece is signed",
+      body: "This was made by one of the artisans we've worked with for years. It carries their mark on the base — a small assurance that a real pair of hands finished it.",
+      imageSide: "right",
+    }),
+    block("pdp-details", { tabs: true }),
+    block("testimonials", {
+      heading: "From our collectors",
+      layout: "stacked",
+      items: [
+        {
+          quote: "Four pieces over five years, each still in rotation.",
+          author: "Priya S.",
+          role: "Bangalore",
+        },
+        {
+          quote: "The detail is extraordinary — photos don't do it justice.",
+          author: "James W.",
+          role: "Brooklyn",
+        },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        {
+          label: "Handmade",
+          detail: "Signed by the maker",
+          icon: "warranty",
+        },
+        { label: "Gift-ready", detail: "Complimentary wrap", icon: "gift" },
+        {
+          label: "Lifetime care",
+          detail: "Repairs at cost",
+          icon: "support",
+        },
+      ],
+    }),
+    block("pdp-related", {
+      heading: "From the same maker",
+      limit: 4,
+      columns: 4,
+    }),
+  ];
+}
+
+function galleryPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("stacked", {
+      galleryAspect: "4/5",
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "md",
+        showDescription: true,
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("bento-showcase", {
+      eyebrow: "From the same artist",
+      heading: "Related works",
+      source: "featured",
+      limit: 5,
+    }),
+    block("reviews-list", {
+      heading: "Notes",
+      productIdSource: "current-pdp",
+      pageSize: 4,
+      showRatingSummary: true,
+      emptyMessage: "No public notes yet.",
+    }),
+    block("pdp-related", {
+      heading: "Rest of the catalog",
+      limit: 6,
+      columns: 3,
+    }),
+  ];
+}
+
+function blankPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below"),
+    block("pdp-details", { tabs: false }),
+    block("pdp-related", {
+      heading: "You may also like",
+      limit: 4,
+      columns: 4,
     }),
   ];
 }
@@ -732,7 +1153,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: editorialHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": editorialPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -762,7 +1183,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: organicHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": organicPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -792,7 +1213,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: darkHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": darkPdp(),
     },
     defaultThemeTokens: {
       mode: "dark",
@@ -822,7 +1243,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: brutalistHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": brutalistPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -856,7 +1277,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: zenHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": zenPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -887,7 +1308,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: coastalHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": coastalPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -917,7 +1338,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: apothecaryHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": apothecaryPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -947,7 +1368,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: retroHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": retroPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -977,7 +1398,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: artisanHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": artisanPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -1007,7 +1428,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: galleryHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": galleryPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -1037,7 +1458,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: blankHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": blankPdp(),
     },
   },
 };
