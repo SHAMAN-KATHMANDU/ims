@@ -107,19 +107,19 @@ export default function CrmSettingsPage() {
         <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">
           {pipelinesTabEnabled && (
             <TabsTrigger value="pipelines" className="gap-2 shrink-0">
-              <GitBranch className="h-4 w-4" />
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
               Pipelines
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
             <TabsTrigger value="sources" className="gap-2 shrink-0">
-              <Tag className="h-4 w-4" />
+              <Tag className="h-4 w-4" aria-hidden="true" />
               <span className="hidden sm:inline">Contact </span>Sources
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
             <TabsTrigger value="tags" className="gap-2 shrink-0">
-              <Tags className="h-4 w-4" />
+              <Tags className="h-4 w-4" aria-hidden="true" />
               Tags
             </TabsTrigger>
           )}
@@ -518,7 +518,10 @@ function PipelineSettings() {
         ) : pipelines.length === 0 ? (
           <div className="space-y-6 py-4">
             <div className="text-center text-muted-foreground">
-              <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <GitBranch
+                className="h-8 w-8 mx-auto mb-2 opacity-40"
+                aria-hidden="true"
+              />
               <p className="text-sm max-w-md mx-auto">
                 No pipelines yet. Start from a template (recommended) or create
                 a custom pipeline.
@@ -1164,7 +1167,7 @@ function SourceSettings() {
       <ListSettings
         title="Contact Sources"
         description="Define where your contacts come from. These appear as options when creating or editing a contact."
-        emptyIcon={<Tag className="h-8 w-8" />}
+        emptyIcon={<Tag className="h-8 w-8" aria-hidden="true" />}
         emptyText="No sources yet. Add one to get started."
         placeholder="e.g. Website, Referral, Social Media, Walk-in"
         createMode="dialog"
@@ -1234,7 +1237,7 @@ function TagSettings() {
       <ListSettings
         title="Contact Tags"
         description="Create tags to categorize contacts. Tags appear when creating or editing a contact."
-        emptyIcon={<Tags className="h-8 w-8" />}
+        emptyIcon={<Tags className="h-8 w-8" aria-hidden="true" />}
         emptyText="No tags yet. Add one above."
         placeholder="e.g. VIP, Lead, Customer, Newsletter"
         items={tags}
