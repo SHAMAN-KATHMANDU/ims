@@ -34,7 +34,7 @@ export default function ContactDetailPage() {
               onClick={() => router.push(`${basePath}/crm/contacts`)}
               className="gap-1.5"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Contacts
             </Button>
           </div>
