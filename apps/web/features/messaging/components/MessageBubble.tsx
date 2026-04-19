@@ -49,11 +49,23 @@ const LONG_PRESS_DELAY_MS = 450;
 const LONG_PRESS_VISIBLE_MS = 2500;
 
 const statusIcons: Record<string, React.ReactNode> = {
-  PENDING: <Clock className="size-3 text-muted-foreground" />,
-  SENT: <Check className="size-3 text-muted-foreground" />,
-  DELIVERED: <CheckCheck className="size-3 text-muted-foreground" />,
-  READ: <CheckCheck className="size-3 text-primary" />,
-  FAILED: <AlertCircle className="size-3 text-destructive" />,
+  PENDING: (
+    <Clock className="size-3 text-muted-foreground" aria-label="Sending" />
+  ),
+  SENT: <Check className="size-3 text-muted-foreground" aria-label="Sent" />,
+  DELIVERED: (
+    <CheckCheck
+      className="size-3 text-muted-foreground"
+      aria-label="Delivered"
+    />
+  ),
+  READ: <CheckCheck className="size-3 text-primary" aria-label="Read" />,
+  FAILED: (
+    <AlertCircle
+      className="size-3 text-destructive"
+      aria-label="Failed to send"
+    />
+  ),
 };
 
 function getMediaUrl(mediaPayload: unknown): string | null {
@@ -331,7 +343,7 @@ export function MessageBubble({
             aria-label="React"
             disabled={reactionPending}
           >
-            <Smile className="size-4" />
+            <Smile className="size-4" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto border-0 p-0 shadow-lg" align="end">
