@@ -228,7 +228,10 @@ export function ProductDetailSheet({
                               className="flex size-14 shrink-0 items-center justify-center rounded-md border bg-muted"
                               aria-hidden
                             >
-                              <Package className="size-6 text-muted-foreground" />
+                              <Package
+                                className="size-6 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
