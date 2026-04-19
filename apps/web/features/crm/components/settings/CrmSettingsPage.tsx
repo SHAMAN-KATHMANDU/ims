@@ -214,7 +214,7 @@ function StageBuilder({
         </SortableContext>
       </DndContext>
       <Button type="button" variant="outline" size="sm" onClick={addStage}>
-        <Plus className="h-4 w-4 mr-1" />
+        <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
         Add Stage
       </Button>
     </div>
@@ -255,7 +255,7 @@ function SortableStageItem({
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
       <Input
         placeholder="Stage name"
@@ -271,7 +271,7 @@ function SortableStageItem({
         onClick={onRemove}
         aria-label="Remove stage"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
       </Button>
     </div>
   );
@@ -487,14 +487,17 @@ function PipelineSettings() {
               ]);
             }}
           >
-            <Plus className="h-4 w-4 mr-1" /> New Pipeline
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> New Pipeline
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-4 pb-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder="Search by name..."
               value={pipelineSearch}
@@ -954,7 +957,10 @@ function ListSettings({
       <CardContent className="space-y-4">
         {onSearchChange != null && searchPlaceholder != null && (
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder={searchPlaceholder}
               value={searchValue ?? ""}
@@ -972,7 +978,7 @@ function ListSettings({
               disabled={isCreating}
               className="shrink-0"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
               {isCreating ? "Adding..." : "Add"}
             </Button>
           </div>
@@ -990,7 +996,7 @@ function ListSettings({
               disabled={isCreating || !newName.trim()}
               className="shrink-0"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
               {isCreating ? "Adding..." : "Add"}
             </Button>
           </div>
