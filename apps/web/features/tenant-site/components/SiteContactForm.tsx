@@ -235,7 +235,7 @@ function ContactPreview({
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
         {email.trim() && (
           <div className="flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5 shrink-0" />
+            <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <a
               href={`mailto:${email}`}
               className="text-foreground hover:underline"
@@ -246,7 +246,7 @@ function ContactPreview({
         )}
         {phone.trim() && (
           <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 shrink-0" />
+            <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <a
               href={`tel:${phone}`}
               className="text-foreground hover:underline"
@@ -257,7 +257,10 @@ function ContactPreview({
         )}
         {address.trim() && (
           <div className="flex items-start gap-2">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <MapPin
+              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+              aria-hidden="true"
+            />
             <span className="text-foreground">{address}</span>
           </div>
         )}
