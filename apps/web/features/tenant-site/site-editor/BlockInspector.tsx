@@ -478,9 +478,287 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
             </Select>
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Margin X</Label>
+            <Select
+              value={toSentinel(style.marginX)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  marginX: fromSentinel(v) as typeof style.marginX,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="sm">Small</SelectItem>
+                <SelectItem value="md">Medium</SelectItem>
+                <SelectItem value="lg">Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Margin (all)</Label>
+            <Select
+              value={toSentinel(style.margin)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  margin: fromSentinel(v) as typeof style.margin,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="sm">Small</SelectItem>
+                <SelectItem value="md">Medium</SelectItem>
+                <SelectItem value="lg">Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Gap</Label>
+            <Select
+              value={toSentinel(style.gap)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  gap: fromSentinel(v) as typeof style.gap,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="compact">Compact</SelectItem>
+                <SelectItem value="balanced">Balanced</SelectItem>
+                <SelectItem value="spacious">Spacious</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Min Height</Label>
+            <Select
+              value={toSentinel(style.minHeight)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  minHeight: fromSentinel(v) as typeof style.minHeight,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="sm">Small (200px)</SelectItem>
+                <SelectItem value="md">Medium (400px)</SelectItem>
+                <SelectItem value="lg">Large (600px)</SelectItem>
+                <SelectItem value="screen">Screen (100vh)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Items Align</Label>
+            <Select
+              value={toSentinel(style.itemsAlign)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  itemsAlign: fromSentinel(v) as typeof style.itemsAlign,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="start">Start</SelectItem>
+                <SelectItem value="center">Center</SelectItem>
+                <SelectItem value="end">End</SelectItem>
+                <SelectItem value="stretch">Stretch</SelectItem>
+                <SelectItem value="baseline">Baseline</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Justify</Label>
+            <Select
+              value={toSentinel(style.justify)}
+              onValueChange={(v) =>
+                updateBlockStyle(block.id, {
+                  justify: fromSentinel(v) as typeof style.justify,
+                })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                <SelectItem value="start">Start</SelectItem>
+                <SelectItem value="center">Center</SelectItem>
+                <SelectItem value="end">End</SelectItem>
+                <SelectItem value="between">Between</SelectItem>
+                <SelectItem value="around">Around</SelectItem>
+                <SelectItem value="evenly">Evenly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {isTextishBlock(block.kind) && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Text Size</Label>
+              <Select
+                value={toSentinel(style.textSize)}
+                onValueChange={(v) =>
+                  updateBlockStyle(block.id, {
+                    textSize: fromSentinel(v) as typeof style.textSize,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                  <SelectItem value="xs">Extra small</SelectItem>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="base">Base</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                  <SelectItem value="xl">XL</SelectItem>
+                  <SelectItem value="2xl">2XL</SelectItem>
+                  <SelectItem value="3xl">3XL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Text Weight</Label>
+              <Select
+                value={toSentinel(style.textWeight)}
+                onValueChange={(v) =>
+                  updateBlockStyle(block.id, {
+                    textWeight: fromSentinel(v) as typeof style.textWeight,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="semibold">Semibold</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <Label className="text-xs">Background Image URL</Label>
+          <Input
+            value={style.backgroundImage ?? ""}
+            onChange={(e) =>
+              updateBlockStyle(block.id, {
+                backgroundImage: e.target.value.trim() || undefined,
+              })
+            }
+            placeholder="https://…"
+            className="h-8 text-xs"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Background Overlay</Label>
+          <Select
+            value={toSentinel(style.backgroundOverlay)}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                backgroundOverlay: fromSentinel(
+                  v,
+                ) as typeof style.backgroundOverlay,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_SENTINEL}>Default</SelectItem>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="light">Light</SelectItem>
+              <SelectItem value="dark">Dark</SelectItem>
+              <SelectItem value="brand">Brand</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+          <div>
+            <Label className="text-xs font-medium">Full bleed</Label>
+            <p className="text-[10px] text-muted-foreground">
+              Break out of max-width to fill viewport
+            </p>
+          </div>
+          <Switch
+            checked={style.fullBleed ?? false}
+            onCheckedChange={(v) =>
+              updateBlockStyle(block.id, {
+                fullBleed: v ? true : undefined,
+              })
+            }
+            aria-label="Full bleed"
+          />
+        </div>
       </div>
     </details>
   );
+}
+
+const TEXTISH_BLOCK_KINDS = new Set([
+  "heading",
+  "rich-text",
+  "markdown-body",
+  "hero",
+  "announcement-bar",
+  "trust-strip",
+  "story-split",
+  "stats-band",
+  "newsletter",
+  "faq",
+  "testimonials",
+  "pdp-details",
+  "contact-block",
+]);
+
+function isTextishBlock(kind: string): boolean {
+  return TEXTISH_BLOCK_KINDS.has(kind);
 }
 
 function AdvancedSection({ block }: { block: BlockNode }) {
