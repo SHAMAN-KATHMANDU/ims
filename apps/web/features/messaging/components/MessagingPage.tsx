@@ -96,7 +96,10 @@ export function MessagingPage() {
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
-              <MessageSquare className="size-16 opacity-30" />
+              <MessageSquare
+                className="size-16 opacity-30"
+                aria-hidden="true"
+              />
               <p className="text-sm">
                 Select a conversation to start messaging
               </p>
