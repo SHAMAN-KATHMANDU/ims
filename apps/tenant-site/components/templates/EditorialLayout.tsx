@@ -12,6 +12,7 @@ import {
   CategoryTiles,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { formatPrice, getSiteFormatOptions } from "@/lib/format";
 
 /**
  * EDITORIAL — Magazine-style. Serif display, asymmetric newspaper grid
@@ -33,6 +34,7 @@ export async function EditorialLayout(props: TemplateProps) {
   } = props;
 
   const [lead, ...rest] = products;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="editorial">
@@ -208,7 +210,7 @@ export async function EditorialLayout(props: TemplateProps) {
                               color: "var(--color-muted)",
                             }}
                           >
-                            ₹{Number(p.finalSp).toLocaleString("en-IN")}
+                            {formatPrice(p.finalSp, formatOpts)}
                           </div>
                         </div>
                       </Link>
@@ -258,7 +260,12 @@ We publish a short piece with every launch. No ads, no upsells, just the story.`
                 >
                   On the shelves
                 </h2>
-                <ProductGrid products={products} columns={3} variant="bare" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="bare"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -285,13 +292,18 @@ We publish a short piece with every launch. No ads, no upsells, just the story.`
             >
               The index
             </h1>
-            <ProductGrid products={products} columns={3} variant="bare" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="bare"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

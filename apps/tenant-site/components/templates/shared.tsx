@@ -28,6 +28,7 @@ import Link from "next/link";
 import { CartBadge } from "@/components/cart/CartBadge";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
+import { formatPrice as formatPriceShared } from "@/lib/format";
 import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
@@ -1890,10 +1891,12 @@ export function BentoShowcase({
   products,
   heading,
   eyebrow,
+  formatOpts,
 }: {
   products: PublicProduct[];
   heading?: string;
   eyebrow?: string;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
 }) {
   if (products.length === 0) return null;
   const featured = products.slice(0, 5);
@@ -1988,7 +1991,7 @@ export function BentoShowcase({
                     opacity: 0.85,
                   }}
                 >
-                  ₹{Number(big.finalSp).toLocaleString("en-IN")}
+                  {formatPriceShared(big.finalSp, formatOpts)}
                 </div>
               </div>
             </Link>
@@ -2027,7 +2030,7 @@ export function BentoShowcase({
                     opacity: 0.85,
                   }}
                 >
-                  ₹{Number(p.finalSp).toLocaleString("en-IN")}
+                  {formatPriceShared(p.finalSp, formatOpts)}
                 </div>
               </div>
             </Link>
@@ -2193,7 +2196,13 @@ export function NewsletterBand({
 // Product detail
 // ============================================================================
 
-export function ProductDetail({ product }: { product: PublicProduct }) {
+export function ProductDetail({
+  product,
+  formatOpts,
+}: {
+  product: PublicProduct;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
+}) {
   return (
     <section style={{ padding: "var(--section-padding) 0" }}>
       <div
@@ -2282,21 +2291,21 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
             }}
           >
             <span
-              aria-label={`Price: ${Number(product.finalSp).toLocaleString("en-IN")} rupees`}
+              aria-label={`Price: ${formatPriceShared(product.finalSp, formatOpts)}`}
               style={{ fontWeight: 700 }}
             >
-              ₹{Number(product.finalSp).toLocaleString("en-IN")}
+              {formatPriceShared(product.finalSp, formatOpts)}
             </span>
             {Number(product.finalSp) < Number(product.mrp) && (
               <span
-                aria-label={`Original price: ${Number(product.mrp).toLocaleString("en-IN")} rupees`}
+                aria-label={`Original price: ${formatPriceShared(product.mrp, formatOpts)}`}
                 style={{
                   textDecoration: "line-through",
                   color: "var(--color-muted)",
                   fontSize: "1rem",
                 }}
               >
-                ₹{Number(product.mrp).toLocaleString("en-IN")}
+                {formatPriceShared(product.mrp, formatOpts)}
               </span>
             )}
           </div>
