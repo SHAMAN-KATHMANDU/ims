@@ -55,7 +55,10 @@ export function CrmDashboardPage() {
             <CardTitle className="text-sm font-medium">
               Total Deals Value
             </CardTitle>
-            <Handshake className="h-4 w-4 text-muted-foreground" />
+            <Handshake
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -86,7 +89,10 @@ export function CrmDashboardPage() {
             <CardTitle className="text-sm font-medium">
               Tasks Due Today
             </CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            <CheckSquare
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{d.tasksDueToday}</div>
@@ -103,7 +109,10 @@ export function CrmDashboardPage() {
             <CardTitle className="text-sm font-medium">
               Lead Conversion Rate
             </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <Target
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{d.leadConversionRate}%</div>
