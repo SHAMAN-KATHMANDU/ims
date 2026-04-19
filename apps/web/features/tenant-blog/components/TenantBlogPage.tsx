@@ -108,7 +108,7 @@ export function TenantBlogPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
-            <FolderTree className="mr-2 h-4 w-4" />
+            <FolderTree className="mr-2 h-4 w-4" aria-hidden="true" />
             Categories
           </Button>
           <Button asChild>
