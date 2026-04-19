@@ -7,6 +7,7 @@
  * the same visual output during Phase 8's migration window.
  */
 
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Hero,
@@ -24,6 +25,7 @@ import { getCollection, getOffers } from "@/lib/api";
 import { getSiteFormatOptions } from "@/lib/format";
 import type { BlockComponentProps } from "../registry";
 import { ProductCarousel } from "./ProductCarousel";
+import { BlockGridSkeleton } from "./BlockSkeletons";
 
 export function HeroBlock({
   props,
@@ -138,7 +140,34 @@ async function resolveProducts(
   });
 }
 
-export async function ProductGridBlock({
+export function ProductGridBlock(args: BlockComponentProps<ProductGridProps>) {
+  const { node, props } = args;
+  // Only `offers` + `collection` sources hit the network; the others filter
+  // pre-loaded products synchronously. Wrap just the fetching paths in
+  // Suspense so the page shell streams while the fetch resolves.
+  const fetches = props.source === "offers" || props.source === "collection";
+  if (!fetches) {
+    return <ProductGridInner {...args} />;
+  }
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const layout = props.layout ?? "grid";
+  return (
+    <Suspense
+      fallback={
+        <BlockGridSkeleton
+          wrapperHasPadY={wrapperHasPadY}
+          columns={props.columns}
+          count={props.limit}
+          aspectRatio={layout === "carousel" ? "3/4" : "3/4"}
+        />
+      }
+    >
+      <ProductGridInner {...args} />
+    </Suspense>
+  );
+}
+
+async function ProductGridInner({
   node,
   props,
   dataContext,
