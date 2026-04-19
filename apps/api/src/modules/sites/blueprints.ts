@@ -685,6 +685,31 @@ function editorialHome(): BlockNode[] {
         },
       ],
     }),
+    block("faq", {
+      heading: "Frequently asked",
+      items: [
+        {
+          question: "Do you ship internationally?",
+          answer:
+            "Yes, to 60+ countries. Standard delivery runs 7–12 business days.",
+        },
+        {
+          question: "What is your return policy?",
+          answer:
+            "30-day returns on everything except final-sale items. We cover the return label for domestic orders.",
+        },
+        {
+          question: "Are the pieces really handcrafted?",
+          answer:
+            "Every single one. We work directly with a small roster of artisans — no factories, no contractors.",
+        },
+        {
+          question: "Do you offer gift wrapping?",
+          answer:
+            "Yes — optional at checkout. Each gift box comes with a hand-written card if you include a message.",
+        },
+      ],
+    }),
     block("newsletter", {
       title: "Stay in the loop",
       subtitle: "Occasional updates from the workshop.",
