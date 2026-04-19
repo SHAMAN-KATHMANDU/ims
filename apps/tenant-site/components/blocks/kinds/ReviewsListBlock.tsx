@@ -6,12 +6,17 @@
  * pages that promote a specific item. Returns null when there are no
  * reviews and no emptyMessage — the PDP composition stays clean for
  * products without social proof yet.
+ *
+ * Wrapped in <Suspense> so the PDP shell renders immediately and the
+ * review list streams in when the backend responds.
  */
 
+import { Suspense } from "react";
 import type { ReviewsListProps } from "@repo/shared";
 import { getProductReviews } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
 import { StarRating } from "./StarRating";
+import { BlockReviewListSkeleton } from "./BlockSkeletons";
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -23,7 +28,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export async function ReviewsListBlock({
+export function ReviewsListBlock({
   node,
   props,
   dataContext,
@@ -33,6 +38,29 @@ export async function ReviewsListBlock({
     source === "explicit" ? props.productId : dataContext.activeProduct?.id;
   if (!productId) return null;
 
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+
+  return (
+    <Suspense
+      fallback={<BlockReviewListSkeleton wrapperHasPadY={wrapperHasPadY} />}
+    >
+      <ReviewsListInner
+        node={node}
+        props={props}
+        dataContext={dataContext}
+        productId={productId}
+      />
+    </Suspense>
+  );
+}
+
+async function ReviewsListInner({
+  node,
+  props,
+  dataContext,
+  productId,
+}: BlockComponentProps<ReviewsListProps> & { productId: string }) {
+  const source = props.productIdSource ?? "current-pdp";
   const pageSize = props.pageSize ?? 10;
   const payload = await getProductReviews(
     dataContext.host,
