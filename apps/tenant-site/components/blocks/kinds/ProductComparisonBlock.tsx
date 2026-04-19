@@ -8,6 +8,7 @@
  */
 
 import Link from "next/link";
+import { Suspense } from "react";
 import type { ProductComparisonProps } from "@repo/shared";
 import { getProduct } from "@/lib/api";
 import type { PublicProduct } from "@/lib/api";
@@ -90,7 +91,113 @@ function renderAttr(
   }
 }
 
-export async function ProductComparisonBlock({
+export function ProductComparisonBlock(
+  args: BlockComponentProps<ProductComparisonProps>,
+) {
+  if (!args.props.productIds || args.props.productIds.length < 2) return null;
+  const attrs = args.props.attributes ?? DEFAULT_ATTRIBUTES;
+  return (
+    <Suspense
+      fallback={
+        <ProductComparisonSkeleton
+          columns={args.props.productIds.length}
+          rows={attrs.length}
+          wrapperHasPadY={args.node.style?.paddingY !== undefined}
+        />
+      }
+    >
+      <ProductComparisonInner {...args} />
+    </Suspense>
+  );
+}
+
+function ProductComparisonSkeleton({
+  columns,
+  rows,
+  wrapperHasPadY,
+}: {
+  columns: number;
+  rows: number;
+  wrapperHasPadY: boolean;
+}) {
+  const cellPulse = {
+    background: "var(--color-surface)",
+    borderRadius: "var(--radius)",
+    animation: "pulse 1.5s infinite",
+  } as const;
+  return (
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
+      <div className="container">
+        <div style={{ overflowX: "auto" }}>
+          <table
+            aria-hidden
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: 520,
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={{ width: 140, padding: "0.85rem 1rem" }}>&nbsp;</th>
+                {Array.from({ length: columns }).map((_, i) => (
+                  <th
+                    key={i}
+                    style={{
+                      padding: "0.85rem 1rem",
+                      verticalAlign: "top",
+                    }}
+                  >
+                    <div
+                      style={{
+                        aspectRatio: "1/1",
+                        maxWidth: 180,
+                        marginBottom: "0.6rem",
+                        ...cellPulse,
+                      }}
+                    />
+                    <div style={{ height: 14, width: "70%", ...cellPulse }} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: rows }).map((_, r) => (
+                <tr key={r}>
+                  <th
+                    style={{
+                      padding: "0.75rem 1rem",
+                      borderBottom: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <div style={{ height: 10, width: 70, ...cellPulse }} />
+                  </th>
+                  {Array.from({ length: columns }).map((_, c) => (
+                    <td
+                      key={c}
+                      style={{
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    >
+                      <div style={{ height: 12, width: "80%", ...cellPulse }} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+async function ProductComparisonInner({
   node,
   props,
   dataContext,
