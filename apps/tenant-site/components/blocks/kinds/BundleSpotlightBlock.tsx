@@ -119,7 +119,10 @@ async function BundleSpotlightInner({
       : props.buttonStyle === "ghost"
         ? "btn btn-ghost"
         : "btn";
-  const ctaHref = props.ctaHref ?? `/products/${products[0].id}`;
+  const firstProductId = products[0]?.id;
+  const ctaHref =
+    props.ctaHref ??
+    (firstProductId ? `/products/${firstProductId}` : "/products");
   const ctaLabel = props.ctaLabel ?? "Add bundle to cart";
 
   return (
