@@ -1226,6 +1226,31 @@ function artisanHome(): BlockNode[] {
         },
       ],
     }),
+    block("faq", {
+      heading: "Before you commission",
+      items: [
+        {
+          question: "How long does a piece take to make?",
+          answer:
+            "Most work ships in two to four weeks. Larger commissions can run six to eight. We'll give you a date when you order and keep you updated if anything shifts.",
+        },
+        {
+          question: "Can I commission something one-of-a-kind?",
+          answer:
+            "Yes — write to us with the idea, a budget range, and a rough timeline. We'll come back within a few days with whether we can take it on and what it would cost.",
+        },
+        {
+          question: "How do I care for a handmade piece?",
+          answer:
+            "Each piece ships with a care card written by the maker. In short: keep it dry, out of direct sun, and reach out if anything needs repair — we cover that at cost for life.",
+        },
+        {
+          question: "Do you ship internationally?",
+          answer:
+            "Yes, anywhere we can insure. Larger pieces go by freight with signature on delivery.",
+        },
+      ],
+    }),
     block("newsletter", {
       title: "Join the circle",
       subtitle: "Occasional letters, never sales-y.",
