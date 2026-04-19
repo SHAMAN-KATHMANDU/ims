@@ -100,7 +100,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Guard Prisma migrations — tenant FK must reference tenants(id)
@@ -129,7 +128,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint Web (and shared if needed)
@@ -143,25 +141,9 @@ jobs:
     runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
+    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
+    # Redis is started as a Docker service (pre-pulled image, no native conflict).
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ims_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      # Required for tests/integration/** files that import
-      # @/config/express.config — the automation publisher instantiates
-      # BullMQ queues at module load, which opens a connection to Redis.
-      # Without this service, ioredis reconnect storms cascade into the
-      # Prisma native query engine under coverage and crash Node.
       redis:
         image: redis:7-alpine
         ports:
@@ -172,8 +154,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
@@ -183,7 +164,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma client
@@ -208,7 +188,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run Web tests
@@ -228,7 +207,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint tenant-site (and shared if needed)
@@ -248,7 +226,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run tenant-site unit tests
@@ -279,7 +256,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run shared package unit tests
@@ -302,7 +278,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma client
@@ -319,20 +294,9 @@ jobs:
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
+    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
+    # Redis is started as a Docker service (pre-pulled image, no native conflict).
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ims_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
       redis:
         image: redis:7-alpine
         ports:
@@ -343,7 +307,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
       # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
@@ -355,7 +319,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Build shared and API
@@ -419,7 +382,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run Trivy vulnerability scanner (filesystem)
