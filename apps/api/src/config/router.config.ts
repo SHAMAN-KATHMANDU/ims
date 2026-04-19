@@ -70,6 +70,9 @@ import publicFormSubmissionsRouter from "@/modules/public-form-submissions/publi
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
+import bundleRouter, {
+  publicBundleRouter,
+} from "@/modules/bundles/bundle.router";
 
 const router = Router();
 
@@ -111,6 +114,7 @@ router.use("/public/nav-menus", publicNavMenusRouter);
 router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
 router.use("/public/form-submissions", publicFormSubmissionsRouter);
+router.use("/public/bundles", publicBundleRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
@@ -167,5 +171,6 @@ router.use("/messaging-channels", messagingChannelRouter);
 router.use("/messaging", messagingRouter);
 router.use("/ai-settings", aiSettingsRouter);
 router.use("/media", mediaRouter);
+router.use("/bundles", bundleRouter);
 
 export default router;
