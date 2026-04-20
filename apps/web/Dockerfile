@@ -60,8 +60,11 @@ ENV NEXT_PUBLIC_FEATURE_FLAGS=${NEXT_PUBLIC_FEATURE_FLAGS}
 # Build the shared package first (web depends on it)
 RUN pnpm --filter @repo/shared build
 
-# Build the Next.js app
-RUN pnpm --filter web build
+# Build the Next.js app.
+# --mount=type=cache persists the Next.js incremental compiler cache on the
+# runner's local disk across builds, cutting cold-compile time dramatically.
+RUN --mount=type=cache,id=nextjs-web-build-cache,target=/app/apps/web/.next/cache \
+    pnpm --filter web build
 
 # ============================================
 # Stage 3: Runner (Production)
