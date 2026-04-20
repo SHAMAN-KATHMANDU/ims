@@ -77,6 +77,7 @@ const BUILT_IN_SCOPES: {
   { value: "home", label: "Home" },
   { value: "products-index", label: "Products index" },
   { value: "product-detail", label: "Product detail" },
+  { value: "offers", label: "Offers" },
   { value: "blog-index", label: "Blog index" },
   { value: "blog-post", label: "Blog post" },
   { value: "contact", label: "Contact" },

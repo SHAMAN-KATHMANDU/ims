@@ -33,6 +33,9 @@ class BulkController {
       case "sales":
         await saleController.bulkUploadSales(req, res);
         return;
+      case "discounts":
+        await productController.bulkUploadDiscounts(req, res);
+        return;
       default:
         res.status(400).json({ message: "Invalid type" });
     }
@@ -56,6 +59,9 @@ class BulkController {
         return;
       case "sales":
         await saleController.downloadBulkUploadTemplate(req, res);
+        return;
+      case "discounts":
+        await productController.downloadDiscountBulkUploadTemplate(req, res);
         return;
       default:
         res.status(400).json({ message: "Invalid type" });

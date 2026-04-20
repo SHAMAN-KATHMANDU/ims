@@ -24,12 +24,23 @@ export function SiteTabsNav() {
 
   const isBlog = pathname.startsWith(`${base}/blog`);
   const isPages = pathname.startsWith(`${base}/pages`);
-  const isWebsite = !isBlog && !isPages;
+  const isOffers = pathname.startsWith(`${base}/offers`);
+  const isNavigation = pathname.startsWith(`${base}/navigation`);
+  const isCollections = pathname.startsWith(`${base}/collections`);
+  const isWebsite =
+    !isBlog && !isPages && !isOffers && !isNavigation && !isCollections;
 
   const tabs = [
     { href: base, label: "Website", active: isWebsite },
     { href: `${base}/pages`, label: "Pages", active: isPages },
     { href: `${base}/blog`, label: "Blog", active: isBlog },
+    { href: `${base}/offers`, label: "Offers", active: isOffers },
+    { href: `${base}/navigation`, label: "Navigation", active: isNavigation },
+    {
+      href: `${base}/collections`,
+      label: "Collections",
+      active: isCollections,
+    },
   ];
 
   return (

@@ -9,7 +9,7 @@ import { asyncHandler } from "@/middlewares/errorHandler";
 
 const bulkRouter = Router();
 
-/** Env gate for bulk upload by type: products/members -> BULK_UPLOAD_PRODUCTS, sales -> BULK_UPLOAD_SALES */
+/** Env gate for bulk upload by type: products/members -> BULK_UPLOAD_PRODUCTS, sales -> BULK_UPLOAD_SALES, discounts -> BULK_UPLOAD_PRODUCTS */
 function enforceBulkUploadEnv(
   req: Request,
   res: Response,
