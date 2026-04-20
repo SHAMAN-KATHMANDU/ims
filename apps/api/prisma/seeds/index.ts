@@ -337,21 +337,16 @@ async function runLegacySeed(): Promise<void> {
 
   if (profile === "test" || profile === "all") {
     console.log("Seeding test tenants (test1, test2)...");
-    await prisma.$transaction(async (tx) => {
-      await fullTenantSeed(
-        tx as PrismaClient,
-        "test1",
-        "Test Tenant 1",
-        "test123",
-        { deleteFirst: true },
-      );
-      await fullTenantSeed(
-        tx as PrismaClient,
-        "test2",
-        "Test Tenant 2",
-        "test123",
-        { deleteFirst: true },
-      );
+    // Each tenant is seeded independently — no outer $transaction wrapper.
+    // The default Prisma interactive-transaction timeout (5 s) is too short for
+    // a full tenant seed (110 sales + all related data), which caused P2028
+    // "Transaction not found" errors in CI. deleteFirst: true makes each seed
+    // idempotent, so atomicity across both tenants is not required.
+    await fullTenantSeed(prisma, "test1", "Test Tenant 1", "test123", {
+      deleteFirst: true,
+    });
+    await fullTenantSeed(prisma, "test2", "Test Tenant 2", "test123", {
+      deleteFirst: true,
     });
   }
 
