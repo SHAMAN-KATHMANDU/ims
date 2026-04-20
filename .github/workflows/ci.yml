@@ -149,23 +149,16 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
-    # Redis is started as a Docker service (pre-pulled image, no native conflict).
+    # Redis is started manually in a step so we can kill orphaned containers
+    # from cancelled runs before binding port 6379 (Docker services bind ports
+    # before steps run, so a leftover container on 6379 would fail the job).
     #
     # ⚠ Switching back to ubuntu-latest requires these changes:
     #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
     #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-    #   3. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
-    #   4. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
+    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     env:
       DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
@@ -177,6 +170,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+      - name: Start Redis (kill orphan first)
+        # Kill any container already occupying 6379 from a cancelled prior run,
+        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
+        run: |
+          docker rm -f ci-redis 2>/dev/null || true
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 20); do
+            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
+            sleep 1
+          done
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
@@ -198,6 +201,9 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f ci-redis 2>/dev/null || true
 
   test-web:
     name: Test Web
@@ -321,23 +327,16 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     # Postgres 16 runs natively on the self-hosted runner (no port conflict).
-    # Redis is started as a Docker service (pre-pulled image, no native conflict).
+    # Redis is started manually in a step so we can kill orphaned containers
+    # from cancelled runs before binding port 6379 (Docker services bind ports
+    # before steps run, so a leftover container on 6379 would fail the job).
     #
     # ⚠ Switching back to ubuntu-latest requires these changes:
     #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
     #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-    #   3. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
-    #   4. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
+    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     env:
       DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
@@ -352,6 +351,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+      - name: Start Redis (kill orphan first)
+        # Kill any container already occupying 6379 from a cancelled prior run,
+        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
+        run: |
+          docker rm -f ci-redis 2>/dev/null || true
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 20); do
+            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
+            sleep 1
+          done
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build shared and API
@@ -404,6 +413,9 @@ jobs:
           E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
           kill "$API_PID" 2>/dev/null || true
           wait "$API_PID" 2>/dev/null || true
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f ci-redis 2>/dev/null || true
 
   trivy:
     name: Trivy security scan
