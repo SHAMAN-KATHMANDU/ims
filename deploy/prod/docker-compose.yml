@@ -139,6 +139,75 @@ services:
     networks:
       - prod
 
+  # ============================================
+  # Tenant Site Renderer (Next.js SSR, multi-tenant by Host header)
+  # Gated by EnvFeature.TENANT_WEBSITES on the API side. Started only with
+  # the `websites` compose profile so existing stacks are unaffected.
+  #   docker compose --profile websites up -d
+  # ============================================
+  prod_tenant_site:
+    image: rpandox/dev-tenant-site-ims:prod
+    container_name: prod_tenant_site
+    restart: always
+    profiles: ["websites"]
+    ports:
+      - "3100:3100"
+    environment:
+      PORT: 3100
+      HOSTNAME: 0.0.0.0
+      # Server-to-server API URL (inside docker network)
+      API_INTERNAL_URL: http://prod_api:4000/api/v1
+      # Public API origin used when rendering absolute URLs
+      API_PUBLIC_URL: ${API_PUBLIC_URL}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      NODE_ENV: production
+    depends_on:
+      prod_api:
+        condition: service_healthy
+    networks:
+      - prod
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Caddy reverse proxy (tenant custom domains, on_demand_tls)
+  # Holds :443 on the host when the `websites` profile is active. The
+  # existing host nginx is retired from the TLS path on prod as part of the
+  # cutover (see deploy/prod/setup-caddy.sh). Not started by default.
+  #   docker compose --profile websites up -d
+  # ============================================
+  prod_caddy:
+    image: caddy:2.8-alpine
+    container_name: prod_caddy
+    restart: always
+    profiles: ["websites"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - prod_caddy_data:/data
+      - prod_caddy_config:/config
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    depends_on:
+      - prod_api
+      - prod_web
+      - prod_tenant_site
+    networks:
+      - prod
+
 networks:
   prod:
     driver: bridge
@@ -148,6 +217,8 @@ volumes:
   prod_db_data:
   prod_redis_data:
   prod_uploads:
+  prod_caddy_data:
+  prod_caddy_config:
   prod_db_backups:
     driver: local
     driver_opts:

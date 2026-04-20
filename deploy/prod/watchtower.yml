@@ -22,8 +22,9 @@ services:
       WATCHTOWER_POLL_INTERVAL: 15
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_WARN_ON_HEAD_FAILURE: "never"
-    # Only watch the app containers -- not the DB, Redis, backup service, or Watchtower itself
-    command: --interval 15 prod_web prod_api
+    # Only watch the app containers -- not the DB, Redis, backup service, or Watchtower itself.
+    # prod_tenant_site is included so website deploys propagate automatically.
+    command: --interval 15 prod_web prod_api prod_tenant_site
     networks:
       - prod
 
