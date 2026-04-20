@@ -27,6 +27,7 @@ import {
 import Link from "next/link";
 import { CartBadge } from "@/components/cart/CartBadge";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { PdpBuyboxClient } from "@/components/blocks/kinds/PdpBuyboxClient";
 import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
 import { formatPrice as formatPriceShared } from "@/lib/format";
 import type { NavConfig, NavItem } from "@repo/shared";
@@ -2428,59 +2429,42 @@ export function ProductDetail({
           <h1
             style={{
               fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-              marginBottom: "1rem",
+              marginBottom: "1.25rem",
               fontFamily: "var(--font-heading)",
               lineHeight: 1.15,
             }}
           >
             {product.name}
           </h1>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: "0.75rem",
-              fontSize: "1.35rem",
-              marginBottom: "2rem",
-            }}
-          >
-            <span
-              aria-label={`Price: ${formatPriceShared(product.finalSp, formatOpts)}`}
-              style={{ fontWeight: 700 }}
-            >
-              {formatPriceShared(product.finalSp, formatOpts)}
-            </span>
-            {Number(product.finalSp) < Number(product.mrp) && (
-              <span
-                aria-label={`Original price: ${formatPriceShared(product.mrp, formatOpts)}`}
-                style={{
-                  textDecoration: "line-through",
-                  color: "var(--color-muted)",
-                  fontSize: "1rem",
-                }}
-              >
-                {formatPriceShared(product.mrp, formatOpts)}
-              </span>
-            )}
-          </div>
+          <PdpBuyboxClient
+            productId={product.id}
+            productName={product.name}
+            baseUnitPrice={Number(product.finalSp)}
+            baseMrp={Number(product.mrp)}
+            imageUrl={product.photoUrl ?? null}
+            baseSku={product.imsCode}
+            variations={product.variations ?? []}
+            showSku
+            showVariantPicker
+            variantDisplay="chips"
+            priceSize="md"
+            locale={formatOpts?.locale}
+            currency={formatOpts?.currency}
+          />
           {product.description && (
             <p
               style={{
                 lineHeight: 1.7,
                 color: "var(--color-text)",
                 opacity: 0.85,
-                marginBottom: "2rem",
+                marginTop: "2rem",
+                paddingTop: "1.5rem",
+                borderTop: "1px solid var(--color-border)",
               }}
             >
               {product.description}
             </p>
           )}
-          <AddToCartButton
-            productId={product.id}
-            productName={product.name}
-            unitPrice={Number(product.finalSp)}
-            imageUrl={product.photoUrl ?? null}
-          />
         </div>
       </div>
     </section>

@@ -19,6 +19,7 @@ import type {
 import {
   publishAutomationEvent,
   resumeFailedAutomationRunsForEvent,
+  testAutomationDefinition,
 } from "./automation.runtime";
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -228,6 +229,38 @@ export class AutomationService {
       query.limit,
     );
     return { runs };
+  }
+
+  async getAnalytics(tenantId: string, id: string) {
+    const existing = await automationRepository.findDefinitionById(
+      tenantId,
+      id,
+    );
+    if (!existing) throw createError("Automation not found", 404);
+    return automationRepository.getDefinitionAnalytics(tenantId, id);
+  }
+
+  async bulkToggle(
+    tenantId: string,
+    ids: string[],
+    status: "ACTIVE" | "INACTIVE",
+  ) {
+    if (ids.length === 0) return { updated: 0 };
+    if (ids.length > 100) throw createError("Bulk toggle limit is 100", 400);
+    const result = await automationRepository.bulkUpdateStatus(
+      tenantId,
+      ids,
+      status,
+    );
+    return { updated: result.count };
+  }
+
+  async testDefinition(
+    tenantId: string,
+    id: string,
+    input: { eventName: string; payload: Record<string, unknown> },
+  ) {
+    return testAutomationDefinition(tenantId, id, input);
   }
 
   async replayEvent(

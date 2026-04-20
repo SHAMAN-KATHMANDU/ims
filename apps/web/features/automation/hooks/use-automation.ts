@@ -6,13 +6,18 @@ import { EnvFeature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
 import {
   archiveAutomationDefinition,
+  bulkToggleAutomations,
   createAutomationDefinition,
+  getAutomationAnalytics,
   getAutomationDefinitions,
   getAutomationRuns,
   replayAutomationEvent,
+  testAutomationDefinition,
+  toggleAutomationDefinition,
   type CreateAutomationDefinitionInput,
   type GetAutomationDefinitionsParams,
   type ReplayAutomationEventInput,
+  type TestAutomationInput,
   type UpdateAutomationDefinitionInput,
   updateAutomationDefinition,
 } from "../services/automation.service";
@@ -24,6 +29,8 @@ export const automationKeys = {
   detail: (id: string) => [...automationKeys.all, "detail", id] as const,
   runs: (id: string, limit?: number) =>
     [...automationKeys.detail(id), "runs", limit] as const,
+  analytics: (id: string) =>
+    [...automationKeys.detail(id), "analytics"] as const,
 };
 
 export function useAutomationDefinitions(
@@ -116,6 +123,34 @@ export function useArchiveAutomationDefinition() {
   });
 }
 
+export function useToggleAutomationDefinition() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "ACTIVE" | "INACTIVE";
+    }) => toggleAutomationDefinition(id, status),
+    onSuccess: (_, { status }) => {
+      queryClient.invalidateQueries({ queryKey: automationKeys.all });
+      toast({
+        title:
+          status === "ACTIVE" ? "Automation activated" : "Automation paused",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to toggle automation",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useReplayAutomationEvent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -140,6 +175,64 @@ export function useReplayAutomationEvent() {
     onError: (error: Error) => {
       toast({
         title: "Failed to replay automation event",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAutomationAnalytics(
+  id: string,
+  options?: { enabled?: boolean },
+) {
+  const enabled = useEnvFeatureFlag(EnvFeature.AUTOMATION);
+  return useQuery({
+    queryKey: automationKeys.analytics(id),
+    queryFn: () => getAutomationAnalytics(id),
+    enabled: enabled && !!id && (options?.enabled ?? true),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useBulkToggleAutomations() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({
+      ids,
+      status,
+    }: {
+      ids: string[];
+      status: "ACTIVE" | "INACTIVE";
+    }) => bulkToggleAutomations(ids, status),
+    onSuccess: (result, { status }) => {
+      queryClient.invalidateQueries({ queryKey: automationKeys.all });
+      toast({
+        title: `${result.updated} automation(s) ${status === "ACTIVE" ? "activated" : "paused"}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Bulk toggle failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useTestAutomationDefinition() {
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: TestAutomationInput }) =>
+      testAutomationDefinition(id, input),
+    onSuccess: () => {
+      toast({ title: "Test run started (shadow mode)" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Test run failed",
         description: error.message,
         variant: "destructive",
       });

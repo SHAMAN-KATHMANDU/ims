@@ -85,6 +85,10 @@ export interface BlockStyle {
   maxWidth?: MaxWidthScale;
   minHeight?: MinHeightScale;
   fullBleed?: boolean;
+
+  // Raw color overrides (hex / rgba — bypasses the token system for max flexibility)
+  backgroundColor?: string;
+  color?: string;
 }
 
 /**
@@ -167,6 +171,8 @@ export const BlockStyleSchema: z.ZodType<BlockStyle> = z
     maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
     minHeight: z.enum(["auto", "sm", "md", "lg", "screen"]).optional(),
     fullBleed: z.boolean().optional(),
+    backgroundColor: z.string().trim().max(50).optional(),
+    color: z.string().trim().max(50).optional(),
   })
   .strict();
 

@@ -20,10 +20,15 @@ import {
   type CrmDealMoveStageActionConfig,
   type RecordUpdateFieldActionConfig,
   type WebhookEmitActionConfig,
+  type CrmContactAddTagActionConfig,
+  type CrmContactAddNoteActionConfig,
+  type CrmDealCreateActionConfig,
 } from "@repo/shared";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { basePrisma } from "@/config/prisma";
+import { automationEventQueue } from "@/queues/automation-queue";
+import { getIO } from "@/config/socket.config";
 import notificationRepository from "@/modules/notifications/notification.repository";
 import transferRepository from "@/modules/transfers/transfer.repository";
 import activityRepository from "@/modules/activities/activity.repository";
@@ -125,6 +130,9 @@ const ACTION_ALLOWED_EVENTS = {
     "crm.lead.assigned",
     "crm.lead.converted",
   ],
+  "crm.contact.add_tag": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.contact.add_note": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.deal.create": AUTOMATION_TRIGGER_EVENT_VALUES,
   "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
 } as const satisfies Record<string, readonly string[]>;
 
@@ -324,6 +332,24 @@ function renderTemplateString(
     );
     return value == null ? "" : String(value);
   });
+}
+
+function emitRunUpdate(
+  tenantId: string,
+  runId: string,
+  automationId: string,
+  status: "SUCCEEDED" | "FAILED" | "SKIPPED",
+): void {
+  try {
+    getIO()?.to(`tenant:${tenantId}`).emit("automation:run:updated", {
+      runId,
+      automationId,
+      status,
+      completedAt: new Date().toISOString(),
+    });
+  } catch {
+    // Never break execution for a socket emit failure
+  }
 }
 
 async function createRunSafely(input: CreateAutomationRunInput) {
@@ -1103,11 +1129,23 @@ async function runMatchedAutomation(
 
   if (automation.executionMode === "SHADOW") {
     await runShadowAutomation(automation, event, run.id);
+    emitRunUpdate(event.tenantId, run.id, automation.id, "SKIPPED");
     return;
   }
 
   if (validatedGraph) {
-    await runLiveAutomationGraphBody(automation, event, run.id, validatedGraph);
+    const { failed } = await runLiveAutomationGraphBody(
+      automation,
+      event,
+      run.id,
+      validatedGraph,
+    );
+    emitRunUpdate(
+      event.tenantId,
+      run.id,
+      automation.id,
+      failed ? "FAILED" : "SUCCEEDED",
+    );
     return;
   }
 
@@ -1142,6 +1180,12 @@ async function runMatchedAutomation(
       completedAt: new Date(),
     });
   }
+  emitRunUpdate(
+    event.tenantId,
+    run.id,
+    automation.id,
+    failed ? "FAILED" : "SUCCEEDED",
+  );
 }
 
 export async function resumeFailedAutomationRunsForEvent(
@@ -1730,6 +1774,87 @@ const actionHandlers: Record<string, ActionHandler> = {
     });
     return { entityId, field: parsed.field };
   },
+  "crm.contact.add_tag": async ({ config, context }) => {
+    const parsed = renderTemplateValue(
+      config,
+      context,
+    ) as CrmContactAddTagActionConfig;
+    const contactId = renderTemplateString(parsed.contactIdTemplate, context);
+    const existing = await basePrisma.contactTag.findFirst({
+      where: { tenantId: context.event.tenantId, name: parsed.tagName },
+      select: { id: true, name: true },
+    });
+    const tag =
+      existing ??
+      (await basePrisma.contactTag.create({
+        data: { tenantId: context.event.tenantId, name: parsed.tagName },
+        select: { id: true, name: true },
+      }));
+    await basePrisma.contactTagLink.upsert({
+      where: { contactId_tagId: { contactId, tagId: tag.id } },
+      create: { contactId, tagId: tag.id },
+      update: {},
+    });
+    return { contactId, tagId: tag.id, tagName: tag.name };
+  },
+  "crm.contact.add_note": async ({ config, context }) => {
+    const parsed = renderTemplateValue(
+      config,
+      context,
+    ) as CrmContactAddNoteActionConfig;
+    const contactId = renderTemplateString(parsed.contactIdTemplate, context);
+    const createdById = await resolveExistingActorUserId(
+      context.event.tenantId,
+      context.event.actorUserId,
+    );
+    if (!createdById) {
+      return { skipped: true, reason: "No valid actor for contact note" };
+    }
+    const note = await basePrisma.contactNote.create({
+      data: { contactId, content: parsed.content.trim(), createdById },
+      select: { id: true },
+    });
+    return { contactId, noteId: note.id };
+  },
+  "crm.deal.create": async ({ config, context }) => {
+    const parsed = renderTemplateValue(
+      config,
+      context,
+    ) as CrmDealCreateActionConfig;
+    const actorUserId = await resolveExistingActorUserId(
+      context.event.tenantId,
+      context.event.actorUserId,
+    );
+    if (!actorUserId) {
+      return { skipped: true, reason: "No valid actor for deal creation" };
+    }
+    const contactId = parsed.contactIdTemplate
+      ? renderTemplateString(parsed.contactIdTemplate, context)
+      : null;
+    const assignedToId = parsed.assignedToIdTemplate
+      ? renderTemplateString(parsed.assignedToIdTemplate, context)
+      : actorUserId;
+    const resolvedAssignee = await resolveAssignableUserId(
+      context.event.tenantId,
+      assignedToId,
+    );
+    const deal = await basePrisma.deal.create({
+      data: {
+        tenantId: context.event.tenantId,
+        name: parsed.name,
+        value: parsed.amount ?? 0,
+        pipelineId: parsed.pipelineId,
+        stage: parsed.stage ?? "Qualification",
+        status: "OPEN",
+        probability: 0,
+        contactId: contactId || null,
+        assignedToId: resolvedAssignee ?? actorUserId,
+        createdById: actorUserId,
+      },
+      select: { id: true, name: true, stage: true },
+    });
+    return { dealId: deal.id, name: deal.name, stage: deal.stage };
+  },
   "webhook.emit": async ({ config, context }) => {
     const parsed = renderTemplateValue(
       config,
@@ -1799,9 +1924,19 @@ export async function publishAutomationEvent(
 
   try {
     const event = await automationRepository.createEvent(input);
-    setImmediate(() => {
-      void processAutomationEventById(event.id);
-    });
+    await automationEventQueue
+      .add("process-event", { eventId: event.id })
+      .catch((err: unknown) => {
+        logger.warn(
+          "BullMQ enqueue failed, falling back to setImmediate",
+          undefined,
+          {
+            eventId: event.id,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        );
+        setImmediate(() => void processAutomationEventById(event.id));
+      });
   } catch (error) {
     const code = (error as { code?: string })?.code;
     if (code === "P2002" && input.dedupeKey) {
@@ -1936,6 +2071,78 @@ export async function processAutomationEventById(
       decision.errorMessage,
     );
   }
+}
+
+export async function testAutomationDefinition(
+  tenantId: string,
+  automationId: string,
+  input: { eventName: string; payload: Record<string, unknown> },
+): Promise<{ runId: string }> {
+  if (!automationFeatureEnabled) {
+    throw new Error("Automation feature is not enabled");
+  }
+
+  const automation = await automationRepository.findDefinitionById(
+    tenantId,
+    automationId,
+  );
+  if (!automation) {
+    throw Object.assign(new Error("Automation not found"), { statusCode: 404 });
+  }
+
+  const syntheticDedupeKey = `test:${automationId}:${Date.now()}`;
+  const now = new Date();
+  const event = await automationRepository.createEvent({
+    tenantId,
+    eventName: input.eventName,
+    entityType: "TEST",
+    entityId: `test-${Date.now()}`,
+    payload: input.payload as Prisma.InputJsonValue,
+    actorUserId: null,
+    dedupeKey: syntheticDedupeKey,
+    scopeType: null,
+    scopeId: null,
+    occurredAt: now,
+  });
+  await automationRepository.markEventProcessed(event.id);
+
+  const syntheticEvent: AutomationEventPayload = {
+    id: event.id,
+    tenantId,
+    eventName: input.eventName,
+    scopeType: null,
+    scopeId: null,
+    entityType: "TEST",
+    entityId: event.entityId,
+    actorUserId: null,
+    dedupeKey: syntheticDedupeKey,
+    payload: input.payload,
+    occurredAt: event.occurredAt,
+  };
+
+  const shadowAutomation = { ...automation, executionMode: "SHADOW" as const };
+  const run = await createRunSafely({
+    tenantId,
+    automationId: automation.id,
+    automationEventId: event.id,
+    status: "RUNNING",
+    executionMode: "SHADOW",
+    eventName: input.eventName,
+    entityType: "TEST",
+    entityId: event.entityId,
+    actorUserId: null,
+    dedupeKey: null,
+    triggerPayload: input.payload as Prisma.InputJsonValue,
+  });
+
+  if (!run || run.status !== "RUNNING") {
+    throw new Error("Could not create test run");
+  }
+
+  await runShadowAutomation(shadowAutomation, syntheticEvent, run.id);
+  emitRunUpdate(tenantId, run.id, automation.id, "SKIPPED");
+
+  return { runId: run.id };
 }
 
 declare global {

@@ -77,6 +77,10 @@ export const AUTOMATION_TRIGGER_EVENT_VALUES = [
   "workitems.created",
   "workitems.completed",
   "cart.abandoned",
+  "storefront.order.placed",
+  "storefront.order.verified",
+  "storefront.order.converted",
+  "storefront.form.submitted",
 ] as const;
 
 export type AutomationTriggerEventValue =
@@ -91,6 +95,9 @@ export const AUTOMATION_ACTION_TYPE_VALUES = [
   "crm.company.update",
   "crm.deal.move_stage",
   "crm.activity.create",
+  "crm.contact.add_tag",
+  "crm.contact.add_note",
+  "crm.deal.create",
   "webhook.emit",
 ] as const;
 

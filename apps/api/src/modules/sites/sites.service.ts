@@ -10,7 +10,16 @@
 import { Prisma, type SiteTemplate } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
 import defaultRepo, { type SiteConfigWithTemplate } from "./sites.repository";
-import type { UpdateSiteConfigInput, PickTemplateInput } from "./sites.schema";
+import type {
+  UpdateSiteConfigInput,
+  PickTemplateInput,
+  CreatePageInput,
+  UpdatePageInput,
+  UpsertBlocksInput,
+  UpdateGlobalsInput,
+  UpdateThemeInput,
+  UpdateSeoInput,
+} from "./sites.schema";
 import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
@@ -19,6 +28,7 @@ import {
   BLUEPRINT_SCOPES,
   type TemplateBlueprint,
 } from "./blueprints";
+import type { BlockNode, BlockTree } from "@repo/shared";
 
 type Repo = typeof defaultRepo;
 type Revalidate = (tenantId: string) => Promise<void>;
@@ -209,6 +219,326 @@ export class SitesService {
     });
     await this.revalidate(tenantId);
     return result;
+  }
+
+  // ——— PAGES ———
+
+  async listPages(tenantId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    // For now, pages are accessed via SiteLayout rows where pageId is not null.
+    // Future implementation can add a dedicated SitePage table if needed.
+    return [];
+  }
+
+  async getPage(tenantId: string, _pageId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    // Placeholder: fetch page metadata and blocks from SiteLayout
+    throw createError("Not implemented", 501);
+  }
+
+  async createPage(tenantId: string, _input: CreatePageInput) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    // Placeholder: create a custom page and seed SiteLayout with empty blocks
+    throw createError("Not implemented", 501);
+  }
+
+  async updatePage(tenantId: string, _pageId: string, _input: UpdatePageInput) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    throw createError("Not implemented", 501);
+  }
+
+  async deletePage(tenantId: string, _pageId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    throw createError("Not implemented", 501);
+  }
+
+  // ——— BLOCKS ———
+
+  async upsertBlocks(
+    tenantId: string,
+    input: UpsertBlocksInput,
+  ): Promise<BlockTree> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const scope = input.scope || "home";
+    const blocks = input.blocks as unknown as Prisma.InputJsonValue;
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope, pageId: input.pageId },
+      blocks,
+    );
+    await revalidateSiteLayout(tenantId, scope);
+    return input.blocks;
+  }
+
+  async addBlock(
+    tenantId: string,
+    input: {
+      pageId: string | null;
+      scope: string;
+      block: BlockNode;
+    },
+  ): Promise<BlockTree> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const layout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: input.scope,
+      pageId: input.pageId,
+    });
+    const current = (layout?.draftBlocks ??
+      layout?.blocks ??
+      []) as unknown as BlockTree;
+    const updated = [...current, input.block];
+
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope: input.scope, pageId: input.pageId },
+      updated as unknown as Prisma.InputJsonValue,
+    );
+    await revalidateSiteLayout(tenantId, input.scope);
+    return updated;
+  }
+
+  async updateBlock(
+    tenantId: string,
+    input: {
+      pageId: string | null;
+      scope: string;
+      blockId: string;
+      props?: Record<string, unknown>;
+      style?: Record<string, unknown> | null;
+      visibility?: Record<string, unknown>;
+    },
+  ): Promise<BlockTree> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const layout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: input.scope,
+      pageId: input.pageId,
+    });
+    const current = (layout?.draftBlocks ??
+      layout?.blocks ??
+      []) as unknown as BlockTree;
+
+    const updated = current.map((block: BlockNode) => {
+      if (block.id === input.blockId) {
+        return {
+          ...block,
+          ...(input.props !== undefined && { props: input.props }),
+          ...(input.style !== undefined && { style: input.style }),
+          ...(input.visibility !== undefined && {
+            visibility: input.visibility,
+          }),
+        };
+      }
+      return block;
+    });
+
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope: input.scope, pageId: input.pageId },
+      updated as unknown as Prisma.InputJsonValue,
+    );
+    await revalidateSiteLayout(tenantId, input.scope);
+    return updated;
+  }
+
+  async deleteBlock(
+    tenantId: string,
+    input: {
+      pageId: string | null;
+      scope: string;
+      blockId: string;
+    },
+  ): Promise<BlockTree> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const layout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: input.scope,
+      pageId: input.pageId,
+    });
+    const current = (layout?.draftBlocks ??
+      layout?.blocks ??
+      []) as unknown as BlockTree;
+    const updated = current.filter(
+      (block: BlockNode) => block.id !== input.blockId,
+    );
+
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope: input.scope, pageId: input.pageId },
+      updated as unknown as Prisma.InputJsonValue,
+    );
+    await revalidateSiteLayout(tenantId, input.scope);
+    return updated;
+  }
+
+  async reorderBlocks(
+    tenantId: string,
+    input: {
+      pageId: string | null;
+      scope: string;
+      blockIds: string[];
+    },
+  ): Promise<BlockTree> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const layout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: input.scope,
+      pageId: input.pageId,
+    });
+    const current = (layout?.draftBlocks ??
+      layout?.blocks ??
+      []) as unknown as BlockTree;
+
+    // Reorder blocks according to blockIds
+    const blockMap = new Map(current.map((b: BlockNode) => [b.id, b]));
+    const updated: BlockTree = [];
+    for (const id of input.blockIds) {
+      const block = blockMap.get(id);
+      if (block) {
+        updated.push(block);
+      }
+    }
+    // Append any blocks that weren't in the reorder list (shouldn't happen in normal flow)
+    for (const block of current) {
+      if (!updated.find((b) => b.id === block.id)) {
+        updated.push(block);
+      }
+    }
+
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope: input.scope, pageId: input.pageId },
+      updated as unknown as Prisma.InputJsonValue,
+    );
+    await revalidateSiteLayout(tenantId, input.scope);
+    return updated;
+  }
+
+  // ——— GLOBALS (Header/Footer) ———
+
+  async getGlobals(tenantId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const headerLayout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: "header",
+      pageId: null,
+    });
+    const footerLayout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: "footer",
+      pageId: null,
+    });
+
+    return {
+      header: (headerLayout?.draftBlocks ??
+        headerLayout?.blocks ??
+        []) as unknown as BlockTree,
+      footer: (footerLayout?.draftBlocks ??
+        footerLayout?.blocks ??
+        []) as unknown as BlockTree,
+    };
+  }
+
+  async updateGlobals(tenantId: string, input: UpdateGlobalsInput) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    if (input.header !== undefined) {
+      await siteLayoutsRepo.upsertDraft(
+        tenantId,
+        { scope: "header", pageId: null },
+        input.header as unknown as Prisma.InputJsonValue,
+      );
+      await revalidateSiteLayout(tenantId, "header");
+    }
+
+    if (input.footer !== undefined) {
+      await siteLayoutsRepo.upsertDraft(
+        tenantId,
+        { scope: "footer", pageId: null },
+        input.footer as unknown as Prisma.InputJsonValue,
+      );
+      await revalidateSiteLayout(tenantId, "footer");
+    }
+
+    return this.getGlobals(tenantId);
+  }
+
+  // ——— THEME ———
+
+  async getTheme(tenantId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    return config.themeTokens ?? {};
+  }
+
+  async updateTheme(tenantId: string, input: UpdateThemeInput) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const current = (config.themeTokens ?? {}) as Record<string, unknown>;
+    const merged = {
+      colors: {
+        ...((current.colors as Record<string, unknown>) ?? {}),
+        ...input.colors,
+      },
+      typography: {
+        ...((current.typography as Record<string, unknown>) ?? {}),
+        ...input.typography,
+      },
+      layout: {
+        ...((current.layout as Record<string, unknown>) ?? {}),
+        ...input.layout,
+      },
+    };
+
+    const result = await this.repo.updateConfig(tenantId, {
+      themeTokens: merged as Prisma.InputJsonValue,
+    });
+    await this.revalidate(tenantId);
+    return result.themeTokens ?? {};
+  }
+
+  // ——— SEO ———
+
+  async getSeo(tenantId: string) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    return config.seo ?? {};
+  }
+
+  async updateSeo(tenantId: string, input: UpdateSeoInput) {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const current = (config.seo ?? {}) as Record<string, unknown>;
+    const merged = {
+      ...current,
+      ...(input.siteTitle !== undefined && { siteTitle: input.siteTitle }),
+      ...(input.siteDescription !== undefined && {
+        siteDescription: input.siteDescription,
+      }),
+      ...(input.gaId !== undefined && { gaId: input.gaId }),
+      ...(input.robots !== undefined && { robots: input.robots }),
+    };
+
+    const result = await this.repo.updateConfig(tenantId, {
+      seo: merged as Prisma.InputJsonValue,
+    });
+    await this.revalidate(tenantId);
+    return result.seo ?? {};
   }
 }
 

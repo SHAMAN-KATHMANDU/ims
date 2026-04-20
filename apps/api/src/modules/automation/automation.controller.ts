@@ -12,10 +12,13 @@ import { sendControllerError } from "@/utils/controllerError";
 import automationService from "./automation.service";
 import {
   AutomationIdParamSchema,
+  BulkToggleAutomationSchema,
   CreateAutomationDefinitionSchema,
   GetAutomationDefinitionsQuerySchema,
   GetAutomationRunsQuerySchema,
   ReplayAutomationEventSchema,
+  TestAutomationDefinitionSchema,
+  ToggleAutomationStatusSchema,
   UpdateAutomationDefinitionSchema,
 } from "./automation.schema";
 
@@ -181,6 +184,85 @@ class AutomationController {
         return fail(res, (error as Error).message, statusCode);
       }
       return sendControllerError(req, res, error, "getAutomationRuns");
+    }
+  };
+
+  toggleDefinition = async (req: Request, res: Response) => {
+    try {
+      const { tenantId, userId } = getAuthContext(req);
+      const { id } = AutomationIdParamSchema.parse(req.params);
+      const { status } = ToggleAutomationStatusSchema.parse(req.body);
+      const automation = await automationService.updateDefinition(
+        tenantId,
+        id,
+        userId,
+        { status },
+      );
+      return ok(res, { automation });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      if (statusCode) {
+        return fail(res, (error as Error).message, statusCode);
+      }
+      return sendControllerError(req, res, error, "toggleAutomationDefinition");
+    }
+  };
+
+  getAnalytics = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const { id } = AutomationIdParamSchema.parse(req.params);
+      const analytics = await automationService.getAnalytics(tenantId, id);
+      return ok(res, { analytics });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      if (statusCode) {
+        return fail(res, (error as Error).message, statusCode);
+      }
+      return sendControllerError(req, res, error, "getAutomationAnalytics");
+    }
+  };
+
+  bulkToggle = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const { ids, status } = BulkToggleAutomationSchema.parse(req.body);
+      const result = await automationService.bulkToggle(tenantId, ids, status);
+      return ok(res, result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      if (statusCode) {
+        return fail(res, (error as Error).message, statusCode);
+      }
+      return sendControllerError(req, res, error, "bulkToggleAutomations");
+    }
+  };
+
+  testDefinition = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const { id } = AutomationIdParamSchema.parse(req.params);
+      const body = TestAutomationDefinitionSchema.parse(req.body);
+      const result = await automationService.testDefinition(tenantId, id, body);
+      return ok(res, result, 202);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      if (statusCode) {
+        return fail(res, (error as Error).message, statusCode);
+      }
+      return sendControllerError(req, res, error, "testAutomationDefinition");
     }
   };
 

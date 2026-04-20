@@ -1806,4 +1806,5 @@ export const BLUEPRINT_SCOPES = [
   "home",
   "products-index",
   "product-detail",
+  "offers",
 ] as const satisfies readonly BlueprintScope[];

@@ -117,17 +117,29 @@ function SidebarItem({
     );
   }
 
+  const linkClassName = cn(
+    "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+    active
+      ? "bg-muted text-foreground"
+      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+  );
+
+  if (item.openInNewTab) {
+    return (
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClassName}
+        onClick={onItemClick}
+      >
+        {linkContent}
+      </a>
+    );
+  }
+
   return (
-    <Link
-      href={item.href}
-      className={cn(
-        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-        active
-          ? "bg-muted text-foreground"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-      )}
-      onClick={onItemClick}
-    >
+    <Link href={item.href} className={linkClassName} onClick={onItemClick}>
       {linkContent}
     </Link>
   );
@@ -199,20 +211,37 @@ function SidebarSection({
                 if (!navItem) return null;
                 const Icon = navItem.icon;
                 const active = pathname === navItem.href;
-                return (
+                const hoverItemClass = cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                );
+                const hoverItemInner = (
+                  <>
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{navItem.label}</span>
+                  </>
+                );
+                return navItem.openInNewTab ? (
+                  <a
+                    key={navItem.href}
+                    href={navItem.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={hoverItemClass}
+                    onClick={onItemClick}
+                  >
+                    {hoverItemInner}
+                  </a>
+                ) : (
                   <Link
                     key={navItem.href}
                     href={navItem.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                    )}
+                    className={hoverItemClass}
                     onClick={onItemClick}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{navItem.label}</span>
+                    {hoverItemInner}
                   </Link>
                 );
               })}
@@ -228,22 +257,37 @@ function SidebarSection({
     if (!item) return null;
     const Icon = item.icon;
     const active = pathname === item.href;
+    const collapsedLinkClass = cn(
+      "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors",
+      active
+        ? "bg-muted text-foreground"
+        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+    );
+    const collapsedLinkInner = <Icon className="h-5 w-5" aria-hidden />;
     return (
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
-          <Link
-            href={item.href}
-            className={cn(
-              "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors",
-              active
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-            )}
-            onClick={onItemClick}
-            aria-label={item.label}
-          >
-            <Icon className="h-5 w-5" aria-hidden />
-          </Link>
+          {item.openInNewTab ? (
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={collapsedLinkClass}
+              onClick={onItemClick}
+              aria-label={item.label}
+            >
+              {collapsedLinkInner}
+            </a>
+          ) : (
+            <Link
+              href={item.href}
+              className={collapsedLinkClass}
+              onClick={onItemClick}
+              aria-label={item.label}
+            >
+              {collapsedLinkInner}
+            </Link>
+          )}
         </TooltipTrigger>
         <TooltipContent side="right" sideOffset={8}>
           {item.label}

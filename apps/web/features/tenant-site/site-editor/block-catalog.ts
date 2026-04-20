@@ -16,7 +16,8 @@ export type CatalogCategory =
   | "commerce"
   | "marketing"
   | "blog"
-  | "pdp";
+  | "pdp"
+  | "form";
 
 export interface CatalogEntry<K extends BlockKind = BlockKind> {
   /** Unique palette id — defaults to `kind` but must differ when multiple entries share a kind. */
@@ -574,6 +575,274 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
     createDefaultProps: () => ({
       columns: 3,
       gap: "md",
+    }),
+  },
+
+  // Custom / advanced
+  {
+    kind: "row",
+    label: "Row",
+    description:
+      "Flexible horizontal row — place any blocks side by side. Wrapping, gap, and alignment fully configurable.",
+    category: "layout",
+    createDefaultProps: () => ({
+      gap: "md",
+      wrap: true,
+      align: "start",
+    }),
+  },
+  {
+    kind: "custom-html",
+    label: "Custom HTML",
+    description:
+      "Write raw HTML and optional CSS. Full control — use for embeds, custom widgets, or anything the preset blocks don't cover.",
+    category: "content",
+    createDefaultProps: () => ({
+      html: "<p>Your custom HTML here</p>",
+      css: "",
+    }),
+  },
+
+  // Additional commerce blocks (not yet mapped to TypeScript types)
+  {
+    kind: "bundle-spotlight",
+    label: "Bundle spotlight",
+    description: "Featured product bundle with discount highlight.",
+    category: "commerce",
+    createDefaultProps: () => ({
+      heading: "Special bundle",
+      layout: "split",
+    }),
+  },
+  {
+    kind: "gift-card-redeem",
+    label: "Gift card redeem",
+    description: "Code input and balance checker.",
+    category: "commerce",
+    createDefaultProps: () => ({
+      heading: "Redeem a gift card",
+      subtitle: "Enter your code to apply.",
+    }),
+  },
+  {
+    kind: "recently-viewed",
+    label: "Recently viewed",
+    description: "Browsing history carousel.",
+    category: "pdp",
+    scopes: ["product-detail"],
+    createDefaultProps: () => ({
+      heading: "Recently viewed",
+      maxItems: 6,
+    }),
+  },
+  {
+    kind: "reviews-list",
+    label: "Reviews list",
+    description: "Customer reviews with ratings.",
+    category: "pdp",
+    scopes: ["product-detail"],
+    createDefaultProps: () => ({
+      showSummary: true,
+      reviewable: true,
+      limit: 10,
+      sortBy: "newest",
+    }),
+  },
+  {
+    kind: "fbt",
+    label: "Frequently Bought Together",
+    description: "Bundle of related products.",
+    category: "pdp",
+    scopes: ["product-detail"],
+    createDefaultProps: () => ({
+      source: "auto",
+      maxItems: 3,
+      showImages: true,
+      ctaLabel: "Add all to cart",
+    }),
+  },
+  {
+    kind: "size-guide",
+    label: "Size guide",
+    description: "Sizing info table.",
+    category: "pdp",
+    scopes: ["product-detail"],
+    createDefaultProps: () => ({
+      variant: "modal",
+      triggerLabel: "Size guide",
+      note: "All measurements in cm.",
+    }),
+  },
+  {
+    kind: "product-comparison",
+    label: "Product comparison",
+    description: "Compare 2–4 products side-by-side.",
+    category: "pdp",
+    createDefaultProps: () => ({
+      heading: "Compare",
+      description: "",
+      productIds: [],
+      attributes: ["price", "category"],
+    }),
+  },
+  {
+    kind: "lookbook",
+    label: "Lookbook",
+    description: "Shoppable pinned image.",
+    category: "pdp",
+    createDefaultProps: () => ({
+      aspect: "4/5",
+      scenes: [],
+    }),
+  },
+
+  // Additional marketing blocks
+  {
+    kind: "policy-strip",
+    label: "Policy strip",
+    description: "Shipping / returns / trust icons.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      items: [
+        { label: "Free shipping" },
+        { label: "30-day returns" },
+        { label: "Secure checkout" },
+      ],
+    }),
+  },
+
+  // Header / Footer blocks
+  {
+    kind: "nav-bar",
+    label: "Nav bar",
+    description: "Logo · menu · search · cart (header global).",
+    category: "marketing",
+    createDefaultProps: () => ({
+      brand: "Brand",
+      brandHref: "/",
+      showSearch: true,
+      showCart: true,
+      showAccount: false,
+      sticky: true,
+      variant: "standard",
+      align: "between",
+      items: [
+        { label: "Shop", href: "/products" },
+        { label: "About", href: "/about" },
+      ],
+    }),
+  },
+  {
+    kind: "logo-mark",
+    label: "Logo mark",
+    description: "Standalone brand mark.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      brand: "Brand",
+      subtitle: "Tagline",
+      href: "/",
+      align: "center",
+      variant: "text-only",
+    }),
+  },
+  {
+    kind: "utility-bar",
+    label: "Utility bar",
+    description: "Top strip with small links.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      align: "between",
+      items: [
+        { label: "Free shipping", href: "" },
+        { label: "Contact", href: "/contact" },
+      ],
+    }),
+  },
+  {
+    kind: "footer-columns",
+    label: "Footer columns",
+    description: "2–6 link columns + brand.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      showBrand: true,
+      brand: "Brand",
+      tagline: "Company tagline.",
+      columns: [
+        {
+          title: "Shop",
+          links: [
+            { label: "All", href: "/products" },
+            { label: "New", href: "/products?sort=new" },
+          ],
+        },
+        {
+          title: "Help",
+          links: [
+            { label: "Contact", href: "/contact" },
+            { label: "FAQ", href: "/faq" },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    kind: "social-links",
+    label: "Social links",
+    description: "Instagram, Pinterest, TikTok, etc.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      variant: "text",
+      align: "start",
+      items: [
+        { platform: "instagram", handle: "@brand", href: "" },
+        { platform: "pinterest", handle: "brand", href: "" },
+      ],
+    }),
+  },
+  {
+    kind: "payment-icons",
+    label: "Payment icons",
+    description: "Visa, MC, PayPal, Apple Pay, etc.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      align: "end",
+      variant: "flat",
+      items: [
+        { name: "Visa" },
+        { name: "Mastercard" },
+        { name: "Amex" },
+        { name: "PayPal" },
+      ],
+    }),
+  },
+  {
+    kind: "copyright-bar",
+    label: "Copyright bar",
+    description: "Bottom © line + links.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      copy: "© 2026. All rights reserved.",
+      showLinks: true,
+      items: [
+        { label: "Privacy", href: "/privacy" },
+        { label: "Terms", href: "/terms" },
+      ],
+    }),
+  },
+
+  // Utility
+  {
+    kind: "empty-state",
+    label: "Empty state",
+    description: "Placeholder for not-found / no-results.",
+    category: "content",
+    createDefaultProps: () => ({
+      preset: "generic",
+      heading: "Nothing here yet",
+      subtitle: "Add content to bring this page to life.",
+      illustration: "package",
+      primaryCtaLabel: "Go home",
+      primaryCtaHref: "/",
     }),
   },
 ];

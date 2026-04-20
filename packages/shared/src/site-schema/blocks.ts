@@ -652,6 +652,105 @@ export interface EmptyStateProps {
   secondaryHref?: string;
 }
 
+// Custom / advanced ---------------------------------------------------------
+
+/** Flexible row container — lays out children in a horizontal flex row. */
+export interface RowProps {
+  gap?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
+  wrap?: boolean;
+  justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
+  align?: "start" | "center" | "end" | "stretch";
+  reverse?: boolean;
+}
+
+/**
+ * Custom HTML/CSS block.
+ * Only accessible to authenticated tenant admins; rendered as-is on their own site.
+ */
+export interface CustomHtmlProps {
+  /** Raw HTML markup inserted verbatim. */
+  html: string;
+  /** Optional scoped CSS injected in a <style> tag above the markup. */
+  css?: string;
+}
+
+// Header blocks ---------------------------------------------------------------
+
+export interface NavBarProps {
+  brand: string;
+  brandHref?: string;
+  brandStyle?: "serif" | "sans" | "mono";
+  items?: Array<{
+    label: string;
+    href: string;
+    hasMegaMenu?: boolean;
+  }>;
+  showSearch?: boolean;
+  showCart?: boolean;
+  showAccount?: boolean;
+  cartCount?: number;
+  sticky?: boolean;
+  align?: "between" | "center";
+}
+
+export interface LogoMarkProps {
+  brand: string;
+  href?: string;
+  subtitle?: string;
+  align?: "start" | "center" | "end";
+  variant?: "text-only" | "with-icon";
+}
+
+export interface UtilityBarProps {
+  items?: Array<{
+    label: string;
+    href: string;
+  }>;
+  align?: "start" | "center" | "end" | "between";
+}
+
+// Footer blocks ---------------------------------------------------------------
+
+export interface FooterColumnsProps {
+  showBrand?: boolean;
+  brand?: string;
+  tagline?: string;
+  columns?: Array<{
+    title: string;
+    links?: Array<{
+      label: string;
+      href: string;
+    }>;
+  }>;
+}
+
+export interface SocialLinksProps {
+  items?: Array<{
+    platform: string;
+    handle?: string;
+    href: string;
+  }>;
+  variant?: "text" | "icons-only" | "icons-pill";
+  align?: "start" | "center" | "end";
+}
+
+export interface PaymentIconsProps {
+  items?: Array<{
+    name: string;
+  }>;
+  variant?: "flat" | "outlined";
+  align?: "start" | "center" | "end";
+}
+
+export interface CopyrightBarProps {
+  copy: string;
+  showLinks?: boolean;
+  items?: Array<{
+    label: string;
+    href: string;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // The full map
 // ---------------------------------------------------------------------------
@@ -714,6 +813,18 @@ export interface BlockPropsMap {
   "css-grid": CssGridProps;
   // Utility
   "empty-state": EmptyStateProps;
+  // Header blocks
+  "nav-bar": NavBarProps;
+  "logo-mark": LogoMarkProps;
+  "utility-bar": UtilityBarProps;
+  // Footer blocks
+  "footer-columns": FooterColumnsProps;
+  "social-links": SocialLinksProps;
+  "payment-icons": PaymentIconsProps;
+  "copyright-bar": CopyrightBarProps;
+  // Custom / advanced
+  row: RowProps;
+  "custom-html": CustomHtmlProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
@@ -1412,6 +1523,148 @@ export const BlockPropsSchemas = {
       ctaHref: optStr(1000),
       secondaryLabel: optStr(60),
       secondaryHref: optStr(1000),
+    })
+    .strict(),
+  // Custom / advanced
+  row: z
+    .object({
+      gap: z.enum(["none", "xs", "sm", "md", "lg", "xl"]).optional(),
+      wrap: z.boolean().optional(),
+      justify: z
+        .enum(["start", "center", "end", "between", "around", "evenly"])
+        .optional(),
+      align: z.enum(["start", "center", "end", "stretch"]).optional(),
+      reverse: z.boolean().optional(),
+    })
+    .strict(),
+  "custom-html": z
+    .object({
+      html: z.string().max(50_000),
+      css: z.string().max(10_000).optional(),
+    })
+    .strict(),
+  // Header blocks
+  "nav-bar": z
+    .object({
+      brand: str(100),
+      brandHref: optStr(500),
+      brandStyle: z.enum(["serif", "sans", "mono"]).optional(),
+      items: z
+        .array(
+          z
+            .object({
+              label: str(100),
+              href: str(500),
+              hasMegaMenu: z.boolean().optional(),
+            })
+            .strict(),
+        )
+        .optional(),
+      showSearch: z.boolean().optional(),
+      showCart: z.boolean().optional(),
+      showAccount: z.boolean().optional(),
+      cartCount: z.number().int().nonnegative().optional(),
+      sticky: z.boolean().optional(),
+      align: z.enum(["between", "center"]).optional(),
+    })
+    .strict(),
+  "logo-mark": z
+    .object({
+      brand: str(100),
+      href: optStr(500),
+      subtitle: optStr(100),
+      align: z.enum(["start", "center", "end"]).optional(),
+      variant: z.enum(["text-only", "with-icon"]).optional(),
+    })
+    .strict(),
+  "utility-bar": z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              label: str(100),
+              href: str(500),
+            })
+            .strict(),
+        )
+        .optional(),
+      align: z.enum(["start", "center", "end", "between"]).optional(),
+    })
+    .strict(),
+  // Footer blocks
+  "footer-columns": z
+    .object({
+      showBrand: z.boolean().optional(),
+      brand: optStr(100),
+      tagline: optStr(500),
+      columns: z
+        .array(
+          z
+            .object({
+              title: str(100),
+              links: z
+                .array(
+                  z
+                    .object({
+                      label: str(100),
+                      href: str(500),
+                    })
+                    .strict(),
+                )
+                .optional(),
+            })
+            .strict(),
+        )
+        .optional(),
+    })
+    .strict(),
+  "social-links": z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              platform: str(50),
+              handle: optStr(100),
+              href: str(500),
+            })
+            .strict(),
+        )
+        .optional(),
+      variant: z.enum(["text", "icons-only", "icons-pill"]).optional(),
+      align: z.enum(["start", "center", "end"]).optional(),
+    })
+    .strict(),
+  "payment-icons": z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              name: str(100),
+            })
+            .strict(),
+        )
+        .optional(),
+      variant: z.enum(["flat", "outlined"]).optional(),
+      align: z.enum(["start", "center", "end"]).optional(),
+    })
+    .strict(),
+  "copyright-bar": z
+    .object({
+      copy: str(500),
+      showLinks: z.boolean().optional(),
+      items: z
+        .array(
+          z
+            .object({
+              label: str(100),
+              href: str(500),
+            })
+            .strict(),
+        )
+        .optional(),
     })
     .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;
