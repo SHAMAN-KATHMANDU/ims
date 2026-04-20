@@ -29,6 +29,11 @@ import type {
   AutomationRun,
   AutomationRunStep,
 } from "../services/automation.service";
+import {
+  describeBranchDecisionLines,
+  describeSkippedBranchArmsLines,
+  extractGraphBranchDecisions,
+} from "../utils/automation-flow-graph-view";
 
 interface RunStatusBadgeProps {
   status: AutomationRun["status"];
@@ -115,7 +120,7 @@ function RunRow({
   run: AutomationRun;
   automationEventId?: string | null;
 }): ReactElement {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const replay = useReplayAutomationEvent();
 
   const canReplay = run.status === "FAILED" && run.automationEventId;
@@ -134,6 +139,9 @@ function RunRow({
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{run.eventName}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {run.status.toLowerCase()} · {run.executionMode.toLowerCase()}
+            </p>
             <p className="text-xs text-muted-foreground truncate">
               {run.entityType} · {run.entityId.slice(0, 8)}…
             </p>
@@ -191,6 +199,12 @@ function RunRow({
                   <p className="text-xs font-medium">
                     {step.graphNodeId ?? step.automationStepId ?? "Step"}
                   </p>
+                  {step.output != null && (
+                    <p className="text-xs text-muted-foreground mt-0.5 break-words">
+                      {step.status.toLowerCase()} ·{" "}
+                      {JSON.stringify(step.output)}
+                    </p>
+                  )}
                   {step.errorMessage && (
                     <p className="text-xs text-red-600 mt-0.5 break-words">
                       {step.errorMessage}
@@ -214,6 +228,47 @@ function RunRow({
               </p>
             </div>
           )}
+
+          {(() => {
+            const decisions = extractGraphBranchDecisions(run.stepOutput);
+            if (!decisions) return null;
+            const takenLines = describeBranchDecisionLines(
+              run.flowGraphSnapshot,
+              decisions,
+            );
+            const skippedLines = describeSkippedBranchArmsLines(
+              run.flowGraphSnapshot,
+              decisions,
+            );
+            return (
+              <>
+                {takenLines.length > 0 && (
+                  <div
+                    data-testid={`automation-run-branch-path-${run.id}`}
+                    className="mt-2 space-y-0.5"
+                  >
+                    {takenLines.map((line) => (
+                      <p key={line} className="text-xs text-green-700">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {skippedLines.length > 0 && (
+                  <div
+                    data-testid={`automation-run-skipped-branches-${run.id}`}
+                    className="mt-1 space-y-0.5"
+                  >
+                    {skippedLines.map((line) => (
+                      <p key={line} className="text-xs text-muted-foreground">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </CollapsibleContent>
     </Collapsible>
