@@ -1,7 +1,14 @@
 # Continuous Integration: lint, test, typecheck, and security scan.
 # No Docker build/push or deployment. Runs on PRs and non-main branch pushes.
+# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: self-hosted` with `runs-on: ubuntu-latest`.
 
 name: CI
+
+# Force GitHub-bundled actions (checkout, setup-node, etc.) to run on Node.js 24
+# instead of the deprecated Node.js 20. Safe to remove once action maintainers
+# release Node.js 24 native versions (expected before June 2026).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: read
@@ -219,12 +226,13 @@ jobs:
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint tenant-site (and shared if needed)
         run: pnpm exec turbo run lint --filter=tenant-site --filter=@repo/shared
         env:
@@ -238,12 +246,13 @@ jobs:
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run tenant-site unit tests
         run: pnpm exec turbo run test:run --filter=tenant-site
         env:
@@ -268,12 +277,13 @@ jobs:
     if: needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run shared package unit tests
         run: pnpm exec turbo run test --filter=@repo/shared
         env:
@@ -337,12 +347,13 @@ jobs:
       NODE_ENV: development
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build shared and API
         run: |
           pnpm --filter @repo/shared build
@@ -403,12 +414,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Trivy vulnerability scanner (filesystem)
         # cache-dir points to /tmp so the DB is never inside the scanned workspace
         # and persists across runs (no forced re-download every time).
