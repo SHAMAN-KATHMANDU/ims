@@ -94,9 +94,17 @@ export function GeneralTab({
           value={form.values.imsCode}
           onChange={(e) => form.handleChange("imsCode", e.target.value)}
           placeholder="e.g. SHIRT-001 (optional — defaults to product ID)"
+          aria-invalid={form.errors.imsCode ? true : undefined}
+          aria-describedby={form.errors.imsCode ? "imsCode-error" : undefined}
         />
         {form.errors.imsCode && (
-          <p className="text-sm text-destructive">{form.errors.imsCode}</p>
+          <p
+            id="imsCode-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {form.errors.imsCode}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -109,9 +117,13 @@ export function GeneralTab({
           value={form.values.name}
           onChange={(e) => form.handleChange("name", e.target.value)}
           placeholder="e.g. Cotton T-Shirt"
+          aria-invalid={form.errors.name ? true : undefined}
+          aria-describedby={form.errors.name ? "name-error" : undefined}
         />
         {form.errors.name && (
-          <p className="text-sm text-destructive">{form.errors.name}</p>
+          <p id="name-error" role="alert" className="text-sm text-destructive">
+            {form.errors.name}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -129,7 +141,13 @@ export function GeneralTab({
             form.handleChange("subCategory", "");
           }}
         >
-          <SelectTrigger id="categoryId">
+          <SelectTrigger
+            id="categoryId"
+            aria-invalid={form.errors.categoryId ? true : undefined}
+            aria-describedby={
+              form.errors.categoryId ? "categoryId-error" : undefined
+            }
+          >
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
@@ -141,7 +159,13 @@ export function GeneralTab({
           </SelectContent>
         </Select>
         {form.errors.categoryId && (
-          <p className="text-sm text-destructive">{form.errors.categoryId}</p>
+          <p
+            id="categoryId-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {form.errors.categoryId}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -304,7 +328,11 @@ export function GeneralTab({
         </div>
         {showMrpBelowCpWarning && (
           <div className="sm:col-span-2">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm dark:border-amber-900 dark:bg-amber-950/50">
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm dark:border-amber-900 dark:bg-amber-950/50"
+            >
               <span className="text-amber-800 dark:text-amber-200">
                 MRP is below cost price.
               </span>

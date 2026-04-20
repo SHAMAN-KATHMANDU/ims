@@ -81,7 +81,7 @@ export function MultiSelectCombobox({
               onClick={(e) => handleRemove(e, value)}
               aria-label={`Remove ${label}`}
             >
-              <X className="h-3 w-3" />
+              <X className="h-3 w-3" aria-hidden="true" />
             </button>
           </Badge>
         );
@@ -96,7 +96,7 @@ export function MultiSelectCombobox({
             disabled={disabled}
             aria-label={placeholder}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[min(90vw,280px)] p-0" align="start">
@@ -114,7 +114,10 @@ export function MultiSelectCombobox({
                       onSelect={() => handleToggle(opt.value)}
                     >
                       {isSelected ? (
-                        <Check className="mr-2 h-4 w-4 shrink-0" />
+                        <Check
+                          className="mr-2 h-4 w-4 shrink-0"
+                          aria-hidden="true"
+                        />
                       ) : (
                         <span className="mr-2 h-4 w-4 shrink-0 w-4" />
                       )}

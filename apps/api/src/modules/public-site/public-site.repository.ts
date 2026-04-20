@@ -14,21 +14,76 @@
  */
 
 import prisma from "@/config/prisma";
-import type { Prisma, SiteConfig, SiteTemplate } from "@prisma/client";
+import { Prisma, type SiteConfig, type SiteTemplate } from "@prisma/client";
 import sitesRepo from "@/modules/sites/sites.repository";
 
 export type PublicSiteConfig = SiteConfig & { template: SiteTemplate | null };
 
-/** Shape of a product in a list response — flat, renderer-friendly. */
+/**
+ * Per-variation photo cap on the PDP payload. Matches the gallery UX
+ * (lightbox + strip max out well below this) and protects the wire from
+ * catalog uploads that dump 30+ lifestyle shots onto a single variation.
+ * Photos are already ordered so the primary + early uploads win; the tail
+ * gets trimmed here, not in the client.
+ */
+export const PDP_PHOTO_CAP = 12;
+
+/**
+ * Trailing window used to rank best-sellers. 90 days is wide enough that
+ * seasonal catalogues still have signal but narrow enough that a product
+ * that stopped selling six months ago doesn't stay "bestseller" forever.
+ */
+export const BEST_SELLER_WINDOW_DAYS = 90;
+
+/**
+ * Max number of bestseller productIds the repository will carry forward
+ * from the SaleItem aggregate. The bestseller path fetches this many rows
+ * in one shot and paginates in JS — keeping the cap at 500 means even a
+ * limit=100 page 5 fits, and protects us from fetching the entire catalog
+ * when a tenant has tens of thousands of selling SKUs.
+ */
+export const BEST_SELLER_CAP = 500;
+
+/**
+ * Matches BEST_SELLER_CAP: the rating-sort path fetches at most this many
+ * reviewed productIds in rank order, then paginates in JS. 500 keeps
+ * limit=100 page 5 fully available without pulling in the entire catalog
+ * of reviewed SKUs.
+ */
+export const RATING_SORT_CAP = 500;
+
+/**
+ * Trailing window used for the frequently-bought-with recommendation.
+ * Wider than best-sellers (90d) because co-purchase signal is sparser
+ * per-product and we need more sales to build a stable ranking. A
+ * 180-day window gives two seasonal cycles of coverage without pulling
+ * in stale buying patterns.
+ */
+export const FBT_WINDOW_DAYS = 180;
+
+/**
+ * Max number of frequently-bought-with results returned per product.
+ * 10 is deep enough for a "You might also like" row on a PDP but small
+ * enough that hydrating the full PublicSiteProduct payloads stays a
+ * single fast findMany.
+ */
+export const FBT_MAX_RESULTS = 10;
+
+/**
+ * Shape of a product in a list response — flat, renderer-friendly.
+ *
+ * Intentionally omits `description` and `subCategory`: neither is rendered
+ * on any card/grid surface (PDP-only fields) and both were inflating list
+ * payloads by ~KB-per-row at scale. Consumers that need them fetch the
+ * `PublicSiteProductDetail` from `GET /public/products/:id`.
+ */
 export interface PublicSiteProduct {
   id: string;
   name: string;
-  description: string | null;
   imsCode: string;
   mrp: string;
   finalSp: string;
   categoryId: string;
-  subCategory: string | null;
   dateCreated: Date;
   category: { id: string; name: string } | null;
   /** Primary variation photo resolved server-side, or null if none. */
@@ -61,6 +116,19 @@ export interface PublicSiteProduct {
    * format the label identically.
    */
   discountLabel: string | null;
+  /**
+   * Average customer rating (1–5, fractional allowed). Always `null`
+   * today: there is no ProductReview table yet. The field is on the
+   * wire contract so the tenant-site star-rating UI can bind to the
+   * final shape now and flip to a real aggregate the moment the
+   * reviews feature lands — no client redeploy required.
+   */
+  avgRating: number | null;
+  /**
+   * Number of customer ratings contributing to `avgRating`. Always
+   * `null` until a reviews table exists (see `avgRating` above).
+   */
+  ratingCount: number | null;
 }
 
 /** Structured attribute payload used by the PDP buybox chip selector. */
@@ -115,6 +183,10 @@ export interface PublicSiteFacets {
 }
 
 export interface PublicSiteProductDetail extends PublicSiteProduct {
+  /** PDP-only; intentionally not on the list row. */
+  description: string | null;
+  /** PDP-only; intentionally not on the list row. */
+  subCategory: string | null;
   length: Prisma.Decimal | null;
   breadth: Prisma.Decimal | null;
   height: Prisma.Decimal | null;
@@ -192,6 +264,19 @@ function priceStats(
   };
 }
 
+/**
+ * Default rating payload used when a product has zero APPROVED reviews.
+ * The type is `number | null` so the wire shape stays stable; when no
+ * reviews exist yet, both fields are null rather than { null, 0 } so
+ * tenant-sites pre-review can't distinguish "feature just shipped" from
+ * "this specific product has no reviews yet" — either way they hide the
+ * rating block. The helper below overlays real values on top.
+ */
+const NULL_RATINGS = {
+  avgRating: null as number | null,
+  ratingCount: null as number | null,
+};
+
 function primaryPhotoFromList(variations: ListVariationRow[]): string | null {
   const variation = variations[0];
   if (!variation) return null;
@@ -266,7 +351,13 @@ export class PublicSiteRepository {
       limit: number;
       categoryId?: string;
       search?: string;
-      sort?: "newest" | "price-asc" | "price-desc" | "name-asc";
+      sort?:
+        | "newest"
+        | "price-asc"
+        | "price-desc"
+        | "name-asc"
+        | "best-selling"
+        | "rating";
       minPrice?: number;
       maxPrice?: number;
       vendorId?: string;
@@ -348,6 +439,14 @@ export class PublicSiteRepository {
         : {}),
     };
 
+    if (opts.sort === "best-selling") {
+      return this.listBestSellingProducts(tenantId, where, opts, now);
+    }
+
+    if (opts.sort === "rating") {
+      return this.listRatingSortedProducts(tenantId, where, opts, now);
+    }
+
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
       opts.sort === "price-asc"
         ? [{ finalSp: "asc" }]
@@ -366,12 +465,10 @@ export class PublicSiteRepository {
         select: {
           id: true,
           name: true,
-          description: true,
           imsCode: true,
           mrp: true,
           finalSp: true,
           categoryId: true,
-          subCategory: true,
           dateCreated: true,
           category: { select: { id: true, name: true } },
           ...LIST_VARIATION_SELECT,
@@ -388,20 +485,23 @@ export class PublicSiteRepository {
         : Promise.resolve(null),
     ]);
 
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
     const products: PublicSiteProduct[] = rows.map((r) => ({
       id: r.id,
       name: r.name,
-      description: r.description,
       imsCode: r.imsCode,
       mrp: r.mrp.toString(),
       finalSp: r.finalSp.toString(),
       categoryId: r.categoryId,
-      subCategory: r.subCategory,
       dateCreated: r.dateCreated,
       category: r.category,
       photoUrl: primaryPhotoFromList(r.variations),
       ...priceStats(r.variations, r.finalSp),
       ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+      ...(ratings.get(r.id) ?? NULL_RATINGS),
     }));
     return [products, total, facets];
   }
@@ -413,12 +513,24 @@ export class PublicSiteRepository {
    * standard "live facet" behavior. Attribute counts use `productId`
    * distinct so a product with three red variations still counts as one
    * red match.
+   *
+   * Query shape: a two-step approach. (1) Resolve the scope of matching
+   * productIds via `prisma.product.findMany({ where, select: { id: true }})`
+   * — Prisma handles the full WhereInput translation, wire payload is
+   * just UUIDs. (2) Raw SQL with `SELECT DISTINCT (typeId, valueId,
+   * productId)` joining pva → pv, scoped by the productId list. Pushing
+   * DISTINCT into Postgres avoids the O(variations × attributes) wire
+   * blow-up of the prior `productVariationAttribute.findMany` — on a
+   * mid-size catalog (1k products × 5 variations × 3 attrs) that trimmed
+   * ~15k rows down to the actual distinct-tuple count (typically ~10×
+   * smaller). Type/value metadata (name, code, displayOrder) still
+   * resolves in two bulk follow-up queries keyed by distinct id.
    */
   private async computeFacets(
     tenantId: string,
     where: Prisma.ProductWhereInput,
   ): Promise<PublicSiteFacets> {
-    const [brandGroups, priceAgg, attrRows] = await Promise.all([
+    const [brandGroups, priceAgg, scopeIdRows] = await Promise.all([
       prisma.product.groupBy({
         by: ["vendorId"],
         where: { ...where, NOT: [{ vendorId: null }] },
@@ -429,42 +541,78 @@ export class PublicSiteRepository {
         _min: { finalSp: true },
         _max: { finalSp: true },
       }),
-      // All (typeId, valueId) tuples that appear on any active
-      // variation of any product in the current filter scope. We then
-      // dedupe by productId in JS to get "products per value" (not
-      // "variations per value") counts.
-      prisma.productVariationAttribute.findMany({
-        where: {
-          variation: {
-            isActive: true,
-            product: where,
-          },
-        },
-        select: {
-          attributeTypeId: true,
-          attributeValueId: true,
-          variation: { select: { productId: true } },
-          attributeType: {
-            select: { id: true, name: true, code: true, displayOrder: true },
-          },
-          attributeValue: {
-            select: { id: true, value: true, displayOrder: true },
-          },
-        },
+      prisma.product.findMany({
+        where,
+        select: { id: true },
       }),
     ]);
+
+    const productIds = scopeIdRows.map((r) => r.id);
+
+    // Distinct (typeId, valueId, productId) tuples for active-variation
+    // EAV attributes within the scope. Postgres dedupes server-side so
+    // the wire payload is the count of real distinct tuples — not the
+    // (variation × attribute) fan-out. `Prisma.join` parameterizes each
+    // UUID individually; no string interpolation.
+    const attrRows: {
+      attributeTypeId: string;
+      attributeValueId: string;
+      productId: string;
+    }[] =
+      productIds.length === 0
+        ? []
+        : await prisma.$queryRaw<
+            {
+              attributeTypeId: string;
+              attributeValueId: string;
+              productId: string;
+            }[]
+          >`
+            SELECT DISTINCT pva.attribute_type_id AS "attributeTypeId",
+                            pva.attribute_value_id AS "attributeValueId",
+                            pv.product_id AS "productId"
+            FROM product_variation_attributes pva
+            INNER JOIN product_variations pv
+              ON pv.variation_id = pva.variation_id
+            WHERE pv.is_active = TRUE
+              AND pv.product_id IN (${Prisma.join(productIds)})
+          `;
 
     // Resolve vendor names in one query for the brand facet.
     const vendorIds = brandGroups
       .map((g) => g.vendorId)
       .filter((id): id is string => !!id);
-    const vendorRows =
+
+    // Collect distinct type/value ids so we can resolve metadata in two
+    // small bulk queries regardless of how wide the per-row fan-out was.
+    const distinctTypeIds = new Set<string>();
+    const distinctValueIds = new Set<string>();
+    for (const row of attrRows) {
+      distinctTypeIds.add(row.attributeTypeId);
+      distinctValueIds.add(row.attributeValueId);
+    }
+
+    const [vendorRows, typeRows, valueRows] = await Promise.all([
       vendorIds.length > 0
-        ? await prisma.vendor.findMany({
+        ? prisma.vendor.findMany({
             where: { id: { in: vendorIds }, tenantId },
             select: { id: true, name: true },
           })
-        : [];
+        : Promise.resolve([]),
+      distinctTypeIds.size > 0
+        ? prisma.attributeType.findMany({
+            where: { id: { in: Array.from(distinctTypeIds) } },
+            select: { id: true, name: true, code: true, displayOrder: true },
+          })
+        : Promise.resolve([]),
+      distinctValueIds.size > 0
+        ? prisma.attributeValue.findMany({
+            where: { id: { in: Array.from(distinctValueIds) } },
+            select: { id: true, value: true, displayOrder: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
     const vendorById = new Map(vendorRows.map((v) => [v.id, v.name]));
     const brands = brandGroups
       .map((g) => ({
@@ -473,6 +621,9 @@ export class PublicSiteRepository {
         count: g._count._all,
       }))
       .sort((a, b) => b.count - a.count);
+
+    const typeById = new Map(typeRows.map((t) => [t.id, t]));
+    const valueById = new Map(valueRows.map((v) => [v.id, v]));
 
     // Dedupe attr rows to (typeId, valueId, productId) so the count is
     // "products with this value", not "variation attribute rows".
@@ -493,29 +644,32 @@ export class PublicSiteRepository {
     };
     const byType = new Map<string, Bucket>();
     for (const row of attrRows) {
-      const typeId = row.attributeType.id;
-      const valueId = row.attributeValue.id;
-      const productId = row.variation.productId;
-      let bucket = byType.get(typeId);
+      const typeMeta = typeById.get(row.attributeTypeId);
+      const valueMeta = valueById.get(row.attributeValueId);
+      // Skip rows whose type/value was deleted between the two queries;
+      // the facet omits them rather than surfacing "Unknown" placeholders.
+      if (!typeMeta || !valueMeta) continue;
+      const productId = row.productId;
+      let bucket = byType.get(typeMeta.id);
       if (!bucket) {
         bucket = {
-          typeId,
-          typeName: row.attributeType.name,
-          typeCode: row.attributeType.code,
-          typeOrder: row.attributeType.displayOrder,
+          typeId: typeMeta.id,
+          typeName: typeMeta.name,
+          typeCode: typeMeta.code,
+          typeOrder: typeMeta.displayOrder,
           values: new Map(),
         };
-        byType.set(typeId, bucket);
+        byType.set(typeMeta.id, bucket);
       }
-      let value = bucket.values.get(valueId);
+      let value = bucket.values.get(valueMeta.id);
       if (!value) {
         value = {
-          valueId,
-          value: row.attributeValue.value,
-          valueOrder: row.attributeValue.displayOrder,
+          valueId: valueMeta.id,
+          value: valueMeta.value,
+          valueOrder: valueMeta.displayOrder,
           products: new Set(),
         };
-        bucket.values.set(valueId, value);
+        bucket.values.set(valueMeta.id, value);
       }
       value.products.add(productId);
     }
@@ -540,6 +694,244 @@ export class PublicSiteRepository {
       priceMax: priceAgg._max.finalSp?.toString() ?? null,
       attributes,
     };
+  }
+
+  /**
+   * Best-sellers path for listProducts. Ranks by SaleItem row count per
+   * product over a trailing window, intersects with the caller's filter,
+   * and paginates in memory so pages preserve rank order.
+   *
+   * Why not ORDER BY inside Prisma: product.findMany can't directly
+   * ORDER BY a sale-item aggregate. We could drop to raw SQL, but the
+   * bounded `BEST_SELLER_CAP` (500) keeps the in-memory sort + paginate
+   * cheap and keeps the rest of the select pipeline (variation photos,
+   * discounts, price stats) working the same as every other sort.
+   */
+  private async listBestSellingProducts(
+    tenantId: string,
+    where: Prisma.ProductWhereInput,
+    opts: { page: number; limit: number; includeFacets?: boolean },
+    now: Date,
+  ): Promise<[PublicSiteProduct[], number, PublicSiteFacets | null]> {
+    const trailingStart = new Date(
+      now.getTime() - BEST_SELLER_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    const grouped = await prisma.saleItem.groupBy({
+      by: ["variationId"],
+      where: {
+        sale: {
+          tenantId,
+          deletedAt: null,
+          createdAt: { gte: trailingStart },
+        },
+      },
+      _count: { _all: true },
+    });
+
+    if (grouped.length === 0) {
+      // No sales in the window — "best sellers" has no signal; return
+      // an empty page rather than silently falling back to newest, so
+      // the UI label stays honest.
+      const facets = opts.includeFacets
+        ? await this.computeFacets(tenantId, where)
+        : null;
+      return [[], 0, facets];
+    }
+
+    const variationRows = await prisma.productVariation.findMany({
+      where: { id: { in: grouped.map((r) => r.variationId) } },
+      select: { id: true, productId: true },
+    });
+    const variationToProduct = new Map(
+      variationRows.map((v) => [v.id, v.productId]),
+    );
+    const countByProduct = new Map<string, number>();
+    for (const row of grouped) {
+      const productId = variationToProduct.get(row.variationId);
+      if (!productId) continue;
+      countByProduct.set(
+        productId,
+        (countByProduct.get(productId) ?? 0) + row._count._all,
+      );
+    }
+
+    // Tie-break by productId so the order is stable run-to-run — two
+    // products with the same sale count must appear in the same slot
+    // across paginated requests.
+    const rankedProductIds = Array.from(countByProduct.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, BEST_SELLER_CAP)
+      .map(([id]) => id);
+
+    const restrictedWhere: Prisma.ProductWhereInput = {
+      ...where,
+      id: { in: rankedProductIds },
+    };
+
+    const [rows, facets] = await Promise.all([
+      prisma.product.findMany({
+        where: restrictedWhere,
+        select: {
+          id: true,
+          name: true,
+          imsCode: true,
+          mrp: true,
+          finalSp: true,
+          categoryId: true,
+          dateCreated: true,
+          category: { select: { id: true, name: true } },
+          ...LIST_VARIATION_SELECT,
+          discounts: {
+            where: activeDiscountWhere(now),
+            select: { id: true },
+            take: 1,
+          },
+        },
+      }),
+      opts.includeFacets
+        ? this.computeFacets(tenantId, where)
+        : Promise.resolve(null),
+    ]);
+
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    const orderedFull: PublicSiteProduct[] = [];
+    for (const pid of rankedProductIds) {
+      const r = rowById.get(pid);
+      if (!r) continue;
+      orderedFull.push({
+        id: r.id,
+        name: r.name,
+        imsCode: r.imsCode,
+        mrp: r.mrp.toString(),
+        finalSp: r.finalSp.toString(),
+        categoryId: r.categoryId,
+        dateCreated: r.dateCreated,
+        category: r.category,
+        photoUrl: primaryPhotoFromList(r.variations),
+        ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
+      });
+    }
+
+    const total = orderedFull.length;
+    const start = (opts.page - 1) * opts.limit;
+    const page = orderedFull.slice(start, start + opts.limit);
+    return [page, total, facets];
+  }
+
+  /**
+   * Rating-sort path. Ranks reviewed products globally by avgRating (desc),
+   * ratingCount (desc tiebreaker), then productId asc so page order is
+   * stable run-to-run. Products with zero approved reviews are excluded —
+   * a "rating" sort that lists unrated SKUs first is a lie. Empty review
+   * corpus returns an empty page; the caller shouldn't fall back to
+   * "newest" behind the user's back.
+   */
+  private async listRatingSortedProducts(
+    tenantId: string,
+    where: Prisma.ProductWhereInput,
+    opts: { page: number; limit: number; includeFacets?: boolean },
+    now: Date,
+  ): Promise<[PublicSiteProduct[], number, PublicSiteFacets | null]> {
+    const grouped = await prisma.productReview.groupBy({
+      by: ["productId"],
+      where: {
+        tenantId,
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    if (grouped.length === 0) {
+      const facets = opts.includeFacets
+        ? await this.computeFacets(tenantId, where)
+        : null;
+      return [[], 0, facets];
+    }
+
+    const ranked = grouped
+      .map((g) => ({
+        productId: g.productId,
+        avg: g._avg.rating ?? 0,
+        count: g._count.rating ?? 0,
+      }))
+      .filter((r) => r.count > 0)
+      .sort(
+        (a, b) =>
+          b.avg - a.avg ||
+          b.count - a.count ||
+          a.productId.localeCompare(b.productId),
+      )
+      .slice(0, RATING_SORT_CAP)
+      .map((r) => r.productId);
+
+    const restrictedWhere: Prisma.ProductWhereInput = {
+      ...where,
+      id: { in: ranked },
+    };
+
+    const [rows, facets] = await Promise.all([
+      prisma.product.findMany({
+        where: restrictedWhere,
+        select: {
+          id: true,
+          name: true,
+          imsCode: true,
+          mrp: true,
+          finalSp: true,
+          categoryId: true,
+          dateCreated: true,
+          category: { select: { id: true, name: true } },
+          ...LIST_VARIATION_SELECT,
+          discounts: {
+            where: activeDiscountWhere(now),
+            select: { id: true },
+            take: 1,
+          },
+        },
+      }),
+      opts.includeFacets
+        ? this.computeFacets(tenantId, where)
+        : Promise.resolve(null),
+    ]);
+
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    const orderedFull: PublicSiteProduct[] = [];
+    for (const pid of ranked) {
+      const r = rowById.get(pid);
+      if (!r) continue;
+      orderedFull.push({
+        id: r.id,
+        name: r.name,
+        imsCode: r.imsCode,
+        mrp: r.mrp.toString(),
+        finalSp: r.finalSp.toString(),
+        categoryId: r.categoryId,
+        dateCreated: r.dateCreated,
+        category: r.category,
+        photoUrl: primaryPhotoFromList(r.variations),
+        ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
+      });
+    }
+
+    const total = orderedFull.length;
+    const start = (opts.page - 1) * opts.limit;
+    const page = orderedFull.slice(start, start + opts.limit);
+    return [page, total, facets];
   }
 
   async findProduct(
@@ -572,7 +964,9 @@ export class PublicSiteRepository {
         // Full active-variation set so the PDP buybox can render a chip
         // picker grouped by attribute type. Attributes + sub-variations
         // join through; photos are flattened to URL strings to keep the
-        // wire shape compact.
+        // wire shape compact. Per-variation photos are capped to match
+        // the PDP gallery (keeps the wire payload small on listings with
+        // dozens of lifestyle shots per SKU).
         variations: {
           where: { isActive: true },
           orderBy: { createdAt: "asc" },
@@ -583,6 +977,7 @@ export class PublicSiteRepository {
             stockQuantity: true,
             photos: {
               orderBy: [{ isPrimary: "desc" }, { uploadDate: "asc" }],
+              take: PDP_PHOTO_CAP,
               select: { photoUrl: true },
             },
             attributes: {
@@ -660,6 +1055,8 @@ export class PublicSiteRepository {
       row.finalSp,
     );
 
+    const ratings = await this.loadRatingForProduct(tenantId, row.id);
+
     return {
       id: row.id,
       name: row.name,
@@ -680,6 +1077,7 @@ export class PublicSiteRepository {
       variations,
       ...stats,
       ...deriveDiscount(row.mrp, row.finalSp, row.discounts.length > 0),
+      ...ratings,
     };
   }
 
@@ -736,12 +1134,10 @@ export class PublicSiteRepository {
       select: {
         id: true,
         name: true,
-        description: true,
         imsCode: true,
         mrp: true,
         finalSp: true,
         categoryId: true,
-        subCategory: true,
         dateCreated: true,
         category: { select: { id: true, name: true } },
         ...LIST_VARIATION_SELECT,
@@ -754,6 +1150,10 @@ export class PublicSiteRepository {
     });
 
     const byId = new Map(rows.map((r) => [r.id, r]));
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
     const ordered: PublicSiteProduct[] = [];
     for (const j of joinRows) {
       const r = byId.get(j.productId);
@@ -761,17 +1161,306 @@ export class PublicSiteRepository {
       ordered.push({
         id: r.id,
         name: r.name,
-        description: r.description,
         imsCode: r.imsCode,
         mrp: r.mrp.toString(),
         finalSp: r.finalSp.toString(),
         categoryId: r.categoryId,
-        subCategory: r.subCategory,
         dateCreated: r.dateCreated,
         category: r.category,
         photoUrl: primaryPhotoFromList(r.variations),
         ...priceStats(r.variations, r.finalSp),
         ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
+      });
+    }
+    return ordered;
+  }
+
+  /**
+   * Public product reviews — APPROVED + not-deleted only. The repository is
+   * the only layer that talks to `productReview`, so the public surface
+   * cannot accidentally leak PENDING or REJECTED rows.
+   */
+  async listApprovedReviews(
+    tenantId: string,
+    productId: string,
+    page: number,
+    limit: number,
+  ): Promise<{
+    rows: {
+      id: string;
+      rating: number;
+      body: string | null;
+      authorName: string | null;
+      createdAt: Date;
+    }[];
+    total: number;
+  }> {
+    const where = {
+      tenantId,
+      productId,
+      status: "APPROVED" as const,
+      deletedAt: null,
+    };
+    const [rows, total] = await Promise.all([
+      prisma.productReview.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          rating: true,
+          body: true,
+          authorName: true,
+          createdAt: true,
+        },
+      }),
+      prisma.productReview.count({ where }),
+    ]);
+    return { rows, total };
+  }
+
+  /**
+   * Verify that a product exists (non-deleted, in this tenant) before the
+   * service accepts a public review submission. Returns just the id so the
+   * submit path can avoid an extra hydration round-trip.
+   */
+  findProductIdForTenant(
+    tenantId: string,
+    productId: string,
+  ): Promise<{ id: string } | null> {
+    return prisma.product.findFirst({
+      where: { id: productId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  /**
+   * Aggregate APPROVED reviews for a batch of productIds in a single
+   * groupBy round-trip. Returns a Map keyed by productId so callers can
+   * overlay ratings onto the row payload without a second query per row.
+   * Products with zero APPROVED reviews are absent from the Map — the
+   * caller falls back to NULL_RATINGS.
+   */
+  async loadRatingsByProduct(
+    tenantId: string,
+    productIds: string[],
+  ): Promise<
+    Map<string, { avgRating: number | null; ratingCount: number | null }>
+  > {
+    const map = new Map<
+      string,
+      { avgRating: number | null; ratingCount: number | null }
+    >();
+    if (productIds.length === 0) return map;
+    const grouped = await prisma.productReview.groupBy({
+      by: ["productId"],
+      where: {
+        tenantId,
+        productId: { in: productIds },
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    for (const row of grouped) {
+      const avg = row._avg.rating;
+      const count = row._count.rating ?? 0;
+      if (count === 0) continue;
+      map.set(row.productId, {
+        avgRating: avg !== null ? Math.round(avg * 10) / 10 : null,
+        ratingCount: count,
+      });
+    }
+    return map;
+  }
+
+  /**
+   * Single-product rating aggregate — used by findProduct so the PDP gets
+   * the real average without a batch groupBy. Returns null-rating when
+   * the product has no APPROVED reviews yet.
+   */
+  async loadRatingForProduct(
+    tenantId: string,
+    productId: string,
+  ): Promise<{ avgRating: number | null; ratingCount: number | null }> {
+    const agg = await prisma.productReview.aggregate({
+      where: {
+        tenantId,
+        productId,
+        status: "APPROVED",
+        deletedAt: null,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const count = agg._count.rating ?? 0;
+    if (count === 0) return { ...NULL_RATINGS };
+    const avg = agg._avg.rating;
+    return {
+      avgRating: avg !== null ? Math.round(avg * 10) / 10 : null,
+      ratingCount: count,
+    };
+  }
+
+  createPendingReview(
+    tenantId: string,
+    input: {
+      productId: string;
+      rating: number;
+      body: string | null;
+      authorName: string | null;
+      authorEmail: string | null;
+      submittedIp: string | null;
+    },
+  ): Promise<{ id: string; status: "PENDING" | "APPROVED" | "REJECTED" }> {
+    return prisma.productReview
+      .create({
+        data: {
+          tenantId,
+          productId: input.productId,
+          rating: input.rating,
+          body: input.body,
+          authorName: input.authorName,
+          authorEmail: input.authorEmail,
+          submittedIp: input.submittedIp,
+          status: "PENDING",
+        },
+        select: { id: true, status: true },
+      })
+      .then((r) => ({
+        id: r.id,
+        status: r.status as "PENDING" | "APPROVED" | "REJECTED",
+      }));
+  }
+
+  /**
+   * Frequently-bought-with for a PDP. Ranks *other* products by how many
+   * distinct sales (within the trailing FBT_WINDOW_DAYS) contained both
+   * the target product and the other product. Counting by distinct saleId
+   * — not by line quantity — stops a single bulk order from dominating
+   * the list.
+   *
+   * Returns an empty array when the target has no in-window sales or none
+   * of the co-purchased products are still hydratable (deleted, archived,
+   * cross-tenant). Doesn't fall back to newest/best-seller on empty
+   * signal, so the "frequently bought with" label never silently lies.
+   */
+  async listFrequentlyBoughtWith(
+    tenantId: string,
+    productId: string,
+    limit: number = FBT_MAX_RESULTS,
+  ): Promise<PublicSiteProduct[]> {
+    const now = new Date();
+    const windowStart = new Date(
+      now.getTime() - FBT_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    // 1) Distinct saleIds that contain the target product in the window.
+    const targetSaleRows = await prisma.saleItem.findMany({
+      where: {
+        variation: { productId, tenantId },
+        sale: {
+          tenantId,
+          deletedAt: null,
+          createdAt: { gte: windowStart },
+        },
+      },
+      distinct: ["saleId"],
+      select: { saleId: true },
+    });
+    if (targetSaleRows.length === 0) return [];
+
+    // 2) Co-items in those sales (excluding target's own variations).
+    const coItems = await prisma.saleItem.findMany({
+      where: {
+        saleId: { in: targetSaleRows.map((r) => r.saleId) },
+        variation: { productId: { not: productId }, tenantId },
+      },
+      select: { saleId: true, variationId: true },
+    });
+    if (coItems.length === 0) return [];
+
+    // 3) Resolve variation → product so we count by product (not variation).
+    const variationIds = Array.from(new Set(coItems.map((c) => c.variationId)));
+    const variationRows = await prisma.productVariation.findMany({
+      where: { id: { in: variationIds } },
+      select: { id: true, productId: true },
+    });
+    const variationToProduct = new Map(
+      variationRows.map((v) => [v.id, v.productId]),
+    );
+
+    // 4) Count *distinct saleIds* per co-purchased product.
+    const salesPerProduct = new Map<string, Set<string>>();
+    for (const c of coItems) {
+      const pid = variationToProduct.get(c.variationId);
+      if (!pid) continue;
+      let set = salesPerProduct.get(pid);
+      if (!set) {
+        set = new Set<string>();
+        salesPerProduct.set(pid, set);
+      }
+      set.add(c.saleId);
+    }
+
+    // Tie-break on productId so order is stable run-to-run.
+    const rankedProductIds = Array.from(salesPerProduct.entries())
+      .map(([pid, set]) => [pid, set.size] as const)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, Math.max(1, limit))
+      .map(([id]) => id);
+    if (rankedProductIds.length === 0) return [];
+
+    // 5) Hydrate to PublicSiteProduct — same select shape as list paths.
+    const rows = await prisma.product.findMany({
+      where: {
+        id: { in: rankedProductIds },
+        tenantId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        imsCode: true,
+        mrp: true,
+        finalSp: true,
+        categoryId: true,
+        dateCreated: true,
+        category: { select: { id: true, name: true } },
+        ...LIST_VARIATION_SELECT,
+        discounts: {
+          where: activeDiscountWhere(now),
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    const ratings = await this.loadRatingsByProduct(
+      tenantId,
+      rows.map((r) => r.id),
+    );
+    const rowById = new Map(rows.map((r) => [r.id, r]));
+    const ordered: PublicSiteProduct[] = [];
+    for (const pid of rankedProductIds) {
+      const r = rowById.get(pid);
+      if (!r) continue;
+      ordered.push({
+        id: r.id,
+        name: r.name,
+        imsCode: r.imsCode,
+        mrp: r.mrp.toString(),
+        finalSp: r.finalSp.toString(),
+        categoryId: r.categoryId,
+        dateCreated: r.dateCreated,
+        category: r.category,
+        photoUrl: primaryPhotoFromList(r.variations),
+        ...priceStats(r.variations, r.finalSp),
+        ...deriveDiscount(r.mrp, r.finalSp, r.discounts.length > 0),
+        ...(ratings.get(r.id) ?? NULL_RATINGS),
       });
     }
     return ordered;

@@ -114,12 +114,14 @@ export function BlogArticle({
           src={post.heroImageUrl}
           alt=""
           aria-hidden="true"
-          loading="lazy"
+          loading="eager"
+          fetchPriority="high"
           decoding="async"
           sizes="(max-width: 768px) 100vw, 720px"
           style={{
             width: "100%",
-            height: "auto",
+            aspectRatio: "16 / 9",
+            objectFit: "cover",
             borderRadius: 4,
             marginBottom: "2rem",
           }}

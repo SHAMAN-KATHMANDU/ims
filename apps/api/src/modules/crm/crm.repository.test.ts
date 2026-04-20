@@ -4,6 +4,7 @@ const mockAggregate = vi.fn();
 const mockCount = vi.fn();
 const mockFindMany = vi.fn();
 const mockGroupBy = vi.fn();
+const mockActivityFindMany = vi.fn();
 
 vi.mock("@/config/prisma", () => ({
   default: {
@@ -15,7 +16,7 @@ vi.mock("@/config/prisma", () => ({
     },
     task: { count: vi.fn().mockResolvedValue(0) },
     lead: { groupBy: vi.fn().mockResolvedValue([]) },
-    activity: { findMany: vi.fn().mockResolvedValue([]) },
+    activity: { findMany: (...a: unknown[]) => mockActivityFindMany(...a) },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
@@ -30,6 +31,7 @@ describe("CrmRepository", () => {
     mockAggregate.mockResolvedValue({ _sum: { value: 0 } });
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
+    mockActivityFindMany.mockResolvedValue([]);
   });
 
   describe("getDashboardData", () => {
@@ -61,6 +63,25 @@ describe("CrmRepository", () => {
           }),
         }),
       );
+    });
+
+    it("projects recentActivities with select (drops notes/audit columns)", async () => {
+      await crmRepository.getDashboardData(tenantId);
+
+      expect(mockActivityFindMany).toHaveBeenCalledTimes(1);
+      const arg = mockActivityFindMany.mock.calls[0][0];
+      expect(arg.select).toEqual({
+        id: true,
+        type: true,
+        subject: true,
+        activityAt: true,
+        contact: { select: { id: true, firstName: true, lastName: true } },
+        deal: { select: { id: true, name: true } },
+        creator: { select: { id: true, username: true } },
+      });
+      expect(arg.include).toBeUndefined();
+      expect(arg.select.notes).toBeUndefined();
+      expect(arg.select.deleteReason).toBeUndefined();
     });
   });
 

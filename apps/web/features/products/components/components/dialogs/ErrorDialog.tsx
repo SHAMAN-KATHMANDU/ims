@@ -38,7 +38,10 @@ export function ErrorDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-destructive" />
+            <AlertCircle
+              className="h-5 w-5 text-destructive"
+              aria-hidden="true"
+            />
             <AlertDialogTitle>{title}</AlertDialogTitle>
           </div>
           <AlertDialogDescription className="pt-2">

@@ -35,6 +35,8 @@ interface SalesTableProps {
   // Selection props
   selectedSales?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 export function SalesTable({
@@ -48,6 +50,8 @@ export function SalesTable({
   itemsPerPage = 10,
   selectedSales = new Set(),
   onSelectionChange,
+  hasActiveFilters,
+  onClearFilters,
 }: SalesTableProps) {
   const canSort = Boolean(onSort);
   // Calculate starting serial number for current page
@@ -197,8 +201,34 @@ export function SalesTable({
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={columnCount} className="text-center py-8">
-                <p className="text-muted-foreground">No sales found</p>
+              <TableCell colSpan={columnCount} className="text-center py-10">
+                {hasActiveFilters ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-sm font-medium">
+                      No sales match your filters
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Try adjusting your search, date range, or filters.
+                    </p>
+                    {onClearFilters && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={onClearFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-sm font-medium">No sales yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      New sales will appear here once recorded.
+                    </p>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           </TableBody>
@@ -421,7 +451,7 @@ export function SalesTable({
                     onClick={() => onView(sale)}
                     aria-label={`View sale ${sale.saleCode}`}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </TableCell>
               </TableRow>

@@ -45,9 +45,9 @@ export function SuperAdminShortcuts({ basePath }: SuperAdminShortcutsProps) {
                   href={link.href}
                   className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                   {link.label}
-                  <ArrowRight className="h-3 w-3" />
+                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
                 </Link>
               </li>
             );

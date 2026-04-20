@@ -233,6 +233,7 @@ function PhotoFrame({
           src={src}
           alt={alt}
           decoding="async"
+          fetchPriority="high"
           sizes="(max-width: 768px) 100vw, 50vw"
           style={{
             width: "100%",

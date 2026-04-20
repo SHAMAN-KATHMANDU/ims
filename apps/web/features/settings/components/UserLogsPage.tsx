@@ -80,7 +80,9 @@ export function UserLogsPage() {
           <CardTitle>Audit Log</CardTitle>
           <div className="flex flex-wrap gap-4 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">User</Label>
+              <Label htmlFor="user-logs-user-filter" className="text-xs">
+                User
+              </Label>
               <Select
                 value={userFilter}
                 onValueChange={(v) => {
@@ -88,7 +90,11 @@ export function UserLogsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <SelectTrigger className="w-[160px] h-8">
+                <SelectTrigger
+                  id="user-logs-user-filter"
+                  className="w-[160px] h-8"
+                  aria-label="Filter audit log by user"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -102,7 +108,9 @@ export function UserLogsPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Action</Label>
+              <Label htmlFor="user-logs-action-filter" className="text-xs">
+                Action
+              </Label>
               <Select
                 value={actionFilter}
                 onValueChange={(v) => {
@@ -110,7 +118,11 @@ export function UserLogsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <SelectTrigger className="w-[180px] h-8">
+                <SelectTrigger
+                  id="user-logs-action-filter"
+                  className="w-[180px] h-8"
+                  aria-label="Filter audit log by action"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -132,12 +144,20 @@ export function UserLogsPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={
+                      dateFrom
+                        ? `From date: ${format(dateFrom, "PP")}. Change`
+                        : "Select from date"
+                    }
                     className={cn(
                       "h-8 w-[140px] justify-start text-left font-normal text-sm",
                       !dateFrom && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {dateFrom ? format(dateFrom, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -161,12 +181,20 @@ export function UserLogsPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={
+                      dateTo
+                        ? `To date: ${format(dateTo, "PP")}. Change`
+                        : "Select to date"
+                    }
                     className={cn(
                       "h-8 w-[140px] justify-start text-left font-normal text-sm",
                       !dateTo && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {dateTo ? format(dateTo, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -191,7 +219,7 @@ export function UserLogsPage() {
                   className="h-8 text-xs"
                   onClick={clearDateFilters}
                 >
-                  <X className="h-3.5 w-3.5 mr-2" />
+                  <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                   Clear dates
                 </Button>
               </div>
@@ -200,7 +228,10 @@ export function UserLogsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Skeleton className="h-64 w-full" />
+            <div role="status" aria-live="polite">
+              <Skeleton className="h-64 w-full" />
+              <span className="sr-only">Loading audit log…</span>
+            </div>
           ) : (
             <>
               <div className="rounded-md border">

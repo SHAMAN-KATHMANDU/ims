@@ -86,8 +86,13 @@ export function PlatformResetRequestsPage() {
           <div className="flex flex-wrap items-center gap-4">
             <CardTitle className="sr-only">Escalated Requests</CardTitle>
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
+                type="search"
+                aria-label="Search password reset requests by username or tenant"
                 placeholder="Search by username or tenant..."
                 value={search}
                 onChange={(e) => {
@@ -101,7 +106,10 @@ export function PlatformResetRequestsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Skeleton className="h-32 w-full" />
+            <div role="status" aria-live="polite">
+              <Skeleton className="h-32 w-full" />
+              <span className="sr-only">Loading password reset requests…</span>
+            </div>
           ) : requests.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
               No escalated password reset requests.
@@ -132,6 +140,7 @@ export function PlatformResetRequestsPage() {
                       <Button
                         size="sm"
                         variant="default"
+                        aria-label={`Approve password reset for ${req.requestedBy.username} (${req.tenant.name})`}
                         onClick={() =>
                           setApproveDialog({
                             open: true,
@@ -201,9 +210,15 @@ export function PlatformResetRequestsPage() {
                     newPassword: e.target.value,
                   }))
                 }
-                placeholder="Min 8 characters"
                 minLength={8}
+                aria-describedby="newPassword-hint"
               />
+              <p
+                id="newPassword-hint"
+                className="text-xs text-muted-foreground"
+              >
+                Must be at least 8 characters.
+              </p>
             </div>
           </div>
           <DialogFooter>

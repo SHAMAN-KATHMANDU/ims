@@ -115,6 +115,29 @@ export default async function RootLayout({
   // tree stays server-rendered.
   return (
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
+      <head>
+        {/* Warm up the TCP/TLS handshake for the image CDN — most pages ship
+            at least one S3-hosted product image so the handshake is on the
+            critical path. `dns-prefetch` is the universal fallback for
+            browsers that ignore `preconnect`. */}
+        <link
+          rel="preconnect"
+          href="https://ims-shaman-photos.s3.ap-south-1.amazonaws.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="dns-prefetch"
+          href="https://ims-shaman-photos.s3.ap-south-1.amazonaws.com"
+        />
+        {/* Google Fonts are requested via tenant branding's font CSS vars —
+            preconnect so the CSS@import resolves without a cold handshake. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body>
         <a
           href="#main-content"

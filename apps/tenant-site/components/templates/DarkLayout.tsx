@@ -12,6 +12,7 @@ import {
   NewsletterBand,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * DARK — Pure dark mode, neon accents, bento-style product showcase,
@@ -35,6 +36,7 @@ export async function DarkLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div
@@ -70,6 +72,7 @@ export async function DarkLayout(props: TemplateProps) {
               products={products}
               eyebrow="Hand-picked"
               heading="The featured bay"
+              formatOpts={formatOpts}
             />
           )}
 
@@ -119,7 +122,12 @@ export async function DarkLayout(props: TemplateProps) {
                     {products.length} pieces live
                   </div>
                 </div>
-                <ProductGrid products={products} columns={4} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={4}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -154,13 +162,18 @@ export async function DarkLayout(props: TemplateProps) {
             >
               All drops
             </h1>
-            <ProductGrid products={products} columns={4} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={4}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

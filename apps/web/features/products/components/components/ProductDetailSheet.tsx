@@ -103,7 +103,13 @@ export function ProductDetailSheet({
         {/* Scrollable body */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {isLoading && !fullProduct ? (
-            <div className="space-y-6 p-5">
+            <div
+              className="space-y-6 p-5"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <span className="sr-only">Loading product details…</span>
               <div className="space-y-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-10 w-full" />
@@ -222,7 +228,10 @@ export function ProductDetailSheet({
                               className="flex size-14 shrink-0 items-center justify-center rounded-md border bg-muted"
                               aria-hidden
                             >
-                              <Package className="size-6 text-muted-foreground" />
+                              <Package
+                                className="size-6 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">

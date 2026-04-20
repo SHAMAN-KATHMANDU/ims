@@ -1,6 +1,12 @@
 # Build and push Docker images for staging. Tags: dev, dev-{commit_sha}.
+# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: self-hosted` with `runs-on: ubuntu-latest`.
 # Triggered by push to main or manual dispatch. Push to main fires when PRs are merged.
 # Watchtower on staging EC2 pulls :dev and restarts. No deployment or SSH.
+#
+# Builds run SEQUENTIALLY (api → web → tenant-site) on the self-hosted runner to
+# avoid concurrent BuildKit daemons exhausting the ~1.4 GB of free RAM, which causes
+# gRPC EOF / TLS handshake timeout errors. On ubuntu-latest you can safely revert
+# to parallel by removing the inter-job `needs` added below.
 #
 # Manual trigger (Actions → Run workflow):
 #   stage = "api"          → builds API only          (always, regardless of file changes)
@@ -38,13 +44,14 @@ concurrency:
 
 env:
   COMMIT_SHA: ${{ github.sha }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # Only runs on push — detects which paths changed.
   # Skipped entirely on workflow_dispatch (manual builds always run unconditionally).
   changes:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       api: ${{ steps.changes_filter.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web }}
@@ -71,7 +78,7 @@ jobs:
 
   build-api:
     name: Build API (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: always run when stage is 'api' or 'all'.
     # On push: run when the changes job detected api or shared file changes.
@@ -119,12 +126,13 @@ jobs:
 
   build-web:
     name: Build Web (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: always run when stage is 'web' or 'all'.
     # On push: run when the changes job detected web or shared file changes.
     if: |
-      always() && (
+      always() &&
+      (needs.build-api.result == 'success' || needs.build-api.result == 'skipped') && (
         (github.event_name == 'workflow_dispatch' && (inputs.stage == 'web' || inputs.stage == 'all')) ||
         (github.event_name == 'push' && needs.changes.result == 'success' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
       )
@@ -177,7 +185,7 @@ jobs:
 
   build-tenant-site:
     name: Build Tenant Site (staging)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # On manual dispatch: run when stage is 'tenant-site' or 'all'.
     # On push: run when the changes job detected tenant-site or shared file changes.
@@ -185,7 +193,8 @@ jobs:
     # request time; it also depends on @repo/shared for the EnvFeature enum and
     # a few shared types, so a packages/** change triggers a rebuild.
     if: |
-      always() && (
+      always() &&
+      (needs.build-web.result == 'success' || needs.build-web.result == 'skipped') && (
         (github.event_name == 'workflow_dispatch' && (inputs.stage == 'tenant-site' || inputs.stage == 'all')) ||
         (github.event_name == 'push' && needs.changes.result == 'success' && (needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'))
       )

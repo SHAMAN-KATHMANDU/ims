@@ -28,6 +28,7 @@ import Link from "next/link";
 import { CartBadge } from "@/components/cart/CartBadge";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
+import { formatPrice as formatPriceShared } from "@/lib/format";
 import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
@@ -286,6 +287,7 @@ function NavItemView({ item }: { item: NavItem }) {
     );
   }
   if (item.kind === "mega-column") {
+    const columnCount = item.columns.length + (item.featured ? 1 : 0);
     return (
       <div className="tpl-dropdown" style={{ position: "relative" }}>
         <button
@@ -315,11 +317,73 @@ function NavItemView({ item }: { item: NavItem }) {
             border: "1px solid var(--color-border)",
             borderRadius: "var(--radius)",
             display: "grid",
-            gridTemplateColumns: `repeat(${item.columns.length}, minmax(160px, 1fr))`,
+            gridTemplateColumns: `repeat(${columnCount}, minmax(160px, 1fr))`,
             gap: "2rem",
             zIndex: 30,
           }}
         >
+          {item.featured && (
+            <Link
+              href={item.featured.href}
+              style={{
+                display: "block",
+                borderRadius: "var(--radius)",
+                overflow: "hidden",
+                textDecoration: "none",
+                color: "var(--color-text)",
+                minWidth: 220,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "4 / 3",
+                  backgroundImage: `url(${item.featured.imageUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderRadius: "var(--radius)",
+                  marginBottom: "0.75rem",
+                }}
+                role="img"
+                aria-label={
+                  item.featured.heading ?? item.featured.ctaLabel ?? "Featured"
+                }
+              />
+              {item.featured.heading && (
+                <div
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "0.95rem",
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  {item.featured.heading}
+                </div>
+              )}
+              {item.featured.subtitle && (
+                <div
+                  style={{
+                    fontSize: "0.82rem",
+                    color: "var(--color-muted)",
+                    marginBottom: "0.4rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {item.featured.subtitle}
+                </div>
+              )}
+              <span
+                style={{
+                  fontSize: "0.82rem",
+                  color: "var(--color-text)",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "3px",
+                }}
+              >
+                {item.featured.ctaLabel ?? "Shop now"} →
+              </span>
+            </Link>
+          )}
           {item.columns.map((col, ci) => (
             <div key={ci}>
               <div
@@ -726,7 +790,9 @@ export type HeroVariant =
   | "standard"
   | "luxury"
   | "boutique"
-  | "editorial";
+  | "editorial"
+  | "video"
+  | "shoppable";
 
 export function Hero({
   site,
@@ -738,6 +804,9 @@ export function Hero({
   subtitle,
   imageUrl,
   heroLayout = "centered",
+  videoUrl,
+  videoPoster,
+  shoppableProducts,
 }: {
   site: PublicSite;
   host: string;
@@ -748,9 +817,188 @@ export function Hero({
   subtitle?: string;
   imageUrl?: string;
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
+  videoUrl?: string;
+  videoPoster?: string;
+  shoppableProducts?: PublicProduct[];
 }) {
   const name = title ?? brandingDisplayName(site.branding, host);
   const tagline = subtitle ?? brandingTagline(site.branding);
+
+  if (variant === "video" && videoUrl) {
+    return (
+      <section
+        className="tpl-hero tpl-hero-video"
+        style={{
+          position: "relative",
+          minHeight: "min(80vh, 720px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          color: "#fff",
+          textAlign: "center",
+        }}
+      >
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={videoPoster}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        >
+          <source src={videoUrl} />
+        </video>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55))",
+          }}
+        />
+        <div
+          className="container"
+          style={{
+            position: "relative",
+            padding: "6rem 1rem",
+            maxWidth: 860,
+          }}
+        >
+          <h1
+            style={{
+              fontSize: "clamp(2.75rem, 6vw, 5rem)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.05,
+              marginBottom: "1.25rem",
+            }}
+          >
+            {name}
+          </h1>
+          {tagline && (
+            <p
+              style={{
+                fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
+                color: "rgba(255,255,255,0.88)",
+                maxWidth: 620,
+                margin: "0 auto 2rem",
+                lineHeight: 1.55,
+              }}
+            >
+              {tagline}
+            </p>
+          )}
+          <Link href={ctaHref} className="btn">
+            {ctaLabel}
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  if (variant === "shoppable") {
+    const products = (shoppableProducts ?? []).slice(0, 4);
+    return (
+      <section
+        className="tpl-hero tpl-hero-shoppable"
+        style={{
+          position: "relative",
+          padding: "5rem 0 4rem",
+          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          color: imageUrl ? "#fff" : "var(--color-text)",
+        }}
+      >
+        {imageUrl && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55))",
+            }}
+          />
+        )}
+        <div
+          className="container"
+          style={{ position: "relative", textAlign: "center" }}
+        >
+          <h1
+            style={{
+              fontSize: "clamp(2.25rem, 5vw, 3.75rem)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.1,
+              marginBottom: "1rem",
+            }}
+          >
+            {name}
+          </h1>
+          {tagline && (
+            <p
+              style={{
+                fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
+                color: imageUrl
+                  ? "rgba(255,255,255,0.85)"
+                  : "var(--color-muted)",
+                maxWidth: 620,
+                margin: "0 auto 2rem",
+                lineHeight: 1.55,
+              }}
+            >
+              {tagline}
+            </p>
+          )}
+          {products.length > 0 && (
+            <div
+              role="list"
+              aria-label="Featured products"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(auto-fit, minmax(min(200px, 100%), 1fr))`,
+                gap: "1.25rem",
+                marginTop: "2.5rem",
+                marginBottom: "2rem",
+                background: imageUrl ? "rgba(255,255,255,0.96)" : "transparent",
+                padding: imageUrl ? "1.5rem" : 0,
+                borderRadius: imageUrl ? "var(--radius)" : 0,
+                color: "var(--color-text)",
+              }}
+            >
+              {products.map((p, i) => (
+                <div key={p.id} role="listitem">
+                  <ProductCard
+                    product={p}
+                    variant="bare"
+                    showPrice
+                    showDiscount
+                    priority={i < 2}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <Link href={ctaHref} className="btn">
+            {ctaLabel}
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   // Bigger, more editorial padding across the board — matches the Vercel
   // Commerce / Shopify Dawn scale where the hero actually dominates the
@@ -948,6 +1196,7 @@ export function ProductGrid({
   showPrice,
   showDiscount,
   cardAspectRatio,
+  formatOpts,
 }: {
   products: PublicProduct[];
   columns?: number;
@@ -956,6 +1205,7 @@ export function ProductGrid({
   showPrice?: boolean;
   showDiscount?: boolean;
   cardAspectRatio?: string;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
 }) {
   if (products.length === 0) {
     return (
@@ -984,7 +1234,7 @@ export function ProductGrid({
         gap: "2.25rem 1.75rem",
       }}
     >
-      {products.map((p) => (
+      {products.map((p, i) => (
         <ProductCard
           key={p.id}
           product={p}
@@ -993,6 +1243,8 @@ export function ProductGrid({
           showPrice={showPrice}
           showDiscount={showDiscount}
           aspectRatio={cardAspectRatio}
+          priority={i < 2}
+          formatOpts={formatOpts}
         />
       ))}
     </div>
@@ -1639,10 +1891,12 @@ export function BentoShowcase({
   products,
   heading,
   eyebrow,
+  formatOpts,
 }: {
   products: PublicProduct[];
   heading?: string;
   eyebrow?: string;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
 }) {
   if (products.length === 0) return null;
   const featured = products.slice(0, 5);
@@ -1737,7 +1991,7 @@ export function BentoShowcase({
                     opacity: 0.85,
                   }}
                 >
-                  ₹{Number(big.finalSp).toLocaleString("en-IN")}
+                  {formatPriceShared(big.finalSp, formatOpts)}
                 </div>
               </div>
             </Link>
@@ -1776,7 +2030,7 @@ export function BentoShowcase({
                     opacity: 0.85,
                   }}
                 >
-                  ₹{Number(p.finalSp).toLocaleString("en-IN")}
+                  {formatPriceShared(p.finalSp, formatOpts)}
                 </div>
               </div>
             </Link>
@@ -1846,35 +2100,176 @@ export function NewsletterBand({
   title = "Stay in the loop",
   subtitle = "Occasional updates — no spam, ever.",
   cta = "Subscribe",
+  variant = "inline",
+  dark = false,
 }: {
   title?: string;
   subtitle?: string;
   cta?: string;
+  /**
+   * Visual presentation. `inline` is the original full-bleed band,
+   * `card` floats a bordered card on the page background, `banner` is
+   * a compact high-contrast strip with the form inline beside the copy.
+   * `modal` is handled by the NewsletterBlock router — it never reaches
+   * this component.
+   */
+  variant?: "inline" | "card" | "banner";
+  dark?: boolean;
 }) {
-  return (
-    <section
-      style={{
-        padding: "var(--section-padding) 0",
-        background: "var(--color-surface)",
-        borderTop: "1px solid var(--color-border)",
-        borderBottom: "1px solid var(--color-border)",
-      }}
-    >
-      <div className="container" style={{ maxWidth: 580, textAlign: "center" }}>
+  const bg = dark
+    ? "var(--color-text)"
+    : variant === "card"
+      ? "var(--color-background)"
+      : "var(--color-surface)";
+  const fg = dark ? "var(--color-background)" : "var(--color-text)";
+  const mutedFg = dark ? "var(--color-background)" : "var(--color-muted)";
+  const sectionStyle: React.CSSProperties =
+    variant === "card"
+      ? {
+          padding: "var(--section-padding) 0",
+          background: "var(--color-background)",
+        }
+      : variant === "banner"
+        ? {
+            padding: "2rem 0",
+            background: bg,
+            color: fg,
+            borderTop: dark ? "none" : "1px solid var(--color-border)",
+            borderBottom: dark ? "none" : "1px solid var(--color-border)",
+          }
+        : {
+            padding: "var(--section-padding) 0",
+            background: bg,
+            color: fg,
+            borderTop: "1px solid var(--color-border)",
+            borderBottom: "1px solid var(--color-border)",
+          };
+
+  const inner =
+    variant === "banner" ? (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "2rem",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ flex: "1 1 240px", minWidth: 240 }}>
+          <h2
+            style={{
+              fontSize: "clamp(1.15rem, 1.75vw, 1.5rem)",
+              margin: "0 0 0.25rem",
+              fontFamily: "var(--font-display)",
+              color: fg,
+            }}
+          >
+            {title}
+          </h2>
+          <p
+            style={{
+              color: mutedFg,
+              margin: 0,
+              opacity: dark ? 0.8 : 1,
+              fontSize: "0.9rem",
+            }}
+          >
+            {subtitle}
+          </p>
+        </div>
+        <form
+          method="get"
+          action=""
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            flex: "1 1 320px",
+            minWidth: 280,
+            maxWidth: 440,
+          }}
+        >
+          <label htmlFor="newsletter-email-banner" className="sr-only">
+            Email address
+          </label>
+          <input
+            id="newsletter-email-banner"
+            name="newsletter_email"
+            type="email"
+            placeholder="Enter your email"
+            style={{
+              height: 44,
+              padding: "0 1rem",
+              border: dark
+                ? "1px solid rgba(255,255,255,0.25)"
+                : "1px solid var(--color-border)",
+              borderRadius: "var(--radius, 6px)",
+              background: dark
+                ? "rgba(255,255,255,0.08)"
+                : "var(--color-background)",
+              color: fg,
+              fontSize: "0.9rem",
+              flex: 1,
+              minWidth: 0,
+              outline: "none",
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              height: 44,
+              padding: "0 1.5rem",
+              background: dark
+                ? "var(--color-background)"
+                : "var(--color-primary)",
+              color: dark
+                ? "var(--color-text)"
+                : "var(--color-on-primary, #fff)",
+              border: "none",
+              borderRadius: "var(--radius, 6px)",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {cta}
+          </button>
+        </form>
+      </div>
+    ) : (
+      <div
+        style={
+          variant === "card"
+            ? {
+                maxWidth: 640,
+                margin: "0 auto",
+                background: dark ? "var(--color-text)" : "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius, 12px)",
+                padding: "3rem 2rem",
+                textAlign: "center",
+                color: fg,
+              }
+            : { maxWidth: 580, textAlign: "center", color: fg }
+        }
+      >
         <h2
           style={{
             fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
             marginBottom: "0.75rem",
             fontFamily: "var(--font-display)",
+            color: fg,
           }}
         >
           {title}
         </h2>
         <p
           style={{
-            color: "var(--color-muted)",
+            color: mutedFg,
             marginBottom: "1.75rem",
             lineHeight: 1.6,
+            opacity: dark ? 0.8 : 1,
           }}
         >
           {subtitle}
@@ -1905,10 +2300,14 @@ export function NewsletterBand({
             style={{
               height: 44,
               padding: "0 1rem",
-              border: "1px solid var(--color-border)",
+              border: dark
+                ? "1px solid rgba(255,255,255,0.25)"
+                : "1px solid var(--color-border)",
               borderRadius: "var(--radius, 6px)",
-              background: "var(--color-background)",
-              color: "var(--color-text)",
+              background: dark
+                ? "rgba(255,255,255,0.08)"
+                : "var(--color-background)",
+              color: fg,
               fontSize: "0.9rem",
               flex: 1,
               minWidth: 0,
@@ -1920,8 +2319,12 @@ export function NewsletterBand({
             style={{
               height: 44,
               padding: "0 1.5rem",
-              background: "var(--color-primary)",
-              color: "var(--color-on-primary, #fff)",
+              background: dark
+                ? "var(--color-background)"
+                : "var(--color-primary)",
+              color: dark
+                ? "var(--color-text)"
+                : "var(--color-on-primary, #fff)",
               border: "none",
               borderRadius: "var(--radius, 6px)",
               fontWeight: 600,
@@ -1934,6 +2337,11 @@ export function NewsletterBand({
           </button>
         </form>
       </div>
+    );
+
+  return (
+    <section style={sectionStyle}>
+      <div className="container">{inner}</div>
     </section>
   );
 }
@@ -1942,7 +2350,13 @@ export function NewsletterBand({
 // Product detail
 // ============================================================================
 
-export function ProductDetail({ product }: { product: PublicProduct }) {
+export function ProductDetail({
+  product,
+  formatOpts,
+}: {
+  product: PublicProduct;
+  formatOpts?: import("@/lib/format").FormatPriceOptions;
+}) {
   return (
     <section style={{ padding: "var(--section-padding) 0" }}>
       <div
@@ -1970,6 +2384,10 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
               src={product.photoUrl}
               alt=""
               aria-hidden="true"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
               style={{
                 width: "100%",
                 height: "100%",
@@ -2027,21 +2445,21 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
             }}
           >
             <span
-              aria-label={`Price: ${Number(product.finalSp).toLocaleString("en-IN")} rupees`}
+              aria-label={`Price: ${formatPriceShared(product.finalSp, formatOpts)}`}
               style={{ fontWeight: 700 }}
             >
-              ₹{Number(product.finalSp).toLocaleString("en-IN")}
+              {formatPriceShared(product.finalSp, formatOpts)}
             </span>
             {Number(product.finalSp) < Number(product.mrp) && (
               <span
-                aria-label={`Original price: ${Number(product.mrp).toLocaleString("en-IN")} rupees`}
+                aria-label={`Original price: ${formatPriceShared(product.mrp, formatOpts)}`}
                 style={{
                   textDecoration: "line-through",
                   color: "var(--color-muted)",
                   fontSize: "1rem",
                 }}
               >
-                ₹{Number(product.mrp).toLocaleString("en-IN")}
+                {formatPriceShared(product.mrp, formatOpts)}
               </span>
             )}
           </div>

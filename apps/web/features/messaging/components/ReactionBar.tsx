@@ -14,7 +14,14 @@ import {
 import { cn } from "@/lib/utils";
 
 /** Preset quick reactions (thumbs up, heart, laugh, surprised, sad, thumbs down). */
-export const QUICK_REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👎"] as const;
+export const QUICK_REACTION_EMOJIS = [
+  "👍",
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "👎",
+] as const;
 
 interface ReactionBarProps {
   onSelect: (emoji: string) => void;
@@ -62,7 +69,7 @@ export function ReactionBar({
             disabled={disabled}
             aria-label="More emojis"
           >
-            <Plus className="size-4" />
+            <Plus className="size-4" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto border-0 p-0 shadow-lg" align="start">

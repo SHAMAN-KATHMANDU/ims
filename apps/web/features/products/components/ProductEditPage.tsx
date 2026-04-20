@@ -23,7 +23,11 @@ export function ProductEditPage() {
   }, [router, basePath, id]);
 
   return (
-    <div className="flex items-center justify-center p-8 text-muted-foreground">
+    <div
+      className="flex items-center justify-center p-8 text-muted-foreground"
+      role="status"
+      aria-live="polite"
+    >
       Redirecting to product form...
     </div>
   );

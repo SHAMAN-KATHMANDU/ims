@@ -92,9 +92,20 @@ export function UserForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
-        <Input id="username" {...register("username")} />
+        <Input
+          id="username"
+          {...register("username")}
+          aria-invalid={!!errors.username}
+          aria-describedby={errors.username ? "username-error" : undefined}
+        />
         {errors.username && (
-          <p className="text-sm text-destructive">{errors.username.message}</p>
+          <p
+            id="username-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {errors.username.message}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -103,9 +114,21 @@ export function UserForm({
             ? "New Password (leave blank to keep current)"
             : "Password"}
         </Label>
-        <Input id="password" type="password" {...register("password")} />
+        <Input
+          id="password"
+          type="password"
+          {...register("password")}
+          aria-invalid={!!errors.password}
+          aria-describedby={errors.password ? "password-error" : undefined}
+        />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p
+            id="password-error"
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {errors.password.message}
+          </p>
         )}
       </div>
       <div className="space-y-2">
@@ -127,7 +150,9 @@ export function UserForm({
           )}
         />
         {errors.role && (
-          <p className="text-sm text-destructive">{errors.role.message}</p>
+          <p id="role-error" role="alert" className="text-sm text-destructive">
+            {errors.role.message}
+          </p>
         )}
       </div>
       <div className="flex gap-2 justify-end">
@@ -170,7 +195,7 @@ export function UserForm({
       {renderTrigger && (
         <DialogTrigger asChild>
           <Button className="gap-2" onClick={() => onReset()}>
-            <Plus className="h-4 w-4" /> Add User
+            <Plus className="h-4 w-4" aria-hidden="true" /> Add User
           </Button>
         </DialogTrigger>
       )}

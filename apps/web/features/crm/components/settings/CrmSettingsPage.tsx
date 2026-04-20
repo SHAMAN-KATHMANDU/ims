@@ -107,19 +107,19 @@ export default function CrmSettingsPage() {
         <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">
           {pipelinesTabEnabled && (
             <TabsTrigger value="pipelines" className="gap-2 shrink-0">
-              <GitBranch className="h-4 w-4" />
+              <GitBranch className="h-4 w-4" aria-hidden="true" />
               Pipelines
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
             <TabsTrigger value="sources" className="gap-2 shrink-0">
-              <Tag className="h-4 w-4" />
+              <Tag className="h-4 w-4" aria-hidden="true" />
               <span className="hidden sm:inline">Contact </span>Sources
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
             <TabsTrigger value="tags" className="gap-2 shrink-0">
-              <Tags className="h-4 w-4" />
+              <Tags className="h-4 w-4" aria-hidden="true" />
               Tags
             </TabsTrigger>
           )}
@@ -214,7 +214,7 @@ function StageBuilder({
         </SortableContext>
       </DndContext>
       <Button type="button" variant="outline" size="sm" onClick={addStage}>
-        <Plus className="h-4 w-4 mr-1" />
+        <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
         Add Stage
       </Button>
     </div>
@@ -255,7 +255,7 @@ function SortableStageItem({
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
       <Input
         placeholder="Stage name"
@@ -271,7 +271,7 @@ function SortableStageItem({
         onClick={onRemove}
         aria-label="Remove stage"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
       </Button>
     </div>
   );
@@ -487,14 +487,17 @@ function PipelineSettings() {
               ]);
             }}
           >
-            <Plus className="h-4 w-4 mr-1" /> New Pipeline
+            <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> New Pipeline
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap items-center gap-4 pb-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder="Search by name..."
               value={pipelineSearch}
@@ -515,7 +518,10 @@ function PipelineSettings() {
         ) : pipelines.length === 0 ? (
           <div className="space-y-6 py-4">
             <div className="text-center text-muted-foreground">
-              <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <GitBranch
+                className="h-8 w-8 mx-auto mb-2 opacity-40"
+                aria-hidden="true"
+              />
               <p className="text-sm max-w-md mx-auto">
                 No pipelines yet. Start from a template (recommended) or create
                 a custom pipeline.
@@ -635,8 +641,9 @@ function PipelineSettings() {
                           variant="ghost"
                           className="h-8 w-8"
                           onClick={() => openEdit(p)}
+                          aria-label={`Edit pipeline ${p.name}`}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                         <Button
                           size="icon"
@@ -649,8 +656,13 @@ function PipelineSettings() {
                               ? "Cannot delete default pipeline"
                               : "Delete pipeline"
                           }
+                          aria-label={
+                            p.isDefault
+                              ? `Cannot delete default pipeline ${p.name}`
+                              : `Delete pipeline ${p.name}`
+                          }
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
                     </TableCell>
@@ -688,8 +700,14 @@ function PipelineSettings() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Pipeline Name</label>
+              <label
+                htmlFor="pipeline-name-create"
+                className="text-sm font-medium"
+              >
+                Pipeline Name
+              </label>
               <Input
+                id="pipeline-name-create"
                 placeholder="e.g. Sales Pipeline"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -782,8 +800,14 @@ function PipelineSettings() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Pipeline Name</label>
+              <label
+                htmlFor="pipeline-name-edit"
+                className="text-sm font-medium"
+              >
+                Pipeline Name
+              </label>
               <Input
+                id="pipeline-name-edit"
                 placeholder="Pipeline name"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -936,7 +960,10 @@ function ListSettings({
       <CardContent className="space-y-4">
         {onSearchChange != null && searchPlaceholder != null && (
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder={searchPlaceholder}
               value={searchValue ?? ""}
@@ -954,7 +981,7 @@ function ListSettings({
               disabled={isCreating}
               className="shrink-0"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
               {isCreating ? "Adding..." : "Add"}
             </Button>
           </div>
@@ -972,7 +999,7 @@ function ListSettings({
               disabled={isCreating || !newName.trim()}
               className="shrink-0"
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
               {isCreating ? "Adding..." : "Add"}
             </Button>
           </div>
@@ -1007,8 +1034,9 @@ function ListSettings({
                       setEditItem(item);
                       setEditName(item.name);
                     }}
+                    aria-label={`Edit ${item.name}`}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                   <Button
                     size="icon"
@@ -1016,8 +1044,9 @@ function ListSettings({
                     className="h-7 w-7 text-destructive hover:text-destructive"
                     onClick={() => onDelete(item.id)}
                     disabled={isDeleting}
+                    aria-label={`Delete ${item.name}`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -1138,7 +1167,7 @@ function SourceSettings() {
       <ListSettings
         title="Contact Sources"
         description="Define where your contacts come from. These appear as options when creating or editing a contact."
-        emptyIcon={<Tag className="h-8 w-8" />}
+        emptyIcon={<Tag className="h-8 w-8" aria-hidden="true" />}
         emptyText="No sources yet. Add one to get started."
         placeholder="e.g. Website, Referral, Social Media, Walk-in"
         createMode="dialog"
@@ -1208,7 +1237,7 @@ function TagSettings() {
       <ListSettings
         title="Contact Tags"
         description="Create tags to categorize contacts. Tags appear when creating or editing a contact."
-        emptyIcon={<Tags className="h-8 w-8" />}
+        emptyIcon={<Tags className="h-8 w-8" aria-hidden="true" />}
         emptyText="No tags yet. Add one above."
         placeholder="e.g. VIP, Lead, Customer, Newsletter"
         items={tags}

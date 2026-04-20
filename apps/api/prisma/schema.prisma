@@ -112,6 +112,13 @@ model Tenant {
   // Page translations (i18n)
   pageTranslations TenantPageTranslation[]
 
+  // Customer-submitted product reviews (moderated)
+  productReviews ProductReview[]
+
+  // Product bundles and gift cards
+  bundles   Bundle[]
+  giftCards GiftCard[]
+
   @@map("tenants")
 }
 
@@ -749,6 +756,7 @@ model Product {
   productAttributeTypes ProductAttributeType[]
   dealLineItems         DealLineItem[]
   collections           ProductCollection[]
+  reviews               ProductReview[]
 
   @@map("products")
 }
@@ -874,6 +882,54 @@ model VariationPhoto {
   variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
 
   @@map("variation_photos")
+}
+
+// ============================================
+// PRODUCT REVIEWS (customer-submitted, moderated)
+// ============================================
+
+/// Moderation gate for a customer-submitted review. PENDING is the default on
+/// POST so no review ever hits the public storefront until a tenant moderator
+/// (or an automation) flips it to APPROVED. REJECTED keeps the row around for
+/// audit trail rather than hard-deleting — admins can still see why something
+/// was filtered out. The aggregate endpoints (`avgRating`, `ratingCount`) only
+/// count APPROVED rows.
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("review_status")
+}
+
+/// Customer review on a product. No auth required to submit (tenants moderate
+/// what goes live), so we capture `authorName` / `authorEmail` as loose
+/// metadata — no FK to User. `body` is optional so a customer can leave a
+/// star-only rating. Composite index on (productId, status) powers the
+/// approved-only aggregate query that PublicSiteProduct.avgRating reads.
+model ProductReview {
+  id          String       @id @default(uuid()) @map("product_review_id")
+  tenantId    String       @map("tenant_id")
+  productId   String       @map("product_id")
+  rating      Int          @db.SmallInt
+  body        String?      @db.Text
+  authorName  String?      @map("author_name") @db.VarChar(120)
+  authorEmail String?      @map("author_email") @db.VarChar(255)
+  /// IP address the submission came from. Used for the POST rate-limit
+  /// (stashed here alongside express-rate-limit in case moderators want to
+  /// batch-reject a spam burst later).
+  submittedIp String?      @map("submitted_ip") @db.VarChar(64)
+  status      ReviewStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId, status])
+  @@map("product_reviews")
 }
 
 model DiscountType {
@@ -2545,6 +2601,78 @@ model MessageReaction {
   @@unique([messageId, emoji, reactionOwnerKey])
   @@index([messageId])
   @@map("message_reactions")
+}
+
+// ============================================
+// BUNDLES & GIFT CARDS
+// ============================================
+
+enum BundlePricingMode {
+  SUM
+  DISCOUNT_PCT
+  FIXED
+
+  @@map("bundle_pricing_mode")
+}
+
+/// Product bundle: ordered list of product IDs sold together with a chosen pricing strategy.
+model Bundle {
+  id              String            @id @default(uuid()) @map("bundle_id")
+  tenantId        String            @map("tenant_id")
+  name            String            @db.VarChar(200)
+  slug            String            @db.VarChar(200)
+  description     String?           @db.Text
+  /// Ordered list of product IDs; dereferenced on read (missing/deleted products filtered out).
+  productIds      String[]          @map("product_ids")
+  pricingStrategy BundlePricingMode @default(SUM) @map("pricing_strategy")
+  /// Integer percent 0-100; used when pricingStrategy = DISCOUNT_PCT.
+  discountPct     Int?              @map("discount_pct")
+  /// Price in minor currency units (cents); used when pricingStrategy = FIXED.
+  fixedPrice      Int?              @map("fixed_price")
+  active          Boolean           @default(true)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  deletedAt       DateTime?         @map("deleted_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, active])
+  @@map("bundles")
+}
+
+enum GiftCardStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+  VOIDED
+
+  @@map("gift_card_status")
+}
+
+/// Prepaid gift card with a code, original amount, and running balance.
+model GiftCard {
+  id             String         @id @default(uuid()) @map("gift_card_id")
+  tenantId       String         @map("tenant_id")
+  /// Redemption code; unique per tenant.
+  code           String         @db.VarChar(64)
+  /// Original face value in minor currency units (cents).
+  amount         Int
+  /// Remaining balance in minor currency units (cents).
+  balance        Int
+  /// User who purchased the card (optional — may be anonymous).
+  purchaserId    String?        @map("purchaser_id")
+  recipientEmail String?        @map("recipient_email") @db.VarChar(255)
+  expiresAt      DateTime?      @map("expires_at")
+  status         GiftCardStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@map("gift_cards")
 }
 
 /// Idempotency tracking for inbound webhook events.

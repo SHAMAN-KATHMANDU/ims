@@ -390,13 +390,20 @@ export function TransferForm({
               )}
             />
             {form.formState.errors.fromLocationId && (
-              <p className="text-sm text-destructive mt-1">
+              <p
+                id="transfer-from-error"
+                role="alert"
+                className="text-sm text-destructive mt-1"
+              >
                 {form.formState.errors.fromLocationId.message}
               </p>
             )}
           </div>
 
-          <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
+          <ArrowRight
+            className="h-5 w-5 text-muted-foreground mb-2"
+            aria-hidden="true"
+          />
 
           <div className="grid gap-2">
             <Label htmlFor="to">To Location *</Label>
@@ -424,7 +431,11 @@ export function TransferForm({
               )}
             />
             {form.formState.errors.toLocationId && (
-              <p className="text-sm text-destructive mt-1">
+              <p
+                id="transfer-to-error"
+                role="alert"
+                className="text-sm text-destructive mt-1"
+              >
                 {form.formState.errors.toLocationId.message}
               </p>
             )}
@@ -436,7 +447,10 @@ export function TransferForm({
             <Label>Add Product</Label>
             <div className="space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Search
+                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  aria-hidden="true"
+                />
                 <Input
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
@@ -446,8 +460,16 @@ export function TransferForm({
                 />
               </div>
               {loadingInventory && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <div
+                  className="flex justify-center py-4"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="sr-only">Loading inventory…</span>
+                  <Loader2
+                    className="h-5 w-5 animate-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 </div>
               )}
               {!productSearch.trim() && !loadingInventory && (
@@ -522,7 +544,10 @@ export function TransferForm({
                               disabled={inv.quantity < 1}
                               aria-label={`Add ${inv.variation.product.name} to transfer`}
                             >
-                              <Plus className="h-4 w-4 mr-1" />
+                              <Plus
+                                className="h-4 w-4 mr-1"
+                                aria-hidden="true"
+                              />
                               Add
                             </Button>
                           </div>
@@ -539,7 +564,11 @@ export function TransferForm({
           <div className="grid gap-2">
             <Label>Transfer Items ({items.length})</Label>
             {form.formState.errors.items && (
-              <p className="text-sm text-destructive">
+              <p
+                id="transfer-items-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {form.formState.errors.items.message}
               </p>
             )}
@@ -596,7 +625,7 @@ export function TransferForm({
                               }
                               aria-label="Increase quantity"
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </div>
                         </TableCell>
@@ -614,7 +643,10 @@ export function TransferForm({
                             }
                             aria-label="Remove from transfer"
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2
+                              className="h-4 w-4 text-destructive"
+                              aria-hidden="true"
+                            />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -674,7 +706,7 @@ export function TransferForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
           New Transfer
         </Button>
       </DialogTrigger>

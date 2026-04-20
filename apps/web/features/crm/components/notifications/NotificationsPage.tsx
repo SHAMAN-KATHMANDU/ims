@@ -101,7 +101,7 @@ export function NotificationsPage() {
                 onClick={() => markAllRead.mutate()}
                 disabled={markAllRead.isPending}
               >
-                <CheckCheck className="h-4 w-4 mr-2" />
+                <CheckCheck className="h-4 w-4 mr-2" aria-hidden="true" />
                 Mark all as read
               </Button>
             )}
@@ -112,7 +112,7 @@ export function NotificationsPage() {
                 onClick={() => deleteAll.mutate()}
                 disabled={deleteAll.isPending}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 Clear all
               </Button>
             )}
@@ -123,7 +123,10 @@ export function NotificationsPage() {
       <div className="space-y-2">
         {notifications.length === 0 ? (
           <div className="rounded-lg border p-8 text-center text-muted-foreground">
-            <Bell className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <Bell
+              className="h-12 w-12 mx-auto mb-2 opacity-50"
+              aria-hidden="true"
+            />
             <p>No notifications</p>
           </div>
         ) : (

@@ -73,7 +73,7 @@ function FeatureDisabledCard() {
     <Card>
       <CardHeader className="flex flex-row items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Lock className="h-5 w-5" />
+          <Lock className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <CardTitle>Website feature not enabled</CardTitle>
@@ -187,7 +187,7 @@ export function TenantSitePage() {
         <CardHeader className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Globe className="h-5 w-5" />
+              <Globe className="h-5 w-5" aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -215,7 +215,7 @@ export function TenantSitePage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild>
               <Link href="site/design">
-                <Sparkles className="mr-1.5 h-4 w-4" />
+                <Sparkles className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 Open design editor
               </Link>
             </Button>
@@ -225,7 +225,7 @@ export function TenantSitePage() {
                 onClick={handleUnpublish}
                 disabled={unpublishMutation.isPending}
               >
-                <XCircle className="mr-1.5 h-4 w-4" />
+                <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 {unpublishMutation.isPending ? "Unpublishing..." : "Unpublish"}
               </Button>
             ) : (
@@ -234,7 +234,7 @@ export function TenantSitePage() {
                 onClick={handlePublish}
                 disabled={!canPublish || publishMutation.isPending}
               >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 {publishMutation.isPending ? "Publishing..." : "Publish"}
               </Button>
             )}
@@ -336,7 +336,7 @@ function LegacySectionsNotice() {
     <Card className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
       <CardHeader className="flex flex-row items-start gap-3 pb-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
-          <ExternalLink className="h-4 w-4" />
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
         </div>
         <div>
           <CardTitle className="text-base">Legacy section toggles</CardTitle>

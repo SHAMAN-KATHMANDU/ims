@@ -237,11 +237,21 @@ export function PromoForm({
                       field.onChange(e.target.value.toUpperCase())
                     }
                     placeholder="e.g. FESTIVE20"
+                    aria-invalid={!!form.formState.errors.code}
+                    aria-describedby={
+                      form.formState.errors.code
+                        ? "promo-code-error"
+                        : undefined
+                    }
                   />
                 )}
               />
               {form.formState.errors.code && (
-                <p className="text-sm text-destructive">
+                <p
+                  id="promo-code-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {form.formState.errors.code.message}
                 </p>
               )}
@@ -316,9 +326,17 @@ export function PromoForm({
                 min={0}
                 step={0.01}
                 {...form.register("value", { valueAsNumber: true })}
+                aria-invalid={!!form.formState.errors.value}
+                aria-describedby={
+                  form.formState.errors.value ? "promo-value-error" : undefined
+                }
               />
               {form.formState.errors.value && (
-                <p className="text-sm text-destructive">
+                <p
+                  id="promo-value-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {form.formState.errors.value.message}
                 </p>
               )}
@@ -626,7 +644,7 @@ export function PromoForm({
               onReset();
             }}
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
             New Promo
           </Button>
         </DialogTrigger>

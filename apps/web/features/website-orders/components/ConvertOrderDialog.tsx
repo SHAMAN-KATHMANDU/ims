@@ -294,13 +294,22 @@ export function ConvertOrderDialog({
                       </Select>
                       <div className="flex shrink-0 items-center gap-1">
                         {hasSufficientStock ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <CheckCircle2
+                            className="h-4 w-4 text-green-600"
+                            aria-label="Sufficient stock"
+                          />
                         ) : (
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                          <AlertTriangle
+                            className="h-4 w-4 text-destructive"
+                            aria-label="Insufficient stock"
+                          />
                         )}
                         {needsTransfer && hasSufficientStock && (
                           <span className="whitespace-nowrap text-[10px] text-muted-foreground">
-                            <ArrowRight className="mr-0.5 inline h-3 w-3" />
+                            <ArrowRight
+                              className="mr-0.5 inline h-3 w-3"
+                              aria-hidden="true"
+                            />
                             transfer
                           </span>
                         )}
@@ -338,7 +347,7 @@ export function ConvertOrderDialog({
                   variant="outline"
                   onClick={addPaymentRow}
                 >
-                  <Plus className="mr-1 h-4 w-4" />
+                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" />
                   Add method
                 </Button>
               </div>
@@ -380,7 +389,7 @@ export function ConvertOrderDialog({
                     disabled={payments.length === 1}
                     aria-label="Remove payment row"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </div>
               ))}

@@ -136,12 +136,21 @@ function SortableTableHead({
         {children}
         {isActive ? (
           currentSortOrder === "asc" ? (
-            <ArrowUpIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+            <ArrowUpIcon
+              className="h-3.5 w-3.5 shrink-0 opacity-70"
+              aria-hidden="true"
+            />
           ) : (
-            <ArrowDownIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+            <ArrowDownIcon
+              className="h-3.5 w-3.5 shrink-0 opacity-70"
+              aria-hidden="true"
+            />
           )
         ) : (
-          <ArrowUpDownIcon className="h-3.5 w-3.5 shrink-0 opacity-40" />
+          <ArrowUpDownIcon
+            className="h-3.5 w-3.5 shrink-0 opacity-40"
+            aria-hidden="true"
+          />
         )}
       </button>
     </TableHead>

@@ -63,6 +63,12 @@ import {
   BreadcrumbsBlock,
 } from "./kinds/pdp-blocks";
 import { PdpGalleryBlock } from "./kinds/PdpGalleryBlock";
+import { ReviewsListBlock } from "./kinds/ReviewsListBlock";
+import { FbtBlock } from "./kinds/FbtBlock";
+import { RecentlyViewedBlock } from "./kinds/RecentlyViewedBlock";
+import { SizeGuideBlock } from "./kinds/SizeGuideBlock";
+import { ProductComparisonBlock } from "./kinds/ProductComparisonBlock";
+import { LookbookBlock } from "./kinds/LookbookBlock";
 
 // Layer 2
 import {
@@ -75,6 +81,14 @@ import {
 import { GalleryBlock } from "./kinds/GalleryBlock";
 import { TabsBlock } from "./kinds/TabsBlock";
 import { FormBlock } from "./kinds/FormBlock";
+
+// Utility / new gap blocks
+import { PolicyStripBlock } from "./kinds/PolicyStripBlock";
+import { EmptyStateBlock } from "./kinds/EmptyStateBlock";
+
+// Commerce (bundles + gift cards)
+import { BundleSpotlightBlock } from "./kinds/BundleSpotlightBlock";
+import { GiftCardRedeemBlock } from "./kinds/GiftCardRedeemBlock";
 
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
@@ -115,6 +129,7 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "bento-showcase": { component: BentoShowcaseBlock },
   "stats-band": { component: StatsBandBlock },
   newsletter: { component: NewsletterBlock },
+  "policy-strip": { component: PolicyStripBlock },
   "contact-block": { component: ContactBlockBlock },
   faq: { component: FaqBlock },
   testimonials: { component: TestimonialsBlock },
@@ -126,6 +141,12 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "pdp-buybox": { component: PdpBuyboxBlock },
   "pdp-details": { component: PdpDetailsBlock },
   "pdp-related": { component: PdpRelatedBlock },
+  "reviews-list": { component: ReviewsListBlock },
+  fbt: { component: FbtBlock },
+  "recently-viewed": { component: RecentlyViewedBlock },
+  "size-guide": { component: SizeGuideBlock },
+  "product-comparison": { component: ProductComparisonBlock },
+  lookbook: { component: LookbookBlock },
   breadcrumbs: { component: BreadcrumbsBlock },
   // Layer 2
   embed: { component: EmbedBlock },
@@ -137,4 +158,9 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   form: { component: FormBlock },
   // Layer 3
   "css-grid": { component: CssGridBlock, container: true },
+  // Utility
+  "empty-state": { component: EmptyStateBlock },
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": { component: BundleSpotlightBlock },
+  "gift-card-redeem": { component: GiftCardRedeemBlock },
 };

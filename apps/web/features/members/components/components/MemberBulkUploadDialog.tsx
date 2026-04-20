@@ -167,7 +167,10 @@ export function MemberBulkUploadDialog({
             <input {...getInputProps()} disabled={isUploading} />
             <div className="flex flex-col items-center gap-4">
               <div className="rounded-full bg-primary/10 p-4">
-                <FileSpreadsheet className="h-8 w-8 text-primary" />
+                <FileSpreadsheet
+                  className="h-8 w-8 text-primary"
+                  aria-hidden="true"
+                />
               </div>
               {selectedFile ? (
                 <div className="space-y-2">
@@ -184,7 +187,7 @@ export function MemberBulkUploadDialog({
                         setSelectedFile(null);
                       }}
                     >
-                      <X className="h-4 w-4 mr-2" />
+                      <X className="h-4 w-4 mr-2" aria-hidden="true" />
                       Remove
                     </Button>
                   )}
@@ -207,7 +210,7 @@ export function MemberBulkUploadDialog({
 
         {fileRejections.length > 0 && fileRejections[0] && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertTitle>File rejected</AlertTitle>
             <AlertDescription>
               {fileRejections[0].errors.map((error) => (
@@ -225,7 +228,7 @@ export function MemberBulkUploadDialog({
 
         {bulkUploadMutation.isError && bulkUploadMutation.error ? (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" aria-hidden="true" />
             <AlertTitle>Upload failed</AlertTitle>
             <AlertDescription className="space-y-2">
               <p>{(bulkUploadMutation.error as Error).message}</p>
@@ -282,7 +285,7 @@ export function MemberBulkUploadDialog({
                   : "destructive"
               }
             >
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
               <AlertTitle>Upload Summary</AlertTitle>
               <AlertDescription>
                 <div className="grid grid-cols-2 gap-4 mt-2">
@@ -291,20 +294,29 @@ export function MemberBulkUploadDialog({
                     {uploadResult.summary.total}
                   </div>
                   <div className="text-green-600">
-                    <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                    <CheckCircle2
+                      className="h-4 w-4 inline mr-1"
+                      aria-hidden="true"
+                    />
                     <span className="font-medium">Created:</span>{" "}
                     {uploadResult.summary.created}
                   </div>
                   {uploadResult.summary.skipped > 0 && (
                     <div className="text-yellow-600">
-                      <AlertCircle className="h-4 w-4 inline mr-1" />
+                      <AlertCircle
+                        className="h-4 w-4 inline mr-1"
+                        aria-hidden="true"
+                      />
                       <span className="font-medium">Skipped:</span>{" "}
                       {uploadResult.summary.skipped}
                     </div>
                   )}
                   {uploadResult.summary.errors > 0 && (
                     <div className="text-red-600">
-                      <XCircle className="h-4 w-4 inline mr-1" />
+                      <XCircle
+                        className="h-4 w-4 inline mr-1"
+                        aria-hidden="true"
+                      />
                       <span className="font-medium">Errors:</span>{" "}
                       {uploadResult.summary.errors}
                     </div>
@@ -325,7 +337,7 @@ export function MemberBulkUploadDialog({
                         key={idx}
                         className="text-xs flex items-center gap-2 text-green-700"
                       >
-                        <CheckCircle2 className="h-3 w-3" />
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                         <span>
                           {m.phone}
                           {m.name ? ` - ${m.name}` : ""}
@@ -349,7 +361,10 @@ export function MemberBulkUploadDialog({
                         key={idx}
                         className="text-xs flex items-start gap-2 text-yellow-700"
                       >
-                        <AlertCircle className="h-3 w-3 mt-0.5" />
+                        <AlertCircle
+                          className="h-3 w-3 mt-0.5"
+                          aria-hidden="true"
+                        />
                         <span>
                           <span className="font-medium">
                             {m.phone}
@@ -376,7 +391,10 @@ export function MemberBulkUploadDialog({
                         key={idx}
                         className="text-xs flex items-start gap-2 text-red-700"
                       >
-                        <XCircle className="h-3 w-3 mt-0.5" />
+                        <XCircle
+                          className="h-3 w-3 mt-0.5"
+                          aria-hidden="true"
+                        />
                         <span>
                           <span className="font-medium">Row {error.row}</span>
                           {error.field && (
@@ -412,7 +430,7 @@ export function MemberBulkUploadDialog({
                 onClick={() => downloadBulkUploadTemplate()}
                 disabled={isUploading}
               >
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                 Download template
               </Button>
               <Button
@@ -426,7 +444,7 @@ export function MemberBulkUploadDialog({
                 onClick={handleUpload}
                 disabled={!selectedFile || isUploading}
               >
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                 Upload
               </Button>
             </>

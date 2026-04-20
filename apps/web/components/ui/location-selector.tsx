@@ -50,9 +50,15 @@ export function LocationSelector({
           <SelectItem key={location.id} value={location.id}>
             <span className="flex items-center gap-2">
               {location.type === "WAREHOUSE" ? (
-                <Warehouse className="h-4 w-4 text-muted-foreground" />
+                <Warehouse
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
               ) : (
-                <Store className="h-4 w-4 text-muted-foreground" />
+                <Store
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
               )}
               {location.name}
             </span>

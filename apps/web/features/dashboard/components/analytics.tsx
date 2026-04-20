@@ -107,7 +107,10 @@ export function AnalyticsPage() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -128,7 +131,10 @@ export function AnalyticsPage() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">General Sales</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <ShoppingCart
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -149,7 +155,10 @@ export function AnalyticsPage() {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Member Sales</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -172,7 +181,10 @@ export function AnalyticsPage() {
             <CardTitle className="text-sm font-medium">
               Total Discounts
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -197,7 +209,7 @@ export function AnalyticsPage() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+              <BarChart3 className="h-5 w-5" aria-hidden="true" />
               Sales by Showroom
             </CardTitle>
             <CardDescription>Revenue breakdown by location</CardDescription>

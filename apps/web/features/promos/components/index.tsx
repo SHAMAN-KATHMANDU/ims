@@ -192,7 +192,10 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search by code or description..."
                 value={search}
@@ -220,7 +223,7 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
               (isMobile ? (
                 <Button asChild>
                   <Link href={`${basePath}/promos/new`} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4" aria-hidden="true" />
                     New Promo
                   </Link>
                 </Button>
@@ -233,7 +236,7 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                       setDialogOpen(true);
                     }}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4" aria-hidden="true" />
                     New Promo
                   </Button>
                   <PromoForm
@@ -376,15 +379,20 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleEdit(promo)}
+                              aria-label={`Edit promo ${promo.code}`}
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-4 w-4" aria-hidden="true" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(promo)}
+                              aria-label={`Delete promo ${promo.code}`}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2
+                                className="h-4 w-4 text-destructive"
+                                aria-hidden="true"
+                              />
                             </Button>
                           </div>
                         )}

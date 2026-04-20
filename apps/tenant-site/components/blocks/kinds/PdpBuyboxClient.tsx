@@ -15,6 +15,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { formatPrice } from "@/lib/format";
 import type {
   PublicProductVariation,
   PublicProductSubVariation,
@@ -35,6 +36,9 @@ export interface PdpBuyboxClientProps {
   showVariantPicker: boolean;
   variantDisplay: VariantDisplay;
   priceSize: "sm" | "md" | "lg";
+  /** Tenant locale/currency for Intl.NumberFormat. */
+  locale?: string;
+  currency?: string;
 }
 
 function priceFontSize(size: "sm" | "md" | "lg"): string {
@@ -107,7 +111,10 @@ export function PdpBuyboxClient({
   showVariantPicker,
   variantDisplay,
   priceSize,
+  locale,
+  currency,
 }: PdpBuyboxClientProps) {
+  const formatOpts = { locale, currency };
   const [qty, setQty] = useState(1);
   const buyboxRef = useRef<HTMLDivElement>(null);
   const [offScreen, setOffScreen] = useState(false);
@@ -196,7 +203,7 @@ export function PdpBuyboxClient({
           }}
         >
           <span style={{ fontWeight: 700 }}>
-            ₹{unitPrice.toLocaleString("en-IN")}
+            {formatPrice(unitPrice, formatOpts)}
           </span>
           {hasDiscount && (
             <span
@@ -206,7 +213,7 @@ export function PdpBuyboxClient({
                 fontSize: "1rem",
               }}
             >
-              ₹{mrp.toLocaleString("en-IN")}
+              {formatPrice(mrp, formatOpts)}
             </span>
           )}
           {stockWarning && (
@@ -475,7 +482,7 @@ export function PdpBuyboxClient({
               )}
             </div>
             <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>
-              ₹{unitPrice.toLocaleString("en-IN")}
+              {formatPrice(unitPrice, formatOpts)}
             </div>
           </div>
           <AddToCartButton

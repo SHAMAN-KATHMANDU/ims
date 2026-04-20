@@ -442,7 +442,7 @@ export function TenantPageEditor({
                     disabled={!previewSrc}
                     aria-label="Refresh preview"
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
                   </Button>
                   {previewSrc && (
                     <Button
@@ -457,7 +457,7 @@ export function TenantPageEditor({
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ExternalLink className="h-4 w-4" aria-hidden="true" />
                       </a>
                     </Button>
                   )}

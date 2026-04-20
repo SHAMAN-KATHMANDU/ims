@@ -39,7 +39,7 @@ function FeatureDisabledCard() {
     <Card>
       <CardHeader className="flex flex-row items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Lock className="h-5 w-5" />
+          <Lock className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <CardTitle>Website feature not enabled</CardTitle>
@@ -70,14 +70,38 @@ function formatDate(iso: string): string {
 function OrdersTable({
   orders,
   detailHref,
+  search,
+  onClearSearch,
+  tabLabel,
 }: {
   orders: WebsiteOrderListItem[];
   detailHref: (id: string) => string;
+  search: string;
+  onClearSearch: () => void;
+  tabLabel: string;
 }) {
   if (orders.length === 0) {
+    if (search.trim()) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-12 text-center">
+          <p className="text-sm font-medium">No orders match your search</p>
+          <p className="text-sm text-muted-foreground">
+            Try a different order code, name, or phone.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={onClearSearch}
+          >
+            Clear search
+          </Button>
+        </div>
+      );
+    }
     return (
       <p className="py-12 text-center text-sm text-muted-foreground">
-        No orders here.
+        No {tabLabel.toLowerCase()} orders yet.
       </p>
     );
   }
@@ -131,7 +155,7 @@ function OrdersTable({
                     href={detailHref(o.id)}
                     aria-label={`Open ${o.orderCode}`}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               </TableCell>
@@ -238,7 +262,13 @@ export function WebsiteOrdersPage({
             <Tabs value={tab}>
               {TABS.map((t) => (
                 <TabsContent key={t.key} value={t.key}>
-                  <OrdersTable orders={orders} detailHref={detailHref} />
+                  <OrdersTable
+                    orders={orders}
+                    detailHref={detailHref}
+                    search={search}
+                    onClearSearch={() => setSearch("")}
+                    tabLabel={t.label}
+                  />
                 </TabsContent>
               ))}
             </Tabs>

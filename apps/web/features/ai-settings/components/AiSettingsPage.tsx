@@ -64,8 +64,16 @@ export function AiSettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div
+        className="flex items-center justify-center py-20"
+        role="status"
+        aria-live="polite"
+      >
+        <Loader2
+          className="h-6 w-6 animate-spin text-muted-foreground"
+          aria-hidden="true"
+        />
+        <span className="sr-only">Loading AI settings…</span>
       </div>
     );
   }
@@ -82,7 +90,7 @@ export function AiSettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
             <CardTitle>System Prompt</CardTitle>
           </div>
           <CardDescription>
@@ -99,17 +107,30 @@ export function AiSettingsPage() {
                 id="systemPrompt"
                 placeholder={DEFAULT_SYSTEM_PROMPT}
                 className="min-h-[200px] font-mono text-sm"
+                aria-invalid={errors.systemPrompt ? true : undefined}
+                aria-describedby={
+                  errors.systemPrompt
+                    ? "systemPrompt-error systemPrompt-count"
+                    : "systemPrompt-count"
+                }
                 {...register("systemPrompt")}
               />
               <div className="flex items-center justify-between">
                 <div>
                   {errors.systemPrompt && (
-                    <p className="text-sm text-destructive">
+                    <p
+                      id="systemPrompt-error"
+                      className="text-sm text-destructive"
+                    >
                       {errors.systemPrompt.message}
                     </p>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p
+                  id="systemPrompt-count"
+                  className="text-xs text-muted-foreground"
+                >
+                  <span className="sr-only">Character count: </span>
                   {charCount} / 4000
                 </p>
               </div>
@@ -123,7 +144,7 @@ export function AiSettingsPage() {
                 onClick={handleResetToDefault}
                 className="gap-1.5"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                 Reset to Default
               </Button>
 
@@ -133,7 +154,10 @@ export function AiSettingsPage() {
               >
                 {updateMutation.isPending ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2
+                      className="h-4 w-4 animate-spin mr-2"
+                      aria-hidden="true"
+                    />
                     Saving...
                   </>
                 ) : (

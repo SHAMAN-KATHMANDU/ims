@@ -25,7 +25,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
 import { formatCurrency } from "@/lib/format";
-import { useAddDealLineItem, useRemoveDealLineItem, useConvertDealToSale } from "../../hooks/use-deals";
+import {
+  useAddDealLineItem,
+  useRemoveDealLineItem,
+  useConvertDealToSale,
+} from "../../hooks/use-deals";
 import { useProductsPaginated } from "@/features/products";
 import { useActiveLocations } from "@/features/locations";
 import type { Deal } from "../../services/deal.service";
@@ -135,7 +139,7 @@ export function DealLineItemsSection({
         <Popover open={productOpen} onOpenChange={setProductOpen}>
           <PopoverTrigger asChild>
             <Button size="sm" variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               Add Product
             </Button>
           </PopoverTrigger>
@@ -207,7 +211,7 @@ export function DealLineItemsSection({
                       disabled={removeLineItem.isPending}
                       aria-label="Remove line item"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </td>
                 </tr>
@@ -217,7 +221,8 @@ export function DealLineItemsSection({
         </div>
       ) : (
         <p className="text-muted-foreground text-sm py-4">
-          No products added. Add products to convert this deal to a sale when won.
+          No products added. Add products to convert this deal to a sale when
+          won.
         </p>
       )}
 

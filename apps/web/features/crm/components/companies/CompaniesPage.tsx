@@ -214,7 +214,7 @@ export function CompaniesPage() {
         title="Companies"
         actions={
           <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
             Add Company
           </Button>
         }
@@ -222,7 +222,10 @@ export function CompaniesPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1 max-w-xl">
-          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Search
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+            aria-hidden="true"
+          />
           <Input
             placeholder="Search companies…"
             value={search}
@@ -245,7 +248,7 @@ export function CompaniesPage() {
           className="shrink-0 gap-2"
           onClick={() => setFiltersOpen(true)}
         >
-          <SlidersHorizontal className="size-4" />
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
           Sort
         </Button>
       </div>
@@ -265,7 +268,7 @@ export function CompaniesPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -281,7 +284,7 @@ export function CompaniesPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -385,20 +388,23 @@ export function CompaniesPage() {
             >
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <Building2
+                    className="h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 </div>
                 <span className="text-sm font-semibold">{c.name}</span>
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {c.website && (
                   <span className="flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
+                    <Globe className="h-3 w-3" aria-hidden="true" />
                     {c.website}
                   </span>
                 )}
                 {c.phone && (
                   <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
+                    <Phone className="h-3 w-3" aria-hidden="true" />
                     {c.phone}
                   </span>
                 )}
@@ -413,7 +419,7 @@ export function CompaniesPage() {
                   className="h-7 text-xs flex-1"
                   onClick={() => openEdit(c.id)}
                 >
-                  <Pencil className="h-3 w-3 mr-1" />
+                  <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
                   Edit
                 </Button>
                 <Button
@@ -421,8 +427,9 @@ export function CompaniesPage() {
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive"
                   onClick={() => handleDelete(c.id)}
+                  aria-label={`Delete ${c.name}`}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -575,7 +582,10 @@ export function CompaniesPage() {
                 <>
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-                      <Building2 className="h-6 w-6 text-muted-foreground" />
+                      <Building2
+                        className="h-6 w-6 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     </div>
                     <h2 className="text-xl font-semibold">
                       {selectedCompany.name}
@@ -585,7 +595,10 @@ export function CompaniesPage() {
                   <div className="grid gap-3">
                     {selectedCompany.website && (
                       <div className="flex items-center gap-2 text-sm">
-                        <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Globe
+                          className="h-4 w-4 text-muted-foreground shrink-0"
+                          aria-hidden="true"
+                        />
                         <a
                           href={selectedCompany.website}
                           target="_blank"
@@ -598,7 +611,10 @@ export function CompaniesPage() {
                     )}
                     {selectedCompany.phone && (
                       <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Phone
+                          className="h-4 w-4 text-muted-foreground shrink-0"
+                          aria-hidden="true"
+                        />
                         <a
                           href={`tel:${selectedCompany.phone}`}
                           className="hover:underline"
@@ -609,7 +625,10 @@ export function CompaniesPage() {
                     )}
                     {selectedCompany.address && (
                       <div className="flex items-start gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <MapPin
+                          className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5"
+                          aria-hidden="true"
+                        />
                         <span>{selectedCompany.address}</span>
                       </div>
                     )}

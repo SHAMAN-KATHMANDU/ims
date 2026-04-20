@@ -13,6 +13,7 @@ import {
   NewsletterBand,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * ARTISAN — Heritage crafts, story-first, warm greens. Heavy riff on
@@ -35,6 +36,7 @@ export async function ArtisanLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="artisan">
@@ -127,7 +129,12 @@ export async function ArtisanLayout(props: TemplateProps) {
                     See everything →
                   </a>
                 </div>
-                <ProductGrid products={products} columns={4} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={4}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -173,13 +180,18 @@ Every piece we sell is made, finished, or at least looked at by someone who has 
             >
               Everything from the workshop
             </h1>
-            <ProductGrid products={products} columns={4} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={4}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

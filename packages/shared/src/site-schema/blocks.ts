@@ -10,18 +10,22 @@
  */
 
 import { z } from "zod";
+import {
+  BlockStyleOverrideSchema,
+  type BlockStyleOverride,
+} from "./block-styles";
+
+export type { BlockStyle, BlockStyleOverride } from "./block-styles";
+export {
+  BlockStyleSchema,
+  BlockStyleOverrideSchema,
+  DEFAULT_BLOCK_STYLE,
+  resolveBlockStyle,
+} from "./block-styles";
 
 // ---------------------------------------------------------------------------
 // Structural types shared across blocks
 // ---------------------------------------------------------------------------
-
-export interface BlockStyleOverride {
-  backgroundToken?: string;
-  textToken?: string;
-  paddingY?: "none" | "compact" | "balanced" | "spacious";
-  maxWidth?: "narrow" | "default" | "wide" | "full";
-  alignment?: "start" | "center" | "end";
-}
 
 export interface BlockVisibility {
   mobile?: boolean;
@@ -98,13 +102,29 @@ export interface MarkdownBodyProps {
 // Commerce -------------------------------------------------------------------
 
 export interface HeroProps {
-  variant: "minimal" | "standard" | "luxury" | "boutique" | "editorial";
+  variant:
+    | "minimal"
+    | "standard"
+    | "luxury"
+    | "boutique"
+    | "editorial"
+    | "video"
+    | "shoppable";
   title?: string;
   subtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
   imageUrl?: string;
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
+  /** video variant only: mp4/webm source. Required when variant = "video". */
+  videoUrl?: string;
+  /** video variant only: poster image shown before playback. */
+  videoPoster?: string;
+  /**
+   * shoppable variant only: product IDs to render as a compact shelf
+   * beneath the hero copy. Order is preserved; unknown IDs skipped.
+   */
+  shoppableProductIds?: string[];
 }
 
 export interface ProductGridProps {
@@ -182,6 +202,18 @@ export interface AnnouncementBarProps {
    * takes precedence over `text` in the rendered marquee.
    */
   items?: string[];
+  /**
+   * Presentation: "bar" (default) renders as a top strip; "modal"
+   * renders as a dismissible promo popup with a larger CTA. Modal
+   * dismissal is persisted in localStorage.
+   */
+  mode?: "bar" | "modal";
+  /** Modal-only: seconds before auto-open (0 = immediate). */
+  modalDelaySeconds?: number;
+  /** Modal-only: button label (falls back to "Shop now"). */
+  modalCtaLabel?: string;
+  /** Modal-only: optional heading shown above `text`. */
+  modalHeading?: string;
 }
 
 export interface CollectionCardItem {
@@ -262,7 +294,26 @@ export interface NewsletterProps {
   title?: string;
   subtitle?: string;
   cta?: string;
-  variant?: "inline" | "card" | "banner";
+  variant?: "inline" | "card" | "banner" | "modal";
+  dark?: boolean;
+  /** Modal-only: seconds before first auto-open (0 disables auto-open). */
+  modalDelaySeconds?: number;
+  /** Modal-only: show on exit-intent (desktop). */
+  modalExitIntent?: boolean;
+}
+
+export interface PolicyItem {
+  label: string;
+  detail?: string;
+  icon?: "shipping" | "returns" | "secure" | "support" | "warranty" | "gift";
+  href?: string;
+}
+
+export interface PolicyStripProps {
+  heading?: string;
+  items: PolicyItem[];
+  layout?: "inline" | "grid";
+  columns?: 2 | 3 | 4;
   dark?: boolean;
 }
 
@@ -345,6 +396,119 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+export interface ProductComparisonProps {
+  heading?: string;
+  description?: string;
+  /** Explicit product IDs to render as columns (2–4). */
+  productIds: string[];
+  /**
+   * Which attribute rows to include. Defaults to the common set when
+   * omitted. Values match PublicProduct fields + a few synthetic ones
+   * ("price", "rating") resolved by the block.
+   */
+  attributes?: (
+    | "price"
+    | "category"
+    | "rating"
+    | "length"
+    | "breadth"
+    | "height"
+    | "weight"
+    | "description"
+  )[];
+}
+
+export interface LookbookPin {
+  /**
+   * Normalized coordinates 0–1 for both axes so the pin stays anchored
+   * on any aspect ratio.
+   */
+  x: number;
+  y: number;
+  productId: string;
+  label?: string;
+}
+
+export interface LookbookScene {
+  imageUrl: string;
+  alt?: string;
+  caption?: string;
+  pins: LookbookPin[];
+}
+
+export interface LookbookProps {
+  heading?: string;
+  description?: string;
+  scenes: LookbookScene[];
+  aspectRatio?: "16/9" | "4/5" | "3/4" | "1/1";
+}
+
+export interface SizeGuideRow {
+  label: string;
+  values: string[];
+}
+
+export interface SizeGuideProps {
+  triggerLabel?: string;
+  heading?: string;
+  description?: string;
+  /** Column headers for the size table (e.g. ["S", "M", "L", "XL"]). */
+  columns: string[];
+  /** Rows e.g. [{ label: "Chest (cm)", values: ["86", "91", "96", "101"] }]. */
+  rows: SizeGuideRow[];
+  note?: string;
+  /**
+   * Render variant. `inline` drops the table straight into the page;
+   * `modal` hides it behind a trigger button that opens a dialog.
+   */
+  variant?: "inline" | "modal";
+}
+
+export interface RecentlyViewedProps {
+  heading?: string;
+  limit?: number;
+  columns?: 2 | 3 | 4;
+  cardVariant?: "bordered" | "bare" | "card";
+  /**
+   * Hide the block entirely when the shopper has no recently-viewed
+   * history yet. When false, renders an empty placeholder heading (rare
+   * use — typically want `true`).
+   */
+  hideWhenEmpty?: boolean;
+  /**
+   * When mounted on a PDP, skip the currently-viewed product so the
+   * strip only shows other items. Defaults to true.
+   */
+  excludeCurrent?: boolean;
+}
+
+export interface FbtProps {
+  heading?: string;
+  /**
+   * Source of the anchor product. `current-pdp` reads activeProduct;
+   * `explicit` uses productId.
+   */
+  productIdSource?: "current-pdp" | "explicit";
+  productId?: string;
+  limit?: number;
+  columns?: 2 | 3 | 4;
+  cardVariant?: "bordered" | "bare" | "card";
+}
+
+export interface ReviewsListProps {
+  heading?: string;
+  /**
+   * Where the product id comes from. `current-pdp` uses the active
+   * product on the page; `explicit` requires `productId`. Defaults to
+   * `current-pdp` so the block is drop-in on PDP blueprints.
+   */
+  productIdSource?: "current-pdp" | "explicit";
+  productId?: string;
+  pageSize?: number;
+  emptyMessage?: string;
+  showRatingSummary?: boolean;
+}
+
 // Layer 2 blocks ---------------------------------------------------------------
 
 export interface EmbedProps {
@@ -381,6 +545,12 @@ export interface ColumnsProps {
   gap?: "sm" | "md" | "lg";
   verticalAlign?: "start" | "center" | "end";
   stackBelow?: "sm" | "md" | "lg";
+  /**
+   * When true, the first child becomes `position: sticky` at the viewport
+   * top (with a small offset) on breakpoints where the grid is active.
+   * Matches the standard PDP gallery-on-left pattern.
+   */
+  stickyFirst?: boolean;
 }
 
 export interface GalleryProps {
@@ -431,6 +601,57 @@ export interface CssGridProps {
   tabletColumns?: number;
 }
 
+// Commerce (bundles + gift cards) -------------------------------------------
+
+export interface BundleSpotlightProps {
+  /** Published bundle slug (required — the block fetches by slug). */
+  slug: string;
+  /** Override the heading. When omitted, uses the bundle name. */
+  heading?: string;
+  /** Optional eyebrow label displayed above the heading. */
+  eyebrow?: string;
+  /** Description override. When omitted, uses the bundle's own description. */
+  description?: string;
+  /** Layout of media + copy. */
+  layout?: "split" | "stacked";
+  /** Show individual products included in the bundle (with names + prices). */
+  showProducts?: boolean;
+  /** CTA label under the pricing panel. */
+  ctaLabel?: string;
+  /** CTA href — defaults to the first included product's PDP. */
+  ctaHref?: string;
+  /** Visual style of the CTA. */
+  buttonStyle?: "primary" | "outline" | "ghost";
+}
+
+export interface GiftCardRedeemProps {
+  heading?: string;
+  subtitle?: string;
+  /** Label on the code input. */
+  codeLabel?: string;
+  /** Label on the amount input (redemption amount in minor units). */
+  amountLabel?: string;
+  /** Submit button label. */
+  buttonLabel?: string;
+  /** Message rendered after a successful redeem (supports {balance} token). */
+  successMessage?: string;
+  variant?: "inline" | "card";
+}
+
+// Utility -------------------------------------------------------------------
+
+export interface EmptyStateProps {
+  /** Preset that influences default copy / illustration. */
+  kind?: "not-found" | "empty-search" | "empty-cart" | "generic";
+  heading: string;
+  subtitle?: string;
+  illustration?: "none" | "package" | "magnifier" | "cart" | "alert";
+  ctaLabel?: string;
+  ctaHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+}
+
 // ---------------------------------------------------------------------------
 // The full map
 // ---------------------------------------------------------------------------
@@ -459,6 +680,7 @@ export interface BlockPropsMap {
   "bento-showcase": BentoShowcaseProps;
   "stats-band": StatsBandProps;
   newsletter: NewsletterProps;
+  "policy-strip": PolicyStripProps;
   "contact-block": ContactBlockProps;
   faq: FaqProps;
   testimonials: TestimonialsProps;
@@ -470,7 +692,16 @@ export interface BlockPropsMap {
   "pdp-buybox": PdpBuyboxProps;
   "pdp-details": PdpDetailsProps;
   "pdp-related": PdpRelatedProps;
+  "reviews-list": ReviewsListProps;
+  fbt: FbtProps;
+  "recently-viewed": RecentlyViewedProps;
+  "size-guide": SizeGuideProps;
+  "product-comparison": ProductComparisonProps;
+  lookbook: LookbookProps;
   breadcrumbs: BreadcrumbsProps;
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": BundleSpotlightProps;
+  "gift-card-redeem": GiftCardRedeemProps;
   // Layer 2
   embed: EmbedProps;
   video: VideoProps;
@@ -481,6 +712,8 @@ export interface BlockPropsMap {
   form: FormBlockProps;
   // Layer 3
   "css-grid": CssGridProps;
+  // Utility
+  "empty-state": EmptyStateProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
@@ -510,16 +743,6 @@ export interface BlockNode<K extends BlockKind = BlockKind> {
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
-
-export const BlockStyleOverrideSchema: z.ZodType<BlockStyleOverride> = z
-  .object({
-    backgroundToken: z.string().max(80).optional(),
-    textToken: z.string().max(80).optional(),
-    paddingY: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
-    maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
-    alignment: z.enum(["start", "center", "end"]).optional(),
-  })
-  .strict();
 
 export const BlockVisibilitySchema: z.ZodType<BlockVisibility> = z
   .object({
@@ -611,6 +834,8 @@ export const BlockPropsSchemas = {
         "luxury",
         "boutique",
         "editorial",
+        "video",
+        "shoppable",
       ]),
       title: optStr(200),
       subtitle: optStr(400),
@@ -620,6 +845,9 @@ export const BlockPropsSchemas = {
       heroLayout: z
         .enum(["centered", "split-left", "split-right", "overlay"])
         .optional(),
+      videoUrl: optStr(2000),
+      videoPoster: optStr(1000),
+      shoppableProductIds: z.array(z.string().max(80)).max(8).optional(),
     })
     .strict(),
   "product-grid": z
@@ -686,6 +914,10 @@ export const BlockPropsSchemas = {
       marquee: z.boolean(),
       tone: z.enum(["default", "muted", "accent"]).optional(),
       items: z.array(str(80)).max(12).optional(),
+      mode: z.enum(["bar", "modal"]).optional(),
+      modalDelaySeconds: z.number().int().min(0).max(120).optional(),
+      modalCtaLabel: optStr(60),
+      modalHeading: optStr(120),
     })
     .strict(),
   "collection-cards": z
@@ -777,7 +1009,39 @@ export const BlockPropsSchemas = {
       title: optStr(200),
       subtitle: optStr(400),
       cta: optStr(40),
-      variant: z.enum(["inline", "card", "banner"]).optional(),
+      variant: z.enum(["inline", "card", "banner", "modal"]).optional(),
+      dark: z.boolean().optional(),
+      modalDelaySeconds: z.number().int().min(0).max(600).optional(),
+      modalExitIntent: z.boolean().optional(),
+    })
+    .strict(),
+  "policy-strip": z
+    .object({
+      heading: optStr(120),
+      items: z
+        .array(
+          z
+            .object({
+              label: str(80),
+              detail: optStr(200),
+              icon: z
+                .enum([
+                  "shipping",
+                  "returns",
+                  "secure",
+                  "support",
+                  "warranty",
+                  "gift",
+                ])
+                .optional(),
+              href: optStr(1000),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(8),
+      layout: z.enum(["inline", "grid"]).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
       dark: z.boolean().optional(),
     })
     .strict(),
@@ -878,6 +1142,110 @@ export const BlockPropsSchemas = {
   breadcrumbs: z
     .object({ scope: z.enum(["product", "category", "page"]) })
     .strict(),
+  "reviews-list": z
+    .object({
+      heading: optStr(200),
+      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
+      productId: optStr(80),
+      pageSize: z.number().int().min(1).max(50).optional(),
+      emptyMessage: optStr(300),
+      showRatingSummary: z.boolean().optional(),
+    })
+    .strict(),
+  fbt: z
+    .object({
+      heading: optStr(200),
+      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
+      productId: optStr(80),
+      limit: z.number().int().min(1).max(12).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
+      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
+    })
+    .strict(),
+  "recently-viewed": z
+    .object({
+      heading: optStr(200),
+      limit: z.number().int().min(1).max(12).optional(),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
+      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
+      hideWhenEmpty: z.boolean().optional(),
+      excludeCurrent: z.boolean().optional(),
+    })
+    .strict(),
+  "size-guide": z
+    .object({
+      triggerLabel: optStr(80),
+      heading: optStr(200),
+      description: optStr(500),
+      columns: z.array(str(30)).min(1).max(10),
+      rows: z
+        .array(
+          z
+            .object({
+              label: str(80),
+              values: z.array(str(30)).min(1).max(10),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(20),
+      note: optStr(500),
+      variant: z.enum(["inline", "modal"]).optional(),
+    })
+    .strict(),
+  "product-comparison": z
+    .object({
+      heading: optStr(200),
+      description: optStr(500),
+      productIds: z.array(z.string().max(80)).min(2).max(4),
+      attributes: z
+        .array(
+          z.enum([
+            "price",
+            "category",
+            "rating",
+            "length",
+            "breadth",
+            "height",
+            "weight",
+            "description",
+          ]),
+        )
+        .max(10)
+        .optional(),
+    })
+    .strict(),
+  lookbook: z
+    .object({
+      heading: optStr(200),
+      description: optStr(500),
+      scenes: z
+        .array(
+          z
+            .object({
+              imageUrl: str(1000),
+              alt: optStr(200),
+              caption: optStr(300),
+              pins: z
+                .array(
+                  z
+                    .object({
+                      x: z.number().min(0).max(1),
+                      y: z.number().min(0).max(1),
+                      productId: str(80),
+                      label: optStr(80),
+                    })
+                    .strict(),
+                )
+                .max(12),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(10),
+      aspectRatio: z.enum(["16/9", "4/5", "3/4", "1/1"]).optional(),
+    })
+    .strict(),
   // Layer 2
   embed: z
     .object({
@@ -926,6 +1294,7 @@ export const BlockPropsSchemas = {
       gap: z.enum(["sm", "md", "lg"]).optional(),
       verticalAlign: z.enum(["start", "center", "end"]).optional(),
       stackBelow: z.enum(["sm", "md", "lg"]).optional(),
+      stickyFirst: z.boolean().optional(),
     })
     .strict(),
   gallery: z
@@ -1001,6 +1370,48 @@ export const BlockPropsSchemas = {
       minRowHeight: z.string().max(20).optional(),
       mobileColumns: z.number().int().min(1).max(12).optional(),
       tabletColumns: z.number().int().min(1).max(12).optional(),
+    })
+    .strict(),
+  // Commerce (bundles + gift cards)
+  "bundle-spotlight": z
+    .object({
+      slug: str(200),
+      heading: optStr(200),
+      eyebrow: optStr(100),
+      description: optStr(2000),
+      layout: z.enum(["split", "stacked"]).optional(),
+      showProducts: z.boolean().optional(),
+      ctaLabel: optStr(80),
+      ctaHref: optStr(1000),
+      buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
+    })
+    .strict(),
+  "gift-card-redeem": z
+    .object({
+      heading: optStr(200),
+      subtitle: optStr(400),
+      codeLabel: optStr(80),
+      amountLabel: optStr(80),
+      buttonLabel: optStr(80),
+      successMessage: optStr(400),
+      variant: z.enum(["inline", "card"]).optional(),
+    })
+    .strict(),
+  // Utility
+  "empty-state": z
+    .object({
+      kind: z
+        .enum(["not-found", "empty-search", "empty-cart", "generic"])
+        .optional(),
+      heading: str(200),
+      subtitle: optStr(400),
+      illustration: z
+        .enum(["none", "package", "magnifier", "cart", "alert"])
+        .optional(),
+      ctaLabel: optStr(60),
+      ctaHref: optStr(1000),
+      secondaryLabel: optStr(60),
+      secondaryHref: optStr(1000),
     })
     .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;

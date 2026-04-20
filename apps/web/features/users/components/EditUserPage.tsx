@@ -59,7 +59,7 @@ export function EditUserPage() {
             href={`${basePath}/users`}
             className="inline-flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to users
           </Link>
         </Button>
@@ -75,7 +75,7 @@ export function EditUserPage() {
           href={`${basePath}/users`}
           className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to users
         </Link>
       </Button>

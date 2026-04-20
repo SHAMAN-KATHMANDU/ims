@@ -192,7 +192,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
             </HelpTopicSheet>
           </div>
           <Button type="button" size="sm" variant="outline" onClick={addRule}>
-            <Plus className="h-3 w-3 mr-1" /> Add rule
+            <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add rule
           </Button>
         </div>
         {fields.length === 0 ? (
@@ -355,7 +355,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                       onClick={() => remove(i)}
                       aria-label="Remove rule"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </Button>
                   </div>
                   {/* Per-action config fields */}

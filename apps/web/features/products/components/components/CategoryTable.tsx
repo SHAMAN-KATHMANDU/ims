@@ -200,8 +200,13 @@ export function CategoryTable({
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
+                          <MoreHorizontal
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          />
+                          <span className="sr-only">
+                            Actions for {category.name}
+                          </span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -211,21 +216,30 @@ export function CategoryTable({
                               onClick={() => onRestore(category)}
                               disabled={isRestoring}
                             >
-                              <RotateCcw className="mr-2 h-4 w-4" />
+                              <RotateCcw
+                                className="mr-2 h-4 w-4"
+                                aria-hidden="true"
+                              />
                               Restore
                             </DropdownMenuItem>
                           )
                         ) : (
                           <>
                             <DropdownMenuItem onClick={() => onEdit(category)}>
-                              <Edit2 className="mr-2 h-4 w-4" />
+                              <Edit2
+                                className="mr-2 h-4 w-4"
+                                aria-hidden="true"
+                              />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => onDelete(category)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2
+                                className="mr-2 h-4 w-4"
+                                aria-hidden="true"
+                              />
                               Delete
                             </DropdownMenuItem>
                           </>

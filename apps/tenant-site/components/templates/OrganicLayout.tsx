@@ -12,6 +12,7 @@ import {
   NewsletterBand,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * ORGANIC — Warm earth tones, lifestyle-first, gentle curves. Leads
@@ -31,6 +32,7 @@ export async function OrganicLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="organic">
@@ -89,7 +91,12 @@ export async function OrganicLayout(props: TemplateProps) {
                     Harvested this month
                   </h2>
                 </div>
-                <ProductGrid products={products} columns={3} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -133,13 +140,18 @@ If that sounds slow, it is. It's also why each piece ends up feeling the way it 
             >
               The shop
             </h1>
-            <ProductGrid products={products} columns={3} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

@@ -37,7 +37,10 @@ export class DashboardWidgetBoundary extends Component<Props, State> {
         <Card className="shadow-sm border-destructive/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertTriangle
+                className="h-4 w-4 text-destructive"
+                aria-hidden="true"
+              />
               Widget unavailable
             </CardTitle>
           </CardHeader>

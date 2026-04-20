@@ -133,7 +133,7 @@ export function DataTablePagination({
             disabled={!hasPrevPage || isLoading}
             aria-label="Go to first page"
           >
-            <ChevronsLeftIcon className="h-4 w-4" />
+            <ChevronsLeftIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           {/* Previous page */}
@@ -145,7 +145,7 @@ export function DataTablePagination({
             disabled={!hasPrevPage || isLoading}
             aria-label="Go to previous page"
           >
-            <ChevronLeftIcon className="h-4 w-4" />
+            <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           {/* Next page */}
@@ -157,7 +157,7 @@ export function DataTablePagination({
             disabled={!hasNextPage || isLoading}
             aria-label="Go to next page"
           >
-            <ChevronRightIcon className="h-4 w-4" />
+            <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           {/* Last page */}
@@ -169,7 +169,7 @@ export function DataTablePagination({
             disabled={!hasNextPage || isLoading}
             aria-label="Go to last page"
           >
-            <ChevronsRightIcon className="h-4 w-4" />
+            <ChevronsRightIcon className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>

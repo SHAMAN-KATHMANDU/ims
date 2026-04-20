@@ -70,7 +70,7 @@ export function ReportErrorDialog({
       <DialogContent className="sm:max-w-md" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bug className="h-5 w-5" />
+            <Bug className="h-5 w-5" aria-hidden="true" />
             Report an error
           </DialogTitle>
           <DialogDescription>
@@ -122,7 +122,10 @@ export function ReportErrorDialog({
             <Button type="submit" disabled={createReport.isPending}>
               {createReport.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                   Submitting...
                 </>
               ) : (

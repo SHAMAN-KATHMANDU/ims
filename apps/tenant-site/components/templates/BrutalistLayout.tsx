@@ -9,6 +9,7 @@ import {
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 import { brandingDisplayName, brandingTagline } from "@/lib/theme";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * BRUTALIST — Monospace, hard edges, exposed grid lines, minimal
@@ -30,6 +31,7 @@ export async function BrutalistLayout(props: TemplateProps) {
   } = props;
   const name = brandingDisplayName(site.branding, ctx.host);
   const tagline = brandingTagline(site.branding);
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div
@@ -196,13 +198,18 @@ export async function BrutalistLayout(props: TemplateProps) {
             >
               &gt; catalog
             </h1>
-            <ProductGrid products={products} columns={4} variant="bordered" />
+            <ProductGrid
+              products={products}
+              columns={4}
+              variant="bordered"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

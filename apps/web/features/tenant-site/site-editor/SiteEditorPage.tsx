@@ -371,7 +371,7 @@ export function SiteEditorPage() {
           <div className="flex items-center gap-3">
             <Button asChild variant="ghost" size="sm">
               <Link href=".">
-                <ArrowLeft className="mr-1 h-4 w-4" />
+                <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
                 Back
               </Link>
             </Button>
@@ -443,7 +443,7 @@ export function SiteEditorPage() {
               disabled={!canUndo}
               aria-label="Undo"
             >
-              <Undo2 className="h-4 w-4" />
+              <Undo2 className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               size="icon"
@@ -452,7 +452,7 @@ export function SiteEditorPage() {
               disabled={!canRedo}
               aria-label="Redo"
             >
-              <Redo2 className="h-4 w-4" />
+              <Redo2 className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               size="sm"
@@ -482,7 +482,7 @@ export function SiteEditorPage() {
                     : "Pick a template first"
               }
             >
-              <RotateCcw className="mr-1 h-4 w-4" />
+              <RotateCcw className="mr-1 h-4 w-4" aria-hidden="true" />
               {resetFromTemplate.isPending ? "Resetting…" : "Reset"}
             </Button>
             <Button
@@ -491,7 +491,7 @@ export function SiteEditorPage() {
               onClick={handleSaveDraft}
               disabled={!dirty || saveDraft.isPending}
             >
-              <Save className="mr-1 h-4 w-4" />
+              <Save className="mr-1 h-4 w-4" aria-hidden="true" />
               {saveDraft.isPending ? "Saving…" : "Save draft"}
             </Button>
             <Button
@@ -499,7 +499,7 @@ export function SiteEditorPage() {
               onClick={handlePublish}
               disabled={publish.isPending}
             >
-              <Upload className="mr-1 h-4 w-4" />
+              <Upload className="mr-1 h-4 w-4" aria-hidden="true" />
               {publish.isPending ? "Publishing…" : "Publish"}
             </Button>
           </div>
@@ -567,7 +567,7 @@ export function SiteEditorPage() {
             className="flex-1"
             onClick={() => setPaletteOpen(true)}
           >
-            <Plus className="mr-1 h-3.5 w-3.5" />
+            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Add block
           </Button>
         </div>

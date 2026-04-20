@@ -7,6 +7,33 @@ import {
 } from "@/utils/pagination";
 import type { CreateDealDto, UpdateDealDto } from "./deal.schema";
 
+/**
+ * Shape returned from `GET /deals` list. Pipeline is projected to the fields the
+ * list UI consumes (id/name/type) — the full Pipeline row carries a ~10-stage
+ * JSON blob + closing-stage names that only the detail / kanban views need.
+ * DealForm, TaskForm, and the deal list only render pipeline name/type.
+ */
+export const DEAL_LIST_INCLUDE = {
+  contact: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      purchaseCount: true,
+    },
+  },
+  member: { select: { id: true, name: true, phone: true, email: true } },
+  company: { select: { id: true, name: true } },
+  pipeline: { select: { id: true, name: true, type: true } },
+  assignedTo: { select: { id: true, username: true } },
+} as const;
+
+/**
+ * Create / update / stage-move / delete-revision responses keep the full
+ * Pipeline include to stay backwards compatible with existing consumers that
+ * pattern-match on `deal.pipeline.stages`.
+ */
 const DEAL_INCLUDE = {
   contact: {
     select: {
@@ -111,7 +138,7 @@ export class DealRepository {
         orderBy,
         skip,
         take: limit,
-        include: DEAL_INCLUDE,
+        include: DEAL_LIST_INCLUDE,
       }),
     ]);
 

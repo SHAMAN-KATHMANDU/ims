@@ -347,7 +347,10 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
             accept="image/*,application/pdf,.doc,.docx"
           />
           {uploading && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2
+              className="h-4 w-4 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
           )}
           <Select
             value={listFilter}
@@ -381,7 +384,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
 
       {loading && items.length === 0 ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           Loading...
         </div>
       ) : items.length === 0 ? (
@@ -407,7 +410,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
                         className="h-8 w-8 shadow-md opacity-90"
                         aria-label={`Actions for ${a.fileName}`}
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
@@ -418,21 +421,24 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
                           rel="noopener noreferrer"
                           className="cursor-pointer"
                         >
-                          <ExternalLink className="mr-2 h-4 w-4" />
+                          <ExternalLink
+                            className="mr-2 h-4 w-4"
+                            aria-hidden="true"
+                          />
                           Open
                         </a>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => void copyPublicUrl(a.publicUrl)}
                       >
-                        <Link2 className="mr-2 h-4 w-4" />
+                        <Link2 className="mr-2 h-4 w-4" aria-hidden="true" />
                         Copy link
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         disabled={!mediaUploadEnabled}
                         onClick={() => openRename(a)}
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                         Rename
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -442,9 +448,12 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
                         onClick={() => promptDelete(a)}
                       >
                         {deletingId === a.id ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2
+                            className="mr-2 h-4 w-4 animate-spin"
+                            aria-hidden="true"
+                          />
                         ) : (
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                         )}
                         Delete
                       </DropdownMenuItem>
@@ -484,9 +493,9 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
             className="gap-1.5"
           >
             {loadingMore ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Files className="h-4 w-4" />
+              <Files className="h-4 w-4" aria-hidden="true" />
             )}
             {loadingMore ? "Loading..." : "Load more"}
           </Button>
@@ -525,7 +534,11 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
               disabled={renaming || !renameValue.trim()}
               onClick={() => void submitRename()}
             >
-              {renaming ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              {renaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                "Save"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -557,7 +570,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
               onClick={() => void confirmDelete()}
             >
               {deletingId ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 "Delete"
               )}

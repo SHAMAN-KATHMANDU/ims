@@ -65,10 +65,17 @@ import publicSiteLayoutsRouter from "@/modules/site-layouts/public-site-layouts.
 import navMenusRouter from "@/modules/nav-menus/nav-menus.router";
 import publicNavMenusRouter from "@/modules/nav-menus/public-nav-menus.router";
 import collectionsRouter from "@/modules/collections/collections.router";
+import reviewsRouter from "@/modules/reviews/reviews.router";
 import publicFormSubmissionsRouter from "@/modules/public-form-submissions/public-form-submissions.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
+import bundleRouter, {
+  publicBundleRouter,
+} from "@/modules/bundles/bundle.router";
+import giftCardRouter, {
+  publicGiftCardRouter,
+} from "@/modules/gift-cards/gift-card.router";
 
 const router = Router();
 
@@ -110,6 +117,8 @@ router.use("/public/nav-menus", publicNavMenusRouter);
 router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
 router.use("/public/form-submissions", publicFormSubmissionsRouter);
+router.use("/public/bundles", publicBundleRouter);
+router.use("/public/gift-cards", publicGiftCardRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
@@ -157,6 +166,7 @@ router.use("/pages", pagesRouter);
 router.use("/site-layouts", siteLayoutsRouter);
 router.use("/nav-menus", navMenusRouter);
 router.use("/collections", collectionsRouter);
+router.use("/reviews", reviewsRouter);
 router.use("/website-orders", websiteOrdersRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);
@@ -165,5 +175,7 @@ router.use("/messaging-channels", messagingChannelRouter);
 router.use("/messaging", messagingRouter);
 router.use("/ai-settings", aiSettingsRouter);
 router.use("/media", mediaRouter);
+router.use("/bundles", bundleRouter);
+router.use("/gift-cards", giftCardRouter);
 
 export default router;

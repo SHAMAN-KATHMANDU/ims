@@ -7,6 +7,7 @@ vi.mock("./public-site.service", () => ({
     listProducts: vi.fn(),
     getProduct: vi.fn(),
     listCategories: vi.fn(),
+    listFrequentlyBoughtWith: vi.fn(),
   },
 }));
 vi.mock("@/utils/controllerError", () => ({
@@ -187,6 +188,79 @@ describe("PublicSiteController", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ categories: [{ id: "c1" }] }),
       );
+    });
+  });
+
+  describe("listProducts best-selling sort", () => {
+    it('forwards sort="best-selling" through the schema to the service', async () => {
+      mockService.listProducts.mockResolvedValue({
+        products: [],
+        total: 0,
+        page: 1,
+        limit: 24,
+      });
+      const req = makeReq({ query: { sort: "best-selling" } });
+      const res = mockRes() as Response;
+
+      await controller.listProducts(req, res);
+      expect(mockService.listProducts).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ sort: "best-selling" }),
+      );
+    });
+  });
+
+  describe("listFrequentlyBoughtWith", () => {
+    it("returns 200 with products", async () => {
+      mockService.listFrequentlyBoughtWith.mockResolvedValue({
+        products: [{ id: "p2" }, { id: "p3" }],
+      });
+      const req = makeReq({ params: { id: "p1" } });
+      const res = mockRes() as Response;
+
+      await controller.listFrequentlyBoughtWith(req, res);
+      expect(mockService.listFrequentlyBoughtWith).toHaveBeenCalledWith(
+        "t1",
+        "p1",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          products: [{ id: "p2" }, { id: "p3" }],
+        }),
+      );
+    });
+
+    it("returns 404 when service throws 404", async () => {
+      mockService.listFrequentlyBoughtWith.mockRejectedValue(
+        Object.assign(new Error("Product not found"), { statusCode: 404 }),
+      );
+      const req = makeReq({ params: { id: "missing" } });
+      const res = mockRes() as Response;
+
+      await controller.listFrequentlyBoughtWith(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(sendControllerError).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when req.tenant is missing", async () => {
+      const req = makeReq({ tenant: undefined, params: { id: "p1" } });
+      const res = mockRes() as Response;
+
+      await controller.listFrequentlyBoughtWith(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.listFrequentlyBoughtWith).not.toHaveBeenCalled();
+    });
+
+    it("falls back to sendControllerError on unexpected failure", async () => {
+      mockService.listFrequentlyBoughtWith.mockRejectedValue(
+        new Error("DB down"),
+      );
+      const req = makeReq({ params: { id: "p1" } });
+      const res = mockRes() as Response;
+
+      await controller.listFrequentlyBoughtWith(req, res);
+      expect(sendControllerError).toHaveBeenCalled();
     });
   });
 });

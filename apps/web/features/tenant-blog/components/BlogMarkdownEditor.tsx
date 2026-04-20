@@ -156,7 +156,7 @@ export function BlogMarkdownEditor({
             onClick={() => setImagePickerOpen(true)}
             disabled={disabled}
           >
-            <ImageIcon className="mr-1.5 h-4 w-4" />
+            <ImageIcon className="mr-1.5 h-4 w-4" aria-hidden="true" />
             Image
           </Button>
         )}

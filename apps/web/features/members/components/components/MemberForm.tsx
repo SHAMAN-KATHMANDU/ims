@@ -153,7 +153,11 @@ export function MemberForm({
             )}
           />
           {form.formState.errors.phone && (
-            <p className="text-sm text-destructive mt-1">
+            <p
+              id="phone-number-error"
+              role="alert"
+              className="text-sm text-destructive mt-1"
+            >
               {form.formState.errors.phone.message}
             </p>
           )}
@@ -175,9 +179,17 @@ export function MemberForm({
             type="email"
             {...form.register("email")}
             placeholder="Email address (optional)"
+            aria-invalid={!!form.formState.errors.email}
+            aria-describedby={
+              form.formState.errors.email ? "email-error" : undefined
+            }
           />
           {form.formState.errors.email && (
-            <p className="text-sm text-destructive mt-1">
+            <p
+              id="email-error"
+              role="alert"
+              className="text-sm text-destructive mt-1"
+            >
               {form.formState.errors.email.message}
             </p>
           )}
@@ -210,9 +222,17 @@ export function MemberForm({
               min={0}
               {...form.register("age")}
               placeholder="Age in years"
+              aria-invalid={!!form.formState.errors.age}
+              aria-describedby={
+                form.formState.errors.age ? "age-error" : undefined
+              }
             />
             {form.formState.errors.age && (
-              <p className="text-sm text-destructive mt-1">
+              <p
+                id="age-error"
+                role="alert"
+                className="text-sm text-destructive mt-1"
+              >
                 {form.formState.errors.age.message}
               </p>
             )}
@@ -296,7 +316,10 @@ export function MemberForm({
         <Button type="submit" disabled={isLoading}>
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2
+                className="mr-2 h-4 w-4 animate-spin"
+                aria-hidden="true"
+              />
               {isEdit ? "Updating..." : "Creating..."}
             </>
           ) : isEdit ? (
@@ -318,7 +341,7 @@ export function MemberForm({
       {!isEdit && (
         <DialogTrigger asChild>
           <Button>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             Add Member
           </Button>
         </DialogTrigger>

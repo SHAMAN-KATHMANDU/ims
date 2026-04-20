@@ -15,6 +15,22 @@ export const PRODUCT_SORTS = [
   "price-asc",
   "price-desc",
   "name-asc",
+  /**
+   * Rank products by units sold in a trailing 90-day window (counted from
+   * SaleItem rows on non-deleted sales). Products with zero sales in the
+   * window are excluded; if *no* tenant sales fall in the window the
+   * endpoint returns an empty result set (not newest) so the "best sellers"
+   * label never silently lies.
+   */
+  "best-selling",
+  /**
+   * Rank products by average APPROVED customer rating (desc), with
+   * ratingCount desc as a tiebreaker so a 5★ product with 100 reviews
+   * ranks above one with a single 5★. Products with zero approved
+   * reviews are excluded; if *no* tenant reviews exist the endpoint
+   * returns empty — same "don't silently lie" policy as best-selling.
+   */
+  "rating",
 ] as const;
 
 export type ProductSort = (typeof PRODUCT_SORTS)[number];
@@ -32,6 +48,61 @@ const AttributeFilterSchema = z
   .optional()
   .transform((v) => (v && Object.keys(v).length > 0 ? v : undefined));
 
+/**
+ * Opt-in flag for the (expensive) facet computation. Accepts "1"/"true"/"yes"
+ * as truthy so the tenant-site can set it from a simple query param. Default
+ * is false — facets cost three extra queries and only the products-index
+ * sidebar actually renders them.
+ */
+const IncludeFacetsSchema = z
+  .union([z.string(), z.boolean()])
+  .optional()
+  .transform((v) => {
+    if (typeof v === "boolean") return v;
+    if (typeof v !== "string") return false;
+    return v === "1" || v.toLowerCase() === "true" || v.toLowerCase() === "yes";
+  });
+
+/**
+ * Paginated public reviews list — only APPROVED rows are ever returned,
+ * regardless of what the caller passes. Rating sort lives in the service
+ * layer (createdAt desc is the default).
+ */
+export const ListReviewsPublicQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type ListReviewsPublicQuery = z.infer<
+  typeof ListReviewsPublicQuerySchema
+>;
+
+/**
+ * Public review-submission payload. Rating is 1–5; body is optional but
+ * capped so a single post can't flood the moderation queue. Author fields
+ * are optional because tenants may want fully anonymous reviews.
+ */
+const emptyStringToUndefined = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+export const SubmitReviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  body: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().max(2000).optional(),
+  ),
+  authorName: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().max(120).optional(),
+  ),
+  authorEmail: z.preprocess(
+    emptyStringToUndefined,
+    z.string().trim().email().max(255).optional(),
+  ),
+});
+
+export type SubmitReviewInput = z.infer<typeof SubmitReviewSchema>;
+
 export const ListProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(24),
@@ -43,6 +114,7 @@ export const ListProductsQuerySchema = z.object({
   /** Brand / vendor filter. Products track brand via the vendor relation. */
   vendorId: z.string().uuid().optional(),
   attr: AttributeFilterSchema,
+  includeFacets: IncludeFacetsSchema,
 });
 
 export type ListProductsQuery = z.infer<typeof ListProductsQuerySchema>;

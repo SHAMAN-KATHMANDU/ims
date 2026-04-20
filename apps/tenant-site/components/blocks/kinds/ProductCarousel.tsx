@@ -16,6 +16,7 @@ import { useCallback, useRef } from "react";
 // bundle — which would break the Next.js build.
 import { ProductCard } from "@/components/templates/ProductCard";
 import type { PublicProduct } from "@/lib/api";
+import type { FormatPriceOptions } from "@/lib/format";
 
 type Props = {
   products: PublicProduct[];
@@ -24,6 +25,7 @@ type Props = {
   showPrice?: boolean;
   showDiscount?: boolean;
   cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
+  formatOpts?: FormatPriceOptions;
 };
 
 export function ProductCarousel({
@@ -33,6 +35,7 @@ export function ProductCarousel({
   showPrice,
   showDiscount,
   cardAspectRatio,
+  formatOpts,
 }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -101,7 +104,7 @@ export function ProductCarousel({
           scrollbarWidth: "none",
         }}
       >
-        {products.map((p) => (
+        {products.map((p, i) => (
           <div
             key={p.id}
             role="group"
@@ -118,6 +121,8 @@ export function ProductCarousel({
               showCategory={showCategory}
               showPrice={showPrice}
               showDiscount={showDiscount}
+              priority={i === 0}
+              formatOpts={formatOpts}
               {...(cardAspectRatio ? { aspectRatio: cardAspectRatio } : {})}
             />
           </div>

@@ -266,7 +266,7 @@ export function MessageComposer({
             onClick={() => onClearReply?.()}
             aria-label="Cancel reply"
           >
-            <X className="size-4" />
+            <X className="size-4" aria-hidden="true" />
           </Button>
         </div>
       )}
@@ -275,7 +275,10 @@ export function MessageComposer({
           <div className="relative shrink-0">
             {isLikelyVideoFile(selectedFile) ? (
               <div className="flex size-16 items-center justify-center rounded-md border bg-muted">
-                <Video className="size-8 text-muted-foreground" />
+                <Video
+                  className="size-8 text-muted-foreground"
+                  aria-hidden="true"
+                />
               </div>
             ) : previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -293,7 +296,7 @@ export function MessageComposer({
               onClick={() => clearAttachment()}
               aria-label="Remove attachment"
             >
-              <X className="size-3" />
+              <X className="size-3" aria-hidden="true" />
             </Button>
           </div>
           <div className="min-w-0 flex-1 text-xs text-muted-foreground">
@@ -324,7 +327,7 @@ export function MessageComposer({
           onClick={() => fileInputRef.current?.click()}
           aria-label="Attach photo or video"
         >
-          <Paperclip className="size-4" />
+          <Paperclip className="size-4" aria-hidden="true" />
         </Button>
         <textarea
           ref={textareaRef}
@@ -348,8 +351,9 @@ export function MessageComposer({
           onClick={handleSend}
           disabled={!canSubmit}
           aria-busy={busy}
+          aria-label="Send message"
         >
-          <Send className="size-4" />
+          <Send className="size-4" aria-hidden="true" />
         </Button>
       </div>
     </div>

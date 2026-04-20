@@ -170,11 +170,11 @@ export function VariationsTab({
           onClick={onAdd}
           className="gap-1"
         >
-          <Plus className="h-3 w-3" /> Add Variation
+          <Plus className="h-3 w-3" aria-hidden="true" /> Add Variation
         </Button>
       </div>
       {variations.length === 0 && (
-        <p className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           At least one variation is required
         </p>
       )}
@@ -219,8 +219,12 @@ export function VariationsTab({
                   onClick={() => onRemove(index)}
                   className="mb-0"
                   disabled={variations.length === 1}
+                  aria-label={`Remove variation ${index + 1}`}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2
+                    className="h-4 w-4 text-destructive"
+                    aria-hidden="true"
+                  />
                 </Button>
               </div>
 
@@ -300,7 +304,8 @@ export function VariationsTab({
                           }}
                           className="h-7 text-xs"
                         >
-                          <Upload className="h-3 w-3 mr-1" /> Upload
+                          <Upload className="h-3 w-3 mr-1" aria-hidden="true" />{" "}
+                          Upload
                         </Button>
                         <Button
                           type="button"
@@ -312,7 +317,8 @@ export function VariationsTab({
                           }}
                           className="h-7 text-xs"
                         >
-                          <Images className="h-3 w-3 mr-1" /> Library
+                          <Images className="h-3 w-3 mr-1" aria-hidden="true" />{" "}
+                          Library
                         </Button>
                       </>
                     )}
@@ -327,7 +333,7 @@ export function VariationsTab({
                       }}
                       className="h-7 text-xs"
                     >
-                      <Plus className="h-3 w-3 mr-1" /> URL
+                      <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> URL
                     </Button>
                   </div>
                 </div>
@@ -376,8 +382,9 @@ export function VariationsTab({
                             size="sm"
                             onClick={() => onRemovePhoto(index, photoIndex)}
                             className="h-6 text-xs"
+                            aria-label={`Remove photo ${photoIndex + 1} from variation ${index + 1}`}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3 w-3" aria-hidden="true" />
                           </Button>
                         </div>
                       </div>
@@ -409,6 +416,7 @@ export function VariationsTab({
             </DialogDescription>
           </DialogHeader>
           <TextInput
+            aria-label="Photo URL"
             placeholder="https://example.com/photo.jpg"
             value={photoUrlInput}
             onChange={(e) => setPhotoUrlInput(e.target.value)}

@@ -46,11 +46,12 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       variant="outline"
       onClick={onClick}
       className="h-7 px-2"
+      aria-label={copied ? `${label} copied` : `Copy ${label}`}
     >
       {copied ? (
-        <CheckCircle2 className="h-3.5 w-3.5" />
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
       ) : (
-        <Copy className="h-3.5 w-3.5" />
+        <Copy className="h-3.5 w-3.5" aria-hidden="true" />
       )}
     </Button>
   );
@@ -100,8 +101,16 @@ export function VerifyDomainDialog({
         </DialogHeader>
 
         {instructions.isLoading ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+          <div
+            className="py-8 text-center text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2
+              className="mx-auto h-5 w-5 animate-spin"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading verification instructions…</span>
           </div>
         ) : instructions.data ? (
           <div className="space-y-4 py-2">

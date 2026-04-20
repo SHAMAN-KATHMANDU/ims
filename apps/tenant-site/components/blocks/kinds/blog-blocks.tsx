@@ -8,13 +8,19 @@ import type { BlogListProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
 
 export function BlogListBlock({
+  node,
   props,
   dataContext,
 }: BlockComponentProps<BlogListProps>) {
   const posts = dataContext.featuredBlogPosts.slice(0, props.limit);
   if (posts.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {props.heading && (
           <h2

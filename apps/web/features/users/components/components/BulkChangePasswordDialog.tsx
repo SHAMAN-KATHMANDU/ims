@@ -90,9 +90,17 @@ export function BulkChangePasswordDialog({
               type="password"
               autoComplete="new-password"
               {...register("newPassword")}
+              aria-invalid={!!errors.newPassword}
+              aria-describedby={
+                errors.newPassword ? "newPassword-error" : undefined
+              }
             />
             {errors.newPassword && (
-              <p className="text-sm text-destructive">
+              <p
+                id="newPassword-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {errors.newPassword.message}
               </p>
             )}
@@ -104,9 +112,17 @@ export function BulkChangePasswordDialog({
               type="password"
               autoComplete="new-password"
               {...register("confirmPassword")}
+              aria-invalid={!!errors.confirmPassword}
+              aria-describedby={
+                errors.confirmPassword ? "confirmPassword-error" : undefined
+              }
             />
             {errors.confirmPassword && (
-              <p className="text-sm text-destructive">
+              <p
+                id="confirmPassword-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {errors.confirmPassword.message}
               </p>
             )}

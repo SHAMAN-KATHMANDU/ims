@@ -11,17 +11,18 @@
 import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
-
-function formatPrice(value: string | number): string {
-  return `₹${Number(value).toLocaleString("en-IN")}`;
-}
+import { StarRating } from "@/components/blocks/kinds/StarRating";
+import { formatPrice } from "@/lib/format";
+import type { FormatPriceOptions } from "@/lib/format";
 
 function PriceDisplay({
   product,
   hasDiscount,
+  formatOpts,
 }: {
   product: PublicProduct;
   hasDiscount: boolean;
+  formatOpts?: FormatPriceOptions;
 }) {
   const priceFrom = product.priceFrom ?? product.finalSp;
   const priceTo = product.priceTo ?? product.finalSp;
@@ -40,7 +41,7 @@ function PriceDisplay({
     return (
       <span
         style={priceStyle}
-        aria-label={`Price from ${formatPrice(priceFrom)}`}
+        aria-label={`Price from ${formatPrice(priceFrom, formatOpts)}`}
       >
         <span
           aria-hidden="true"
@@ -54,7 +55,7 @@ function PriceDisplay({
         >
           From
         </span>
-        <span aria-hidden="true">{formatPrice(priceFrom)}</span>
+        <span aria-hidden="true">{formatPrice(priceFrom, formatOpts)}</span>
       </span>
     );
   }
@@ -63,20 +64,20 @@ function PriceDisplay({
     <>
       <span
         style={priceStyle}
-        aria-label={`Price ${formatPrice(product.finalSp)}`}
+        aria-label={`Price ${formatPrice(product.finalSp, formatOpts)}`}
       >
-        {formatPrice(product.finalSp)}
+        {formatPrice(product.finalSp, formatOpts)}
       </span>
       {hasDiscount && (
         <span
-          aria-label={`Original price ${formatPrice(product.mrp)}`}
+          aria-label={`Original price ${formatPrice(product.mrp, formatOpts)}`}
           style={{
             textDecoration: "line-through",
             color: "var(--color-muted)",
             fontSize: "0.88rem",
           }}
         >
-          {formatPrice(product.mrp)}
+          {formatPrice(product.mrp, formatOpts)}
         </span>
       )}
     </>
@@ -90,6 +91,8 @@ export function ProductCard({
   showPrice,
   showDiscount,
   aspectRatio = "3 / 4",
+  priority = false,
+  formatOpts,
 }: {
   product: PublicProduct;
   variant?: "bordered" | "bare" | "card";
@@ -97,6 +100,8 @@ export function ProductCard({
   showPrice?: boolean;
   showDiscount?: boolean;
   aspectRatio?: string;
+  priority?: boolean;
+  formatOpts?: FormatPriceOptions;
 }) {
   const hasDiscount =
     product.finalSp &&
@@ -155,7 +160,8 @@ export function ProductCard({
             src={product.photoUrl}
             alt=""
             aria-hidden="true"
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="tpl-product-card-img"
@@ -320,6 +326,35 @@ export function ProductCard({
             {product.name}
           </Link>
         </h3>
+        {product.avgRating != null &&
+          product.ratingCount != null &&
+          product.ratingCount > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                marginTop: "0.15rem",
+              }}
+            >
+              <StarRating value={product.avgRating} size="sm" hideLabel />
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--color-muted)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+                aria-label={`Rated ${product.avgRating.toFixed(
+                  1,
+                )} out of 5 from ${product.ratingCount} ${
+                  product.ratingCount === 1 ? "review" : "reviews"
+                }`}
+              >
+                {product.avgRating.toFixed(1)}{" "}
+                <span aria-hidden="true">({product.ratingCount})</span>
+              </span>
+            </div>
+          )}
         {showPrice !== false && (
           <div
             style={{
@@ -330,7 +365,11 @@ export function ProductCard({
               marginTop: "0.25rem",
             }}
           >
-            <PriceDisplay product={product} hasDiscount={!!hasDiscount} />
+            <PriceDisplay
+              product={product}
+              hasDiscount={!!hasDiscount}
+              formatOpts={formatOpts}
+            />
           </div>
         )}
       </div>

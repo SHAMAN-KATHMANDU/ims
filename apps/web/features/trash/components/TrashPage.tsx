@@ -231,7 +231,10 @@ export function TrashPage() {
               </SelectContent>
             </Select>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 placeholder="Search by name..."
                 value={search}
@@ -260,7 +263,7 @@ export function TrashPage() {
                 className="h-8 text-xs"
                 onClick={clearAllFilters}
               >
-                <X className="h-3.5 w-3.5 mr-2" />
+                <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                 Clear filters
               </Button>
             )}
@@ -272,7 +275,10 @@ export function TrashPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
-              <Trash2 className="mx-auto mb-4 h-12 w-12 opacity-50" />
+              <Trash2
+                className="mx-auto mb-4 h-12 w-12 opacity-50"
+                aria-hidden="true"
+              />
               <p>No items in trash</p>
             </div>
           ) : (
@@ -326,7 +332,10 @@ export function TrashPage() {
                             onClick={() => handleRestore(item)}
                             disabled={restoreMutation.isPending}
                           >
-                            <RotateCcw className="h-4 w-4 mr-1" />
+                            <RotateCcw
+                              className="h-4 w-4 mr-1"
+                              aria-hidden="true"
+                            />
                             Restore
                           </Button>
                           <Button
@@ -341,7 +350,10 @@ export function TrashPage() {
                             }
                             disabled={permanentlyDeleteMutation.isPending}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
+                            <Trash2
+                              className="h-4 w-4 mr-1"
+                              aria-hidden="true"
+                            />
                             Delete
                           </Button>
                         </div>

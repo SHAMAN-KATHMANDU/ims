@@ -85,7 +85,13 @@ export function TenantTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
+      <div
+        className="rounded-md border"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <span className="sr-only">Loading tenants…</span>
         <Table>
           <TableHeader>
             <TableRow>
@@ -133,7 +139,10 @@ export function TenantTable({
   if (tenants.length === 0) {
     return (
       <div className="rounded-md border p-8 text-center">
-        <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
+        <Building2
+          className="mx-auto h-12 w-12 text-muted-foreground"
+          aria-hidden="true"
+        />
         <h3 className="mt-4 text-lg font-semibold">No tenants yet</h3>
         <p className="text-muted-foreground mt-2">
           Onboard your first organization to get started.
@@ -200,7 +209,8 @@ export function TenantTable({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
+                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">Actions for {tenant.name}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -208,7 +218,7 @@ export function TenantTable({
                       <Link
                         href={`${basePath}/platform/tenants/${tenant.id}/edit`}
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                         Edit
                       </Link>
                     </DropdownMenuItem>
@@ -217,7 +227,7 @@ export function TenantTable({
                         variant="destructive"
                         onClick={() => onDeactivate(tenant)}
                       >
-                        <UserX className="mr-2 h-4 w-4" />
+                        <UserX className="mr-2 h-4 w-4" aria-hidden="true" />
                         Deactivate
                       </DropdownMenuItem>
                     )}

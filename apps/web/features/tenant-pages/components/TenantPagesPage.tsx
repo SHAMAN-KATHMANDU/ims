@@ -51,7 +51,7 @@ function FeatureDisabledCard() {
     <Card>
       <CardHeader className="flex flex-row items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <Lock className="h-5 w-5" />
+          <Lock className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <CardTitle>Website feature not enabled</CardTitle>
@@ -157,9 +157,9 @@ function PageRow({
             aria-label={page.isPublished ? "Unpublish" : "Publish"}
           >
             {page.isPublished ? (
-              <EyeOff className="h-4 w-4" />
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
             ) : (
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4" aria-hidden="true" />
             )}
           </Button>
           <Button
@@ -182,7 +182,7 @@ function PageRow({
             disabled={duplicateMutation.isPending}
             aria-label={`Duplicate ${page.title}`}
           >
-            <Copy className="h-4 w-4" />
+            <Copy className="h-4 w-4" aria-hidden="true" />
           </Button>
           <Button
             variant="ghost"
@@ -191,7 +191,7 @@ function PageRow({
             disabled={deleteMutation.isPending}
             aria-label={`Delete ${page.title}`}
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
           </Button>
         </TableCell>
       </TableRow>
@@ -267,7 +267,7 @@ export function TenantPagesPage({
         </div>
         <Button asChild>
           <Link href={newHref}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             New page
           </Link>
         </Button>

@@ -51,7 +51,10 @@ export function UserPersonalTrend({
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <TrendingUp
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           Personal performance
         </CardTitle>
         <CardDescription>Revenue over the last 7 days</CardDescription>

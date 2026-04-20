@@ -72,28 +72,28 @@ export function PreviewFrame({
             onClick={() => onDeviceChange("desktop")}
             label="Desktop"
           >
-            <Monitor className="h-4 w-4" />
+            <Monitor className="h-4 w-4" aria-hidden="true" />
           </DeviceButton>
           <DeviceButton
             active={device === "tablet"}
             onClick={() => onDeviceChange("tablet")}
             label="Tablet"
           >
-            <Tablet className="h-4 w-4" />
+            <Tablet className="h-4 w-4" aria-hidden="true" />
           </DeviceButton>
           <DeviceButton
             active={device === "mobile"}
             onClick={() => onDeviceChange("mobile")}
             label="Mobile"
           >
-            <Smartphone className="h-4 w-4" />
+            <Smartphone className="h-4 w-4" aria-hidden="true" />
           </DeviceButton>
           <DeviceButton
             active={showGrid}
             onClick={() => setShowGrid((v) => !v)}
             label="Toggle grid overlay"
           >
-            <Grid3X3 className="h-4 w-4" />
+            <Grid3X3 className="h-4 w-4" aria-hidden="true" />
           </DeviceButton>
         </div>
         <div className="flex items-center gap-2">
@@ -103,13 +103,13 @@ export function PreviewFrame({
             onClick={onRefresh}
             disabled={!previewUrl}
           >
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />
+            <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Refresh
           </Button>
           {src && (
             <Button size="sm" variant="ghost" asChild>
               <a href={src} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                <ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
                 Open
               </a>
             </Button>
