@@ -174,8 +174,11 @@ jobs:
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
-      - name: Run migrations
-        run: pnpm --filter api exec prisma migrate deploy
+      - name: Reset database and run migrations
+        # migrate reset --force drops all tables and re-runs every migration from
+        # scratch. This prevents P3009 "failed migration" errors that accumulate
+        # when a previous CI run left the persistent self-hosted DB in a dirty state.
+        run: pnpm --filter api exec prisma migrate reset --force --skip-generate --skip-seed
       - name: Run API tests
         run: pnpm exec turbo run test:coverage --filter=api
         env:
@@ -337,7 +340,7 @@ jobs:
         run: |
           pnpm --filter @repo/shared build
           pnpm --filter api exec prisma generate
-          pnpm --filter api exec prisma migrate deploy
+          pnpm --filter api exec prisma migrate reset --force --skip-generate --skip-seed
           pnpm --filter api exec prisma db seed
           pnpm --filter api build
       - name: Resolve Playwright version
@@ -396,6 +399,10 @@ jobs:
           node-version-file: ".nvmrc"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Clear stale Trivy DB cache
+        # Prevents "semaphore acquire: context deadline exceeded" when a previous
+        # run left a stale lock on the shared self-hosted runner cache.
+        run: rm -rf ~/.cache/trivy/db/ 2>/dev/null || true
       - name: Run Trivy vulnerability scanner (filesystem)
         uses: aquasecurity/trivy-action@master
         with:
