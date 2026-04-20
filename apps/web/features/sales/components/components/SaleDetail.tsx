@@ -197,7 +197,7 @@ export function SaleDetail({
       <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 p-6 sm:max-w-[800px]">
         <DialogHeader className="flex shrink-0 flex-row flex-wrap items-start justify-between gap-2">
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
+            <Receipt className="h-5 w-5" aria-hidden="true" />
             Sale Details
           </DialogTitle>
           {sale && (
@@ -208,7 +208,7 @@ export function SaleDetail({
                 onClick={handlePrint}
                 className="gap-1.5 print:hidden"
               >
-                <Printer className="h-4 w-4" />
+                <Printer className="h-4 w-4" aria-hidden="true" />
                 Print
               </Button>
               <Button
@@ -218,7 +218,7 @@ export function SaleDetail({
                 disabled={receiptLoading}
                 className="gap-1.5 print:hidden"
               >
-                <FileDown className="h-4 w-4" />
+                <FileDown className="h-4 w-4" aria-hidden="true" />
                 {receiptLoading ? "..." : "PDF"}
               </Button>
               {sale.isLatest !== false && !isViewingOriginal && (
@@ -228,7 +228,7 @@ export function SaleDetail({
                   onClick={() => setEditDialogOpen(true)}
                   className="gap-1.5 print:hidden"
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                   Edit
                 </Button>
               )}
@@ -239,7 +239,7 @@ export function SaleDetail({
                   onClick={() => setDeleteDialogOpen(true)}
                   className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                   Delete
                 </Button>
               )}
@@ -281,7 +281,10 @@ export function SaleDetail({
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <Hash className="h-4 w-4 text-muted-foreground print:hidden" />
+                        <Hash
+                          className="h-4 w-4 text-muted-foreground print:hidden"
+                          aria-hidden="true"
+                        />
                         <span className="font-mono text-lg font-bold print:text-[12pt]">
                           {displaySale.saleCode}
                         </span>
@@ -306,14 +309,21 @@ export function SaleDetail({
                                     )
                                   }
                                 >
-                                  <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                  <ExternalLink
+                                    className="mr-1 h-3.5 w-3.5"
+                                    aria-hidden="true"
+                                  />
                                   View original entry
                                 </Button>
                               )}
                             </>
                           )}
                         {viewingOriginalId && originalLoading && (
-                          <span className="text-sm text-muted-foreground print:hidden">
+                          <span
+                            className="text-sm text-muted-foreground print:hidden"
+                            role="status"
+                            aria-live="polite"
+                          >
                             Loading original…
                           </span>
                         )}
@@ -324,13 +334,19 @@ export function SaleDetail({
                             className="h-auto p-0 text-sm print:hidden"
                             onClick={() => setViewingOriginalId(null)}
                           >
-                            <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+                            <ArrowLeft
+                              className="mr-1 h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
                             Back to current version
                           </Button>
                         )}
                       </div>
                       <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground print:mt-0.5 print:text-[10pt]">
-                        <Calendar className="h-4 w-4 print:hidden" />
+                        <Calendar
+                          className="h-4 w-4 print:hidden"
+                          aria-hidden="true"
+                        />
                         {format(
                           new Date(displaySale.createdAt),
                           "d MMM yyyy, h:mm a",
@@ -367,14 +383,20 @@ export function SaleDetail({
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                        <MapPin className="h-4 w-4 print:hidden" />
+                        <MapPin
+                          className="h-4 w-4 print:hidden"
+                          aria-hidden="true"
+                        />
                         Location
                       </div>
                       <p className="font-medium">{displaySale.location.name}</p>
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                        <User className="h-4 w-4 print:hidden" />
+                        <User
+                          className="h-4 w-4 print:hidden"
+                          aria-hidden="true"
+                        />
                         Sold To
                       </div>
                       {displaySale.member ? (
@@ -399,7 +421,10 @@ export function SaleDetail({
                   {displaySale.contact && (
                     <div className="mt-3 space-y-1">
                       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                        <Contact className="h-4 w-4 print:hidden" />
+                        <Contact
+                          className="h-4 w-4 print:hidden"
+                          aria-hidden="true"
+                        />
                         CRM Contact
                       </div>
                       <div>
@@ -425,7 +450,10 @@ export function SaleDetail({
 
                   <div className="mt-3 space-y-1">
                     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                      <User className="h-4 w-4 print:hidden" />
+                      <User
+                        className="h-4 w-4 print:hidden"
+                        aria-hidden="true"
+                      />
                       Sold By
                     </div>
                     <p className="font-medium">
@@ -635,7 +663,7 @@ export function SaleDetail({
                     <Separator />
                     <div>
                       <h4 className="mb-2 flex items-center gap-2 font-medium">
-                        <CreditCard className="h-4 w-4" />
+                        <CreditCard className="h-4 w-4" aria-hidden="true" />
                         Payment Methods
                       </h4>
                       <div className="rounded-md border">

@@ -236,7 +236,7 @@ export function LeadsPage() {
         actions={
           <Link href={`${basePath}/crm/leads/new`}>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               Add Lead
             </Button>
           </Link>
@@ -245,7 +245,10 @@ export function LeadsPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Search
+            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+            aria-hidden="true"
+          />
           <Input
             placeholder="Search leads…"
             value={search}
@@ -268,7 +271,7 @@ export function LeadsPage() {
           className="shrink-0 gap-2"
           onClick={() => setFiltersOpen(true)}
         >
-          <SlidersHorizontal className="size-4" />
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filters
           {activeFilterCount > 0 ? (
             <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
@@ -293,7 +296,7 @@ export function LeadsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -309,7 +312,7 @@ export function LeadsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -325,7 +328,7 @@ export function LeadsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -341,7 +344,7 @@ export function LeadsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </Badge>
           ) : null}
@@ -460,8 +463,24 @@ export function LeadsPage() {
             </div>
           ))
         ) : leads.length === 0 ? (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No leads found
+          <div className="rounded-md border py-8 px-4 text-center">
+            {leadsEmptyNoResults ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No leads match your search or filters.
+                </p>
+                <Button variant="outline" size="sm" onClick={clearLeadsFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1 text-muted-foreground">
+                <p className="font-medium text-foreground">No leads yet</p>
+                <p className="text-sm">
+                  Add a lead to start tracking prospects.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           leads.map((lead) => (
@@ -482,13 +501,13 @@ export function LeadsPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {lead.email && (
                   <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
+                    <Mail className="h-3 w-3" aria-hidden="true" />
                     {lead.email}
                   </span>
                 )}
                 {lead.phone && (
                   <span className="flex items-center gap-1">
-                    <PhoneIcon className="h-3 w-3" />
+                    <PhoneIcon className="h-3 w-3" aria-hidden="true" />
                     {lead.phone}
                   </span>
                 )}

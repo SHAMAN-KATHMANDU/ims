@@ -91,9 +91,17 @@ export function VendorForm({
           id="vendor-name"
           {...form.register("name")}
           placeholder="Vendor name"
+          aria-invalid={!!form.formState.errors.name}
+          aria-describedby={
+            form.formState.errors.name ? "vendor-name-error" : undefined
+          }
         />
         {form.formState.errors.name && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="vendor-name-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.name.message}
           </p>
         )}
@@ -104,9 +112,17 @@ export function VendorForm({
           id="vendor-contact"
           {...form.register("contact")}
           placeholder="Contact person name or email"
+          aria-invalid={!!form.formState.errors.contact}
+          aria-describedby={
+            form.formState.errors.contact ? "vendor-contact-error" : undefined
+          }
         />
         {form.formState.errors.contact && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="vendor-contact-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.contact.message}
           </p>
         )}
@@ -122,7 +138,11 @@ export function VendorForm({
           numberInputId="vendor-phone"
         />
         {form.formState.errors.phone && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="vendor-phone-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.phone.message}
           </p>
         )}
@@ -133,9 +153,17 @@ export function VendorForm({
           id="vendor-address"
           {...form.register("address")}
           placeholder="Vendor address"
+          aria-invalid={!!form.formState.errors.address}
+          aria-describedby={
+            form.formState.errors.address ? "vendor-address-error" : undefined
+          }
         />
         {form.formState.errors.address && (
-          <p className="text-sm text-destructive mt-1">
+          <p
+            id="vendor-address-error"
+            role="alert"
+            className="text-sm text-destructive mt-1"
+          >
             {form.formState.errors.address.message}
           </p>
         )}
@@ -181,7 +209,7 @@ export function VendorForm({
       {renderTrigger && (
         <DialogTrigger asChild>
           <Button onClick={() => onReset()}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             New Vendor
           </Button>
         </DialogTrigger>

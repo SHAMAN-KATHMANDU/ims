@@ -87,11 +87,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
           categories={categories}
           navPages={navPages}
         />
-        <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+        <main id="main-content">
+          <div className="mx-auto max-w-7xl px-4 md:px-8">
+            <BlockRenderer
+              nodes={layout.blocks as BlockNode[]}
+              dataContext={dataContext}
+            />
+          </div>
         </main>
         <SiteFooter site={site} host={ctx.host} navPages={navPages} />
         <script

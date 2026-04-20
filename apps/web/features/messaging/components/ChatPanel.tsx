@@ -241,8 +241,13 @@ export function ChatPanel({
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 border-b px-4 py-3">
         {showBackButton && (
-          <Button variant="ghost" size="icon-sm" onClick={onBack}>
-            <ArrowLeft className="size-4" />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={onBack}
+            aria-label="Back to conversations"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
           </Button>
         )}
         {convLoading ? (
@@ -295,7 +300,10 @@ export function ChatPanel({
             </div>
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-              <MessageSquare className="size-10 opacity-40" />
+              <MessageSquare
+                className="size-10 opacity-40"
+                aria-hidden="true"
+              />
               <p className="text-sm">
                 No messages yet. Send the first message!
               </p>
@@ -347,7 +355,7 @@ export function ChatPanel({
             onClick={jumpToLatest}
             aria-label="Scroll to latest messages"
           >
-            <ArrowDown className="size-5" />
+            <ArrowDown className="size-5" aria-hidden="true" />
           </Button>
         )}
       </div>

@@ -13,6 +13,7 @@ import { EnvFeature } from "@repo/shared";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
+import { publicReviewRateLimit } from "@/middlewares/publicReviewRateLimit";
 import controller from "./public-site.controller";
 
 const router = Router();
@@ -122,5 +123,69 @@ router.get("/offers", asyncHandler(controller.listOffers));
  *       404: { description: Collection inactive, missing, or site not published }
  */
 router.get("/collections/:slug", asyncHandler(controller.getCollectionBySlug));
+
+/**
+ * @swagger
+ * /public/products/{id}/reviews:
+ *   get:
+ *     summary: List APPROVED reviews for a product (newest first, paginated)
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+ *     responses:
+ *       200: { description: Reviews list + totals }
+ *       404: { description: Site not published }
+ *   post:
+ *     summary: Submit a public review — lands as PENDING for moderation
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       201: { description: Review submitted }
+ *       400: { description: Validation error }
+ *       404: { description: Product not found or site not published }
+ *       429: { description: Rate limited }
+ */
+router.get(
+  "/products/:id/reviews",
+  asyncHandler(controller.listProductReviews),
+);
+router.post(
+  "/products/:id/reviews",
+  publicReviewRateLimit,
+  asyncHandler(controller.submitProductReview),
+);
+
+/**
+ * @swagger
+ * /public/products/{id}/frequently-bought-with:
+ *   get:
+ *     summary: Other products most often co-purchased with this one in the trailing 180 days
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Up to 10 co-purchased products ordered by distinct-sale count }
+ *       404: { description: Product not found or site not published }
+ */
+router.get(
+  "/products/:id/frequently-bought-with",
+  asyncHandler(controller.listFrequentlyBoughtWith),
+);
 
 export default router;

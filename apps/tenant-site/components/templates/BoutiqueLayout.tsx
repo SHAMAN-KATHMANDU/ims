@@ -9,6 +9,7 @@ import {
   SiteFooter,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * BOUTIQUE — Warm, story-first. Centered nav, soft spacing, a centred
@@ -27,6 +28,7 @@ export async function BoutiqueLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="boutique">
@@ -105,7 +107,12 @@ export async function BoutiqueLayout(props: TemplateProps) {
                 >
                   This week&apos;s pieces
                 </h2>
-                <ProductGrid products={products} columns={3} variant="card" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="card"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -131,13 +138,18 @@ export async function BoutiqueLayout(props: TemplateProps) {
             >
               The shop
             </h1>
-            <ProductGrid products={products} columns={3} variant="card" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="card"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

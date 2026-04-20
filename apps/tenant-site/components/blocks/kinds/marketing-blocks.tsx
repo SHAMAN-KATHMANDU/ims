@@ -31,6 +31,9 @@ import type {
 import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
+import { NewsletterModal } from "./NewsletterModal";
+import { AnnouncementModal } from "./AnnouncementModal";
+import { getSiteFormatOptions } from "@/lib/format";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -44,6 +47,17 @@ const TONE_BG: Record<
 export function AnnouncementBarBlock({
   props,
 }: BlockComponentProps<AnnouncementBarProps>) {
+  if (props.mode === "modal") {
+    return (
+      <AnnouncementModal
+        heading={props.modalHeading}
+        text={props.text}
+        link={props.link}
+        ctaLabel={props.modalCtaLabel}
+        delaySeconds={props.modalDelaySeconds ?? 2}
+      />
+    );
+  }
   const tone = TONE_BG[props.tone ?? "default"] ?? TONE_BG.default;
   const items: string[] =
     props.items && props.items.length > 0 ? props.items : [props.text];
@@ -117,13 +131,19 @@ const ASPECT_MAP = {
 } as const;
 
 export function CollectionCardsBlock({
+  node,
   props,
 }: BlockComponentProps<CollectionCardsProps>) {
   const aspect = ASPECT_MAP[props.aspectRatio ?? "portrait"];
   const overlay = props.overlay !== false;
   const columns = Math.max(1, Math.min(props.cards.length, 4));
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {(props.eyebrow || props.heading) && (
           <div style={{ marginBottom: "2rem", textAlign: "center" }}>
@@ -336,6 +356,7 @@ export function BentoShowcaseBlock({
       products={products}
       heading={props.heading}
       eyebrow={props.eyebrow}
+      formatOpts={getSiteFormatOptions(dataContext.site)}
     />
   );
 }
@@ -347,11 +368,28 @@ export function StatsBandBlock({ props }: BlockComponentProps<StatsBandProps>) {
 export function NewsletterBlock({
   props,
 }: BlockComponentProps<NewsletterProps>) {
+  if (props.variant === "modal") {
+    return (
+      <NewsletterModal
+        title={props.title}
+        subtitle={props.subtitle}
+        cta={props.cta}
+        delaySeconds={props.modalDelaySeconds ?? 10}
+        exitIntent={props.modalExitIntent ?? true}
+      />
+    );
+  }
   return (
     <NewsletterBand
       title={props.title}
       subtitle={props.subtitle}
       cta={props.cta}
+      variant={
+        props.variant === "card" || props.variant === "banner"
+          ? props.variant
+          : "inline"
+      }
+      dark={props.dark}
     />
   );
 }
@@ -364,10 +402,31 @@ export function ContactBlock({
 
 // ---------- FAQ (new) -------------------------------------------------------
 
-export function FaqBlock({ props }: BlockComponentProps<FaqProps>) {
+export function FaqBlock({ node, props }: BlockComponentProps<FaqProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: props.items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="container" style={{ maxWidth: 820 }}>
         {props.heading && (
           <h2
@@ -445,13 +504,15 @@ export function FaqBlock({ props }: BlockComponentProps<FaqProps>) {
 // ---------- Testimonials (new) ----------------------------------------------
 
 export function TestimonialsBlock({
+  node,
   props,
 }: BlockComponentProps<TestimonialsProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
     <section
       style={{
-        padding: "var(--section-padding) 0",
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
         background: "var(--color-surface)",
       }}
     >

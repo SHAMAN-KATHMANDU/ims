@@ -68,7 +68,7 @@ export function AnalyticsFilterBar() {
             size="sm"
             className="h-9 gap-2 text-sm shrink-0"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
           </Button>
         </PopoverTrigger>
@@ -110,7 +110,10 @@ export function AnalyticsFilterBar() {
                       !startDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {startDate ? format(startDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -141,7 +144,10 @@ export function AnalyticsFilterBar() {
                       !endDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {endDate ? format(endDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -291,7 +297,7 @@ export function AnalyticsFilterBar() {
           className="h-8 text-xs"
           onClick={clearFilters}
         >
-          <X className="h-3.5 w-3.5 mr-2" />
+          <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
           Clear filters
         </Button>
       )}

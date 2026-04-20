@@ -62,6 +62,12 @@ function TemplateCard({
       type="button"
       onClick={onPick}
       disabled={disabled}
+      aria-pressed={selected}
+      aria-label={
+        selected
+          ? `${template.name} (current template). Re-apply`
+          : `Apply ${template.name} template`
+      }
       className={cn(
         "group flex flex-col overflow-hidden rounded-lg border text-left transition-all",
         "hover:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60",
@@ -69,13 +75,19 @@ function TemplateCard({
       )}
     >
       <div
+        aria-hidden="true"
         className="h-24 w-full"
         style={{ background: typeof primary === "string" ? primary : "#ddd" }}
       />
       <div className="flex flex-1 flex-col gap-1 p-3">
         <div className="flex items-center justify-between">
           <span className="font-medium">{template.name}</span>
-          {selected && <CheckCircle2 className="h-4 w-4 text-foreground" />}
+          {selected && (
+            <CheckCircle2
+              className="h-4 w-4 text-foreground"
+              aria-hidden="true"
+            />
+          )}
         </div>
         {template.description && (
           <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -156,7 +168,7 @@ export function TenantWebsitePage() {
       <div className="flex items-center gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link href={`/${workspace}/platform/tenants`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
             Tenants
           </Link>
         </Button>
@@ -179,8 +191,11 @@ export function TenantWebsitePage() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <Globe className="h-5 w-5" />
+            <div
+              aria-hidden="true"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
+            >
+              <Globe className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <CardTitle>Website feature</CardTitle>
@@ -209,7 +224,7 @@ export function TenantWebsitePage() {
                 onClick={handleDisable}
                 disabled={disableMutation.isPending}
               >
-                <PowerOff className="mr-2 h-4 w-4" />
+                <PowerOff className="mr-2 h-4 w-4" aria-hidden="true" />
                 {disableMutation.isPending ? "Disabling…" : "Disable"}
               </Button>
             )}
@@ -248,7 +263,11 @@ export function TenantWebsitePage() {
         </CardHeader>
         <CardContent>
           {templatesQuery.isLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
+            <p
+              className="py-6 text-center text-sm text-muted-foreground"
+              role="status"
+              aria-live="polite"
+            >
               Loading templates…
             </p>
           ) : templatesQuery.data && templatesQuery.data.length > 0 ? (

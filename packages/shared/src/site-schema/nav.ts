@@ -58,6 +58,18 @@ export type NavItem =
       kind: "mega-column";
       label: string;
       columns: { heading: string; items: NavItem[] }[];
+      /**
+       * Optional feature tile rendered as a leading column. Matches the
+       * Shopify/Squarespace mega-menu pattern where one slot promotes a
+       * collection with imagery instead of a list of links.
+       */
+      featured?: {
+        imageUrl: string;
+        heading?: string;
+        subtitle?: string;
+        ctaLabel?: string;
+        href: string;
+      };
     }
   /** Auto-expanded at render time from the live category list. */
   | {
@@ -145,6 +157,16 @@ export const NavItemSchema: z.ZodType<NavItem> = z.lazy(() =>
               .strict(),
           )
           .max(6),
+        featured: z
+          .object({
+            imageUrl: z.string().trim().min(1).max(1000),
+            heading: z.string().trim().min(1).max(80).optional(),
+            subtitle: z.string().trim().min(1).max(200).optional(),
+            ctaLabel: z.string().trim().min(1).max(40).optional(),
+            href: hrefField,
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     z

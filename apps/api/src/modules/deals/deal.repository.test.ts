@@ -7,6 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockCreate,
   mockFindFirst,
+  mockFindMany,
+  mockCount,
   txDealFindFirst,
   txDealUpdate,
   txDealCreate,
@@ -18,6 +20,8 @@ const {
   return {
     mockCreate: vi.fn(),
     mockFindFirst: vi.fn(),
+    mockFindMany: vi.fn(),
+    mockCount: vi.fn(),
     txDealFindFirst,
     txDealUpdate,
     txDealCreate,
@@ -47,8 +51,8 @@ vi.mock("@/config/prisma", () => ({
     deal: {
       create: (...args: unknown[]) => mockCreate(...args),
       findFirst: (...args: unknown[]) => mockFindFirst(...args),
-      findMany: vi.fn(),
-      count: vi.fn(),
+      findMany: (...args: unknown[]) => mockFindMany(...args),
+      count: (...args: unknown[]) => mockCount(...args),
       update: vi.fn(),
     },
     $transaction: (fn: unknown) =>
@@ -71,10 +75,57 @@ vi.mock("@/utils/pagination", () => ({
   getPrismaOrderBy: vi.fn().mockReturnValue({ createdAt: "desc" }),
 }));
 
-import dealRepository from "./deal.repository";
+import dealRepository, { DEAL_LIST_INCLUDE } from "./deal.repository";
 
 describe("DealRepository", () => {
   beforeEach(() => vi.clearAllMocks());
+
+  describe("findAll list payload", () => {
+    it("projects pipeline with id/name/type instead of full row", async () => {
+      mockCount.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+
+      await dealRepository.findAll("t1", {});
+
+      expect(DEAL_LIST_INCLUDE.pipeline).toEqual({
+        select: { id: true, name: true, type: true },
+      });
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            pipeline: { select: { id: true, name: true, type: true } },
+          }),
+        }),
+      );
+    });
+
+    it("keeps existing selects on contact/member/company/assignedTo", async () => {
+      mockCount.mockResolvedValue(0);
+      mockFindMany.mockResolvedValue([]);
+
+      await dealRepository.findAll("t1", {});
+
+      const call = mockFindMany.mock.calls[0][0];
+      expect(call.include.contact.select).toEqual({
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        purchaseCount: true,
+      });
+      expect(call.include.member.select).toEqual({
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+      });
+      expect(call.include.company.select).toEqual({ id: true, name: true });
+      expect(call.include.assignedTo.select).toEqual({
+        id: true,
+        username: true,
+      });
+    });
+  });
 
   describe("findById", () => {
     it("queries with tenantId, id, deletedAt: null, and isLatest: true", async () => {

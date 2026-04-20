@@ -7,6 +7,7 @@
  * the same visual output during Phase 8's migration window.
  */
 
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Hero,
@@ -21,13 +22,27 @@ import type {
 } from "@repo/shared";
 import type { PublicProduct } from "@/lib/api";
 import { getCollection, getOffers } from "@/lib/api";
+import { getSiteFormatOptions } from "@/lib/format";
 import type { BlockComponentProps } from "../registry";
 import { ProductCarousel } from "./ProductCarousel";
+import { BlockGridSkeleton } from "./BlockSkeletons";
 
 export function HeroBlock({
   props,
   dataContext,
 }: BlockComponentProps<HeroProps>) {
+  const shoppableProducts =
+    props.variant === "shoppable" && props.shoppableProductIds?.length
+      ? (() => {
+          const byId = new Map(
+            dataContext.products.map((p) => [p.id, p] as const),
+          );
+          return props.shoppableProductIds
+            .map((id) => byId.get(id))
+            .filter((p): p is PublicProduct => !!p);
+        })()
+      : undefined;
+
   return (
     <Hero
       site={dataContext.site}
@@ -39,6 +54,9 @@ export function HeroBlock({
       subtitle={props.subtitle}
       imageUrl={props.imageUrl}
       heroLayout={props.heroLayout}
+      videoUrl={props.videoUrl}
+      videoPoster={props.videoPoster}
+      shoppableProducts={shoppableProducts}
     />
   );
 }
@@ -122,15 +140,49 @@ async function resolveProducts(
   });
 }
 
-export async function ProductGridBlock({
+export function ProductGridBlock(args: BlockComponentProps<ProductGridProps>) {
+  const { node, props } = args;
+  // Only `offers` + `collection` sources hit the network; the others filter
+  // pre-loaded products synchronously. Wrap just the fetching paths in
+  // Suspense so the page shell streams while the fetch resolves.
+  const fetches = props.source === "offers" || props.source === "collection";
+  if (!fetches) {
+    return <ProductGridInner {...args} />;
+  }
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const layout = props.layout ?? "grid";
+  return (
+    <Suspense
+      fallback={
+        <BlockGridSkeleton
+          wrapperHasPadY={wrapperHasPadY}
+          columns={props.columns}
+          count={props.limit}
+          aspectRatio={layout === "carousel" ? "3/4" : "3/4"}
+        />
+      }
+    >
+      <ProductGridInner {...args} />
+    </Suspense>
+  );
+}
+
+async function ProductGridInner({
+  node,
   props,
   dataContext,
 }: BlockComponentProps<ProductGridProps>) {
   const products = await resolveProducts(props, dataContext);
   const layout = props.layout ?? "grid";
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const formatOpts = getSiteFormatOptions(dataContext.site);
 
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container">
         {(props.eyebrow || props.heading) && (
           <div
@@ -173,6 +225,7 @@ export async function ProductGridBlock({
             showPrice={props.showPrice}
             showDiscount={props.showDiscount}
             cardAspectRatio={props.cardAspectRatio}
+            formatOpts={formatOpts}
           />
         ) : (
           <ProductGrid
@@ -183,6 +236,7 @@ export async function ProductGridBlock({
             showPrice={props.showPrice}
             showDiscount={props.showDiscount}
             cardAspectRatio={props.cardAspectRatio}
+            formatOpts={formatOpts}
           />
         )}
         {props.viewMoreHref && (

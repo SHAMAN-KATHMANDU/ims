@@ -251,7 +251,10 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
                       </span>
                     )}
                     {t.completed && (
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check
+                        className="h-4 w-4 text-green-600"
+                        aria-label="Completed"
+                      />
                     )}
                   </div>
                 </li>

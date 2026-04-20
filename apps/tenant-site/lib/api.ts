@@ -99,6 +99,12 @@ export interface PublicSite {
   /** Structured design tokens (Phase 7+). Preferred over branding when set. */
   themeTokens?: Record<string, unknown> | null;
   template: PublicTemplate | null;
+  /** BCP-47 tag: tenant's default locale (drives Intl formatting). */
+  locale?: string | null;
+  /** All locales the tenant has configured content for. */
+  locales?: string[];
+  /** ISO 4217 code (INR, NPR, USD, …) — drives price formatting. */
+  currency?: string | null;
 }
 
 export interface PublicCategory {
@@ -172,6 +178,27 @@ export interface PublicProduct {
    * The PDP buybox consumes this to render attribute-grouped chips.
    */
   variations?: PublicProductVariation[];
+  /**
+   * Aggregate APPROVED review rating (rounded to one decimal) or null
+   * when the product has no approved reviews yet.
+   */
+  avgRating?: number | null;
+  ratingCount?: number | null;
+}
+
+export interface PublicProductReview {
+  id: string;
+  rating: number;
+  body: string | null;
+  authorName: string | null;
+  createdAt: string;
+}
+
+export interface PublicProductReviewList {
+  reviews: PublicProductReview[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface PublicProductFacetValue {
@@ -206,6 +233,56 @@ export interface PublicProductList {
   page: number;
   limit: number;
   facets?: PublicProductFacets;
+}
+
+// Bundles -------------------------------------------------------------------
+
+export type BundlePricingStrategy = "SUM" | "DISCOUNT_PCT" | "FIXED";
+
+export interface PublicBundleSummary {
+  id: string;
+  name: string;
+  slug: string;
+  productIds: string[];
+  pricingStrategy: BundlePricingStrategy;
+  discountPct: number | null;
+  fixedPrice: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicBundleDetail extends PublicBundleSummary {
+  description: string | null;
+}
+
+export interface PublicBundleProduct {
+  id: string;
+  name: string;
+  /** Decimal string — the product's current effective price. */
+  finalSp: string;
+}
+
+export interface PublicBundleList {
+  items: PublicBundleSummary[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// Gift cards ----------------------------------------------------------------
+
+export interface GiftCardRedeemResponse {
+  message: string;
+  /** Full card payload present on 200 success, omitted on failure. */
+  giftCard?: {
+    id: string;
+    code: string;
+    amount: number;
+    balance: number;
+    status: "ACTIVE" | "REDEEMED" | "EXPIRED" | "VOIDED";
+    expiresAt: string | null;
+  };
 }
 
 export interface PublicCollection {
@@ -379,6 +456,131 @@ export function getProduct(host: string, tenantId: string, id: string) {
       ? (resp as { product: PublicProduct }).product
       : (resp as PublicProduct);
   });
+}
+
+export function getProductReviews(
+  host: string,
+  tenantId: string,
+  productId: string,
+  page = 1,
+  limit = 10,
+): Promise<PublicProductReviewList | null> {
+  const qs = `?page=${page}&limit=${limit}`;
+  return publicFetch<PublicProductReviewList>(
+    `/public/products/${encodeURIComponent(productId)}/reviews${qs}`,
+    {
+      host,
+      tenantId,
+      tags: [
+        `tenant:${tenantId}:product:${productId}:reviews`,
+        `tenant:${tenantId}:reviews`,
+      ],
+    },
+  );
+}
+
+export function getFrequentlyBoughtWith(
+  host: string,
+  tenantId: string,
+  productId: string,
+): Promise<PublicProduct[]> {
+  return publicFetch<{ products: PublicProduct[] } | PublicProduct[]>(
+    `/public/products/${encodeURIComponent(productId)}/frequently-bought-with`,
+    {
+      host,
+      tenantId,
+      tags: [
+        `tenant:${tenantId}:product:${productId}:fbt`,
+        `tenant:${tenantId}:products`,
+      ],
+    },
+  ).then((resp) => {
+    if (!resp) return [];
+    return Array.isArray(resp)
+      ? resp
+      : ((resp as { products: PublicProduct[] }).products ?? []);
+  });
+}
+
+// ============================================================================
+// Bundles
+// ============================================================================
+
+/** List published (active) bundles for this tenant. Returns null on failure. */
+export async function getPublicBundles(
+  host: string,
+  tenantId: string,
+  query: { page?: number; limit?: number } = {},
+): Promise<PublicBundleList | null> {
+  const params = new URLSearchParams();
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return publicFetch<PublicBundleList>(`/public/bundles${suffix}`, {
+    host,
+    tenantId,
+    tags: [`tenant:${tenantId}:bundles`],
+  });
+}
+
+/**
+ * Fetch a single published bundle by slug, including the dereferenced
+ * product summaries (id, name, finalSp). Returns null when the slug
+ * doesn't resolve to an active bundle.
+ */
+export async function getPublicBundleBySlug(
+  host: string,
+  tenantId: string,
+  slug: string,
+): Promise<{
+  bundle: PublicBundleDetail;
+  products: PublicBundleProduct[];
+} | null> {
+  const resp = await publicFetch<{
+    bundle: PublicBundleDetail;
+    products: PublicBundleProduct[];
+  }>(`/public/bundles/${encodeURIComponent(slug)}`, {
+    host,
+    tenantId,
+    tags: [`tenant:${tenantId}:bundle:${slug}`, `tenant:${tenantId}:bundles`],
+  });
+  return resp ? { bundle: resp.bundle, products: resp.products ?? [] } : null;
+}
+
+// ============================================================================
+// Gift card redeem (client-side POST via same-origin forwarder)
+// ============================================================================
+
+/**
+ * Redeem a gift card balance. Runs in the browser from the redeem block,
+ * so it goes through the same-origin Next route handler (like the guest
+ * order path) to keep API_INTERNAL_URL off the client bundle.
+ */
+export async function postGiftCardRedeem(body: {
+  code: string;
+  amount: number;
+}): Promise<GiftCardRedeemResponse> {
+  try {
+    const res = await fetch("/api/public/gift-cards/redeem", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = (await res
+      .json()
+      .catch(() => null)) as GiftCardRedeemResponse | null;
+    if (!res.ok) {
+      return {
+        message: payload?.message ?? `Redeem failed (${res.status})`,
+      };
+    }
+    return payload ?? { message: "Gift card redeemed" };
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[tenant-site] postGiftCardRedeem threw", error);
+    return { message: "Could not reach the redeem service. Please try again." };
+  }
 }
 
 export function getCategories(host: string, tenantId: string) {

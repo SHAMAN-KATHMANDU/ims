@@ -336,7 +336,10 @@ export function TransfersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               placeholder="Search transfers..."
               value={search}
@@ -397,7 +400,7 @@ export function TransfersPage() {
               className="h-8 text-xs"
               onClick={clearAllFilters}
             >
-              <X className="h-3.5 w-3.5 mr-2" />
+              <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
               Clear filters
             </Button>
           )}
@@ -406,7 +409,7 @@ export function TransfersPage() {
               href={`${basePath}/transfers/new`}
               className="inline-flex items-center gap-2"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Create transfer request
             </Link>
           </Button>
@@ -427,6 +430,8 @@ export function TransfersPage() {
         onStartTransit={handleStartTransit}
         onComplete={handleComplete}
         onCancel={handleCancelClick}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
       />
 
       {pagination && (

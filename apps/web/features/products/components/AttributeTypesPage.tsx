@@ -265,7 +265,9 @@ export function AttributeTypesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-muted-foreground">Loading attribute types…</p>
+        <p className="text-muted-foreground" role="status" aria-live="polite">
+          Loading attribute types…
+        </p>
       </div>
     );
   }
@@ -284,7 +286,7 @@ export function AttributeTypesPage() {
               </CardDescription>
             </div>
             <Button onClick={openCreateType} className="gap-2">
-              <Plus className="h-4 w-4" /> Add type
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add type
             </Button>
           </div>
         </CardHeader>
@@ -315,11 +317,23 @@ export function AttributeTypesPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => toggleExpanded(type.id)}
+                          aria-expanded={expandedTypes.has(type.id)}
+                          aria-label={
+                            expandedTypes.has(type.id)
+                              ? `Collapse values for ${type.name}`
+                              : `Expand values for ${type.name}`
+                          }
                         >
                           {expandedTypes.has(type.id) ? (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
                           ) : (
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            />
                           )}
                         </Button>
                       </TableCell>
@@ -358,24 +372,27 @@ export function AttributeTypesPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => openEditType(type)}
+                          aria-label={`Edit ${type.name}`}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive"
                           onClick={() => setDeleteTypeTarget(type)}
+                          aria-label={`Delete ${type.name}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="ml-1 gap-1"
                           onClick={() => openAddValue(type)}
+                          aria-label={`Add value to ${type.name}`}
                         >
-                          <Plus className="h-3 w-3" /> Value
+                          <Plus className="h-3 w-3" aria-hidden="true" /> Value
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -405,8 +422,12 @@ export function AttributeTypesPage() {
                                       size="icon"
                                       className="h-4 w-4"
                                       onClick={() => openEditValue(type, v)}
+                                      aria-label={`Edit value ${v.value}`}
                                     >
-                                      <Pencil className="h-3 w-3" />
+                                      <Pencil
+                                        className="h-3 w-3"
+                                        aria-hidden="true"
+                                      />
                                     </Button>
                                     <Button
                                       variant="ghost"
@@ -415,8 +436,12 @@ export function AttributeTypesPage() {
                                       onClick={() =>
                                         setDeleteValueTarget({ type, value: v })
                                       }
+                                      aria-label={`Delete value ${v.value}`}
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      <Trash2
+                                        className="h-3 w-3"
+                                        aria-hidden="true"
+                                      />
                                     </Button>
                                   </Badge>
                                 ))}
@@ -500,6 +525,7 @@ export function AttributeTypesPage() {
                           setInitialValues(next);
                         }}
                         placeholder="e.g. Red, M, Cotton"
+                        aria-label={`Initial value ${i + 1}`}
                       />
                       <Button
                         type="button"
@@ -511,9 +537,9 @@ export function AttributeTypesPage() {
                             initialValues.filter((_, idx) => idx !== i),
                           )
                         }
-                        aria-label="Remove value"
+                        aria-label={`Remove initial value ${i + 1}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   ))}
@@ -524,7 +550,7 @@ export function AttributeTypesPage() {
                     className="gap-1"
                     onClick={() => setInitialValues([...initialValues, ""])}
                   >
-                    <Plus className="h-3 w-3" /> Add value
+                    <Plus className="h-3 w-3" aria-hidden="true" /> Add value
                   </Button>
                 </div>
               </div>

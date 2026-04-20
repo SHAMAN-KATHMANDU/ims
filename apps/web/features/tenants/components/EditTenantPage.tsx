@@ -330,11 +330,13 @@ export function EditTenantPage() {
             href={`${basePath}/platform/tenants`}
             className="inline-flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to tenants
           </Link>
         </Button>
-        <div className="text-muted-foreground">Loading tenant…</div>
+        <div className="text-muted-foreground" role="status" aria-live="polite">
+          Loading tenant…
+        </div>
       </div>
     );
   }
@@ -346,7 +348,7 @@ export function EditTenantPage() {
           href={`${basePath}/platform/tenants`}
           className="inline-flex items-center gap-2"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to tenants
         </Link>
       </Button>
@@ -386,12 +388,12 @@ export function EditTenantPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>New plan</Label>
+            <Label htmlFor="new-plan">New plan</Label>
             <Select
               value={selectedPlan ?? ""}
               onValueChange={(v) => setSelectedPlan(v as PlanTier)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="new-plan" aria-label="New plan">
                 <SelectValue placeholder="Select plan" />
               </SelectTrigger>
               <SelectContent>
@@ -537,7 +539,7 @@ export function EditTenantPage() {
             variant="outline"
             onClick={() => setCreateUserOpen(true)}
           >
-            <UserPlus className="mr-1 h-4 w-4" />
+            <UserPlus className="mr-1 h-4 w-4" aria-hidden="true" />
             Add user
           </Button>
         </CardContent>
@@ -568,6 +570,7 @@ export function EditTenantPage() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    aria-label={`Reset password for ${user.username}`}
                     onClick={() =>
                       handleOpenResetPassword({
                         id: user.id,
@@ -575,7 +578,7 @@ export function EditTenantPage() {
                       })
                     }
                   >
-                    <KeyRound className="mr-1 h-4 w-4" />
+                    <KeyRound className="mr-1 h-4 w-4" aria-hidden="true" />
                     Reset password
                   </Button>
                 </div>
@@ -605,9 +608,15 @@ export function EditTenantPage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min 6 characters"
                 minLength={6}
+                aria-describedby="newPassword-hint"
               />
+              <p
+                id="newPassword-hint"
+                className="text-xs text-muted-foreground"
+              >
+                Must be at least 6 characters.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
@@ -675,9 +684,15 @@ export function EditTenantPage() {
                 type="password"
                 value={createUserPassword}
                 onChange={(e) => setCreateUserPassword(e.target.value)}
-                placeholder="Min 6 characters"
                 minLength={6}
+                aria-describedby="createUserPassword-hint"
               />
+              <p
+                id="createUserPassword-hint"
+                className="text-xs text-muted-foreground"
+              >
+                Must be at least 6 characters.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="createUserConfirmPassword">

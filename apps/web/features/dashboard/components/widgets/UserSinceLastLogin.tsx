@@ -36,7 +36,10 @@ export function UserSinceLastLogin({
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <LogIn className="h-4 w-4 text-muted-foreground" />
+            <LogIn
+              className="h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
             Since last login
           </CardTitle>
         </CardHeader>
@@ -56,7 +59,7 @@ export function UserSinceLastLogin({
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <LogIn className="h-4 w-4 text-muted-foreground" />
+          <LogIn className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           Since last login
         </CardTitle>
         <CardDescription>

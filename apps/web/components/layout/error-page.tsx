@@ -34,7 +34,12 @@ export function ErrorScreen({
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-4 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-            {icon ?? <ShieldAlert className="h-8 w-8 text-destructive" />}
+            {icon ?? (
+              <ShieldAlert
+                className="h-8 w-8 text-destructive"
+                aria-hidden="true"
+              />
+            )}
           </div>
           <CardTitle className="text-2xl font-bold">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>

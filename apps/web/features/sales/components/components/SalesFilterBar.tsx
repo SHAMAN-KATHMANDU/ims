@@ -128,8 +128,13 @@ export function SalesFilterBar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
       <div className="relative w-full sm:w-auto sm:min-w-[180px] sm:max-w-[240px]">
-        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Search
+          className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
         <Input
+          type="search"
+          aria-label="Search sales"
           placeholder="Search sales..."
           value={search}
           onChange={onSearchChange}
@@ -138,7 +143,10 @@ export function SalesFilterBar({
       </div>
       <Select value={sortValue} onValueChange={onSortChange}>
         <SelectTrigger className="h-9 w-full sm:w-[200px] shrink-0 gap-2 text-sm">
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <ArrowUpDown
+            className="h-3.5 w-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>
@@ -156,7 +164,7 @@ export function SalesFilterBar({
             size="sm"
             className="h-9 gap-2 text-sm shrink-0"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
           </Button>
         </PopoverTrigger>
@@ -241,7 +249,10 @@ export function SalesFilterBar({
                       !startDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {startDate ? format(startDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -268,7 +279,10 @@ export function SalesFilterBar({
                       !endDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {endDate ? format(endDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -290,7 +304,7 @@ export function SalesFilterBar({
                 className="h-8 w-full text-xs col-span-2"
                 onClick={onClearDates}
               >
-                <X className="h-3.5 w-3.5 mr-2" />
+                <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                 Clear dates
               </Button>
             )}
@@ -304,7 +318,7 @@ export function SalesFilterBar({
           className="h-8 text-xs"
           onClick={onClearAllFilters}
         >
-          <X className="h-3.5 w-3.5 mr-2" />
+          <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
           Clear filters
         </Button>
       )}

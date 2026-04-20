@@ -137,6 +137,36 @@ describe("SitesService", () => {
       ).rejects.toMatchObject({ statusCode: 403 });
       expect(mockRepo.updateConfig).not.toHaveBeenCalled();
     });
+
+    it("round-trips currency through to the repo update input", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: "INR" }),
+      );
+
+      await service.updateConfig("t1", { currency: "INR" });
+
+      expect(mockRepo.updateConfig).toHaveBeenCalledWith("t1", {
+        currency: "INR",
+      });
+    });
+
+    it("leaves currency unset in the update when not provided", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+
+      await service.updateConfig("t1", { branding: { theme: "dark" } });
+
+      const [, data] = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      expect(data.currency).toBeUndefined();
+    });
   });
 
   describe("listTemplates", () => {

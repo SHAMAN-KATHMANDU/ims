@@ -48,13 +48,19 @@ export function MemberDetail({
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
+            <User className="h-5 w-5" aria-hidden="true" />
             Member Details
           </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
-          <div className="space-y-4">
+          <div
+            className="space-y-4"
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <span className="sr-only">Loading member details…</span>
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-4 w-40" />
@@ -67,7 +73,10 @@ export function MemberDetail({
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <Phone
+                    className="h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
                   <span className="text-lg font-bold">{member.phone}</span>
                 </div>
                 {member.name && (
@@ -93,7 +102,7 @@ export function MemberDetail({
               {member.email && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Mail className="h-4 w-4" />
+                    <Mail className="h-4 w-4" aria-hidden="true" />
                     Email
                   </div>
                   <p>{member.email}</p>
@@ -102,7 +111,7 @@ export function MemberDetail({
 
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" aria-hidden="true" />
                   Member Since
                 </div>
                 <p>{format(new Date(member.createdAt), "MMMM d, yyyy")}</p>
@@ -110,7 +119,7 @@ export function MemberDetail({
 
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <ShoppingCart className="h-4 w-4" />
+                  <ShoppingCart className="h-4 w-4" aria-hidden="true" />
                   Total Purchases
                 </div>
                 <p className="font-medium">{member._count?.sales || 0}</p>
@@ -123,7 +132,7 @@ export function MemberDetail({
                 <Separator />
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-4 w-4" aria-hidden="true" />
                     Notes
                   </div>
                   <p className="text-sm">{member.notes}</p>

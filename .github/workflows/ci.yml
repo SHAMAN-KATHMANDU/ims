@@ -1,7 +1,14 @@
 # Continuous Integration: lint, test, typecheck, and security scan.
 # No Docker build/push or deployment. Runs on PRs and non-main branch pushes.
+# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: self-hosted` with `runs-on: ubuntu-latest`.
 
 name: CI
+
+# Force GitHub-bundled actions (checkout, setup-node, etc.) to run on Node.js 24
+# instead of the deprecated Node.js 20. Safe to remove once action maintainers
+# release Node.js 24 native versions (expected before June 2026).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: read
@@ -27,7 +34,7 @@ concurrency:
 jobs:
   pr-title:
     name: PR title check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +55,7 @@ jobs:
   # Detect which paths changed so we can run jobs conditionally.
   # For PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so full CI runs.
   changes:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
@@ -90,19 +97,18 @@ jobs:
 
   lint-api:
     name: Lint API
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Guard Prisma migrations — tenant FK must reference tenants(id)
         run: |
           set -e
@@ -119,19 +125,18 @@ jobs:
 
   lint-web:
     name: Lint Web
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint Web (and shared if needed)
         run: pnpm exec turbo run lint --filter=web --filter=@repo/shared
         env:
@@ -140,54 +145,55 @@ jobs:
 
   test-api:
     name: Test API
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ims_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      # Required for tests/integration/** files that import
-      # @/config/express.config — the automation publisher instantiates
-      # BullMQ queues at module load, which opens a connection to Redis.
-      # Without this service, ioredis reconnect storms cascade into the
-      # Prisma native query engine under coverage and crash Node.
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
+    # Redis is started manually in a step so we can kill orphaned containers
+    # from cancelled runs before binding port 6379 (Docker services bind ports
+    # before steps run, so a leftover container on 6379 would fail the job).
+    #
+    # ⚠ Switching back to ubuntu-latest requires these changes:
+    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
+    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
+    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup and setup-node cache omitted — Node 20 + pnpm are pre-installed
+      # on the self-hosted runner and wired into PATH via ~/actions-runner/.env.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
+      - name: Start Redis (kill orphan first)
+        # Kill any container already occupying 6379 from a cancelled prior run,
+        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
+        run: |
+          docker rm -f ci-redis 2>/dev/null || true
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 20); do
+            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
+            sleep 1
+          done
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
+      - name: Drop and recreate test database
+        # The self-hosted runner uses a persistent Postgres instance, so the
+        # ims_test DB accumulates state across runs. A cancelled job can leave a
+        # migration "started but not finished" in _prisma_migrations (P3009),
+        # blocking all subsequent migrate deploy calls. Dropping and recreating
+        # the DB gives a guaranteed clean slate without needing migrate reset.
+        run: |
+          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
+            -c "DROP DATABASE IF EXISTS ims_test;" \
+            -c "CREATE DATABASE ims_test;"
       - name: Run migrations
         run: pnpm --filter api exec prisma migrate deploy
       - name: Run API tests
@@ -195,22 +201,24 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f ci-redis 2>/dev/null || true
 
   test-web:
     name: Test Web
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Web tests
         run: pnpm exec turbo run test:unit --filter=web
         env:
@@ -219,18 +227,18 @@ jobs:
 
   lint-tenant-site:
     name: Lint tenant-site
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint tenant-site (and shared if needed)
         run: pnpm exec turbo run lint --filter=tenant-site --filter=@repo/shared
         env:
@@ -239,18 +247,18 @@ jobs:
 
   test-tenant-site:
     name: Test tenant-site
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run tenant-site unit tests
         run: pnpm exec turbo run test:run --filter=tenant-site
         env:
@@ -270,18 +278,18 @@ jobs:
 
   test-shared:
     name: Test shared package
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run shared package unit tests
         run: pnpm exec turbo run test --filter=@repo/shared
         env:
@@ -290,21 +298,20 @@ jobs:
 
   typecheck:
     name: Type check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # `any` includes tenant-site since Phase C.4, so a tenant-site-only change
     # still triggers the global typecheck.
     if: needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        # Uses pnpm version from package.json "packageManager" to avoid mismatch
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
       - name: Type check
@@ -315,35 +322,27 @@ jobs:
 
   e2e-web-automation:
     name: E2E Web (automation)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ims_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
+    # Uses ims_e2e (not ims_test) so this job can run concurrently with test-api
+    # without conflicting DROP/CREATE DATABASE calls on the same runner.
+    # Redis is started manually in a step so we can kill orphaned containers
+    # from cancelled runs before binding port 6379 (Docker services bind ports
+    # before steps run, so a leftover container on 6379 would fail the job).
+    #
+    # ⚠ Switching back to ubuntu-latest requires these changes:
+    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
+    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+    #      (rename ims_e2e references back to ims_test — no conflict on ephemeral VMs)
+    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
+    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
+    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      # ims_e2e is pre-created on the runner: CREATE DATABASE ims_e2e OWNER ci_runner;
+      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_e2e?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
       # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
@@ -351,17 +350,32 @@ jobs:
       NODE_ENV: development
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
+      - name: Start Redis (kill orphan first)
+        # Kill any container already occupying 6379 from a cancelled prior run,
+        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
+        run: |
+          docker rm -f ci-redis 2>/dev/null || true
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 20); do
+            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
+            sleep 1
+          done
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build shared and API
         run: |
           pnpm --filter @repo/shared build
           pnpm --filter api exec prisma generate
+          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
+            -c "DROP DATABASE IF EXISTS ims_e2e WITH (FORCE);" \
+            -c "CREATE DATABASE ims_e2e OWNER ci_runner;"
+          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_e2e \
+            -c "GRANT ALL ON SCHEMA public TO ci_runner;"
           pnpm --filter api exec prisma migrate deploy
           pnpm --filter api exec prisma db seed
           pnpm --filter api build
@@ -378,12 +392,17 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ steps.playwright_version.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-playwright-
-      - name: Install Playwright browser (with OS deps)
+      - name: Install Playwright browser
+        # On cache miss: install browser binary + OS deps (needs sudo, works on first run
+        # because playwright deps were pre-installed on the runner via --with-deps).
+        # On cache hit: reinstall browser binary only — OS deps are already present,
+        # and `install-deps` alone requires sudo which is not available in CI.
         if: steps.playwright_cache.outputs.cache-hit != 'true'
         run: pnpm --filter web exec playwright install --with-deps chromium
-      - name: Install Playwright OS deps only (cache hit)
+      - name: Verify Playwright browser (cache hit)
+        # Browser binaries were restored from cache; no OS dep install needed.
         if: steps.playwright_cache.outputs.cache-hit == 'true'
-        run: pnpm --filter web exec playwright install-deps chromium
+        run: pnpm --filter web exec playwright install chromium
       - name: Start API and run automation E2E
         run: |
           set -e
@@ -405,24 +424,31 @@ jobs:
           E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
           kill "$API_PID" 2>/dev/null || true
           wait "$API_PID" 2>/dev/null || true
+      - name: Stop Redis
+        if: always()
+        run: docker rm -f ci-redis 2>/dev/null || true
 
   trivy:
     name: Trivy security scan
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: github.event_name == 'pull_request' && needs.changes.outputs.any == 'true'
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Trivy vulnerability scanner (filesystem)
+        # cache-dir points to /tmp so the DB is never inside the scanned workspace
+        # and persists across runs (no forced re-download every time).
+        # timeout raised to 15m — the default 5m is not enough for the self-hosted
+        # runner to complete a full DB download + fs scan.
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
@@ -430,3 +456,5 @@ jobs:
           severity: "CRITICAL,HIGH"
           exit-code: "1"
           ignore-unfixed: true
+          timeout: "15m"
+          cache-dir: "/tmp/trivy-cache"

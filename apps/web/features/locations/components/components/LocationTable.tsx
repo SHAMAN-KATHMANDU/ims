@@ -44,6 +44,8 @@ interface LocationTableProps {
   onRestore?: (location: Location) => void;
   selectedLocations?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 function LocationMobileCard({
@@ -81,9 +83,15 @@ function LocationMobileCard({
           <div className="flex items-start justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               {location.type === "WAREHOUSE" ? (
-                <Warehouse className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Warehouse
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
               ) : (
-                <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Store
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
               )}
               <span className="font-semibold leading-snug">
                 {location.name}
@@ -95,8 +103,9 @@ function LocationMobileCard({
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 shrink-0"
+                  aria-label={`Actions for ${location.name}`}
                 >
-                  <MoreHorizontal className="h-4 w-4" />
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                   <span className="sr-only">Actions</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -104,7 +113,7 @@ function LocationMobileCard({
                 {canManage ? (
                   <>
                     <DropdownMenuItem onClick={() => onEdit(location)}>
-                      <Pencil className="mr-2 h-4 w-4" />
+                      <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                       Edit
                     </DropdownMenuItem>
                     {location.isActive ? (
@@ -112,13 +121,16 @@ function LocationMobileCard({
                         variant="destructive"
                         onClick={() => onDelete(location)}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                         Deactivate
                       </DropdownMenuItem>
                     ) : (
                       onRestore && (
                         <DropdownMenuItem onClick={() => onRestore(location)}>
-                          <RotateCcw className="mr-2 h-4 w-4" />
+                          <RotateCcw
+                            className="mr-2 h-4 w-4"
+                            aria-hidden="true"
+                          />
                           Reactivate
                         </DropdownMenuItem>
                       )
@@ -130,11 +142,11 @@ function LocationMobileCard({
                       Only Super Admins can edit or deactivate locations.
                     </DropdownMenuLabel>
                     <DropdownMenuItem disabled>
-                      <Pencil className="mr-2 h-4 w-4" />
+                      <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                       Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem disabled variant="destructive">
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                       {location.isActive ? "Deactivate" : "Delete"}
                     </DropdownMenuItem>
                   </>
@@ -195,6 +207,8 @@ export function LocationTable({
   onRestore,
   selectedLocations = new Set(),
   onSelectionChange,
+  hasActiveFilters,
+  onClearFilters,
 }: LocationTableProps) {
   const canSort = Boolean(onSort);
   const showCheckboxes = canManage && Boolean(onSelectionChange);
@@ -301,10 +315,39 @@ export function LocationTable({
   }
 
   if (locations.length === 0) {
+    if (hasActiveFilters) {
+      return (
+        <div className="rounded-md border p-8 text-center">
+          <Warehouse
+            className="mx-auto h-12 w-12 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <h3 className="mt-4 text-lg font-semibold">
+            No locations match your filters
+          </h3>
+          <p className="text-muted-foreground mt-2">
+            Try adjusting your search or filters.
+          </p>
+          {onClearFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="rounded-md border p-8 text-center">
-        <Warehouse className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">No locations found</h3>
+        <Warehouse
+          className="mx-auto h-12 w-12 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <h3 className="mt-4 text-lg font-semibold">No locations yet</h3>
         <p className="text-muted-foreground mt-2">
           Get started by creating a warehouse or showroom.
         </p>
@@ -404,9 +447,15 @@ export function LocationTable({
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
                     {location.type === "WAREHOUSE" ? (
-                      <Warehouse className="h-4 w-4 text-muted-foreground" />
+                      <Warehouse
+                        className="h-4 w-4 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Store className="h-4 w-4 text-muted-foreground" />
+                      <Store
+                        className="h-4 w-4 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     )}
                     {location.name}
                   </div>
@@ -442,8 +491,15 @@ export function LocationTable({
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Actions for ${location.name}`}
+                      >
+                        <MoreHorizontal
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        />
                         <span className="sr-only">Actions</span>
                       </Button>
                     </DropdownMenuTrigger>
@@ -451,7 +507,10 @@ export function LocationTable({
                       {canManage ? (
                         <>
                           <DropdownMenuItem onClick={() => onEdit(location)}>
-                            <Pencil className="mr-2 h-4 w-4" />
+                            <Pencil
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Edit
                           </DropdownMenuItem>
                           {location.isActive ? (
@@ -459,7 +518,10 @@ export function LocationTable({
                               variant="destructive"
                               onClick={() => onDelete(location)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2
+                                className="mr-2 h-4 w-4"
+                                aria-hidden="true"
+                              />
                               Deactivate
                             </DropdownMenuItem>
                           ) : (
@@ -467,7 +529,10 @@ export function LocationTable({
                               <DropdownMenuItem
                                 onClick={() => onRestore(location)}
                               >
-                                <RotateCcw className="mr-2 h-4 w-4" />
+                                <RotateCcw
+                                  className="mr-2 h-4 w-4"
+                                  aria-hidden="true"
+                                />
                                 Reactivate
                               </DropdownMenuItem>
                             )
@@ -479,11 +544,17 @@ export function LocationTable({
                             Only Super Admins can edit or deactivate locations.
                           </DropdownMenuLabel>
                           <DropdownMenuItem disabled>
-                            <Pencil className="mr-2 h-4 w-4" />
+                            <Pencil
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem disabled variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
+                            <Trash2
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
                             {location.isActive ? "Deactivate" : "Delete"}
                           </DropdownMenuItem>
                         </>

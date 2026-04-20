@@ -282,7 +282,10 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
         <CardContent>
           {config.items.length === 0 ? (
             <div className="rounded-md border border-dashed border-border p-8 text-center">
-              <Link2 className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+              <Link2
+                className="mx-auto mb-2 h-5 w-5 text-muted-foreground"
+                aria-hidden="true"
+              />
               <p className="text-sm text-muted-foreground">
                 No menu items yet. Click <strong>+ Link</strong> above to get
                 started.
@@ -316,7 +319,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         disabled={disabled || idx === 0}
                         aria-label="Move up"
                       >
-                        <ArrowUp className="h-4 w-4" />
+                        <ArrowUp className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
                         size="icon"
@@ -326,7 +329,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         disabled={disabled || idx === config.items.length - 1}
                         aria-label="Move down"
                       >
-                        <ArrowDown className="h-4 w-4" />
+                        <ArrowDown className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
                         size="icon"
@@ -336,7 +339,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         disabled={disabled}
                         aria-label="Delete item"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                     {selected && isEditableKind(item.kind) && (

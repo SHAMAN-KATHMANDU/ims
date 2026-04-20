@@ -10,6 +10,7 @@ import {
   SiteFooter,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { getSiteFormatOptions } from "@/lib/format";
 
 /**
  * STANDARD — Balanced default. Everything on by default, 4-column grid,
@@ -28,6 +29,7 @@ export async function StandardLayout(props: TemplateProps) {
     activeProduct,
     featuredBlogPosts,
   } = props;
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div data-template="standard">
@@ -147,13 +149,18 @@ export async function StandardLayout(props: TemplateProps) {
             >
               All products
             </h1>
-            <ProductGrid products={products} columns={4} variant="bordered" />
+            <ProductGrid
+              products={products}
+              columns={4}
+              variant="bordered"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

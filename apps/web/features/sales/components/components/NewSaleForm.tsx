@@ -1120,7 +1120,10 @@ export function NewSaleForm({
                                     <SelectTrigger className="bg-background border-border">
                                       {items.length > 0 ? (
                                         <span className="flex items-center gap-2">
-                                          <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                          <Lock
+                                            className="h-4 w-4 shrink-0 text-muted-foreground"
+                                            aria-hidden="true"
+                                          />
                                           <SelectValue placeholder="Select showroom" />
                                         </span>
                                       ) : (
@@ -1156,12 +1159,18 @@ export function NewSaleForm({
                           {/* CRM Contact (primary customer selection) */}
                           <div className="space-y-2">
                             <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                              <UserRound className="h-3 w-3" />
+                              <UserRound
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
                               Customer (Contact)
                             </Label>
                             {contactId ? (
                               <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
-                                <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <UserRound
+                                  className="h-4 w-4 text-muted-foreground shrink-0"
+                                  aria-hidden="true"
+                                />
                                 <span className="flex-1 truncate">
                                   {contactOptions.find(
                                     (c) => c.id === contactId,
@@ -1178,12 +1187,15 @@ export function NewSaleForm({
                                   aria-label="Remove contact"
                                   className="text-muted-foreground hover:text-foreground"
                                 >
-                                  <X className="h-4 w-4" />
+                                  <X className="h-4 w-4" aria-hidden="true" />
                                 </button>
                               </div>
                             ) : (
                               <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Search
+                                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
                                 <Input
                                   value={contactSearch}
                                   onChange={(e) => {
@@ -1313,7 +1325,10 @@ export function NewSaleForm({
                         ) : (
                           <div className="space-y-3">
                             <div className="relative">
-                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Search
+                                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                               <Input
                                 value={productSearch}
                                 onChange={(e) => {
@@ -1332,7 +1347,10 @@ export function NewSaleForm({
                             </div>
                             {scanLoading && (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2
+                                  className="h-4 w-4 animate-spin"
+                                  aria-hidden="true"
+                                />
                                 Looking up barcode…
                               </div>
                             )}
@@ -1349,7 +1367,10 @@ export function NewSaleForm({
                                     className="h-7 text-xs"
                                     onClick={() => setScannedProduct(null)}
                                   >
-                                    <X className="h-3 w-3 mr-1" />
+                                    <X
+                                      className="h-3 w-3 mr-1"
+                                      aria-hidden="true"
+                                    />
                                     Clear
                                   </Button>
                                 </div>
@@ -1406,7 +1427,10 @@ export function NewSaleForm({
                                               )
                                             }
                                           >
-                                            <Plus className="h-3 w-3 mr-1" />
+                                            <Plus
+                                              className="h-3 w-3 mr-1"
+                                              aria-hidden="true"
+                                            />
                                             Add
                                           </Button>
                                         </div>
@@ -1418,7 +1442,10 @@ export function NewSaleForm({
                             )}
                             {inventoryLoading ? (
                               <div className="flex justify-center py-4">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <Loader2
+                                  className="h-5 w-5 animate-spin text-muted-foreground"
+                                  aria-label="Loading"
+                                />
                               </div>
                             ) : !productSearch.trim() ? (
                               <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
@@ -1494,7 +1521,10 @@ export function NewSaleForm({
                                             setProductSearch("");
                                           }}
                                         >
-                                          <Plus className="h-4 w-4 mr-1" />
+                                          <Plus
+                                            className="h-4 w-4 mr-1"
+                                            aria-hidden="true"
+                                          />
                                           Add
                                         </Button>
                                       </div>
@@ -1932,7 +1962,10 @@ export function NewSaleForm({
                                 className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200"
                                 role="status"
                               >
-                                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <AlertCircle
+                                  className="h-3.5 w-3.5 shrink-0 mt-0.5"
+                                  aria-hidden="true"
+                                />
                                 <span>
                                   Promo applied — product discount overwritten.
                                   You can remove the promo to restore catalog
@@ -1944,7 +1977,10 @@ export function NewSaleForm({
                               <span className="font-semibold">Total</span>
                               <span className="text-xl font-bold tabular-nums text-foreground">
                                 {previewLoading ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                  <Loader2
+                                    className="h-5 w-5 animate-spin"
+                                    aria-label="Calculating total"
+                                  />
                                 ) : (
                                   formatCurrency(expectedTotal)
                                 )}
@@ -1970,7 +2006,10 @@ export function NewSaleForm({
                                   disabled={promoCodeValidating}
                                 />
                                 {promoCodeValidating && (
-                                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                                  <Loader2
+                                    className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
+                                    aria-label="Validating promo code"
+                                  />
                                 )}
                                 {promoCode &&
                                   !promoCodeError &&
@@ -2156,12 +2195,18 @@ export function NewSaleForm({
                           >
                             {isLoading ? (
                               <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2
+                                  className="mr-2 h-4 w-4 animate-spin"
+                                  aria-hidden="true"
+                                />
                                 Creating...
                               </>
                             ) : (
                               <>
-                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                <ShoppingCart
+                                  className="mr-2 h-4 w-4"
+                                  aria-hidden="true"
+                                />
                                 Complete Sale
                               </>
                             )}
@@ -2204,7 +2249,7 @@ export function NewSaleForm({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
           New Sale
         </Button>
       </DialogTrigger>

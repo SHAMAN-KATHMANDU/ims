@@ -103,7 +103,7 @@ export function MediaLibraryPickerDialog({
         <div className="min-h-0 flex-1 overflow-y-auto rounded-md border">
           {loading ? (
             <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Loading images...
             </div>
           ) : !mediaUploadEnabled ? (
@@ -181,9 +181,12 @@ export function MediaLibraryPickerDialog({
                 className="gap-1.5"
               >
                 {loadingMore ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2
+                    className="h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Images className="h-4 w-4" />
+                  <Images className="h-4 w-4" aria-hidden="true" />
                 )}
                 {loadingMore ? "Loading..." : "Load more"}
               </Button>

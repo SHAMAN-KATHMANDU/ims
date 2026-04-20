@@ -11,7 +11,7 @@ import { asyncHandler, AppError } from "@/middlewares/errorHandler";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import { sendControllerError } from "@/utils/controllerError";
-import sitesRepo from "@/modules/sites/sites.repository";
+import { ensurePublishedSite } from "@/modules/public-site/ensurePublished";
 import defaultRepo from "./nav-menus.repository";
 import { NavSlotEnum } from "./nav-menus.schema";
 
@@ -30,15 +30,6 @@ function getTenantId(req: Request): string {
   return tenantId;
 }
 
-async function ensurePublished(tenantId: string): Promise<void> {
-  const config = await sitesRepo.findConfig(tenantId);
-  if (!config || !config.websiteEnabled || !config.isPublished) {
-    const err = new Error("Not found") as AppError;
-    err.statusCode = 404;
-    throw err;
-  }
-}
-
 /**
  * @swagger
  * /public/nav-menus/{slot}:
@@ -51,7 +42,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);
-      await ensurePublished(tenantId);
+      await ensurePublishedSite(tenantId);
       const slot = NavSlotEnum.parse(req.params.slot);
       const row = await defaultRepo.findBySlot(tenantId, slot);
       if (!row) return res.status(404).json({ message: "Not found" });

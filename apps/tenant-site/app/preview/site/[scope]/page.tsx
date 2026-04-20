@@ -138,12 +138,14 @@ function ErrorShell({ message }: { message: string }) {
         padding: "24px",
         fontFamily:
           "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-        color: "#1e1e1e",
+        color: "var(--color-text, #1e1e1e)",
         textAlign: "center",
       }}
     >
       <h1 style={{ fontSize: 22, marginBottom: 12 }}>Preview unavailable</h1>
-      <p style={{ color: "#666", fontSize: 14 }}>{message}</p>
+      <p style={{ color: "var(--color-muted, #666)", fontSize: 14 }}>
+        {message}
+      </p>
     </main>
   );
 }

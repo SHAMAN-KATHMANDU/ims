@@ -144,6 +144,22 @@ export function TasksPage() {
   const updateMutation = useUpdateTask();
 
   const tasks = data?.data ?? [];
+  const tasksEmptyNoResults =
+    !isLoading &&
+    tasks.length === 0 &&
+    (debouncedSearch.length > 0 ||
+      taskTab !== "all" ||
+      dueToday ||
+      orphanedOnly ||
+      assignedToFilter !== "all");
+  const clearTasksFilters = () => {
+    setSearch("");
+    setTaskTab("all");
+    setDueToday(false);
+    setOrphanedOnly(false);
+    setAssignedToFilter("all");
+    setPage(DEFAULT_PAGE);
+  };
   const pagination = data?.pagination
     ? ({
         currentPage: data.pagination.currentPage,
@@ -208,14 +224,17 @@ export function TasksPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Tasks</h1>
         <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
           New Task
         </Button>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             placeholder="Search tasks..."
             value={search}
@@ -259,7 +278,7 @@ export function TasksPage() {
             }}
             title="Tasks with no contact (orphaned)"
           >
-            <AlertCircle className="h-4 w-4 mr-1" />
+            <AlertCircle className="h-4 w-4 mr-1" aria-hidden="true" />
             Orphaned
           </Button>
           <Select
@@ -311,7 +330,7 @@ export function TasksPage() {
             }}
             disabled={bulkCompleteMutation.isPending}
           >
-            <Check className="h-4 w-4 mr-1" />
+            <Check className="h-4 w-4 mr-1" aria-hidden="true" />
             Complete
           </Button>
           <Button
@@ -333,7 +352,7 @@ export function TasksPage() {
             }}
             disabled={bulkDeleteMutation.isPending}
           >
-            <Trash2 className="h-4 w-4 mr-1" />
+            <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
             Delete
           </Button>
           <Button size="sm" variant="ghost" onClick={clearSelection}>
@@ -353,8 +372,24 @@ export function TasksPage() {
             </div>
           ))
         ) : tasks.length === 0 ? (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No tasks found
+          <div className="rounded-md border py-8 px-4 text-center">
+            {tasksEmptyNoResults ? (
+              <div className="space-y-3">
+                <p className="text-muted-foreground text-sm">
+                  No tasks match your search or filters.
+                </p>
+                <Button variant="outline" size="sm" onClick={clearTasksFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1 text-muted-foreground">
+                <p className="font-medium text-foreground">No tasks yet</p>
+                <p className="text-sm">
+                  Create a task to start tracking follow-ups.
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           tasks.map((task) => (
@@ -385,19 +420,19 @@ export function TasksPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {task.dueDate && (
                   <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
+                    <Calendar className="h-3 w-3" aria-hidden="true" />
                     {new Date(task.dueDate).toLocaleDateString()}
                   </span>
                 )}
                 {task.assignedTo && (
                   <span className="flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" />
+                    <UserIcon className="h-3 w-3" aria-hidden="true" />
                     {task.assignedTo.username}
                   </span>
                 )}
                 {!task.contact && (
                   <span className="flex items-center gap-1 text-amber-600">
-                    <AlertCircle className="h-3 w-3" />
+                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
                     Orphaned
                   </span>
                 )}
@@ -424,7 +459,7 @@ export function TasksPage() {
                   className="h-7 text-xs flex-1"
                   onClick={() => openEdit(task.id)}
                 >
-                  <Pencil className="h-3 w-3 mr-1" />
+                  <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
                   Edit
                 </Button>
                 {!task.completed && (
@@ -438,7 +473,7 @@ export function TasksPage() {
                       });
                     }}
                   >
-                    <Check className="h-3 w-3 mr-1" />
+                    <Check className="h-3 w-3 mr-1" aria-hidden="true" />
                     Done
                   </Button>
                 )}
@@ -447,8 +482,9 @@ export function TasksPage() {
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive"
                   onClick={() => setDeleteTaskId(task.id)}
+                  aria-label={`Delete ${task.title}`}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-3 w-3" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -542,9 +578,31 @@ export function TasksPage() {
               <TableRow>
                 <TableCell
                   colSpan={dealsEnabled ? 8 : 7}
-                  className="text-center py-8 text-muted-foreground"
+                  className="text-center py-8 px-4"
                 >
-                  No tasks found
+                  {tasksEmptyNoResults ? (
+                    <div className="space-y-3">
+                      <p className="text-muted-foreground text-sm">
+                        No tasks match your search or filters.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearTasksFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 text-muted-foreground">
+                      <p className="font-medium text-foreground">
+                        No tasks yet
+                      </p>
+                      <p className="text-sm">
+                        Create a task to start tracking follow-ups.
+                      </p>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -566,7 +624,7 @@ export function TasksPage() {
                   <TableCell>
                     {!task.contact ? (
                       <span className="flex items-center gap-1 text-amber-600">
-                        <AlertCircle className="h-3 w-3" />
+                        <AlertCircle className="h-3 w-3" aria-hidden="true" />
                         Orphaned
                       </span>
                     ) : (
@@ -606,7 +664,7 @@ export function TasksPage() {
                         size="sm"
                         onClick={() => openEdit(task.id)}
                       >
-                        <Pencil className="h-4 w-4 mr-1" />
+                        <Pencil className="h-4 w-4 mr-1" aria-hidden="true" />
                         Edit
                       </Button>
                       {!task.completed && (
@@ -620,7 +678,7 @@ export function TasksPage() {
                             });
                           }}
                         >
-                          <Check className="h-4 w-4 mr-1" />
+                          <Check className="h-4 w-4 mr-1" aria-hidden="true" />
                           Complete
                         </Button>
                       )}

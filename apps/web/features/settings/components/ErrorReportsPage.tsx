@@ -106,7 +106,9 @@ export function ErrorReportsPage() {
           <CardTitle>Reports</CardTitle>
           <div className="flex flex-wrap gap-4 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs">User</Label>
+              <Label htmlFor="error-reports-user-filter" className="text-xs">
+                User
+              </Label>
               <Select
                 value={userFilter}
                 onValueChange={(v) => {
@@ -114,7 +116,11 @@ export function ErrorReportsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <SelectTrigger className="w-[160px] h-8">
+                <SelectTrigger
+                  id="error-reports-user-filter"
+                  className="w-[160px] h-8"
+                  aria-label="Filter reports by user"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -128,7 +134,9 @@ export function ErrorReportsPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Status</Label>
+              <Label htmlFor="error-reports-status-filter" className="text-xs">
+                Status
+              </Label>
               <Select
                 value={statusFilter}
                 onValueChange={(v) => {
@@ -136,7 +144,11 @@ export function ErrorReportsPage() {
                   setPage(DEFAULT_PAGE);
                 }}
               >
-                <SelectTrigger className="w-[140px] h-8">
+                <SelectTrigger
+                  id="error-reports-status-filter"
+                  className="w-[140px] h-8"
+                  aria-label="Filter reports by status"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -154,12 +166,20 @@ export function ErrorReportsPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={
+                      dateFrom
+                        ? `From date: ${format(dateFrom, "PP")}. Change`
+                        : "Select from date"
+                    }
                     className={cn(
                       "h-8 w-[140px] justify-start text-left font-normal text-sm",
                       !dateFrom && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {dateFrom ? format(dateFrom, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -183,12 +203,20 @@ export function ErrorReportsPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={
+                      dateTo
+                        ? `To date: ${format(dateTo, "PP")}. Change`
+                        : "Select to date"
+                    }
                     className={cn(
                       "h-8 w-[140px] justify-start text-left font-normal text-sm",
                       !dateTo && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {dateTo ? format(dateTo, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -213,7 +241,7 @@ export function ErrorReportsPage() {
                   className="h-8 text-xs"
                   onClick={clearDateFilters}
                 >
-                  <X className="h-3.5 w-3.5 mr-2" />
+                  <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                   Clear dates
                 </Button>
               </div>
@@ -222,7 +250,10 @@ export function ErrorReportsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Skeleton className="h-64 w-full" />
+            <div role="status" aria-live="polite">
+              <Skeleton className="h-64 w-full" />
+              <span className="sr-only">Loading error reports…</span>
+            </div>
           ) : (
             <>
               <div className="rounded-md border">
@@ -299,7 +330,10 @@ export function ErrorReportsPage() {
                                 }
                                 disabled={updateStatusMutation.isPending}
                               >
-                                <SelectTrigger className="w-[120px] h-8">
+                                <SelectTrigger
+                                  className="w-[120px] h-8"
+                                  aria-label={`Change status for report: ${report.title}`}
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>

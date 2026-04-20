@@ -53,7 +53,30 @@ describe("SalesTable", () => {
   it("renders empty state when no sales", () => {
     render(<SalesTable sales={[]} isLoading={false} onView={mockOnView} />);
 
-    expect(screen.getByText(/no sales found/i)).toBeInTheDocument();
+    expect(screen.getByText(/no sales yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/new sales will appear here once recorded/i),
+    ).toBeInTheDocument();
+  });
+
+  it("renders filter-aware empty state with clear-filters CTA", () => {
+    const onClearFilters = vi.fn();
+    render(
+      <SalesTable
+        sales={[]}
+        isLoading={false}
+        onView={mockOnView}
+        hasActiveFilters
+        onClearFilters={onClearFilters}
+      />,
+    );
+
+    expect(
+      screen.getByText(/no sales match your filters/i),
+    ).toBeInTheDocument();
+    const clearBtn = screen.getByRole("button", { name: /clear filters/i });
+    fireEvent.click(clearBtn);
+    expect(onClearFilters).toHaveBeenCalledTimes(1);
   });
 
   it("renders sales rows and calls onView when View clicked", () => {

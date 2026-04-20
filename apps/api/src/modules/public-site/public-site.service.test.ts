@@ -9,6 +9,8 @@ const mockRepo = {
   listProducts: vi.fn(),
   findProduct: vi.fn(),
   listCategories: vi.fn(),
+  findProductIdForTenant: vi.fn(),
+  listFrequentlyBoughtWith: vi.fn(),
 } as unknown as Repo;
 
 const service = new PublicSiteService(mockRepo);
@@ -24,6 +26,9 @@ function config(overrides: Record<string, unknown> = {}) {
     features: { hero: true },
     seo: { title: "Home" },
     isPublished: true,
+    locales: ["en", "ne"],
+    defaultLocale: "en",
+    currency: "NPR",
     createdAt: new Date(),
     updatedAt: new Date(),
     template: {
@@ -87,21 +92,70 @@ describe("PublicSiteService", () => {
     });
   });
 
+  describe("getSite locale", () => {
+    it("returns defaultLocale + locales when both are set", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: ["en", "ne", "hi"], defaultLocale: "ne" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("ne");
+      expect(result.locales).toEqual(["en", "ne", "hi"]);
+    });
+
+    it("falls back to first locale when defaultLocale is null", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: ["ne", "en"], defaultLocale: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("ne");
+      expect(result.locales).toEqual(["ne", "en"]);
+    });
+
+    it('falls back to "en" when locales empty and defaultLocale null', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ locales: [], defaultLocale: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.locale).toBe("en");
+      expect(result.locales).toEqual([]);
+    });
+  });
+
+  describe("getSite currency", () => {
+    it("returns tenant-configured currency when set", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: "INR" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("INR");
+    });
+
+    it('falls back to "NPR" when currency column is at default', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: "NPR" }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("NPR");
+    });
+
+    it('falls back to "NPR" when currency is nullish (defensive)', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ currency: null }),
+      );
+      const result = await service.getSite("t1");
+      expect(result.currency).toBe("NPR");
+    });
+  });
+
   describe("listProducts", () => {
-    it("returns paginated products when published", async () => {
+    it("returns paginated products when published and omits facets by default", async () => {
       (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config(),
       );
-      const facets = {
-        brands: [],
-        priceMin: null,
-        priceMax: null,
-        attributes: [],
-      };
       (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
         [{ id: "p1", name: "Chair" }],
         42,
-        facets,
+        null,
       ]);
 
       const result = await service.listProducts("t1", {
@@ -114,7 +168,7 @@ describe("PublicSiteService", () => {
       expect(result.total).toBe(42);
       expect(result.page).toBe(2);
       expect(result.limit).toBe(10);
-      expect(result.facets).toEqual(facets);
+      expect(result.facets).toBeNull();
       expect(mockRepo.listProducts).toHaveBeenCalledWith("t1", {
         page: 2,
         limit: 10,
@@ -122,8 +176,57 @@ describe("PublicSiteService", () => {
         search: undefined,
         vendorId: undefined,
         attr: undefined,
+        includeFacets: false,
+      });
+    });
+
+    it("passes includeFacets=true through when query opts in", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      const facets = {
+        brands: [],
+        priceMin: null,
+        priceMax: null,
+        attributes: [],
+      };
+      (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+        facets,
+      ]);
+
+      const result = await service.listProducts("t1", {
+        page: 1,
+        limit: 24,
         includeFacets: true,
       });
+      expect(result.facets).toEqual(facets);
+      expect(mockRepo.listProducts).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ includeFacets: true }),
+      );
+    });
+
+    it("treats any non-true includeFacets value as false (Zod transform guarantees boolean)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+        null,
+      ]);
+
+      await service.listProducts("t1", {
+        page: 1,
+        limit: 24,
+        includeFacets: false,
+      });
+      expect(mockRepo.listProducts).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ includeFacets: false }),
+      );
     });
 
     it("falls back to defaults when page/limit undefined", async () => {
@@ -133,12 +236,13 @@ describe("PublicSiteService", () => {
       (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
         [],
         0,
-        { brands: [], priceMin: null, priceMax: null, attributes: [] },
+        null,
       ]);
 
       const result = await service.listProducts("t1", {});
       expect(result.page).toBe(1);
       expect(result.limit).toBe(24);
+      expect(result.facets).toBeNull();
     });
 
     it("throws 404 when not published", async () => {
@@ -194,11 +298,12 @@ describe("PublicSiteService", () => {
         config(),
       );
       (mockRepo.listCategories as ReturnType<typeof vi.fn>).mockResolvedValue([
-        { id: "c1", name: "Chairs" },
+        { id: "c1", name: "Chairs", description: null, productCount: 7 },
       ]);
 
       const result = await service.listCategories("t1");
       expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "c1", productCount: 7 });
     });
 
     it("throws 404 when not published", async () => {
@@ -208,6 +313,113 @@ describe("PublicSiteService", () => {
       await expect(service.listCategories("t1")).rejects.toMatchObject({
         statusCode: 404,
       });
+    });
+  });
+
+  describe("listProducts sort forwarding", () => {
+    it('forwards sort="best-selling" to repo.listProducts', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+        null,
+      ]);
+
+      await service.listProducts("t1", {
+        page: 1,
+        limit: 24,
+        sort: "best-selling",
+      });
+
+      expect(mockRepo.listProducts).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ sort: "best-selling" }),
+      );
+    });
+
+    it('forwards sort="newest" unchanged', async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockRepo.listProducts as ReturnType<typeof vi.fn>).mockResolvedValue([
+        [],
+        0,
+        null,
+      ]);
+
+      await service.listProducts("t1", {
+        page: 1,
+        limit: 24,
+        sort: "newest",
+      });
+
+      expect(mockRepo.listProducts).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ sort: "newest" }),
+      );
+    });
+  });
+
+  describe("listFrequentlyBoughtWith", () => {
+    it("returns products when published and product exists for tenant", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (
+        mockRepo.findProductIdForTenant as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({ id: "p1" });
+      (
+        mockRepo.listFrequentlyBoughtWith as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([{ id: "p2" }, { id: "p3" }]);
+
+      const result = await service.listFrequentlyBoughtWith("t1", "p1");
+      expect(result.products).toHaveLength(2);
+      expect(mockRepo.listFrequentlyBoughtWith).toHaveBeenCalledWith(
+        "t1",
+        "p1",
+      );
+    });
+
+    it("returns empty products when FBT repo returns empty (graceful no-signal)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (
+        mockRepo.findProductIdForTenant as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({ id: "p1" });
+      (
+        mockRepo.listFrequentlyBoughtWith as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
+
+      const result = await service.listFrequentlyBoughtWith("t1", "p1");
+      expect(result).toEqual({ products: [] });
+    });
+
+    it("throws 404 when site not published (before product lookup)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null,
+      );
+      await expect(
+        service.listFrequentlyBoughtWith("t1", "p1"),
+      ).rejects.toMatchObject({ statusCode: 404 });
+      expect(mockRepo.findProductIdForTenant).not.toHaveBeenCalled();
+      expect(mockRepo.listFrequentlyBoughtWith).not.toHaveBeenCalled();
+    });
+
+    it("throws 404 when product not found for tenant (cross-tenant guard)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (
+        mockRepo.findProductIdForTenant as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+
+      await expect(
+        service.listFrequentlyBoughtWith("t1", "p1"),
+      ).rejects.toMatchObject({ statusCode: 404 });
+      expect(mockRepo.listFrequentlyBoughtWith).not.toHaveBeenCalled();
     });
   });
 });

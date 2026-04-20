@@ -306,7 +306,10 @@ export function MembersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
             <Input
               type="search"
               aria-label="Search members by phone, name, or email"
@@ -372,7 +375,7 @@ export function MembersPage() {
               className="h-8 text-xs"
               onClick={clearAllFilters}
             >
-              <X className="h-3.5 w-3.5 mr-2" />
+              <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
               Clear filters
             </Button>
           )}
@@ -383,7 +386,7 @@ export function MembersPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                   Download
                   {selectedMemberIds.size > 0 && (
                     <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
@@ -397,14 +400,17 @@ export function MembersPage() {
                   onClick={() => handleExport("excel")}
                   disabled={membersLoading}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  <FileSpreadsheet
+                    className="h-4 w-4 mr-2"
+                    aria-hidden="true"
+                  />
                   Download as Excel
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleExport("csv")}
                   disabled={membersLoading}
                 >
-                  <FileText className="h-4 w-4 mr-2" />
+                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                   Download as CSV
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -416,7 +422,7 @@ export function MembersPage() {
                 {isMobile ? (
                   <Button variant="outline" asChild>
                     <Link href={`${basePath}/members/bulk-upload`}>
-                      <Upload className="h-4 w-4 mr-2" />
+                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                       Bulk Upload
                     </Link>
                   </Button>
@@ -425,7 +431,7 @@ export function MembersPage() {
                     variant="outline"
                     onClick={() => setBulkUploadDialog(true)}
                   >
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                     Bulk Upload
                   </Button>
                 )}
@@ -436,7 +442,7 @@ export function MembersPage() {
             (isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/members/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   Add Member
                 </Link>
               </Button>
@@ -463,6 +469,8 @@ export function MembersPage() {
         // Selection props
         selectedMembers={selectedMemberIds}
         onSelectionChange={setSelectedMemberIds}
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={clearAllFilters}
       />
 
       {/* Pagination */}
@@ -501,7 +509,7 @@ export function MembersPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download
                     </Button>
                   </DropdownMenuTrigger>
@@ -510,14 +518,17 @@ export function MembersPage() {
                       onClick={() => handleExport("excel")}
                       disabled={membersLoading}
                     >
-                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <FileSpreadsheet
+                        className="h-4 w-4 mr-2"
+                        aria-hidden="true"
+                      />
                       Download as Excel
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleExport("csv")}
                       disabled={membersLoading}
                     >
-                      <FileText className="h-4 w-4 mr-2" />
+                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
                       Download as CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -530,7 +541,7 @@ export function MembersPage() {
                 className="shrink-0"
                 aria-label="Clear selection"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>

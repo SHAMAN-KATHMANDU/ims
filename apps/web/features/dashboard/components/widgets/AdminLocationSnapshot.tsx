@@ -54,7 +54,10 @@ export function AdminLocationSnapshot({
     <Card className="shadow-sm">
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          <BarChart3
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           Revenue by location
         </CardTitle>
         <CardDescription>Today</CardDescription>

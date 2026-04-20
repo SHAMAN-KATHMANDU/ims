@@ -170,10 +170,18 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
 
 // ---------- accordion -------------------------------------------------------
 
-export function AccordionBlock({ props }: BlockComponentProps<AccordionProps>) {
+export function AccordionBlock({
+  node,
+  props,
+}: BlockComponentProps<AccordionProps>) {
   if (props.items.length === 0) return null;
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
   return (
-    <section style={{ padding: "var(--section-padding) 0" }}>
+    <section
+      style={{
+        padding: wrapperHasPadY ? undefined : "var(--section-padding) 0",
+      }}
+    >
       <div className="container" style={{ maxWidth: 820 }}>
         {props.heading && (
           <h2
@@ -256,14 +264,41 @@ const GAP_MAP: Record<NonNullable<ColumnsProps["gap"]>, string> = {
   lg: "3rem",
 };
 
+const STACK_BREAKPOINT_PX: Record<
+  NonNullable<ColumnsProps["stackBelow"]>,
+  number
+> = {
+  sm: 640,
+  md: 768,
+  lg: 1024,
+};
+
 export function ColumnsBlock({
+  node,
   props,
   children,
 }: BlockComponentProps<ColumnsProps>) {
   const gap = GAP_MAP[props.gap ?? "md"];
+  const stackPx = props.stackBelow
+    ? STACK_BREAKPOINT_PX[props.stackBelow]
+    : undefined;
+  const stickyFirst = props.stickyFirst === true;
+  const instanceClass = `tpl-cols-${node.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  const rules: string[] = [];
+  if (stackPx !== undefined) {
+    rules.push(
+      `@media (max-width: ${stackPx - 1}px) { .${instanceClass} { grid-template-columns: 1fr !important; } .${instanceClass} > :first-child { position: static !important; top: auto !important; } }`,
+    );
+  }
+  if (stickyFirst) {
+    const minWidth = stackPx ?? 0;
+    rules.push(
+      `@media (min-width: ${minWidth}px) { .${instanceClass} > :first-child { position: sticky; top: 1.5rem; align-self: start; } }`,
+    );
+  }
   return (
     <div
-      className="tpl-stack"
+      className={`tpl-stack ${instanceClass}`}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(${props.count}, 1fr)`,
@@ -271,6 +306,7 @@ export function ColumnsBlock({
         alignItems: props.verticalAlign ?? "start",
       }}
     >
+      {rules.length > 0 && <style>{rules.join(" ")}</style>}
       {children}
     </div>
   );

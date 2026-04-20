@@ -128,7 +128,7 @@ export function MediaPickerField({
                 disabled={disabled || uploading}
                 onClick={() => setPickerOpen(true)}
               >
-                <ImageIcon className="mr-1.5 h-4 w-4" />
+                <ImageIcon className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 Browse library
               </Button>
               <Button
@@ -139,9 +139,12 @@ export function MediaPickerField({
                 onClick={() => fileInputRef.current?.click()}
               >
                 {uploading ? (
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  <Loader2
+                    className="mr-1.5 h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Upload className="mr-1.5 h-4 w-4" />
+                  <Upload className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 )}
                 {uploading ? "Uploading…" : "Upload"}
               </Button>
@@ -153,7 +156,7 @@ export function MediaPickerField({
                   disabled={disabled || uploading}
                   onClick={() => onChange("")}
                 >
-                  <X className="mr-1.5 h-4 w-4" />
+                  <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   Clear
                 </Button>
               )}

@@ -179,7 +179,7 @@ export function AdminSettings() {
                   }}
                   className="gap-2"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" aria-hidden="true" />
                   Add New User
                 </Button>
               </DialogTrigger>
@@ -240,7 +240,7 @@ export function AdminSettings() {
                             value={field.value ?? "user"}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger aria-label="Role">
                                 <SelectValue placeholder="Select a role" />
                               </SelectTrigger>
                             </FormControl>
@@ -265,7 +265,7 @@ export function AdminSettings() {
                             value={field.value ?? "active"}
                           >
                             <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger aria-label="Status">
                                 <SelectValue placeholder="Select a status" />
                               </SelectTrigger>
                             </FormControl>
@@ -345,16 +345,18 @@ export function AdminSettings() {
                           size="sm"
                           onClick={() => handleEdit(user)}
                           className="gap-1"
+                          aria-label={`Edit ${user.name}`}
                         >
-                          <Edit2 className="h-4 w-4" />
+                          <Edit2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(user.id)}
                           className="text-destructive hover:text-destructive gap-1"
+                          aria-label={`Delete ${user.name}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -408,16 +410,16 @@ export function AdminSettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>System Name</Label>
-                <Input value="SHAMAN Kathmandu" readOnly />
+                <Label htmlFor="system-name">System Name</Label>
+                <Input id="system-name" value="SHAMAN Kathmandu" readOnly />
               </div>
               <div className="space-y-2">
-                <Label>Environment</Label>
-                <Input value="Production" readOnly />
+                <Label htmlFor="system-environment">Environment</Label>
+                <Input id="system-environment" value="Production" readOnly />
               </div>
               <div className="space-y-2">
-                <Label>Version</Label>
-                <Input value="1.0.0" readOnly />
+                <Label htmlFor="system-version">Version</Label>
+                <Input id="system-version" value="1.0.0" readOnly />
               </div>
               <Button>Save Changes</Button>
             </CardContent>

@@ -86,7 +86,7 @@ function SidebarItem({
           aria-expanded={undefined}
         >
           {linkContent}
-          <ChevronDown className="h-4 w-4 shrink-0" />
+          <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-4 mt-1 space-y-1">
           {item.children?.map((child) => {

@@ -361,8 +361,15 @@ export function EditSaleForm({
                 role="listbox"
               >
                 {inventoryLoading ? (
-                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <Loader2
+                      className="h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
                     Searching…
                   </div>
                 ) : (
@@ -397,11 +404,12 @@ export function EditSaleForm({
             onClick={handleAddByIms}
             disabled={scanLoading || !productSearch.trim()}
             title="Search by product code (barcode)"
+            aria-label="Search by product code (barcode)"
           >
             {scanLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4" aria-hidden="true" />
             )}
           </Button>
         </div>
@@ -483,8 +491,9 @@ export function EditSaleForm({
                       className="h-7 w-7"
                       onClick={() => handleQuantityChange(idx, -1)}
                       disabled={item.quantity <= 1}
+                      aria-label={`Decrease quantity of ${item.productName}`}
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-3 w-3" aria-hidden="true" />
                     </Button>
                     <span className="min-w-6 text-center">{item.quantity}</span>
                     <Button
@@ -494,8 +503,9 @@ export function EditSaleForm({
                       className="h-7 w-7"
                       onClick={() => handleQuantityChange(idx, 1)}
                       disabled={item.quantity >= item.maxQuantity}
+                      aria-label={`Increase quantity of ${item.productName}`}
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-3 w-3" aria-hidden="true" />
                     </Button>
                   </div>
                 </TableCell>
@@ -509,8 +519,9 @@ export function EditSaleForm({
                     size="icon"
                     className="h-7 w-7 text-destructive"
                     onClick={() => handleRemoveItem(idx)}
+                    aria-label={`Remove ${item.productName}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </TableCell>
               </TableRow>

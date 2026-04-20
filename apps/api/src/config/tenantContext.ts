@@ -16,6 +16,15 @@ interface TenantContext {
   tenantId: string;
   /** When true, skip auto-scoping (for platform admin cross-tenant operations) */
   bypassScoping: boolean;
+  /**
+   * Request-scoped memo cache. Populated lazily by callers that want to
+   * deduplicate repeated lookups within a single request (e.g. the
+   * public-site `ensurePublished` guard, which otherwise fires 5-7
+   * identical SiteConfig reads on a cold homepage SSR). The map is
+   * allocated once per `runWithTenant` call, so cache entries do NOT
+   * leak across requests.
+   */
+  memo: Map<string, unknown>;
 }
 
 const tenantStorage = new AsyncLocalStorage<TenantContext>();
@@ -29,7 +38,16 @@ export function runWithTenant<T>(
   fn: () => T,
   bypassScoping = false,
 ): T {
-  return tenantStorage.run({ tenantId, bypassScoping }, fn);
+  return tenantStorage.run({ tenantId, bypassScoping, memo: new Map() }, fn);
+}
+
+/**
+ * Return the request-scoped memo map, or null when no tenant context is
+ * active (e.g. tests, scripts). Callers using this to cache a Promise
+ * should fall back to running the work uncached when this returns null.
+ */
+export function getRequestMemo(): Map<string, unknown> | null {
+  return tenantStorage.getStore()?.memo ?? null;
 }
 
 /**

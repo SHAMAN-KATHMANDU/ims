@@ -53,7 +53,10 @@ export function AdminTransferStatus({ basePath }: AdminTransferStatusProps) {
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+          <ArrowLeftRight
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           Transfer status
         </CardTitle>
         <Link
@@ -61,7 +64,7 @@ export function AdminTransferStatus({ basePath }: AdminTransferStatusProps) {
           className="text-xs font-medium text-primary hover:underline inline-flex items-center"
         >
           View all
-          <ArrowRight className="ml-1 h-3 w-3" />
+          <ArrowRight className="ml-1 h-3 w-3" aria-hidden="true" />
         </Link>
       </CardHeader>
       <CardContent>

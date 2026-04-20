@@ -111,7 +111,7 @@ export function CategoryForm({
           }}
           className="gap-2"
         >
-          <Plus className="h-4 w-4" /> Add Category
+          <Plus className="h-4 w-4" aria-hidden="true" /> Add Category
         </Button>
       </DialogTrigger>
       <DialogContent allowDismiss={false}>
@@ -123,9 +123,20 @@ export function CategoryForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cat-name">Name</Label>
-            <Input id="cat-name" {...form.register("name")} />
+            <Input
+              id="cat-name"
+              {...form.register("name")}
+              aria-invalid={form.formState.errors.name ? true : undefined}
+              aria-describedby={
+                form.formState.errors.name ? "cat-name-error" : undefined
+              }
+            />
             {form.formState.errors.name && (
-              <p className="text-sm text-destructive">
+              <p
+                id="cat-name-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {form.formState.errors.name.message}
               </p>
             )}
@@ -138,7 +149,13 @@ export function CategoryForm({
             <div className="space-y-2">
               <Label>Current subcategories</Label>
               {isLoadingServerSubcategories ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
+                <p
+                  className="text-sm text-muted-foreground"
+                  role="status"
+                  aria-live="polite"
+                >
+                  Loading…
+                </p>
               ) : serverSubcategories.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {serverSubcategories.map((sub) => (
@@ -153,8 +170,9 @@ export function CategoryForm({
                           type="button"
                           className="text-xs text-muted-foreground hover:text-destructive"
                           onClick={() => onRemoveServerSubcategory(sub)}
+                          aria-label={`Remove subcategory ${sub}`}
                         >
-                          ×
+                          <span aria-hidden="true">×</span>
                         </button>
                       )}
                     </Badge>
@@ -191,8 +209,9 @@ export function CategoryForm({
                       type="button"
                       className="text-xs text-muted-foreground hover:text-destructive"
                       onClick={() => handleRemovePendingSubcategory(index)}
+                      aria-label={`Remove pending subcategory ${sub}`}
                     >
-                      ×
+                      <span aria-hidden="true">×</span>
                     </button>
                   </Badge>
                 ))}
@@ -203,6 +222,7 @@ export function CategoryForm({
                 value={subcategoryInput}
                 onChange={(e) => setSubcategoryInput(e.target.value)}
                 placeholder="Enter subcategory name"
+                aria-label="New subcategory name"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -215,7 +235,7 @@ export function CategoryForm({
                 variant="outline"
                 onClick={handleAddSubcategory}
               >
-                <Plus className="h-4 w-4 mr-1" /> Add
+                <Plus className="h-4 w-4 mr-1" aria-hidden="true" /> Add
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">

@@ -138,7 +138,7 @@ export function WebsiteOrderDetailPage({
             href={backHref}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             Back to orders
           </Link>
           <h1 className="mt-2 font-mono text-2xl font-semibold">
@@ -152,19 +152,19 @@ export function WebsiteOrderDetailPage({
         <div className="flex flex-wrap items-center gap-2">
           {canVerify && (
             <Button onClick={handleVerify} disabled={verifyMutation.isPending}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
+              <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
               {verifyMutation.isPending ? "Verifying…" : "Mark verified"}
             </Button>
           )}
           {canConvert && (
             <Button onClick={() => setConvertOpen(true)}>
-              <ShoppingCart className="mr-2 h-4 w-4" />
+              <ShoppingCart className="mr-2 h-4 w-4" aria-hidden="true" />
               Convert to sale
             </Button>
           )}
           {canReject && (
             <Button variant="outline" onClick={() => setRejectOpen(true)}>
-              <XCircle className="mr-2 h-4 w-4" />
+              <XCircle className="mr-2 h-4 w-4" aria-hidden="true" />
               Reject
             </Button>
           )}
@@ -176,7 +176,7 @@ export function WebsiteOrderDetailPage({
               disabled={deleteMutation.isPending}
               aria-label="Delete order"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </Button>
           )}
         </div>

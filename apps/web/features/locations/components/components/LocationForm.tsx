@@ -163,9 +163,17 @@ export function LocationForm({
             id="location-name"
             {...form.register("name")}
             placeholder="e.g., Main Warehouse"
+            aria-invalid={!!form.formState.errors.name}
+            aria-describedby={
+              form.formState.errors.name ? "location-name-error" : undefined
+            }
           />
           {form.formState.errors.name && (
-            <p className="text-sm text-destructive mt-1">
+            <p
+              id="location-name-error"
+              role="alert"
+              className="text-sm text-destructive mt-1"
+            >
               {form.formState.errors.name.message}
             </p>
           )}
@@ -193,7 +201,11 @@ export function LocationForm({
             )}
           />
           {form.formState.errors.type && (
-            <p className="text-sm text-destructive mt-1">
+            <p
+              id="location-type-error"
+              role="alert"
+              className="text-sm text-destructive mt-1"
+            >
               {form.formState.errors.type.message}
             </p>
           )}
@@ -205,9 +217,19 @@ export function LocationForm({
             {...form.register("address")}
             placeholder="Enter the location address..."
             rows={3}
+            aria-invalid={!!form.formState.errors.address}
+            aria-describedby={
+              form.formState.errors.address
+                ? "location-address-error"
+                : undefined
+            }
           />
           {form.formState.errors.address && (
-            <p className="text-sm text-destructive mt-1">
+            <p
+              id="location-address-error"
+              role="alert"
+              className="text-sm text-destructive mt-1"
+            >
               {form.formState.errors.address.message}
             </p>
           )}
@@ -261,7 +283,7 @@ export function LocationForm({
 
   const triggerButton = (
     <Button disabled={addDisabled}>
-      <Plus className="mr-2 h-4 w-4" />
+      <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
       Add Location
     </Button>
   );

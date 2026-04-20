@@ -100,7 +100,11 @@ export class CrmRepository {
         where: { tenantId, deletedAt: null },
         orderBy: { activityAt: "desc" },
         take: 10,
-        include: {
+        select: {
+          id: true,
+          type: true,
+          subject: true,
+          activityAt: true,
           contact: { select: { id: true, firstName: true, lastName: true } },
           deal: { select: { id: true, name: true } },
           creator: { select: { id: true, username: true } },

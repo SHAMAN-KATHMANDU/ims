@@ -10,6 +10,7 @@ import {
   SiteFooter,
 } from "./shared";
 import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
+import { formatPrice, getSiteFormatOptions } from "@/lib/format";
 
 /**
  * LUXURY — Dark-first, serif display type, a taller hero, generous
@@ -30,6 +31,7 @@ export async function LuxuryLayout(props: TemplateProps) {
   } = props;
 
   const lookbookItems = products.slice(0, 2);
+  const formatOpts = getSiteFormatOptions(site);
 
   return (
     <div
@@ -75,7 +77,12 @@ export async function LuxuryLayout(props: TemplateProps) {
                 >
                   The collection
                 </h2>
-                <ProductGrid products={products} columns={3} variant="bare" />
+                <ProductGrid
+                  products={products}
+                  columns={3}
+                  variant="bare"
+                  formatOpts={formatOpts}
+                />
               </div>
             </section>
           )}
@@ -150,7 +157,7 @@ export async function LuxuryLayout(props: TemplateProps) {
                           color: "var(--color-muted)",
                         }}
                       >
-                        ₹{Number(p.finalSp).toLocaleString("en-IN")}
+                        {formatPrice(p.finalSp, formatOpts)}
                       </div>
                     </Link>
                   ))}
@@ -183,13 +190,18 @@ export async function LuxuryLayout(props: TemplateProps) {
             >
               The collection
             </h1>
-            <ProductGrid products={products} columns={3} variant="bare" />
+            <ProductGrid
+              products={products}
+              columns={3}
+              variant="bare"
+              formatOpts={formatOpts}
+            />
           </div>
         </section>
       )}
 
       {page === "product" && activeProduct && (
-        <ProductDetail product={activeProduct} />
+        <ProductDetail product={activeProduct} formatOpts={formatOpts} />
       )}
 
       {page === "contact" && <ContactBlock site={site} />}

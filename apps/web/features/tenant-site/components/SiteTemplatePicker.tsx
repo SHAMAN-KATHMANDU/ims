@@ -161,7 +161,10 @@ export function SiteTemplatePicker({
               {showControls && (
                 <div className="space-y-3">
                   <div className="relative">
-                    <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Search
+                      className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
                     <Input
                       value={query}
                       onChange={(e) => onQueryChange(e.target.value)}
@@ -176,7 +179,7 @@ export function SiteTemplatePicker({
                         className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         aria-label="Clear search"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -239,7 +242,7 @@ export function SiteTemplatePicker({
                     >
                       <div className="flex flex-col items-center gap-2">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                          <Plus className="h-6 w-6" />
+                          <Plus className="h-6 w-6" aria-hidden="true" />
                         </div>
                         <div className="font-semibold">Build Your Own</div>
                         <div className="text-xs text-muted-foreground">
@@ -272,7 +275,10 @@ export function SiteTemplatePicker({
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{t.name}</span>
                             {isActive && (
-                              <CheckCircle2 className="h-4 w-4 text-foreground" />
+                              <CheckCircle2
+                                className="h-4 w-4 text-foreground"
+                                aria-label="Active template"
+                              />
                             )}
                           </div>
                           {t.description && (

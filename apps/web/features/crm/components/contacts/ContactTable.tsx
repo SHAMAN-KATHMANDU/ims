@@ -165,19 +165,19 @@ export function ContactTable({
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 {c.email && (
                   <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
+                    <Mail className="h-3 w-3" aria-hidden="true" />
                     {c.email}
                   </span>
                 )}
                 {c.phone && (
                   <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
+                    <Phone className="h-3 w-3" aria-hidden="true" />
                     {c.phone}
                   </span>
                 )}
                 {c.company && (
                   <span className="flex items-center gap-1">
-                    <Building2 className="h-3 w-3" />
+                    <Building2 className="h-3 w-3" aria-hidden="true" />
                     {c.company.name}
                   </span>
                 )}

@@ -817,7 +817,7 @@ export function AutomationForm({
                         aria-label={`Remove trigger ${index + 1}`}
                         onClick={() => triggerArray.remove(index)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                     <div className="space-y-2">
@@ -1024,7 +1024,10 @@ export function AutomationForm({
                                     );
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
                                 </Button>
                               </div>
                               {conditionFieldErrors?.path?.message ? (
@@ -1218,7 +1221,7 @@ export function AutomationForm({
                               aria-label={`Remove step ${index + 1}`}
                               onClick={() => stepArray.remove(index)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </div>
 

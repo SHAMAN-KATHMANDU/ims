@@ -64,7 +64,7 @@ export function ProductPickerField({
               variant="outline"
               disabled={selected.length >= max}
             >
-              <Plus className="mr-1 h-3.5 w-3.5" />
+              <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
               Add products
             </Button>
           </DialogTrigger>
@@ -119,7 +119,10 @@ function ProductSearchList({
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search
+          className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+          aria-hidden="true"
+        />
         <Input
           value={search}
           onChange={(e) => {
@@ -133,9 +136,10 @@ function ProductSearchList({
           <button
             type="button"
             onClick={() => setSearch("")}
+            aria-label="Clear search"
             className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -249,17 +253,25 @@ function SelectedProductList({
                 type="button"
                 onClick={() => onMoveUp(idx)}
                 disabled={idx === 0}
+                aria-label="Move product up"
                 className="text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-30"
               >
-                <GripVertical className="h-3 w-3 rotate-90" />
+                <GripVertical
+                  className="h-3 w-3 rotate-90"
+                  aria-hidden="true"
+                />
               </button>
               <button
                 type="button"
                 onClick={() => onMoveDown(idx)}
                 disabled={idx === ids.length - 1}
+                aria-label="Move product down"
                 className="text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-30"
               >
-                <GripVertical className="h-3 w-3 -rotate-90" />
+                <GripVertical
+                  className="h-3 w-3 -rotate-90"
+                  aria-hidden="true"
+                />
               </button>
             </div>
             <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted">
@@ -282,8 +294,9 @@ function SelectedProductList({
               variant="ghost"
               className="h-6 w-6 shrink-0"
               onClick={() => onRemove(id)}
+              aria-label={`Remove ${p?.name ?? id}`}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3 w-3" aria-hidden="true" />
             </Button>
           </div>
         );

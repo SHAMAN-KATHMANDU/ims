@@ -344,7 +344,7 @@ export function ContactDetail({
                 href={`${basePath}/crm/contacts?companyId=${contact.company.id}`}
               >
                 <span className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 mt-0.5">
-                  <Building2 className="h-3 w-3 shrink-0" />
+                  <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />
                   {contact.company.name}
                 </span>
               </Link>
@@ -359,7 +359,10 @@ export function ContactDetail({
               href={`mailto:${contact.email}`}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-background border hover:bg-muted transition-colors"
             >
-              <Mail className="h-3 w-3 text-muted-foreground" />
+              <Mail
+                className="h-3 w-3 text-muted-foreground"
+                aria-hidden="true"
+              />
               <span className="truncate max-w-[160px]">{contact.email}</span>
             </a>
           )}
@@ -368,7 +371,10 @@ export function ContactDetail({
               href={`tel:${contact.phone}`}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-background border hover:bg-muted transition-colors"
             >
-              <Phone className="h-3 w-3 text-muted-foreground" />
+              <Phone
+                className="h-3 w-3 text-muted-foreground"
+                aria-hidden="true"
+              />
               {contact.phone}
             </a>
           )}
@@ -384,13 +390,13 @@ export function ContactDetail({
           )}
           {dealsEnabled && activeJourneyType && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
-              <Handshake className="h-3 w-3" />
+              <Handshake className="h-3 w-3" aria-hidden="true" />
               {activeJourneyType}
             </span>
           )}
           {contact.purchaseCount > 0 && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
-              <DollarSign className="h-3 w-3" />
+              <DollarSign className="h-3 w-3" aria-hidden="true" />
               {contact.purchaseCount} purchase
               {contact.purchaseCount !== 1 ? "s" : ""}
             </span>
@@ -417,7 +423,7 @@ export function ContactDetail({
               onClick={() => handleToggleTag(tl.tag.id)}
               title={`Click to remove "${tl.tag.name}"`}
             >
-              <Tag className="h-2.5 w-2.5" />
+              <Tag className="h-2.5 w-2.5" aria-hidden="true" />
               {tl.tag.name}
             </Badge>
           ))}
@@ -432,7 +438,7 @@ export function ContactDetail({
                 onClick={() => handleToggleTag(t.id)}
                 title={`Click to add "${t.name}"`}
               >
-                <Plus className="h-2.5 w-2.5" />
+                <Plus className="h-2.5 w-2.5" aria-hidden="true" />
                 {t.name}
               </Badge>
             ))}
@@ -465,7 +471,10 @@ export function ContactDetail({
                     value={value}
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 sm:px-3 h-9 text-xs font-medium shrink-0"
                   >
-                    <Icon className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <Icon
+                      className="h-3.5 w-3.5 sm:mr-1.5"
+                      aria-hidden="true"
+                    />
                     <span className="hidden sm:inline">{label}</span>
                     {value === "tasks" &&
                       contact.tasks &&
@@ -494,7 +503,7 @@ export function ContactDetail({
                 {dealsEnabled && contact.deals && contact.deals.length > 0 && (
                   <div className="rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Handshake className="h-3 w-3" />
+                      <Handshake className="h-3 w-3" aria-hidden="true" />
                       Deals
                     </div>
                     <p className="text-sm font-medium">
@@ -506,7 +515,7 @@ export function ContactDetail({
                 {contact.sales && contact.sales.length > 0 && (
                   <div className="rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <DollarSign className="h-3 w-3" />
+                      <DollarSign className="h-3 w-3" aria-hidden="true" />
                       Sales
                     </div>
                     <p className="text-sm font-medium">
@@ -528,7 +537,7 @@ export function ContactDetail({
                 {contact.tasks && contact.tasks.length > 0 && (
                   <div className="rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <CheckSquare className="h-3 w-3" />
+                      <CheckSquare className="h-3 w-3" aria-hidden="true" />
                       Tasks
                     </div>
                     <p className="text-sm font-medium">
@@ -539,7 +548,7 @@ export function ContactDetail({
                 {timeline.length > 0 && (
                   <div className="rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3" aria-hidden="true" />
                       Last activity
                     </div>
                     <p className="text-sm font-medium">
@@ -559,7 +568,7 @@ export function ContactDetail({
                     {contact.source && (
                       <div className="rounded-lg border bg-card p-3">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                          <MapPin className="h-3 w-3" />
+                          <MapPin className="h-3 w-3" aria-hidden="true" />
                           Source
                         </div>
                         <p className="text-sm font-medium">{contact.source}</p>
@@ -568,7 +577,7 @@ export function ContactDetail({
                     {activeJourneyType && (
                       <div className="rounded-lg border bg-card p-3">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                          <TrendingUp className="h-3 w-3" />
+                          <TrendingUp className="h-3 w-3" aria-hidden="true" />
                           Journey Type
                         </div>
                         <p className="text-sm font-medium">
@@ -591,7 +600,7 @@ export function ContactDetail({
                       <div key={n.id} className="rounded-lg border bg-card p-3">
                         <p className="text-sm">{n.content}</p>
                         <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3 w-3" aria-hidden="true" />
                           {format(
                             new Date(n.createdAt),
                             "MMM d, yyyy 'at' h:mm a",
@@ -613,7 +622,10 @@ export function ContactDetail({
                   contact.tasks?.length
                 ) && (
                   <div className="text-center py-10 text-muted-foreground">
-                    <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <UserIcon
+                      className="h-8 w-8 mx-auto mb-2 opacity-30"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm">No overview data yet.</p>
                     <p className="text-xs mt-1">
                       Edit this contact to add source and more.
@@ -632,7 +644,7 @@ export function ContactDetail({
                   onClick={() => setLogActivityType("CALL")}
                   className="gap-1.5"
                 >
-                  <Phone className="h-3.5 w-3.5" />
+                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                   Log Call
                 </Button>
                 <Button
@@ -641,7 +653,7 @@ export function ContactDetail({
                   onClick={() => setLogActivityType("EMAIL")}
                   className="gap-1.5"
                 >
-                  <Mail className="h-3.5 w-3.5" />
+                  <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                   Log Email
                 </Button>
                 <Button
@@ -650,7 +662,7 @@ export function ContactDetail({
                   onClick={() => setLogActivityType("MEETING")}
                   className="gap-1.5"
                 >
-                  <MessageSquare className="h-3.5 w-3.5" />
+                  <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
                   Log Meeting
                 </Button>
                 <Button
@@ -659,7 +671,7 @@ export function ContactDetail({
                   onClick={() => setLogNoteOpen(true)}
                   className="gap-1.5"
                 >
-                  <FileText className="h-3.5 w-3.5" />
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                   Log Note
                 </Button>
               </div>
@@ -824,7 +836,10 @@ export function ContactDetail({
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  <MessageSquare className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                  <MessageSquare
+                    className="h-7 w-7 mx-auto mb-2 opacity-30"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm">No activity logged yet.</p>
                 </div>
               )}
@@ -904,7 +919,7 @@ export function ContactDetail({
                     disabled={!taskTitle.trim() || createTaskMutation.isPending}
                     className="w-full"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                     {createTaskMutation.isPending
                       ? "Creating..."
                       : "Create Task"}
@@ -944,13 +959,19 @@ export function ContactDetail({
                         <div className="flex flex-wrap gap-2 mt-1">
                           {t.dueDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
+                              <Calendar
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
                               {format(new Date(t.dueDate), "MMM d, yyyy")}
                             </span>
                           )}
                           {t.assignedTo && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <UserIcon className="h-3 w-3" />
+                              <UserIcon
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
                               {t.assignedTo.username}
                             </span>
                           )}
@@ -966,7 +987,10 @@ export function ContactDetail({
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  <CheckSquare className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                  <CheckSquare
+                    className="h-7 w-7 mx-auto mb-2 opacity-30"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm">No tasks yet.</p>
                 </div>
               )}
@@ -993,7 +1017,10 @@ export function ContactDetail({
                           Value
                         </Label>
                         <div className="relative mt-1">
-                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <DollarSign
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+                            aria-hidden="true"
+                          />
                           <Input
                             type="number"
                             placeholder="0"
@@ -1036,7 +1063,7 @@ export function ContactDetail({
                       }
                       className="w-full"
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                       {createDealMutation.isPending
                         ? "Creating..."
                         : "Create Deal"}
@@ -1056,7 +1083,10 @@ export function ContactDetail({
                                 {d.name}
                               </p>
                               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                <DollarSign className="h-3 w-3" />
+                                <DollarSign
+                                  className="h-3 w-3"
+                                  aria-hidden="true"
+                                />
                                 {formatCurrency(d.value)}
                               </p>
                             </div>
@@ -1090,7 +1120,10 @@ export function ContactDetail({
                   </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
-                    <Handshake className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    <Handshake
+                      className="h-7 w-7 mx-auto mb-2 opacity-30"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm">No deals yet.</p>
                   </div>
                 )}
@@ -1137,12 +1170,13 @@ export function ContactDetail({
                           className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                           onClick={() => handleDeleteNote(n.id)}
                           disabled={deleteNoteMutation.isPending}
+                          aria-label="Delete note"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                        <Clock className="h-3 w-3" aria-hidden="true" />
                         {format(
                           new Date(n.createdAt),
                           "MMM d, yyyy 'at' h:mm a",
@@ -1154,7 +1188,10 @@ export function ContactDetail({
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  <FileText className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                  <FileText
+                    className="h-7 w-7 mx-auto mb-2 opacity-30"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm">No notes yet.</p>
                 </div>
               )}
@@ -1186,7 +1223,7 @@ export function ContactDetail({
                       }
                       className="w-full"
                     >
-                      <Paperclip className="h-4 w-4 mr-1" />
+                      <Paperclip className="h-4 w-4 mr-1" aria-hidden="true" />
                       {addAttachmentMutation.isPending
                         ? "Uploading..."
                         : "Upload"}
@@ -1202,7 +1239,10 @@ export function ContactDetail({
                         className="rounded-lg border bg-card p-3 flex items-center justify-between gap-2"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Paperclip
+                            className="h-4 w-4 text-muted-foreground shrink-0"
+                            aria-hidden="true"
+                          />
                           <span className="text-sm truncate">{a.fileName}</span>
                         </div>
                         <Button
@@ -1211,15 +1251,19 @@ export function ContactDetail({
                           className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                           onClick={() => handleDeleteAttachment(a.id)}
                           disabled={deleteAttachmentMutation.isPending}
+                          aria-label={`Delete ${a.fileName}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
-                    <Paperclip className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    <Paperclip
+                      className="h-7 w-7 mx-auto mb-2 opacity-30"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm">No files attached.</p>
                   </div>
                 )}

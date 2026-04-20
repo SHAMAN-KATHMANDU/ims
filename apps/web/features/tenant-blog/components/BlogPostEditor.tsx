@@ -237,9 +237,13 @@ export function BlogPostEditor({
               id="blog-title"
               {...form.register("title")}
               placeholder="Welcome to our journal"
+              aria-invalid={form.formState.errors.title ? true : undefined}
+              aria-describedby={
+                form.formState.errors.title ? "blog-title-error" : undefined
+              }
             />
             {form.formState.errors.title && (
-              <p className="text-xs text-destructive">
+              <p id="blog-title-error" className="text-xs text-destructive">
                 {form.formState.errors.title.message}
               </p>
             )}
@@ -255,12 +259,18 @@ export function BlogPostEditor({
                 form.setValue("slug", e.target.value);
               }}
               placeholder="welcome-to-our-journal"
+              aria-invalid={form.formState.errors.slug ? true : undefined}
+              aria-describedby={
+                form.formState.errors.slug
+                  ? "blog-slug-hint blog-slug-error"
+                  : "blog-slug-hint"
+              }
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="blog-slug-hint" className="text-xs text-muted-foreground">
               The URL path: /blog/{values.slug || "your-slug"}
             </p>
             {form.formState.errors.slug && (
-              <p className="text-xs text-destructive">
+              <p id="blog-slug-error" className="text-xs text-destructive">
                 {form.formState.errors.slug.message}
               </p>
             )}
@@ -276,8 +286,12 @@ export function BlogPostEditor({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Body</Label>
+          <div
+            className="space-y-2"
+            role="group"
+            aria-labelledby="blog-body-label"
+          >
+            <Label id="blog-body-label">Body</Label>
             <Controller
               control={form.control}
               name="bodyMarkdown"
@@ -289,7 +303,7 @@ export function BlogPostEditor({
               )}
             />
             {form.formState.errors.bodyMarkdown && (
-              <p className="text-xs text-destructive">
+              <p className="text-xs text-destructive" role="alert">
                 {form.formState.errors.bodyMarkdown.message}
               </p>
             )}
@@ -315,7 +329,7 @@ export function BlogPostEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label htmlFor="blog-category">Category</Label>
               <Controller
                 control={form.control}
                 name="categoryId"
@@ -326,7 +340,7 @@ export function BlogPostEditor({
                       field.onChange(v === "none" ? undefined : v)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="blog-category" aria-label="Category">
                       <SelectValue placeholder="Uncategorized" />
                     </SelectTrigger>
                     <SelectContent>
@@ -351,8 +365,9 @@ export function BlogPostEditor({
               onChange={(e) => setTagInput(e.target.value)}
               onBlur={handleTagBlur}
               placeholder="welcome, intro, launch"
+              aria-describedby="blog-tags-hint"
             />
-            <p className="text-xs text-muted-foreground">
+            <p id="blog-tags-hint" className="text-xs text-muted-foreground">
               Comma-separated. Max 20 tags, 40 characters each.
             </p>
           </div>
@@ -373,7 +388,7 @@ export function BlogPostEditor({
               )}
             />
             {form.formState.errors.heroImageUrl && (
-              <p className="text-xs text-destructive">
+              <p className="text-xs text-destructive" role="alert">
                 {form.formState.errors.heroImageUrl.message}
               </p>
             )}

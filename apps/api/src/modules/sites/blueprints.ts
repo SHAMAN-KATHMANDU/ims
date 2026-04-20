@@ -99,16 +99,515 @@ function productsIndexLayout(): BlockNode[] {
   ];
 }
 
-function productDetailLayout(): BlockNode[] {
+// Shared gallery+buybox row builder. Each template's PDP factory picks
+// its own gallery layout / buybox options but the two-column scaffold
+// stays consistent (sticky gallery on the left, buybox stacks under on
+// mobile).
+function pdpColumns(
+  galleryLayout: BlockPropsMap["pdp-gallery"]["layout"] = "thumbs-below",
+  opts: {
+    enableZoom?: boolean;
+    galleryAspect?: BlockPropsMap["pdp-gallery"]["aspectRatio"];
+    buybox?: BlockPropsMap["pdp-buybox"];
+    stickyFirst?: boolean;
+  } = {},
+): BlockNode {
+  const galleryProps: BlockPropsMap["pdp-gallery"] = {
+    layout: galleryLayout,
+    enableZoom: opts.enableZoom ?? true,
+    ...(opts.galleryAspect ? { aspectRatio: opts.galleryAspect } : {}),
+  };
+  const buyboxProps: BlockPropsMap["pdp-buybox"] = {
+    showSku: true,
+    showCategory: true,
+    ...opts.buybox,
+  };
+  return {
+    ...block("columns", {
+      count: 2,
+      gap: "lg",
+      verticalAlign: "start",
+      stackBelow: "lg",
+      stickyFirst: opts.stickyFirst ?? true,
+    }),
+    children: [
+      block("pdp-gallery", galleryProps),
+      block("pdp-buybox", buyboxProps),
+    ],
+  };
+}
+
+// Per-template PDP layouts. Each composition is tuned to the template's
+// voice — apothecary leans on trust + FAQ, dark leans on drop urgency,
+// zen stays bare, gallery makes the image dominate, etc. All share the
+// breadcrumbs + gallery/buybox + pdp-details backbone so the tenant can
+// delete a section without breaking the rest of the page.
+
+function editorialPdp(): BlockNode[] {
   return [
     block("breadcrumbs", { scope: "product" }),
-    block("pdp-gallery", { layout: "thumbs-below", enableZoom: true }),
-    block("pdp-buybox", { showSku: true, showCategory: true }),
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "lg",
+        showDescription: true,
+        variantDisplay: "chips",
+      },
+    }),
+    block("pdp-details", { tabs: true }),
+    block("story-split", {
+      eyebrow: "On this piece",
+      title: "Chosen for a reason",
+      body: "Every object we carry has been handled, assessed, and selected. Read the note behind why this one made it in.",
+      imageSide: "right",
+    }),
+    block("reviews-list", {
+      heading: "From the readers",
+      productIdSource: "current-pdp",
+      pageSize: 6,
+      showRatingSummary: true,
+      emptyMessage: "No reviews yet — be the first to weigh in.",
+    }),
+    block("pdp-related", {
+      heading: "More from the collection",
+      limit: 4,
+      columns: 4,
+    }),
+  ];
+}
+
+function organicPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("stacked", {
+      buybox: { showSku: true, showCategory: true, showDescription: true },
+    }),
+    block("trust-strip", {
+      items: [
+        { label: "Naturally sourced", value: "100%" },
+        { label: "Small batch", value: "Always" },
+        { label: "Ethical", value: "Supply chain" },
+      ],
+    }),
     block("pdp-details", { tabs: false }),
+    block("story-split", {
+      eyebrow: "How it's made",
+      title: "Made the slow way",
+      body: "Each piece takes the time it takes — hours of hand-finishing, weeks of resting, months from source to shelf.",
+      imageSide: "left",
+    }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Pairs well with",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bare",
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
+    }),
+  ];
+}
+
+function darkPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "lg",
+        variantDisplay: "chips",
+      },
+      stickyFirst: true,
+    }),
+    block("stats-band", {
+      dark: true,
+      alignment: "center",
+      valueSize: "lg",
+      items: [
+        { value: "24h", label: "Dispatch" },
+        { value: "Limited", label: "Run" },
+        { value: "∞", label: "Replays" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("fbt", {
+      heading: "Completes the fit",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("bento-showcase", {
+      eyebrow: "This month",
+      heading: "Other drops",
+      source: "featured",
+      limit: 5,
+    }),
+    block("reviews-list", {
+      heading: "Reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+  ];
+}
+
+function brutalistPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: false,
+        variantDisplay: "dropdown",
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("pdp-related", { heading: "More", limit: 4, columns: 4 }),
+  ];
+}
+
+function zenPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: false,
+        showCategory: true,
+        priceSize: "md",
+        showDescription: true,
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("reviews-list", {
+      heading: "Notes from others",
+      productIdSource: "current-pdp",
+      pageSize: 4,
+      showRatingSummary: true,
+    }),
+    block("recently-viewed", {
+      heading: "Recently considered",
+      limit: 3,
+      columns: 3,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
+    }),
+  ];
+}
+
+function coastalPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", { galleryAspect: "4/5" }),
+    block("pdp-details", { tabs: false }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹3,000",
+          icon: "shipping",
+        },
+        { label: "Easy returns", detail: "30-day window", icon: "returns" },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "What buyers say",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Style it with",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
+    }),
+  ];
+}
+
+function apothecaryPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+      },
+    }),
+    block("trust-strip", {
+      columns: 4,
+      items: [
+        { label: "Botanical", value: "Sourced" },
+        { label: "Small batch", value: "Handmade" },
+        { label: "Third-party", value: "Tested" },
+        { label: "Cruelty", value: "Free" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("faq", {
+      heading: "Questions about this formula",
+      variant: "bordered",
+      items: [
+        {
+          question: "How should I store it?",
+          answer:
+            "Cool, dry, away from direct sun. Most products keep 12 months after opening.",
+        },
+        {
+          question: "Is it tested on animals?",
+          answer:
+            "Never. Every formula is cruelty-free and third-party verified.",
+        },
+        {
+          question: "Suitable for sensitive skin?",
+          answer:
+            "Most formulas are — the label calls out common allergens when they're present.",
+        },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Often paired with",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Free shipping", detail: "Over ₹2,000", icon: "shipping" },
+        { label: "30-day returns", detail: "Unopened", icon: "returns" },
+        { label: "Secure payment", detail: "SSL", icon: "secure" },
+      ],
+    }),
+  ];
+}
+
+function retroPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: { showSku: true, showCategory: true, priceSize: "lg" },
+    }),
+    block("stats-band", {
+      items: [
+        { value: "40 yrs", label: "Running" },
+        { value: "1k+", label: "Products" },
+        { value: "100%", label: "Ours" },
+      ],
+    }),
+    block("pdp-details", { tabs: true }),
+    block("reviews-list", {
+      heading: "What the regulars say",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("fbt", {
+      heading: "Grab these too",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    }),
+    block("pdp-related", {
+      heading: "More classics",
+      limit: 4,
+      columns: 4,
+    }),
+    block("bento-showcase", {
+      heading: "This month's picks",
+      source: "featured",
+      limit: 5,
+    }),
+  ];
+}
+
+function artisanPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-left", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+        priceSize: "lg",
+      },
+    }),
+    block("story-split", {
+      eyebrow: "The maker",
+      title: "Every piece is signed",
+      body: "This was made by one of the artisans we've worked with for years. It carries their mark on the base — a small assurance that a real pair of hands finished it.",
+      imageSide: "right",
+    }),
+    block("pdp-details", { tabs: true }),
+    block("testimonials", {
+      heading: "From our collectors",
+      layout: "stacked",
+      items: [
+        {
+          quote: "Four pieces over five years, each still in rotation.",
+          author: "Priya S.",
+          role: "Bangalore",
+        },
+        {
+          quote: "The detail is extraordinary — photos don't do it justice.",
+          author: "James W.",
+          role: "Brooklyn",
+        },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        {
+          label: "Handmade",
+          detail: "Signed by the maker",
+          icon: "warranty",
+        },
+        { label: "Gift-ready", detail: "Complimentary wrap", icon: "gift" },
+        {
+          label: "Lifetime care",
+          detail: "Repairs at cost",
+          icon: "support",
+        },
+      ],
+    }),
+    block("pdp-related", {
+      heading: "From the same maker",
+      limit: 4,
+      columns: 4,
+    }),
+  ];
+}
+
+function galleryPdp(): BlockNode[] {
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("stacked", {
+      galleryAspect: "4/5",
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        priceSize: "md",
+        showDescription: true,
+      },
+    }),
+    block("pdp-details", { tabs: false }),
+    block("bento-showcase", {
+      eyebrow: "From the same artist",
+      heading: "Related works",
+      source: "featured",
+      limit: 5,
+    }),
+    block("reviews-list", {
+      heading: "Notes",
+      productIdSource: "current-pdp",
+      pageSize: 4,
+      showRatingSummary: true,
+      emptyMessage: "No public notes yet.",
+    }),
+    block("pdp-related", {
+      heading: "Rest of the catalog",
+      limit: 6,
+      columns: 3,
+    }),
+  ];
+}
+
+function blankPdp(): BlockNode[] {
+  // New-tenant default PDP. Matches the home blueprint's "showcase every
+  // strong block" philosophy — tenants can delete reviews/fbt/recently
+  // if not relevant, but they see the full toolkit out of the box.
+  return [
+    block("breadcrumbs", { scope: "product" }),
+    pdpColumns("thumbs-below", {
+      buybox: {
+        showSku: true,
+        showCategory: true,
+        showDescription: true,
+        priceSize: "lg",
+      },
+    }),
+    block("pdp-details", { tabs: true }),
+    block("trust-strip", {
+      items: [
+        { label: "Free shipping", value: "Over ₹2,000" },
+        { label: "30-day returns", value: "No questions" },
+        { label: "Secure payment", value: "SSL" },
+      ],
+    }),
+    block("reviews-list", {
+      heading: "Customer reviews",
+      productIdSource: "current-pdp",
+      pageSize: 5,
+      showRatingSummary: true,
+      emptyMessage: "Be the first to review this product.",
+    }),
+    block("fbt", {
+      heading: "Frequently bought together",
+      productIdSource: "current-pdp",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
+    }),
     block("pdp-related", {
       heading: "You may also like",
       limit: 4,
       columns: 4,
+    }),
+    block("recently-viewed", {
+      heading: "Recently viewed",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bare",
+      hideWhenEmpty: true,
+      excludeCurrent: true,
     }),
   ];
 }
@@ -186,6 +685,31 @@ function editorialHome(): BlockNode[] {
         },
       ],
     }),
+    block("faq", {
+      heading: "Frequently asked",
+      items: [
+        {
+          question: "Do you ship internationally?",
+          answer:
+            "Yes, to 60+ countries. Standard delivery runs 7–12 business days.",
+        },
+        {
+          question: "What is your return policy?",
+          answer:
+            "30-day returns on everything except final-sale items. We cover the return label for domestic orders.",
+        },
+        {
+          question: "Are the pieces really handcrafted?",
+          answer:
+            "Every single one. We work directly with a small roster of artisans — no factories, no contractors.",
+        },
+        {
+          question: "Do you offer gift wrapping?",
+          answer:
+            "Yes — optional at checkout. Each gift box comes with a hand-written card if you include a message.",
+        },
+      ],
+    }),
     block("newsletter", {
       title: "Stay in the loop",
       subtitle: "Occasional updates from the workshop.",
@@ -233,6 +757,24 @@ function organicHome(): BlockNode[] {
         { label: "Ethical", value: "Supply chain" },
       ],
     }),
+    block("testimonials", {
+      heading: "What makers are saying",
+      layout: "grid",
+      items: [
+        {
+          quote:
+            "Every piece I send to their studio comes back with more soul than I gave it. A rare partnership.",
+          author: "Aanya Raut",
+          role: "Weaver, Kolhapur",
+        },
+        {
+          quote:
+            "They pay on time, order in small batches, and tell the story honestly. That is everything.",
+          author: "Deepak Lal",
+          role: "Potter, Pondicherry",
+        },
+      ],
+    }),
     block("newsletter", {
       title: "Grow with us",
       subtitle: "Seasonal notes, nothing else.",
@@ -278,6 +820,33 @@ function darkHome(): BlockNode[] {
       body: "Every piece takes a position. We're not interested in the middle.",
       imageSide: "left",
     }),
+    block("testimonials", {
+      heading: "Field notes",
+      layout: "grid",
+      items: [
+        {
+          quote:
+            "Nothing apologetic about this work. You can tell someone made a decision and committed.",
+          author: "Tomás R.",
+          role: "Barcelona",
+        },
+        {
+          quote:
+            "Bought the chair eighteen months ago. Still the best object in the house.",
+          author: "Nina K.",
+          role: "Berlin",
+        },
+      ],
+    }),
+    block("policy-strip", {
+      layout: "inline",
+      dark: true,
+      items: [
+        { label: "Free shipping", detail: "Over ₹5,000", icon: "shipping" },
+        { label: "Secure checkout", detail: "256-bit SSL", icon: "secure" },
+        { label: "30-day returns", detail: "No questions", icon: "returns" },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Get notified",
@@ -302,6 +871,14 @@ function brutalistHome(): BlockNode[] {
       limit: 12,
       columns: 4,
       cardVariant: "bare",
+    }),
+    block("stats-band", {
+      items: [
+        { value: "12", label: "Years making" },
+        { value: "3", label: "People" },
+        { value: "1", label: "Shop" },
+        { value: "0", label: "Bullshit" },
+      ],
     }),
     block("story-split", {
       title: "No frills",
@@ -340,6 +917,13 @@ function zenHome(): BlockNode[] {
       limit: 6,
       columns: 3,
       cardVariant: "bare",
+    }),
+    block("trust-strip", {
+      items: [
+        { label: "Shipping", value: "Worldwide, carbon-offset" },
+        { label: "Returns", value: "Thirty days, no questions" },
+        { label: "Questions", value: "Replies within a day" },
+      ],
     }),
     block("stats-band", {
       items: [
@@ -391,6 +975,48 @@ function coastalHome(): BlockNode[] {
       source: "featured",
       limit: 5,
     }),
+    block("testimonials", {
+      heading: "Postcards from customers",
+      layout: "carousel",
+      items: [
+        {
+          quote:
+            "Wore the linen shirt straight from the plane to the beach and it looked better by sunset. Feels like summer.",
+          author: "Maya A.",
+          role: "Santa Monica",
+        },
+        {
+          quote:
+            "The towel set is now in every beach bag in our family. Good weight, dries fast, ages beautifully.",
+          author: "Ravi K.",
+          role: "Kovalam",
+        },
+        {
+          quote:
+            "Packaging is plastic-free and actually pretty. Small touches matter.",
+          author: "Jules P.",
+          role: "Bondi",
+        },
+      ],
+    }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹3,000",
+          icon: "shipping",
+        },
+        { label: "Easy returns", detail: "30-day window", icon: "returns" },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Summer notes",
@@ -437,6 +1063,24 @@ function apothecaryHome(): BlockNode[] {
       imageSide: "left",
       ctaHref: "/about",
       ctaLabel: "Our story",
+    }),
+    block("testimonials", {
+      heading: "Kind words from the shelves",
+      layout: "stacked",
+      items: [
+        {
+          quote:
+            "The rosehip balm cleared up a dryness nothing else would touch. I buy it in threes now.",
+          author: "Leela N.",
+          role: "Goa",
+        },
+        {
+          quote:
+            "Everything smells like a garden, not a lab. My grandmother would approve.",
+          author: "Helen B.",
+          role: "Edinburgh",
+        },
+      ],
     }),
     block("faq", {
       heading: "Common questions",
@@ -501,6 +1145,29 @@ function retroHome(): BlockNode[] {
         { label: "Secure", value: "Checkout" },
       ],
     }),
+    block("testimonials", {
+      heading: "Since day one",
+      layout: "carousel",
+      items: [
+        {
+          quote:
+            "Been buying here since the 80s. Same family, same quality, same welcome.",
+          author: "Harold C.",
+          role: "Hyderabad",
+        },
+        {
+          quote:
+            "You can't find this stuff anywhere else. Classic fit, built to outlast fashion.",
+          author: "Ellen M.",
+          role: "Dublin",
+        },
+        {
+          quote: "Perfect gift shop for the hard-to-please uncle.",
+          author: "Priyal S.",
+          role: "Pune",
+        },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Don't miss a drop",
@@ -540,6 +1207,19 @@ function artisanHome(): BlockNode[] {
       columns: 4,
       cardVariant: "bordered",
     }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Handmade", detail: "Signed by the maker", icon: "warranty" },
+        {
+          label: "Free shipping",
+          detail: "Orders over ₹5,000",
+          icon: "shipping",
+        },
+        { label: "Gift-ready", detail: "Complimentary wrap", icon: "gift" },
+        { label: "Lifetime care", detail: "Repairs at cost", icon: "support" },
+      ],
+    }),
     block("testimonials", {
       heading: "From our collectors",
       items: [
@@ -558,6 +1238,31 @@ function artisanHome(): BlockNode[] {
           quote: "They remember me by name. Feels like a real shop.",
           author: "Amelia K.",
           role: "Paris",
+        },
+      ],
+    }),
+    block("faq", {
+      heading: "Before you commission",
+      items: [
+        {
+          question: "How long does a piece take to make?",
+          answer:
+            "Most work ships in two to four weeks. Larger commissions can run six to eight. We'll give you a date when you order and keep you updated if anything shifts.",
+        },
+        {
+          question: "Can I commission something one-of-a-kind?",
+          answer:
+            "Yes — write to us with the idea, a budget range, and a rough timeline. We'll come back within a few days with whether we can take it on and what it would cost.",
+        },
+        {
+          question: "How do I care for a handmade piece?",
+          answer:
+            "Each piece ships with a care card written by the maker. In short: keep it dry, out of direct sun, and reach out if anything needs repair — we cover that at cost for life.",
+        },
+        {
+          question: "Do you ship internationally?",
+          answer:
+            "Yes, anywhere we can insure. Larger pieces go by freight with signature on delivery.",
         },
       ],
     }),
@@ -603,6 +1308,36 @@ function galleryHome(): BlockNode[] {
       body: "We show work by artists we know personally. The roster is small on purpose.",
       imageSide: "right",
     }),
+    block("policy-strip", {
+      layout: "inline",
+      items: [
+        { label: "Insured shipping", detail: "Worldwide", icon: "shipping" },
+        {
+          label: "Certificate",
+          detail: "Provenance included",
+          icon: "warranty",
+        },
+        { label: "Private viewing", detail: "By appointment", icon: "support" },
+      ],
+    }),
+    block("testimonials", {
+      heading: "From our collectors",
+      layout: "stacked",
+      items: [
+        {
+          quote:
+            "The gallery pairs pieces with collectors carefully. What I left with felt chosen for me, not sold to me.",
+          author: "Rohan V.",
+          role: "Collector, Delhi",
+        },
+        {
+          quote:
+            "Every acquisition arrives with a letter from the artist. That kind of intimacy is rare now.",
+          author: "Claire D.",
+          role: "Collector, Montréal",
+        },
+      ],
+    }),
     block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Exhibition openings",
@@ -613,20 +1348,95 @@ function galleryHome(): BlockNode[] {
 }
 
 function blankHome(): BlockNode[] {
+  // New-tenant default blueprint. Deliberately NOT minimal — every new
+  // store gets a full, polished home out of the box (hero, trust-strip,
+  // product-grid, story-split, testimonials, policy-strip, newsletter).
+  // Tenants delete what they don't want rather than staring at an empty
+  // canvas and wondering what's possible. Keep copy as generic placeholders
+  // so it's obvious they need replacing before launch.
   return [
     block("hero", {
       variant: "standard",
-      title: "Your Brand",
-      subtitle: "Start building your store",
-      ctaLabel: "Shop now",
+      title: "Welcome to your store",
+      subtitle: "Replace this headline with your brand's promise.",
+      ctaLabel: "Shop the collection",
       ctaHref: "/products",
     }),
+    block("trust-strip", {
+      items: [
+        { label: "Free shipping", value: "Over ₹2,000" },
+        { label: "Easy returns", value: "30 days" },
+        { label: "Secure checkout", value: "SSL" },
+        { label: "Real support", value: "Mon–Sat" },
+      ],
+    }),
     block("product-grid", {
-      heading: "Featured products",
+      eyebrow: "Featured",
+      heading: "Shop our picks",
       source: "featured",
-      limit: 4,
+      limit: 8,
       columns: 4,
-      cardVariant: "bordered",
+      cardVariant: "card",
+    }),
+    block("story-split", {
+      eyebrow: "Our story",
+      title: "A short line about who you are",
+      body: "Use this space to tell visitors why your store exists — what you care about, who you make for, and what makes your picks different. Two or three sentences is plenty.",
+      imageSide: "right",
+      ctaHref: "/about",
+      ctaLabel: "Learn more",
+    }),
+    block("testimonials", {
+      heading: "What customers say",
+      layout: "grid",
+      columns: 3,
+      items: [
+        {
+          quote:
+            "Replace with a real customer quote once you have one — short, specific, and under 25 words works best.",
+          author: "A. Shopper",
+          role: "Verified buyer",
+        },
+        {
+          quote:
+            "A second quote helps buyers see themselves here. Two or three testimonials is the sweet spot.",
+          author: "B. Reviewer",
+          role: "Loyal customer",
+        },
+        {
+          quote: "Swap these placeholders for real reviews before you launch.",
+          author: "C. Fan",
+          role: "Repeat buyer",
+        },
+      ],
+    }),
+    block("policy-strip", {
+      layout: "grid",
+      columns: 4,
+      items: [
+        {
+          label: "Free shipping",
+          detail: "On orders over ₹2,000",
+          icon: "shipping",
+        },
+        {
+          label: "30-day returns",
+          detail: "No-questions-asked",
+          icon: "returns",
+        },
+        {
+          label: "Secure payment",
+          detail: "Encrypted checkout",
+          icon: "secure",
+        },
+        { label: "We're here", detail: "Mon–Sat support", icon: "support" },
+      ],
+    }),
+    block("newsletter", {
+      title: "Join the list",
+      subtitle: "Occasional updates — no spam.",
+      cta: "Subscribe",
+      variant: "inline",
     }),
   ];
 }
@@ -641,7 +1451,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: editorialHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": editorialPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -671,7 +1481,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: organicHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": organicPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -701,7 +1511,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: darkHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": darkPdp(),
     },
     defaultThemeTokens: {
       mode: "dark",
@@ -731,7 +1541,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: brutalistHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": brutalistPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -765,7 +1575,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: zenHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": zenPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -796,7 +1606,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: coastalHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": coastalPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -826,7 +1636,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: apothecaryHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": apothecaryPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -856,7 +1666,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: retroHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": retroPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -886,7 +1696,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: artisanHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": artisanPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -916,7 +1726,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: galleryHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": galleryPdp(),
     },
     defaultThemeTokens: {
       mode: "light",
@@ -946,7 +1756,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: blankHome(),
       "products-index": productsIndexLayout(),
-      "product-detail": productDetailLayout(),
+      "product-detail": blankPdp(),
     },
   },
 };

@@ -51,10 +51,14 @@ const SECTION_BG: Record<NonNullable<SectionProps["background"]>, string> = {
 };
 
 export function SectionBlock({
+  node,
   props,
   children,
 }: BlockComponentProps<SectionProps>) {
-  const padding = SECTION_PADDING[props.paddingY ?? "balanced"];
+  const wrapperHasPadY = node.style?.paddingY !== undefined;
+  const padding = wrapperHasPadY
+    ? undefined
+    : SECTION_PADDING[props.paddingY ?? "balanced"];
   const maxWidth = SECTION_MAX_WIDTH[props.maxWidth ?? "default"];
   const background = SECTION_BG[props.background ?? "default"];
   const color =

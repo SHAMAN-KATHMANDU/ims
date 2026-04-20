@@ -105,7 +105,10 @@ export function UserSalesReportFilterBar({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
       <Select value={sortValue} onValueChange={onSortChange}>
         <SelectTrigger className="h-9 w-full sm:w-[200px] shrink-0 gap-2 text-sm">
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <ArrowUpDown
+            className="h-3.5 w-3.5 text-muted-foreground"
+            aria-hidden="true"
+          />
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>
@@ -123,7 +126,7 @@ export function UserSalesReportFilterBar({
             size="sm"
             className="h-9 gap-2 text-sm shrink-0"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
           </Button>
         </PopoverTrigger>
@@ -208,7 +211,10 @@ export function UserSalesReportFilterBar({
                       !startDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {startDate ? format(startDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -234,7 +240,10 @@ export function UserSalesReportFilterBar({
                       !endDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    <CalendarIcon
+                      className="mr-2 h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
                     {endDate ? format(endDate, "MMM d") : "Select"}
                   </Button>
                 </PopoverTrigger>
@@ -255,7 +264,7 @@ export function UserSalesReportFilterBar({
                 className="h-8 w-full text-xs col-span-2"
                 onClick={onClearDates}
               >
-                <X className="h-3.5 w-3.5 mr-2" />
+                <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
                 Clear dates
               </Button>
             )}
@@ -269,7 +278,7 @@ export function UserSalesReportFilterBar({
           className="h-8 text-xs"
           onClick={onClearAllFilters}
         >
-          <X className="h-3.5 w-3.5 mr-2" />
+          <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
           Clear filters
         </Button>
       )}

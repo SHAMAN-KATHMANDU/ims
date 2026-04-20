@@ -99,7 +99,7 @@ export function TenantsPage() {
             href={`${basePath}/platform/tenants/new`}
             className="inline-flex items-center gap-2"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
             New tenant
           </Link>
         </Button>
@@ -107,8 +107,13 @@ export function TenantsPage() {
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
+            type="search"
+            aria-label="Search tenants by name or slug"
             placeholder="Search by name or slug..."
             value={search}
             onChange={(e) => {
@@ -125,7 +130,7 @@ export function TenantsPage() {
             setPage(DEFAULT_PAGE);
           }}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[160px]" aria-label="Filter by plan">
             <SelectValue placeholder="Plan" />
           </SelectTrigger>
           <SelectContent>
@@ -142,7 +147,10 @@ export function TenantsPage() {
             setPage(DEFAULT_PAGE);
           }}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger
+            className="w-[160px]"
+            aria-label="Filter by subscription status"
+          >
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>

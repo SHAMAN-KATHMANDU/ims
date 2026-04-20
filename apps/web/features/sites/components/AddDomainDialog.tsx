@@ -93,9 +93,13 @@ export function AddDomainDialog({
               placeholder="www.acme.com"
               autoComplete="off"
               {...form.register("hostname")}
+              aria-invalid={form.formState.errors.hostname ? true : undefined}
+              aria-describedby={
+                form.formState.errors.hostname ? "hostname-error" : undefined
+              }
             />
             {form.formState.errors.hostname && (
-              <p className="text-sm text-destructive">
+              <p id="hostname-error" className="text-sm text-destructive">
                 {form.formState.errors.hostname.message}
               </p>
             )}
@@ -111,7 +115,11 @@ export function AddDomainDialog({
                 })
               }
             >
-              <SelectTrigger id="appType">
+              <SelectTrigger
+                id="appType"
+                aria-label="App type"
+                aria-describedby="appType-hint"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -120,7 +128,7 @@ export function AddDomainDialog({
                 <SelectItem value="API">API</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p id="appType-hint" className="text-xs text-muted-foreground">
               WEBSITE domains require the website feature to be enabled first.
             </p>
           </div>

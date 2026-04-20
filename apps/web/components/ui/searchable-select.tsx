@@ -84,7 +84,10 @@ export function SearchableSelect({
           <span className="truncate">
             {value === "" && !includeAll ? placeholder : selectedLabel}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown
+            className="ml-2 h-4 w-4 shrink-0 opacity-50"
+            aria-hidden="true"
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[min(90vw,280px)] p-0" align="start">
@@ -104,7 +107,10 @@ export function SearchableSelect({
                     onSelect={() => handleSelect(opt.value)}
                   >
                     {isSelected ? (
-                      <Check className="mr-2 h-4 w-4 shrink-0" />
+                      <Check
+                        className="mr-2 h-4 w-4 shrink-0"
+                        aria-hidden="true"
+                      />
                     ) : (
                       <span className="mr-2 h-4 w-4 shrink-0 w-4" />
                     )}
