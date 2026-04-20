@@ -21,7 +21,7 @@
 
 import { useState } from "react";
 import axios from "axios";
-import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Globe,
   Lock,
@@ -101,6 +101,8 @@ type TabValue = (typeof TABS)[number]["value"];
 
 export function TenantSitePage() {
   const { toast } = useToast();
+  const pathname = usePathname();
+  const workspaceSlug = pathname.split("/")[1] ?? "";
   const configQuery = useSiteConfig();
   const publishMutation = usePublishSite();
   const unpublishMutation = useUnpublishSite();
@@ -214,10 +216,15 @@ export function TenantSitePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild>
-              <Link href="site/design">
+              <a
+                href={`/${workspaceSlug}/site-editor`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Sparkles className="mr-1.5 h-4 w-4" aria-hidden="true" />
                 Open design editor
-              </Link>
+                <ExternalLink className="ml-1.5 h-3 w-3" aria-hidden="true" />
+              </a>
             </Button>
             {config.isPublished ? (
               <Button

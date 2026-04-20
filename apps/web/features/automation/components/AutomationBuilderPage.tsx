@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutTemplate } from "lucide-react";
+import { LayoutTemplate, AlertTriangle } from "lucide-react";
 import { HelpTopicSheet } from "@/components/help-topic-sheet";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AutomationForm } from "./AutomationForm";
@@ -38,11 +39,15 @@ import {
 import {
   useArchiveAutomationDefinition,
   useAutomationDefinitions,
-  useAutomationRuns,
+  useBulkToggleAutomations,
   useCreateAutomationDefinition,
   useReplayAutomationEvent,
+  useToggleAutomationDefinition,
   useUpdateAutomationDefinition,
 } from "../hooks/use-automation";
+import { AutomationAnalyticsCard } from "./AutomationAnalyticsCard";
+import { AutomationTestPanel } from "./AutomationTestPanel";
+import { AutomationRunHistory } from "./AutomationRunHistory";
 import type {
   AutomationDefinition,
   CreateAutomationDefinitionInput,
@@ -67,11 +72,6 @@ import {
   type AutomationTemplateCategory,
 } from "@repo/shared";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
-import {
-  describeBranchDecisionLines,
-  describeSkippedBranchArmsLines,
-  extractGraphBranchDecisions,
-} from "../utils/automation-flow-graph-view";
 
 function catalogTemplateToFormValues(
   entry: AutomationTemplateCatalogEntry,
@@ -146,10 +146,37 @@ function toFormValues(
   };
 }
 
+/** Returns pairs (a, b) of automations sharing any trigger+actionType. */
+function detectConflicts(
+  automations: AutomationDefinition[],
+): Array<[AutomationDefinition, AutomationDefinition]> {
+  const conflicts: Array<[AutomationDefinition, AutomationDefinition]> = [];
+  for (let i = 0; i < automations.length; i++) {
+    for (let j = i + 1; j < automations.length; j++) {
+      const a = automations[i]!;
+      const b = automations[j]!;
+      if (a.status !== "ACTIVE" || b.status !== "ACTIVE") continue;
+      const aEvents = new Set(a.triggers.map((t) => t.eventName));
+      const bEvents = new Set(b.triggers.map((t) => t.eventName));
+      const sharedEvent = [...aEvents].some((e) => bEvents.has(e));
+      if (!sharedEvent) continue;
+      const aTypes = new Set(a.steps.map((s) => s.actionType));
+      const bTypes = new Set(b.steps.map((s) => s.actionType));
+      const sharedType = [...aTypes].some((t) => bTypes.has(t));
+      if (sharedType) conflicts.push([a, b]);
+    }
+  }
+  return conflicts;
+}
+
 export function AutomationBuilderPage() {
   const automationBranchingEnabled = useEnvFeatureFlag(
     EnvFeature.AUTOMATION_BRANCHING,
   );
+  const automationEnabled = useEnvFeatureFlag(EnvFeature.AUTOMATION);
+  const crmWorkflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
+  /** CRM-only mode: workflows flag on but full automation flag off */
+  const crmOnly = crmWorkflowsEnabled && !automationEnabled;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [editing, setEditing] = useState<AutomationDefinition | null>(null);
@@ -157,6 +184,8 @@ export function AutomationBuilderPage() {
     AutomationDefinitionFormValues | undefined
   >(undefined);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [testPanelId, setTestPanelId] = useState<string | null>(null);
   const [templateCategory, setTemplateCategory] = useState<
     AutomationTemplateCategory | "ALL"
   >("ALL");
@@ -173,7 +202,9 @@ export function AutomationBuilderPage() {
   const createAutomation = useCreateAutomationDefinition();
   const updateAutomation = useUpdateAutomationDefinition();
   const archiveAutomation = useArchiveAutomationDefinition();
+  const toggleAutomation = useToggleAutomationDefinition();
   const replayAutomationEvent = useReplayAutomationEvent();
+  const bulkToggle = useBulkToggleAutomations();
 
   const {
     data,
@@ -185,22 +216,9 @@ export function AutomationBuilderPage() {
     search: debouncedSearch || undefined,
     page: 1,
     limit: 25,
+    ...(crmOnly ? { scopeType: "CRM_PIPELINE" } : {}),
   });
   const selectedAutomationId = editing?.id ?? data?.automations[0]?.id ?? "";
-  const definitionForRuns = useMemo(() => {
-    if (!data?.automations.length || !selectedAutomationId) return null;
-    if (editing?.id === selectedAutomationId) return editing;
-    return data.automations.find((a) => a.id === selectedAutomationId) ?? null;
-  }, [data?.automations, editing, selectedAutomationId]);
-  const {
-    data: runsData,
-    isLoading: runsLoading,
-    isError: runsError,
-  } = useAutomationRuns(
-    selectedAutomationId,
-    { limit: 5 },
-    { enabled: !!selectedAutomationId },
-  );
 
   const title = useMemo(
     () => (editing ? `Edit ${editing.name}` : "Create automation"),
@@ -233,6 +251,21 @@ export function AutomationBuilderPage() {
   /** Avoid two identical "Create automation" buttons (toolbar + empty state). */
   const showEmptyDefinitionsCtas =
     !isLoading && !definitionsError && (data?.automations.length ?? 0) === 0;
+
+  const conflicts = useMemo(
+    () => detectConflicts(data?.automations ?? []),
+    [data?.automations],
+  );
+
+  const conflictingIds = useMemo(
+    () => new Set(conflicts.flatMap(([a, b]) => [a.id, b.id])),
+    [conflicts],
+  );
+
+  const allIds = data?.automations.map((a) => a.id) ?? [];
+  const allSelected =
+    allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
 
   const beginEditAutomation = (automation: AutomationDefinition) => {
     setEditing(automation);
@@ -332,19 +365,22 @@ export function AutomationBuilderPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Event automations
+          {crmOnly ? "Deal pipeline automations" : "Event automations"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manage cross-system automations for CRM, sales, inventory, transfers,
-          and work items.
+          {crmOnly
+            ? "Manage automations scoped to your CRM deal pipeline."
+            : "Manage cross-system automations for CRM, sales, inventory, transfers, and work items."}
         </p>
-        <p className="text-sm text-muted-foreground">
-          Use the guide below for concepts and setup; open{" "}
-          <strong>Templates</strong> for ready-made starters. Deal pipeline
-          rules live under{" "}
-          <strong className="text-foreground">Deal pipeline rules</strong> in
-          settings.
-        </p>
+        {!crmOnly && (
+          <p className="text-sm text-muted-foreground">
+            Use the guide below for concepts and setup; open{" "}
+            <strong>Templates</strong> for ready-made starters. Deal pipeline
+            rules live under{" "}
+            <strong className="text-foreground">Deal pipeline rules</strong> in
+            settings.
+          </p>
+        )}
       </div>
 
       <AutomationOnboarding />
@@ -525,6 +561,47 @@ export function AutomationBuilderPage() {
             </DialogContent>
           </Dialog>
 
+          {someSelected && (
+            <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
+              <span className="text-sm font-medium">
+                {selectedIds.size} selected
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkToggle.isPending}
+                onClick={() => {
+                  bulkToggle.mutate(
+                    { ids: [...selectedIds], status: "ACTIVE" },
+                    { onSuccess: () => setSelectedIds(new Set()) },
+                  );
+                }}
+              >
+                Activate all
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkToggle.isPending}
+                onClick={() => {
+                  bulkToggle.mutate(
+                    { ids: [...selectedIds], status: "INACTIVE" },
+                    { onSuccess: () => setSelectedIds(new Set()) },
+                  );
+                }}
+              >
+                Pause all
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+
           <div className="space-y-3">
             {definitionsError ? (
               <div
@@ -553,79 +630,175 @@ export function AutomationBuilderPage() {
               </p>
             ) : null}
 
+            {allIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <Checkbox
+                  id="select-all"
+                  checked={allSelected}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedIds(new Set(allIds));
+                    } else {
+                      setSelectedIds(new Set());
+                    }
+                  }}
+                  aria-label="Select all automations"
+                />
+                <label
+                  htmlFor="select-all"
+                  className="text-xs text-muted-foreground cursor-pointer"
+                >
+                  Select all
+                </label>
+              </div>
+            )}
+
             {data?.automations.map((automation) => (
               <div
                 key={automation.id}
-                className="rounded-lg border p-4 shadow-sm"
+                className={`rounded-lg border p-4 shadow-sm ${
+                  selectedIds.has(automation.id)
+                    ? "border-primary/50 bg-primary/5"
+                    : ""
+                }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <h2 className="font-medium">{automation.name}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {automation.scopeType} · {automation.status} ·{" "}
-                      {automation.executionMode}
-                    </p>
-                    {automation.suppressLegacyWorkflows ? (
-                      <p className="text-xs text-amber-600">
-                        Suppresses matching legacy CRM workflows
-                      </p>
-                    ) : null}
-                    <p className="text-sm text-muted-foreground">
-                      {automation.triggers.length} trigger(s) ·{" "}
-                      {automation.steps.length > 0
-                        ? `${automation.steps.length} step(s)`
-                        : automation.flowGraph
-                          ? "Graph body"
-                          : "0 steps"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => beginEditAutomation(automation)}
-                    >
-                      Edit
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          Archive
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={selectedIds.has(automation.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (checked) {
+                          next.add(automation.id);
+                        } else {
+                          next.delete(automation.id);
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-label={`Select ${automation.name}`}
+                    className="mt-1 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="font-medium">{automation.name}</h2>
+                          {conflictingIds.has(automation.id) && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                              <AlertTriangle className="h-3 w-3" aria-hidden />
+                              Conflict
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {automation.scopeType} · {automation.status} ·{" "}
+                          {automation.executionMode}
+                        </p>
+                        {automation.suppressLegacyWorkflows ? (
+                          <p className="text-xs text-amber-600">
+                            Suppresses matching legacy CRM workflows
+                          </p>
+                        ) : null}
+                        <p className="text-sm text-muted-foreground">
+                          {automation.triggers.length} trigger(s) ·{" "}
+                          {automation.steps.length > 0
+                            ? `${automation.steps.length} step(s)`
+                            : automation.flowGraph
+                              ? "Graph body"
+                              : "0 steps"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            toggleAutomation.mutate({
+                              id: automation.id,
+                              status:
+                                automation.status === "ACTIVE"
+                                  ? "INACTIVE"
+                                  : "ACTIVE",
+                            })
+                          }
+                          disabled={toggleAutomation.isPending}
+                        >
+                          {automation.status === "ACTIVE"
+                            ? "Pause"
+                            : "Activate"}
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Archive this automation?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            It will stop running for new events. You can create
-                            a replacement later if needed.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() =>
-                              archiveAutomation.mutate(automation.id)
-                            }
-                          >
-                            Archive
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => beginEditAutomation(automation)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setTestPanelId(
+                              testPanelId === automation.id
+                                ? null
+                                : automation.id,
+                            )
+                          }
+                        >
+                          Test
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              Archive
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Archive this automation?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                It will stop running for new events. You can
+                                create a replacement later if needed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  archiveAutomation.mutate(automation.id)
+                                }
+                              >
+                                Archive
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {automation.triggers.map((trigger) => (
+                        <span
+                          key={trigger.id}
+                          className="rounded-full bg-muted px-2 py-1 text-xs"
+                        >
+                          {trigger.eventName}
+                        </span>
+                      ))}
+                    </div>
+                    {testPanelId === automation.id && (
+                      <div className="mt-4">
+                        <AutomationTestPanel
+                          automationId={automation.id}
+                          defaultEventName={
+                            automation.triggers[0]?.eventName ?? ""
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {automation.triggers.map((trigger) => (
-                    <span
-                      key={trigger.id}
-                      className="rounded-full bg-muted px-2 py-1 text-xs"
-                    >
-                      {trigger.eventName}
-                    </span>
-                  ))}
                 </div>
               </div>
             ))}
@@ -693,6 +866,28 @@ export function AutomationBuilderPage() {
           </div>
         ) : null}
 
+        {conflicts.length > 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
+            <div>
+              <strong>Potential conflicts detected</strong>
+              <ul className="mt-1 space-y-0.5 text-xs">
+                {conflicts.map(([a, b], i) => (
+                  <li key={i}>
+                    <strong>{a.name}</strong> and <strong>{b.name}</strong>{" "}
+                    share a trigger event and action type — both will run on the
+                    same event.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {selectedAutomationId && (
+          <AutomationAnalyticsCard automationId={selectedAutomationId} />
+        )}
+
         <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -701,8 +896,8 @@ export function AutomationBuilderPage() {
                   Recent runs
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Latest activity for the selected automation (failed runs can
-                  be retried from each row).
+                  Latest executions — updates live via WebSocket. Failed runs
+                  can be retried from each row.
                 </CardDescription>
               </div>
               <HelpTopicSheet
@@ -750,185 +945,17 @@ export function AutomationBuilderPage() {
               </HelpTopicSheet>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 px-6 pt-0">
-            {runsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading runs…</p>
-            ) : null}
-            {runsError ? (
-              <p className="text-sm text-destructive" role="alert">
-                Could not load recent runs.
+          <CardContent className="px-6 pt-0">
+            {selectedAutomationId ? (
+              <AutomationRunHistory
+                automationId={selectedAutomationId}
+                limit={10}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground py-4">
+                Select an automation above to see its run history.
               </p>
-            ) : null}
-            {!runsLoading && !runsError && runsData?.runs.length ? (
-              <div className="space-y-3">
-                {runsData.runs.map((run) => {
-                  const branchDecisions = extractGraphBranchDecisions(
-                    run.stepOutput ?? undefined,
-                  );
-                  const graphForRunLabels =
-                    run.flowGraphSnapshot ?? definitionForRuns?.flowGraph;
-                  const branchLines =
-                    branchDecisions != null
-                      ? describeBranchDecisionLines(
-                          graphForRunLabels,
-                          branchDecisions,
-                        )
-                      : null;
-                  const skippedBranchLines =
-                    branchDecisions != null
-                      ? describeSkippedBranchArmsLines(
-                          graphForRunLabels,
-                          branchDecisions,
-                        )
-                      : [];
-                  return (
-                    <div key={run.id} className="rounded-md border p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">{run.eventName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {run.status} · {run.executionMode}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {run.entityType} · {run.entityId}
-                      </p>
-                      {run.errorMessage ? (
-                        <p className="mt-2 text-xs text-destructive">
-                          {run.errorMessage}
-                        </p>
-                      ) : null}
-                      {branchLines?.length ? (
-                        <div
-                          className="mt-2 space-y-0.5 text-xs text-muted-foreground"
-                          title="Frozen routing choices for this graph run (BR-16)"
-                          data-testid={`automation-run-branch-path-${run.id}`}
-                        >
-                          <p className="font-medium text-foreground">
-                            Chosen path (routing)
-                          </p>
-                          <ul className="list-disc space-y-0.5 pl-4">
-                            {branchLines.map((line, i) => (
-                              <li key={`${run.id}-branch-${i}`}>{line}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                      {skippedBranchLines.length ? (
-                        <div
-                          className="mt-2 space-y-0.5 text-xs text-muted-foreground"
-                          title="Outgoing arms not executed on this run (single-path graph)"
-                          data-testid={`automation-run-skipped-branches-${run.id}`}
-                        >
-                          <p className="font-medium text-foreground">
-                            Branches not taken
-                          </p>
-                          <ul className="list-disc space-y-0.5 pl-4">
-                            {skippedBranchLines.map((line, i) => (
-                              <li key={`${run.id}-skip-${i}`}>{line}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                      {run.automationEventId && run.status === "FAILED" ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                Full replay
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Queue a full replay?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Re-queues the original event from scratch so
-                                  all matching automations can run again. Use
-                                  “Resume failed steps” instead if you only want
-                                  to retry a failed run without duplicating side
-                                  effects from steps that already succeeded.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() =>
-                                    replayAutomationEvent.mutate({
-                                      eventId: run.automationEventId!,
-                                      payload: { reprocessFromStart: true },
-                                    })
-                                  }
-                                >
-                                  Full replay
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="secondary">
-                                Resume failed steps
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Resume from the failed step?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Continues this failed run from the first
-                                  failed linear step or graph action. If nothing
-                                  is eligible, a full replay is queued instead.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() =>
-                                    replayAutomationEvent.mutate({
-                                      eventId: run.automationEventId!,
-                                      payload: { reprocessFromStart: false },
-                                    })
-                                  }
-                                >
-                                  Resume
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      ) : null}
-                      {run.runSteps.length ? (
-                        <div className="mt-2 space-y-1">
-                          {run.runSteps.map((step) => (
-                            <p
-                              key={step.id}
-                              className="text-xs text-muted-foreground"
-                            >
-                              {step.status}
-                              {step.graphNodeId
-                                ? ` · node ${step.graphNodeId}`
-                                : ""}
-                              {step.output
-                                ? ` · ${JSON.stringify(step.output)}`
-                                : ""}
-                            </p>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-            {!runsLoading &&
-            !runsError &&
-            (!runsData?.runs.length || runsData.runs.length === 0) ? (
-              <p className="text-sm text-muted-foreground">
-                No runs recorded for the selected automation yet.
-              </p>
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </div>

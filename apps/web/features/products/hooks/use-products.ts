@@ -22,6 +22,7 @@ import {
   deleteDiscountType,
   getProductDiscountsList,
   bulkUploadProducts,
+  bulkUploadDiscounts,
   type Product,
   type ProductVariation,
   type CreateProductData,
@@ -30,6 +31,7 @@ import {
   type PaginatedProductsResponse,
   type PaginationMeta,
   type BulkUploadResponse,
+  type DiscountBulkUploadResponse,
   type ProductDiscountListParams,
   type PaginatedProductDiscountsResponse,
   type ProductDiscountListItem,
@@ -315,6 +317,57 @@ export function useBulkUploadProducts() {
       toast({
         title: "Upload failed",
         description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reset = () => {
+    setUploadProgress(0);
+    setUploadResult(null);
+    mutation.reset();
+  };
+
+  return {
+    mutation,
+    uploadProgress,
+    uploadResult,
+    reset,
+    isUploading: mutation.isPending,
+  };
+}
+
+export function useBulkUploadDiscounts() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResult, setUploadResult] =
+    useState<DiscountBulkUploadResponse | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: async (file: File) => {
+      setUploadProgress(0);
+      setUploadResult(null);
+      return bulkUploadDiscounts(file, (progress) => {
+        setUploadProgress(progress);
+      });
+    },
+    onSuccess: (data) => {
+      setUploadResult(data);
+      queryClient.invalidateQueries({ queryKey: ["productDiscounts"] });
+      if (data.summary.created > 0) {
+        toast({
+          title: "Bulk discount upload completed",
+          description: `Created ${data.summary.created} discount(s)`,
+        });
+      }
+    },
+    onError: (error: unknown) => {
+      setUploadProgress(0);
+      const err = error as { message?: string };
+      toast({
+        title: "Upload failed",
+        description: err.message || "Failed to upload file",
         variant: "destructive",
       });
     },

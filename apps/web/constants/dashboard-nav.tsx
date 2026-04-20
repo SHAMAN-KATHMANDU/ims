@@ -36,6 +36,7 @@ import {
   GitBranch,
   LayoutGrid,
   BrainCircuit,
+  PenSquare,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
 import {
@@ -66,6 +67,8 @@ export interface NavItem {
   tenantFeature?: TenantFeatureKey;
   children?: NavItem[];
   href?: string;
+  /** When true the link opens in a new browser tab. */
+  openInNewTab?: boolean;
 }
 
 export interface NavSection {
@@ -381,7 +384,7 @@ export const dashboardNavSections: NavSection[] = [
         label: "Event automations",
         icon: Zap,
         roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.AUTOMATION,
+        envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
       },
       {
         path: "settings/crm/workflows",
@@ -419,6 +422,15 @@ export const dashboardNavSections: NavSection[] = [
         icon: KeyRound,
         roles: ["superAdmin"],
         envFeature: EnvFeature.PASSWORD_RESETS,
+      },
+      {
+        path: "site-editor",
+        label: "Website Designer",
+        icon: PenSquare,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        openInNewTab: true,
       },
     ],
   },

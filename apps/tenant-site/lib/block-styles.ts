@@ -224,5 +224,9 @@ export function applyBlockStyles(
     out.maxWidth = "100vw";
   }
 
+  // Raw color overrides — applied last so they win over token-based values
+  if (style.backgroundColor) out.backgroundColor = style.backgroundColor;
+  if (style.color) out.color = style.color;
+
   return out;
 }

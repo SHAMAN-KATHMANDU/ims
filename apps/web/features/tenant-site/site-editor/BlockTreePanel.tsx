@@ -46,7 +46,7 @@ type Props = {
   onOpenPalette: () => void;
 };
 
-const CONTAINER_KINDS = new Set(["section", "columns", "css-grid"]);
+const CONTAINER_KINDS = new Set(["section", "columns", "css-grid", "row"]);
 
 export function BlockTreePanel({ onOpenPalette }: Props) {
   const blocks = useEditorStore(selectBlocks);

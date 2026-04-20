@@ -62,7 +62,9 @@ import {
   useDiscountTypes,
   useProductsPaginated,
   useUpdateProduct,
+  useBulkUploadDiscounts,
   getProductById,
+  downloadDiscountBulkTemplate,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   type ProductDiscountListItem,
@@ -71,9 +73,23 @@ import {
 import { formatCurrency } from "@/lib/format";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Search, Loader2, Filter, Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  Filter,
+  Plus,
+  Pencil,
+  Trash2,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 
 type DiscountFormData = {
   productId: string;
@@ -121,6 +137,15 @@ function toUpdateDiscounts(
 export function DiscountsTab() {
   const { toast } = useToast();
   const updateProductMutation = useUpdateProduct();
+  const {
+    mutation: bulkDiscountMutation,
+    uploadProgress: bulkProgress,
+    uploadResult: bulkResult,
+    reset: resetBulk,
+    isUploading: isBulkUploading,
+  } = useBulkUploadDiscounts();
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -460,10 +485,25 @@ export function DiscountsTab() {
             above.
           </p>
         </div>
-        <Button onClick={openAddDialog} size="sm" className="gap-1.5 shrink-0">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Add Product Discount
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              resetBulk();
+              setBulkFile(null);
+              setBulkImportOpen(true);
+            }}
+          >
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            Import CSV
+          </Button>
+          <Button onClick={openAddDialog} size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add Product Discount
+          </Button>
+        </div>
       </div>
 
       {selectedDiscountIds.size > 0 && (
@@ -1071,6 +1111,177 @@ export function DiscountsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk import dialog */}
+      <Dialog
+        open={bulkImportOpen}
+        onOpenChange={(open) => {
+          if (!isBulkUploading) {
+            setBulkImportOpen(open);
+            if (!open) {
+              setBulkFile(null);
+              resetBulk();
+            }
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
+              Bulk Import Discounts
+            </DialogTitle>
+          </DialogHeader>
+
+          {!bulkResult ? (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Upload an Excel or CSV file with columns: Product Code, Product
+                Name, Discount Type, Discount Percentage, Start Date, End Date,
+                Is Active.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => downloadDiscountBulkTemplate()}
+              >
+                <Download className="h-4 w-4" aria-hidden />
+                Download template
+              </Button>
+
+              <div
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() =>
+                  document.getElementById("discount-bulk-input")?.click()
+                }
+              >
+                <input
+                  id="discount-bulk-input"
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setBulkFile(f);
+                      resetBulk();
+                    }
+                  }}
+                />
+                {bulkFile ? (
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                    <span className="font-medium">{bulkFile.name}</span>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                    <p>Click to select a file</p>
+                    <p className="text-xs">.xlsx, .xls, .csv — max 10 MB</p>
+                  </div>
+                )}
+              </div>
+
+              {isBulkUploading && (
+                <div className="space-y-1">
+                  <Progress value={bulkProgress} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {bulkProgress}%
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-lg border p-3">
+                  <p className="text-2xl font-bold text-green-600">
+                    {bulkResult.summary.created}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Created</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {bulkResult.summary.skipped}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Skipped</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-2xl font-bold text-red-600">
+                    {bulkResult.summary.errors}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Errors</p>
+                </div>
+              </div>
+
+              {(bulkResult.skipped.length > 0 ||
+                bulkResult.errors.length > 0) && (
+                <ScrollArea className="h-48 rounded border p-2">
+                  {bulkResult.skipped.map((s, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2 py-1 text-xs border-b last:border-0"
+                    >
+                      <XCircle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
+                      <span className="text-muted-foreground">
+                        Row {s.row}: {s.reason}
+                      </span>
+                    </div>
+                  ))}
+                  {bulkResult.errors.map((e, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-2 py-1 text-xs border-b last:border-0"
+                    >
+                      <XCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />
+                      <span className="text-muted-foreground">
+                        Row {e.row}: {e.message}
+                      </span>
+                    </div>
+                  ))}
+                </ScrollArea>
+              )}
+
+              {bulkResult.summary.created > 0 && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  {bulkResult.summary.created} discount(s) created successfully
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBulkImportOpen(false);
+                setBulkFile(null);
+                resetBulk();
+              }}
+              disabled={isBulkUploading}
+            >
+              {bulkResult ? "Close" : "Cancel"}
+            </Button>
+            {!bulkResult && (
+              <Button
+                onClick={() => {
+                  if (bulkFile) bulkDiscountMutation.mutate(bulkFile);
+                }}
+                disabled={!bulkFile || isBulkUploading}
+              >
+                {isBulkUploading ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-1.5 h-4 w-4" />
+                )}
+                Upload
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

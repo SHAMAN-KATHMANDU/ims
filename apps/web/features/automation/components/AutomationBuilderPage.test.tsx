@@ -16,6 +16,11 @@ const mockCreateMutate = vi.fn();
 const mockUpdateMutate = vi.fn();
 const mockArchiveMutate = vi.fn();
 const mockReplayMutate = vi.fn();
+const mockToggleMutate = vi.fn();
+
+vi.mock("../hooks/use-automation-socket", () => ({
+  useAutomationSocket: vi.fn(),
+}));
 
 vi.mock("../hooks/use-automation", () => ({
   useAutomationDefinitions: (...args: unknown[]) =>
@@ -35,6 +40,19 @@ vi.mock("../hooks/use-automation", () => ({
   }),
   useReplayAutomationEvent: () => ({
     mutate: mockReplayMutate,
+    isPending: false,
+  }),
+  useToggleAutomationDefinition: () => ({
+    mutate: mockToggleMutate,
+    isPending: false,
+  }),
+  useBulkToggleAutomations: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useAutomationAnalytics: () => ({ data: undefined, isLoading: false }),
+  useTestAutomationDefinition: () => ({
+    mutate: vi.fn(),
     isPending: false,
   }),
 }));

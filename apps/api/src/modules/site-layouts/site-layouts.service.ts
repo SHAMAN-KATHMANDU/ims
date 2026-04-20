@@ -158,7 +158,7 @@ export class SiteLayoutsService {
   ): Promise<SiteLayout> {
     await this.assertEnabled(tenantId);
 
-    const config = await sitesRepo.findConfig(tenantId);
+    const config = await this.sites.findConfig(tenantId);
     if (!config?.template?.slug) {
       throw createError(
         "Pick a template first — there's no blueprint to reset from.",

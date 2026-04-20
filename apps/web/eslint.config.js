@@ -16,6 +16,7 @@ export default [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      "react/prop-types": "off",
     },
   },
 ];

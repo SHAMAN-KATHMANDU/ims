@@ -206,14 +206,14 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
   },
   production: {
     CRM: true,
-    CRM_DEALS: false,
-    CRM_REPORTS: false,
+    CRM_DEALS: true,
+    CRM_REPORTS: true,
     CRM_SETTINGS: true,
-    CRM_WORKFLOWS: false,
+    CRM_WORKFLOWS: true,
     AUTOMATION: false,
     AUTOMATION_VISUAL_BUILDER: false,
     AUTOMATION_BRANCHING: false,
-    CRM_PIPELINES_TAB: false,
+    CRM_PIPELINES_TAB: true,
     SALES: true,
     SALES_USER_REPORT: true,
     CATALOG: true,
@@ -244,7 +244,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: false,
     MEDIA_UPLOAD: true,
-    TENANT_WEBSITES: false,
+    TENANT_WEBSITES: true,
   },
 };
 

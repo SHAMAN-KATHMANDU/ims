@@ -205,6 +205,22 @@ export const ReplayAutomationEventSchema = z.object({
   reprocessFromStart: z.boolean().optional().default(true),
 });
 
+export const ToggleAutomationStatusSchema = z.object({
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+});
+
+export const BulkToggleAutomationSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+});
+
+export const TestAutomationDefinitionSchema = z
+  .object({
+    eventName: z.string().min(1).max(200),
+    payload: z.record(z.unknown()).optional(),
+  })
+  .transform((v) => ({ eventName: v.eventName, payload: v.payload ?? {} }));
+
 export type CreateAutomationTriggerDto = z.infer<
   typeof CreateAutomationTriggerSchema
 >;
@@ -225,4 +241,10 @@ export type GetAutomationRunsQueryDto = z.infer<
 >;
 export type ReplayAutomationEventDto = z.infer<
   typeof ReplayAutomationEventSchema
+>;
+export type BulkToggleAutomationDto = z.infer<
+  typeof BulkToggleAutomationSchema
+>;
+export type TestAutomationDefinitionDto = z.infer<
+  typeof TestAutomationDefinitionSchema
 >;

@@ -25,7 +25,7 @@
 
 import type { BlockNode, BlockPropsMap } from "@repo/shared";
 
-type BlueprintScope = "home" | "products-index" | "product-detail";
+type BlueprintScope = "home" | "products-index" | "product-detail" | "offers";
 
 export interface TemplateBlueprint {
   slug: string;
@@ -95,6 +95,23 @@ function productsIndexLayout(): BlockNode[] {
       showSort: true,
       columns: 4,
       categoryFilter: true,
+    }),
+  ];
+}
+
+function offersLayout(): BlockNode[] {
+  return [
+    block("heading", {
+      text: "Offers",
+      level: 1,
+      alignment: "center",
+      eyebrow: "Limited time",
+    }),
+    block("product-grid", {
+      source: "on-sale",
+      columns: 4,
+      limit: 24,
+      cardVariant: "bordered",
     }),
   ];
 }
@@ -1451,6 +1468,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: editorialHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": editorialPdp(),
     },
     defaultThemeTokens: {
@@ -1481,6 +1499,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: organicHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": organicPdp(),
     },
     defaultThemeTokens: {
@@ -1511,6 +1530,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: darkHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": darkPdp(),
     },
     defaultThemeTokens: {
@@ -1541,6 +1561,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: brutalistHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": brutalistPdp(),
     },
     defaultThemeTokens: {
@@ -1575,6 +1596,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: zenHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": zenPdp(),
     },
     defaultThemeTokens: {
@@ -1606,6 +1628,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: coastalHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": coastalPdp(),
     },
     defaultThemeTokens: {
@@ -1636,6 +1659,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: apothecaryHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": apothecaryPdp(),
     },
     defaultThemeTokens: {
@@ -1666,6 +1690,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: retroHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": retroPdp(),
     },
     defaultThemeTokens: {
@@ -1696,6 +1721,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: artisanHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": artisanPdp(),
     },
     defaultThemeTokens: {
@@ -1726,6 +1752,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: galleryHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": galleryPdp(),
     },
     defaultThemeTokens: {
@@ -1756,6 +1783,7 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
     layouts: {
       home: blankHome(),
       "products-index": productsIndexLayout(),
+      offers: offersLayout(),
       "product-detail": blankPdp(),
     },
   },
@@ -1778,4 +1806,5 @@ export const BLUEPRINT_SCOPES = [
   "home",
   "products-index",
   "product-detail",
+  "offers",
 ] as const satisfies readonly BlueprintScope[];

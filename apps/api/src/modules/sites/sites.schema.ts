@@ -7,6 +7,11 @@
  */
 
 import { z } from "zod";
+import {
+  BlockNodeSchema,
+  BlockTreeSchema,
+  SiteLayoutScopeSchema,
+} from "@repo/shared";
 
 /** Free-form JSON payload (object or null). */
 const jsonObject = z.record(z.unknown()).nullable().optional();
@@ -49,5 +54,123 @@ export const PickTemplateSchema = z.object({
   resetBranding: z.boolean().optional().default(false),
 });
 
+// ——— PAGES ———
+
+export const CreatePageSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  slug: z.string().trim().min(1).max(200),
+  scope: SiteLayoutScopeSchema,
+  seo: z
+    .object({
+      title: z.string().trim().max(200).optional(),
+      description: z.string().trim().max(500).optional(),
+      ogImage: z.string().trim().max(1000).optional(),
+      noindex: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+export const UpdatePageSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  slug: z.string().trim().min(1).max(200).optional(),
+  seo: z
+    .object({
+      title: z.string().trim().max(200).optional(),
+      description: z.string().trim().max(500).optional(),
+      ogImage: z.string().trim().max(1000).optional(),
+      noindex: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// ——— BLOCKS ———
+
+export const UpsertBlocksSchema = z.object({
+  pageId: z.string().trim().min(1).optional().nullable(),
+  scope: SiteLayoutScopeSchema.optional(),
+  blocks: BlockTreeSchema,
+});
+
+export const AddBlockSchema = z.object({
+  block: BlockNodeSchema,
+});
+
+export const UpdateBlockSchema = z.object({
+  blockId: z.string().trim().min(1),
+  props: z.record(z.unknown()).optional(),
+  style: jsonObject,
+  visibility: z
+    .object({
+      desktop: z.boolean().optional(),
+      tablet: z.boolean().optional(),
+      mobile: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+export const ReorderBlocksSchema = z.object({
+  blockIds: z.array(z.string().min(1)).min(1),
+});
+
+// ——— GLOBALS (Header/Footer) ———
+
+export const UpdateGlobalsSchema = z.object({
+  header: BlockTreeSchema.optional(),
+  footer: BlockTreeSchema.optional(),
+});
+
+// ——— THEME ———
+
+export const UpdateThemeSchema = z.object({
+  colors: z
+    .object({
+      primary: z.string().optional(),
+      accent: z.string().optional(),
+      secondary: z.string().optional(),
+      background: z.string().optional(),
+      surface: z.string().optional(),
+      text: z.string().optional(),
+      muted: z.string().optional(),
+      border: z.string().optional(),
+    })
+    .optional(),
+  typography: z
+    .object({
+      headingFont: z.string().optional(),
+      bodyFont: z.string().optional(),
+      baseSize: z.number().int().min(10).max(32).optional(),
+      typeScale: z.number().min(1).max(2).optional(),
+    })
+    .optional(),
+  layout: z
+    .object({
+      containerWidth: z.number().int().min(300).max(2000).optional(),
+      sectionPadding: z.string().optional(),
+      radiusPx: z.number().int().min(0).max(50).optional(),
+      buttonStyle: z.enum(["solid", "outline", "pill"]).optional(),
+    })
+    .optional(),
+});
+
+// ——— SEO ———
+
+export const UpdateSeoSchema = z.object({
+  siteTitle: z.string().trim().max(200).optional(),
+  siteDescription: z.string().trim().max(500).optional(),
+  gaId: z.string().trim().max(100).optional(),
+  robots: z.string().trim().max(1000).optional(),
+});
+
+// ——— INFERRED TYPES ———
+
 export type UpdateSiteConfigInput = z.infer<typeof UpdateSiteConfigSchema>;
 export type PickTemplateInput = z.infer<typeof PickTemplateSchema>;
+export type CreatePageInput = z.infer<typeof CreatePageSchema>;
+export type UpdatePageInput = z.infer<typeof UpdatePageSchema>;
+export type UpsertBlocksInput = z.infer<typeof UpsertBlocksSchema>;
+export type AddBlockInput = z.infer<typeof AddBlockSchema>;
+export type UpdateBlockInput = z.infer<typeof UpdateBlockSchema>;
+export type ReorderBlocksInput = z.infer<typeof ReorderBlocksSchema>;
+export type UpdateGlobalsInput = z.infer<typeof UpdateGlobalsSchema>;
+export type UpdateThemeInput = z.infer<typeof UpdateThemeSchema>;
+export type UpdateSeoInput = z.infer<typeof UpdateSeoSchema>;

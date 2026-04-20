@@ -36,6 +36,7 @@ const CATEGORY_ORDER: CatalogCategory[] = [
   "marketing",
   "blog",
   "pdp",
+  "form",
 ];
 
 const CATEGORY_LABEL: Record<CatalogCategory, string> = {
@@ -45,6 +46,7 @@ const CATEGORY_LABEL: Record<CatalogCategory, string> = {
   marketing: "Marketing",
   blog: "Blog",
   pdp: "Product detail",
+  form: "Forms",
 };
 
 export function BlockPalette({ open, onOpenChange, scope }: Props) {

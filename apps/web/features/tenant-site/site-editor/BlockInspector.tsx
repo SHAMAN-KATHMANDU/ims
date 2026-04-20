@@ -46,6 +46,10 @@ import {
 import { getCatalogEntry } from "./block-catalog";
 import { ProductPickerField } from "./ProductPickerField";
 import { CategoryPickerField } from "./CategoryPickerField";
+import {
+  CUSTOM_INSPECTOR_KINDS,
+  CustomInspectorPanel,
+} from "./HeaderFooterInspectors";
 
 export function BlockInspector() {
   const selected = useEditorStore(selectSelectedBlock);
@@ -681,6 +685,58 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         )}
 
         <div className="space-y-1">
+          <Label className="text-xs">Background Color</Label>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={style.backgroundColor ?? "#ffffff"}
+              onChange={(e) =>
+                updateBlockStyle(block.id, {
+                  backgroundColor: e.target.value,
+                })
+              }
+              className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
+              title="Pick a background color"
+            />
+            <Input
+              value={style.backgroundColor ?? ""}
+              onChange={(e) =>
+                updateBlockStyle(block.id, {
+                  backgroundColor: e.target.value.trim() || undefined,
+                })
+              }
+              placeholder="#ffffff or rgba(…)"
+              className="h-8 flex-1 text-xs font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Text Color Override</Label>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={style.color ?? "#000000"}
+              onChange={(e) =>
+                updateBlockStyle(block.id, { color: e.target.value })
+              }
+              className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
+              title="Pick a text color"
+            />
+            <Input
+              value={style.color ?? ""}
+              onChange={(e) =>
+                updateBlockStyle(block.id, {
+                  color: e.target.value.trim() || undefined,
+                })
+              }
+              placeholder="#000000 or rgba(…)"
+              className="h-8 flex-1 text-xs font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
           <Label className="text-xs">Background Image URL</Label>
           <Input
             value={style.backgroundImage ?? ""}
@@ -809,12 +865,16 @@ function BlockForm({ block }: { block: BlockNode }) {
   const schema = (BlockPropsSchemas as Record<string, z.ZodType<unknown>>)[
     block.kind
   ];
-  // Introspect unconditionally — keeps the Hook order stable across the
-  // early-return branch below.
+  // Hooks must be called unconditionally before any early returns.
   const fields = useMemo(
     () => (schema ? introspectSchema(schema) : []),
     [schema],
   );
+
+  if (CUSTOM_INSPECTOR_KINDS.has(block.kind)) {
+    return <CustomInspectorPanel block={block} />;
+  }
+
   if (!schema) {
     return <JsonFallback block={block} />;
   }
@@ -1019,14 +1079,24 @@ function FieldRenderer({
     );
   }
   if (field.kind === "textarea") {
+    const isCode = field.name === "html" || field.name === "css";
     return (
       <div className="space-y-1">
         <Label>{labelText}</Label>
         <Textarea
-          rows={5}
+          rows={isCode ? 10 : 5}
           value={(value as string | undefined) ?? ""}
           onChange={(e) => onChange(e.target.value)}
+          className={isCode ? "font-mono text-xs" : undefined}
+          spellCheck={!isCode}
         />
+        {isCode && (
+          <p className="text-[10px] text-muted-foreground">
+            {field.name === "html"
+              ? "Raw HTML — rendered as-is on your site."
+              : "Scoped CSS — applied inside this block only."}
+          </p>
+        )}
       </div>
     );
   }

@@ -48,6 +48,9 @@ export const AUTOMATION_ACTION_ALLOWED_EVENTS: Record<
   "crm.company.update": AUTOMATION_TRIGGER_EVENT_VALUES,
   "crm.deal.move_stage": CRM_DEAL_EVENT_NAMES,
   "crm.activity.create": CRM_EVENT_NAMES,
+  "crm.contact.add_tag": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.contact.add_note": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.deal.create": AUTOMATION_TRIGGER_EVENT_VALUES,
   "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
 };
 
@@ -363,6 +366,37 @@ export type WebhookEmitActionConfig = z.infer<
   typeof WebhookEmitActionConfigSchema
 >;
 
+export const CrmContactAddTagActionConfigSchema = z.object({
+  contactIdTemplate: z.string().min(1).max(255).default("{{event.entityId}}"),
+  tagName: z.string().min(1).max(100),
+});
+
+export type CrmContactAddTagActionConfig = z.infer<
+  typeof CrmContactAddTagActionConfigSchema
+>;
+
+export const CrmContactAddNoteActionConfigSchema = z.object({
+  contactIdTemplate: z.string().min(1).max(255).default("{{event.entityId}}"),
+  content: z.string().min(1).max(5000),
+});
+
+export type CrmContactAddNoteActionConfig = z.infer<
+  typeof CrmContactAddNoteActionConfigSchema
+>;
+
+export const CrmDealCreateActionConfigSchema = z.object({
+  name: z.string().min(1).max(255),
+  pipelineId: z.string().uuid(),
+  stage: z.string().min(1).max(255).optional(),
+  amount: z.number().min(0).optional(),
+  contactIdTemplate: z.string().min(1).max(255).optional(),
+  assignedToIdTemplate: z.string().min(1).max(255).optional(),
+});
+
+export type CrmDealCreateActionConfig = z.infer<
+  typeof CrmDealCreateActionConfigSchema
+>;
+
 export const AutomationActionConfigSchemas = {
   "workitem.create": WorkItemCreateActionConfigSchema,
   "notification.send": NotificationSendActionConfigSchema,
@@ -372,6 +406,9 @@ export const AutomationActionConfigSchemas = {
   "crm.company.update": CrmCompanyUpdateActionConfigSchema,
   "crm.deal.move_stage": CrmDealMoveStageActionConfigSchema,
   "crm.activity.create": CrmActivityCreateActionConfigSchema,
+  "crm.contact.add_tag": CrmContactAddTagActionConfigSchema,
+  "crm.contact.add_note": CrmContactAddNoteActionConfigSchema,
+  "crm.deal.create": CrmDealCreateActionConfigSchema,
   "webhook.emit": WebhookEmitActionConfigSchema,
 } as const;
 
@@ -384,6 +421,9 @@ export type AutomationActionConfigValue =
   | CrmCompanyUpdateActionConfig
   | CrmDealMoveStageActionConfig
   | CrmActivityCreateActionConfig
+  | CrmContactAddTagActionConfig
+  | CrmContactAddNoteActionConfig
+  | CrmDealCreateActionConfig
   | WebhookEmitActionConfig;
 
 export function parseAutomationActionConfig(

@@ -13,6 +13,7 @@ import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
+import automationService from "@/modules/automation/automation.service";
 
 const router = Router();
 
@@ -109,6 +110,26 @@ router.post(
           console.error("[form-submissions] CRM lead creation failed", leadErr);
         }
       }
+
+      automationService
+        .publishDomainEvent({
+          tenantId,
+          eventName: "storefront.form.submitted",
+          scopeType: "GLOBAL",
+          entityType: "FORM_SUBMISSION",
+          entityId: submission.id,
+          actorUserId: null,
+          dedupeKey: `form-submitted:${submission.id}`,
+          payload: {
+            submissionId: submission.id,
+            submitTo,
+            fields,
+            leadId: submission.leadId ?? null,
+          },
+        })
+        .catch((err) => {
+          console.error("[form-submissions] Automation event failed", err);
+        });
 
       return res.status(201).json({
         message: "Submission received",

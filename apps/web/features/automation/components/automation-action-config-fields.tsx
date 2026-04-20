@@ -11,7 +11,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { AutomationActionTypeValue } from "@repo/shared";
 
-export function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
+export function getDefaultActionConfig(
+  actionType: AutomationActionTypeValue,
+): Record<string, unknown> {
   switch (actionType) {
     case "workitem.create":
       return { title: "Follow up", type: "TASK", priority: "MEDIUM" };
@@ -51,6 +53,8 @@ export function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
         method: "POST",
         timeoutSeconds: 10,
       };
+    default:
+      return {};
   }
 }
 
