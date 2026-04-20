@@ -174,11 +174,18 @@ jobs:
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
-      - name: Reset database and run migrations
-        # migrate reset --force drops all tables and re-runs every migration from
-        # scratch. This prevents P3009 "failed migration" errors that accumulate
-        # when a previous CI run left the persistent self-hosted DB in a dirty state.
-        run: pnpm --filter api exec prisma migrate reset --force --skip-generate --skip-seed
+      - name: Drop and recreate test database
+        # The self-hosted runner uses a persistent Postgres instance, so the
+        # ims_test DB accumulates state across runs. A cancelled job can leave a
+        # migration "started but not finished" in _prisma_migrations (P3009),
+        # blocking all subsequent migrate deploy calls. Dropping and recreating
+        # the DB gives a guaranteed clean slate without needing migrate reset.
+        run: |
+          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
+            -c "DROP DATABASE IF EXISTS ims_test;" \
+            -c "CREATE DATABASE ims_test;"
+      - name: Run migrations
+        run: pnpm --filter api exec prisma migrate deploy
       - name: Run API tests
         run: pnpm exec turbo run test:coverage --filter=api
         env:
@@ -340,7 +347,10 @@ jobs:
         run: |
           pnpm --filter @repo/shared build
           pnpm --filter api exec prisma generate
-          pnpm --filter api exec prisma migrate reset --force --skip-generate --skip-seed
+          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
+            -c "DROP DATABASE IF EXISTS ims_test;" \
+            -c "CREATE DATABASE ims_test;"
+          pnpm --filter api exec prisma migrate deploy
           pnpm --filter api exec prisma db seed
           pnpm --filter api build
       - name: Resolve Playwright version
