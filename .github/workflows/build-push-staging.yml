@@ -127,7 +127,7 @@ jobs:
   build-web:
     name: Build Web (staging)
     runs-on: self-hosted
-    needs: [changes]
+    needs: [changes, build-api]
     # On manual dispatch: always run when stage is 'web' or 'all'.
     # On push: run when the changes job detected web or shared file changes.
     if: |
@@ -186,7 +186,7 @@ jobs:
   build-tenant-site:
     name: Build Tenant Site (staging)
     runs-on: self-hosted
-    needs: [changes]
+    needs: [changes, build-web]
     # On manual dispatch: run when stage is 'tenant-site' or 'all'.
     # On push: run when the changes job detected tenant-site or shared file changes.
     # Tenant-site is a thin SSR renderer that fetches /public/* from the API at
