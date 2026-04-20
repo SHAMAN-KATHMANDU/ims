@@ -127,10 +127,7 @@ jobs:
   build-web:
     name: Build Web (staging)
     runs-on: self-hosted
-    # Wait for build-api to finish before starting (sequential to conserve RAM).
-    # If build-api was skipped (no API changes), this job still runs when needed.
-    # If build-api failed, skip this job to avoid wasting time.
-    needs: [changes, build-api]
+    needs: [changes]
     # On manual dispatch: always run when stage is 'web' or 'all'.
     # On push: run when the changes job detected web or shared file changes.
     if: |
@@ -189,8 +186,7 @@ jobs:
   build-tenant-site:
     name: Build Tenant Site (staging)
     runs-on: self-hosted
-    # Wait for build-web to finish (sequential to conserve RAM).
-    needs: [changes, build-web]
+    needs: [changes]
     # On manual dispatch: run when stage is 'tenant-site' or 'all'.
     # On push: run when the changes job detected tenant-site or shared file changes.
     # Tenant-site is a thin SSR renderer that fetches /public/* from the API at
