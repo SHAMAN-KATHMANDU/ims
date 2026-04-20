@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Zap,
-  ShoppingCart,
   Package,
   Users,
   Bell,

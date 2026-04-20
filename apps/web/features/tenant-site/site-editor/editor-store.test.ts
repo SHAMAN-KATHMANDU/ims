@@ -225,10 +225,10 @@ describe("editor-store", () => {
     it("merges visibility overrides", () => {
       const store = getStore();
       store.load([makeBlock("a")]);
-      store.updateBlockVisibility("a", { hidden: true });
+      store.updateBlockVisibility("a", { mobile: false });
 
       const block = getStore().present.blocks[0]!;
-      expect(block.visibility?.hidden).toBe(true);
+      expect(block.visibility?.mobile).toBe(false);
     });
   });
 

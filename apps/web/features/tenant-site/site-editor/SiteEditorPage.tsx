@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  Fragment,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Monitor,
@@ -36,13 +29,10 @@ import {
   Trash2,
   Settings,
   EyeOff,
-  Check,
-  Minus,
   Box,
   Hash,
   GripVertical,
 } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
@@ -61,11 +51,10 @@ import {
   selectBlocks,
   selectDirty,
   selectSelectedId,
-  selectSelectedBlock,
 } from "./editor-store";
 import { BlockInspector } from "./BlockInspector";
 import { PreviewFrame } from "./PreviewFrame";
-import { BLOCK_CATALOG, type CatalogEntry } from "./block-catalog";
+import { BLOCK_CATALOG } from "./block-catalog";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -154,15 +143,6 @@ const BLOCK_GROUPS = [
 
 type EditorTarget = { scope: SiteLayoutScope; pageId: string | null };
 
-function encodeTarget(t: EditorTarget): string {
-  return t.scope === "page" && t.pageId ? `page:${t.pageId}` : t.scope;
-}
-function decodeTarget(value: string): EditorTarget {
-  if (value.startsWith("page:"))
-    return { scope: "page", pageId: value.slice("page:".length) };
-  return { scope: value as SiteLayoutScope, pageId: null };
-}
-
 function makeBlockId(): string {
   return `blk-${crypto.randomUUID().slice(0, 8)}`;
 }
@@ -173,7 +153,6 @@ function makeBlockId(): string {
 
 /** Accent color used across the editor UI */
 const ACCENT = "oklch(0.72 0.15 45)";
-const ACCENT_SOFT = "oklch(0.94 0.04 70)";
 
 function IconBtn({
   children,
@@ -223,7 +202,7 @@ function QuickAddBar({
   open,
   onClose,
   onAdd,
-  scope,
+  scope: _scope,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1069,7 +1048,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
-  const resetFromTemplate = useResetSiteLayoutFromTemplate();
+  const _resetFromTemplate = useResetSiteLayoutFromTemplate();
   const configQuery = useSiteConfig();
   const pagesQuery = useTenantPages({ limit: 100 });
   const customPages = useMemo(
@@ -1104,7 +1083,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   }, [scope, layoutQuery.data, layoutQuery.isLoading, load]);
 
   // ---- Autosave ----
-  const [autosaveEnabled, setAutosaveEnabled] = useState(() => {
+  const [autosaveEnabled, _setAutosaveEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("site-editor-autosave") !== "false";
   });

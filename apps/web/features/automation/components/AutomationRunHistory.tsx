@@ -110,7 +110,7 @@ function formatRelativeTime(iso: string): string {
 
 function RunRow({
   run,
-  automationEventId,
+  automationEventId: _automationEventId,
 }: {
   run: AutomationRun;
   automationEventId?: string | null;
@@ -259,7 +259,7 @@ export function AutomationRunHistory({
         <Clock className="h-8 w-8 text-muted-foreground/50 mb-3" />
         <p className="text-sm font-medium text-muted-foreground">No runs yet</p>
         <p className="text-xs text-muted-foreground mt-1">
-          This automation hasn't fired since it was created.
+          This automation hasn&apos;t fired since it was created.
         </p>
       </div>
     );
