@@ -26,7 +26,12 @@ vi.mock("@/config/env", () => ({
   env: {
     appEnv: "development",
     featureFlags: "AUTOMATION",
+    redisUrl: "redis://localhost:6379",
   },
+}));
+
+vi.mock("@/queues/automation-queue", () => ({
+  automationEventQueue: { add: vi.fn() },
 }));
 
 vi.mock("@/config/logger", () => ({

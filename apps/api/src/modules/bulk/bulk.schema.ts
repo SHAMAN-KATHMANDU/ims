@@ -1,11 +1,17 @@
 import { z } from "zod";
 
-export const BULK_TYPES = ["products", "members", "sales"] as const;
+export const BULK_TYPES = [
+  "products",
+  "members",
+  "sales",
+  "discounts",
+] as const;
 export type BulkType = (typeof BULK_TYPES)[number];
 
 export const BulkTypeSchema = z.enum(BULK_TYPES, {
   errorMap: () => ({
-    message: "Invalid or missing type. Use type=products|members|sales",
+    message:
+      "Invalid or missing type. Use type=products|members|sales|discounts",
   }),
 });
 

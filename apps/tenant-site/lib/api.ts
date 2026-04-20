@@ -746,6 +746,7 @@ export type PublicSiteLayoutScope =
   | "home"
   | "products-index"
   | "product-detail"
+  | "offers"
   | "blog-index"
   | "blog-post"
   | "page"

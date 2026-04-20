@@ -16,6 +16,19 @@ import type { ComponentType, ReactNode } from "react";
 import type { BlockNode } from "@repo/shared";
 import type { BlockDataContext } from "./data-context";
 
+// Export block prop types for use in block implementations
+export type {
+  NavBarProps,
+  LogoMarkProps,
+  UtilityBarProps,
+} from "./kinds/HeaderBlocks";
+export type {
+  FooterColumnsProps,
+  SocialLinksProps,
+  PaymentIconsProps,
+  CopyrightBarProps,
+} from "./kinds/FooterBlocks";
+
 // Content / structural
 import { SectionBlock } from "./kinds/content-blocks";
 import {
@@ -86,9 +99,28 @@ import { FormBlock } from "./kinds/FormBlock";
 import { PolicyStripBlock } from "./kinds/PolicyStripBlock";
 import { EmptyStateBlock } from "./kinds/EmptyStateBlock";
 
+// Custom / advanced
+import { RowBlock } from "./kinds/RowBlock";
+import { CustomHtmlBlock } from "./kinds/CustomHtmlBlock";
+
 // Commerce (bundles + gift cards)
 import { BundleSpotlightBlock } from "./kinds/BundleSpotlightBlock";
 import { GiftCardRedeemBlock } from "./kinds/GiftCardRedeemBlock";
+
+// Header blocks
+import {
+  NavBarBlock,
+  LogoMarkBlock,
+  UtilityBarBlock,
+} from "./kinds/HeaderBlocks";
+
+// Footer blocks
+import {
+  FooterColumnsBlock,
+  SocialLinksBlock,
+  PaymentIconsBlock,
+  CopyrightBarBlock,
+} from "./kinds/FooterBlocks";
 
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
@@ -163,4 +195,16 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   // Commerce (bundles + gift cards)
   "bundle-spotlight": { component: BundleSpotlightBlock },
   "gift-card-redeem": { component: GiftCardRedeemBlock },
+  // Custom / advanced
+  row: { component: RowBlock, container: true },
+  "custom-html": { component: CustomHtmlBlock },
+  // Header blocks
+  "nav-bar": { component: NavBarBlock },
+  "logo-mark": { component: LogoMarkBlock },
+  "utility-bar": { component: UtilityBarBlock },
+  // Footer blocks
+  "footer-columns": { component: FooterColumnsBlock },
+  "social-links": { component: SocialLinksBlock },
+  "payment-icons": { component: PaymentIconsBlock },
+  "copyright-bar": { component: CopyrightBarBlock },
 };

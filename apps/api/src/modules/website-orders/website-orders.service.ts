@@ -26,6 +26,7 @@ import { createSale, type SaleItemInput } from "@/modules/sales/sale.service";
 import transferService from "@/modules/transfers/transfer.service";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
+import automationService from "@/modules/automation/automation.service";
 import defaultRepo, {
   type WebsiteOrderListItem,
 } from "./website-orders.repository";
@@ -133,11 +134,38 @@ export class WebsiteOrdersService {
     if (existing.status === "CONVERTED_TO_SALE") {
       throw createError("Order has already been converted to a sale", 400);
     }
-    return this.repo.updateOrder(tenantId, id, {
+    const verified = await this.repo.updateOrder(tenantId, id, {
       status: "VERIFIED",
       verifiedAt: new Date(),
       verifier: { connect: { id: userId } },
     });
+
+    automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "storefront.order.verified",
+        scopeType: "GLOBAL",
+        entityType: "WEBSITE_ORDER",
+        entityId: verified.id,
+        actorUserId: userId,
+        dedupeKey: `order-verified:${verified.id}`,
+        payload: {
+          orderId: verified.id,
+          orderCode: verified.orderCode,
+          customerName: verified.customerName,
+          customerPhone: verified.customerPhone,
+          customerEmail: verified.customerEmail,
+          subtotal: Number(verified.subtotal),
+        },
+      })
+      .catch((err) =>
+        console.error(
+          "[website-orders] automation event failed (verified)",
+          err,
+        ),
+      );
+
+    return verified;
   }
 
   async rejectOrder(
@@ -398,12 +426,40 @@ export class WebsiteOrdersService {
     );
 
     // Link the order to the sale and freeze it.
-    return this.repo.updateOrder(tenantId, id, {
+    const converted = await this.repo.updateOrder(tenantId, id, {
       status: "CONVERTED_TO_SALE",
       convertedAt: new Date(),
       converter: { connect: { id: userId } },
       sale: { connect: { id: sale.id } },
     });
+
+    automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "storefront.order.converted",
+        scopeType: "GLOBAL",
+        entityType: "WEBSITE_ORDER",
+        entityId: converted.id,
+        actorUserId: userId,
+        dedupeKey: `order-converted:${converted.id}`,
+        payload: {
+          orderId: converted.id,
+          orderCode: converted.orderCode,
+          saleId: sale.id,
+          locationId: input.locationId,
+          customerName: converted.customerName,
+          customerPhone: converted.customerPhone,
+          subtotal: Number(converted.subtotal),
+        },
+      })
+      .catch((err) =>
+        console.error(
+          "[website-orders] automation event failed (converted)",
+          err,
+        ),
+      );
+
+    return converted;
   }
 
   // ==================== Public-facing (called from public-orders) ====================
@@ -448,7 +504,7 @@ export class WebsiteOrdersService {
     for (let attempt = 0; attempt < 3; attempt++) {
       const orderCode = await this.nextOrderCode(tenantId);
       try {
-        return await this.repo.createOrder(tenantId, {
+        const order = await this.repo.createOrder(tenantId, {
           orderCode,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
@@ -459,6 +515,34 @@ export class WebsiteOrdersService {
           sourceIp: input.sourceIp ?? null,
           sourceUserAgent: input.sourceUserAgent ?? null,
         });
+
+        automationService
+          .publishDomainEvent({
+            tenantId,
+            eventName: "storefront.order.placed",
+            scopeType: "GLOBAL",
+            entityType: "WEBSITE_ORDER",
+            entityId: order.id,
+            actorUserId: null,
+            dedupeKey: `order-placed:${order.id}`,
+            payload: {
+              orderId: order.id,
+              orderCode: order.orderCode,
+              customerName: order.customerName,
+              customerPhone: order.customerPhone,
+              customerEmail: order.customerEmail,
+              subtotal: Number(order.subtotal),
+              itemCount: input.items.length,
+            },
+          })
+          .catch((err) =>
+            console.error(
+              "[website-orders] automation event failed (placed)",
+              err,
+            ),
+          );
+
+        return order;
       } catch (err) {
         if (
           err instanceof Prisma.PrismaClientKnownRequestError &&

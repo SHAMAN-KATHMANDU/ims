@@ -97,6 +97,38 @@ automationRouter.delete(
 
 /**
  * @swagger
+ * /automation/definitions/{id}/toggle:
+ *   patch:
+ *     summary: Toggle automation active/inactive
+ *     tags: [Automation]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE]
+ *     responses:
+ *       200:
+ *         description: Automation toggled
+ */
+automationRouter.patch(
+  "/definitions/:id/toggle",
+  asyncHandler(automationController.toggleDefinition),
+);
+
+/**
+ * @swagger
  * /automation/definitions/{id}/runs:
  *   get:
  *     summary: List automation runs
@@ -109,6 +141,90 @@ automationRouter.delete(
 automationRouter.get(
   "/definitions/:id/runs",
   asyncHandler(automationController.getRuns),
+);
+
+/**
+ * @swagger
+ * /automation/definitions/{id}/analytics:
+ *   get:
+ *     summary: Get automation analytics (runs this week, success rate, avg duration)
+ *     tags: [Automation]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Analytics summary
+ */
+automationRouter.get(
+  "/definitions/:id/analytics",
+  asyncHandler(automationController.getAnalytics),
+);
+
+/**
+ * @swagger
+ * /automation/definitions/bulk-toggle:
+ *   patch:
+ *     summary: Bulk activate or deactivate automations
+ *     tags: [Automation]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [ids, status]
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items: { type: string, format: uuid }
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE]
+ *     responses:
+ *       200:
+ *         description: Number of automations updated
+ */
+automationRouter.patch(
+  "/definitions/bulk-toggle",
+  asyncHandler(automationController.bulkToggle),
+);
+
+/**
+ * @swagger
+ * /automation/definitions/{id}/test:
+ *   post:
+ *     summary: Run a shadow test of an automation with synthetic event data
+ *     tags: [Automation]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [eventName]
+ *             properties:
+ *               eventName:
+ *                 type: string
+ *               payload:
+ *                 type: object
+ *     responses:
+ *       202:
+ *         description: Test run created (shadow mode)
+ */
+automationRouter.post(
+  "/definitions/:id/test",
+  asyncHandler(automationController.testDefinition),
 );
 
 /**

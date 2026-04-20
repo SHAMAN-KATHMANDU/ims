@@ -529,6 +529,41 @@ export class AutomationRepository {
     });
   }
 
+  async getDefinitionAnalytics(tenantId: string, automationId: string) {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const runs = await basePrisma.automationRun.findMany({
+      where: { tenantId, automationId, startedAt: { gte: weekAgo } },
+      select: { status: true, startedAt: true, completedAt: true },
+    });
+    const total = runs.length;
+    const succeeded = runs.filter((r) => r.status === "SUCCEEDED").length;
+    const failed = runs.filter((r) => r.status === "FAILED").length;
+    const durations = runs
+      .filter((r) => r.completedAt != null)
+      .map((r) => r.completedAt!.getTime() - r.startedAt.getTime());
+    const avgDurationMs =
+      durations.length > 0
+        ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+        : null;
+    return {
+      runsThisWeek: total,
+      successRate: total > 0 ? Math.round((succeeded / total) * 100) : null,
+      failureRate: total > 0 ? Math.round((failed / total) * 100) : null,
+      avgDurationMs,
+    };
+  }
+
+  async bulkUpdateStatus(
+    tenantId: string,
+    ids: string[],
+    status: "ACTIVE" | "INACTIVE",
+  ) {
+    return basePrisma.automationDefinition.updateMany({
+      where: { tenantId, id: { in: ids } },
+      data: { status },
+    });
+  }
+
   async createWorkItem(input: CreateWorkItemInput) {
     return basePrisma.workItem.create({
       data: {

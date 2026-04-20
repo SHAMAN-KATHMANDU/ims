@@ -34,6 +34,7 @@ const PREFIX_TO_GROUP: Record<string, AutomationEventGroup> = {
   vendors: "VENDORS",
   locations: "LOCATIONS",
   cart: "STOREFRONT",
+  storefront: "STOREFRONT",
 };
 
 export function getAutomationEventGroup(
@@ -202,6 +203,24 @@ export const AUTOMATION_TRIGGER_EVENT_CATALOG: Record<
     description:
       "When a guest cart on the tenant website has been idle long enough to count as abandoned.",
   },
+  "storefront.order.placed": {
+    label: "Website order placed",
+    description:
+      "When a guest places a new order through the website storefront.",
+  },
+  "storefront.order.verified": {
+    label: "Website order verified",
+    description: "When an admin verifies and confirms a website order.",
+  },
+  "storefront.order.converted": {
+    label: "Website order converted to sale",
+    description:
+      "When a verified website order is converted into a completed sale.",
+  },
+  "storefront.form.submitted": {
+    label: "Website form submitted",
+    description: "When a visitor submits a form on the tenant website.",
+  },
 };
 
 export const AUTOMATION_STATUS_LABELS: Record<AutomationStatusValue, string> = {
@@ -327,6 +346,18 @@ export const AUTOMATION_ACTION_TYPE_DESCRIPTIONS: Record<
   "crm.activity.create": {
     label: "Create CRM activity",
     description: "Log a call, email, or meeting on a record.",
+  },
+  "crm.contact.add_tag": {
+    label: "Add tag to contact",
+    description: "Apply a label tag to a CRM contact.",
+  },
+  "crm.contact.add_note": {
+    label: "Add note to contact",
+    description: "Append a text note to a CRM contact record.",
+  },
+  "crm.deal.create": {
+    label: "Create CRM deal",
+    description: "Open a new deal in a specified pipeline.",
   },
   "webhook.emit": {
     label: "Emit webhook",

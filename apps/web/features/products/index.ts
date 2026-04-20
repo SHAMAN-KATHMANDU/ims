@@ -6,8 +6,13 @@ export {
   getProductByImsCode,
   downloadProducts,
   downloadBulkUploadTemplate,
+  bulkUploadDiscounts,
+  downloadDiscountBulkTemplate,
   type CreateProductData,
   type Product,
+  type DiscountBulkUploadResponse,
+  type DiscountBulkCreated,
+  type DiscountBulkSkipped,
 } from "./services/product.service";
 
 export { ProductPage } from "./components/index";

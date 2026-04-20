@@ -7,6 +7,11 @@ import {
   processProductBulkRows,
   buildProductBulkTemplate,
 } from "./product.bulk.service";
+import {
+  processDiscountBulkRows,
+  buildDiscountBulkTemplate,
+} from "./product.discount.bulk.service";
+import { getDiscountBulkParseOptions } from "./bulkUpload.discount.validation";
 import productService from "./product.service";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
@@ -691,6 +696,98 @@ class ProductController {
         return res.status(404).json({ message: appErr.message });
       }
       return sendControllerError(req, res, error, "Download products error");
+    }
+  };
+
+  bulkUploadDiscounts = async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ message: "No file uploaded", errors: [] });
+      }
+
+      let parseResult: {
+        rows: import("./bulkUpload.discount.validation").DiscountBulkRow[];
+        errors: ValidationError[];
+      };
+      try {
+        parseResult = await parseBulkFile(
+          req.file.path,
+          req.file.originalname,
+          getDiscountBulkParseOptions(),
+        );
+      } catch (err: unknown) {
+        const e = err as { status?: number; body?: unknown };
+        if (e?.status != null && e?.body != null) {
+          return res.status(e.status).json(e.body);
+        }
+        throw err;
+      }
+
+      const { rows, errors: parseErrors } = parseResult;
+      const tenantId = req.user!.tenantId;
+
+      const processResult = await processDiscountBulkRows(rows, { tenantId });
+
+      const allErrors = [...parseErrors, ...processResult.errors];
+
+      try {
+        if (req.file?.path) fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        logger.error(
+          "Error cleaning up file",
+          (req as { requestId?: string }).requestId,
+          cleanupError,
+        );
+      }
+
+      return res.status(200).json({
+        message: "Bulk discount upload completed",
+        summary: {
+          total:
+            processResult.created.length +
+            processResult.skipped.length +
+            allErrors.length,
+          created: processResult.created.length,
+          skipped: processResult.skipped.length,
+          errors: allErrors.length,
+        },
+        created: processResult.created,
+        skipped: processResult.skipped,
+        errors: allErrors,
+      });
+    } catch (error: unknown) {
+      if (req.file?.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          /* ignore */
+        }
+      }
+      return sendControllerError(req, res, error, "Bulk discount upload error");
+    }
+  };
+
+  downloadDiscountBulkUploadTemplate = async (req: Request, res: Response) => {
+    try {
+      const buffer = await buildDiscountBulkTemplate();
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="discounts_bulk_upload_template.xlsx"',
+      );
+      res.send(buffer);
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Download discount template error",
+      );
     }
   };
 }

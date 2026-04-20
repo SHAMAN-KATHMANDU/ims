@@ -172,6 +172,20 @@ export async function getAutomationRuns(
   }
 }
 
+export async function toggleAutomationDefinition(
+  id: string,
+  status: "ACTIVE" | "INACTIVE",
+): Promise<{ automation: AutomationDefinition }> {
+  try {
+    const res = await api.patch(`/automation/definitions/${id}/toggle`, {
+      status,
+    });
+    return unwrapApiData<{ automation: AutomationDefinition }>(res.data);
+  } catch (error) {
+    handleApiError(error, `toggle automation definition "${id}"`);
+  }
+}
+
 export async function replayAutomationEvent(
   id: string,
   payload: ReplayAutomationEventInput = {},
@@ -189,5 +203,60 @@ export async function replayAutomationEvent(
     }>(res.data);
   } catch (error) {
     handleApiError(error, `replay automation event "${id}"`);
+  }
+}
+
+export interface AutomationAnalytics {
+  runsThisWeek: number;
+  successRate: number;
+  failureRate: number;
+  avgDurationMs: number | null;
+}
+
+export async function getAutomationAnalytics(
+  id: string,
+): Promise<{ analytics: AutomationAnalytics }> {
+  try {
+    const res = await api.get(`/automation/definitions/${id}/analytics`);
+    return unwrapApiData<{ analytics: AutomationAnalytics }>(res.data);
+  } catch (error) {
+    handleApiError(error, `fetch analytics for automation "${id}"`);
+  }
+}
+
+export async function bulkToggleAutomations(
+  ids: string[],
+  status: "ACTIVE" | "INACTIVE",
+): Promise<{ updated: number }> {
+  try {
+    const res = await api.patch("/automation/definitions/bulk-toggle", {
+      ids,
+      status,
+    });
+    return unwrapApiData<{ updated: number }>(res.data);
+  } catch (error) {
+    handleApiError(error, "bulk toggle automations");
+  }
+}
+
+export interface TestAutomationInput {
+  eventName: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface TestAutomationResult {
+  runId?: string;
+  status: string;
+}
+
+export async function testAutomationDefinition(
+  id: string,
+  input: TestAutomationInput,
+): Promise<TestAutomationResult> {
+  try {
+    const res = await api.post(`/automation/definitions/${id}/test`, input);
+    return unwrapApiData<TestAutomationResult>(res.data);
+  } catch (error) {
+    handleApiError(error, `test automation definition "${id}"`);
   }
 }

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import axios from "axios";
-import { Plus, Lock, Trash2, Eye, EyeOff, Copy } from "lucide-react";
+import { Plus, Lock, Trash2, Eye, EyeOff, Copy, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -41,6 +42,44 @@ import {
   useDuplicateTenantPage,
 } from "../hooks/use-tenant-pages";
 import type { TenantPageListItem } from "../services/tenant-pages.service";
+import {
+  useSiteConfig,
+  useUpdateSiteConfig,
+} from "@/features/tenant-site/hooks/use-tenant-site";
+
+// Built-in pages every tenant site has
+const BUILT_IN_PAGES: {
+  scope: string;
+  label: string;
+  path: string;
+  description: string;
+}[] = [
+  { scope: "home", label: "Home", path: "/", description: "Landing page" },
+  {
+    scope: "products-index",
+    label: "Shop",
+    path: "/products",
+    description: "Product catalogue",
+  },
+  {
+    scope: "offers",
+    label: "Offers",
+    path: "/offers",
+    description: "Deals & promotions",
+  },
+  {
+    scope: "blog-index",
+    label: "Blog",
+    path: "/blog",
+    description: "Articles & news",
+  },
+  {
+    scope: "contact",
+    label: "Contact",
+    path: "/contact",
+    description: "Contact page",
+  },
+];
 
 function isForbiddenError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 403;
@@ -61,6 +100,95 @@ function FeatureDisabledCard() {
           </CardDescription>
         </div>
       </CardHeader>
+    </Card>
+  );
+}
+
+function BuiltInPagesCard() {
+  const { toast } = useToast();
+  const configQuery = useSiteConfig();
+  const updateConfig = useUpdateSiteConfig();
+
+  const disabledPages: string[] = Array.isArray(
+    (configQuery.data?.features as Record<string, unknown> | null)
+      ?.disabledPages,
+  )
+    ? ((configQuery.data?.features as Record<string, unknown>)
+        .disabledPages as string[])
+    : [];
+
+  const isActive = (scope: string) => !disabledPages.includes(scope);
+
+  const handleToggle = async (scope: string, currentlyActive: boolean) => {
+    const next = currentlyActive
+      ? [...disabledPages, scope]
+      : disabledPages.filter((s) => s !== scope);
+
+    try {
+      await updateConfig.mutateAsync({
+        features: {
+          ...(configQuery.data?.features ?? {}),
+          disabledPages: next,
+        },
+      });
+      toast({
+        title: currentlyActive ? "Page hidden" : "Page activated",
+      });
+    } catch {
+      toast({
+        title: "Failed to update page",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Built-in pages</CardTitle>
+        <CardDescription>
+          Toggle pages on or off. Inactive pages are hidden from visitors.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {BUILT_IN_PAGES.map((page) => {
+            const active = isActive(page.scope);
+            return (
+              <div
+                key={page.scope}
+                className="flex items-center justify-between gap-4 px-6 py-3.5"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{page.label}</span>
+                      <Badge
+                        variant={active ? "default" : "secondary"}
+                        className="text-[10px] h-4 px-1.5"
+                      >
+                        {active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {page.path} · {page.description}
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={active}
+                  onCheckedChange={() => handleToggle(page.scope, active)}
+                  disabled={updateConfig.isPending || configQuery.isLoading}
+                  aria-label={`Toggle ${page.label} page`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
     </Card>
   );
 }
@@ -105,10 +233,6 @@ function PageRow({
     }
   };
 
-  const handleDelete = () => {
-    setDeleteDialogOpen(true);
-  };
-
   const confirmDelete = async () => {
     try {
       await deleteMutation.mutateAsync(page.id);
@@ -134,9 +258,12 @@ function PageRow({
           <div className="text-xs text-muted-foreground">/{page.slug}</div>
         </TableCell>
         <TableCell>
-          <Badge variant={page.isPublished ? "default" : "secondary"}>
-            {page.isPublished ? "Published" : "Draft"}
-          </Badge>
+          <Switch
+            checked={page.isPublished}
+            onCheckedChange={handleToggle}
+            disabled={publishMutation.isPending || unpublishMutation.isPending}
+            aria-label={page.isPublished ? "Unpublish page" : "Publish page"}
+          />
         </TableCell>
         <TableCell className="text-sm">
           {page.showInNav ? (
@@ -144,9 +271,6 @@ function PageRow({
           ) : (
             <span className="text-muted-foreground">Hidden</span>
           )}
-        </TableCell>
-        <TableCell className="text-sm text-muted-foreground">
-          {page.layoutVariant}
         </TableCell>
         <TableCell className="text-right">
           <Button
@@ -187,7 +311,7 @@ function PageRow({
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleDelete}
+            onClick={() => setDeleteDialogOpen(true)}
             disabled={deleteMutation.isPending}
             aria-label={`Delete ${page.title}`}
           >
@@ -228,8 +352,7 @@ export function TenantPagesPage({
   editHrefBase: string;
 }) {
   const [search, setSearch] = useState("");
-  const query = { page: 1, limit: 50 };
-  const pagesQuery = useTenantPages(query);
+  const pagesQuery = useTenantPages({ page: 1, limit: 50 });
   const disabled = pagesQuery.isError && isForbiddenError(pagesQuery.error);
 
   if (disabled) {
@@ -256,13 +379,12 @@ export function TenantPagesPage({
     : allPages;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Pages</h1>
           <p className="text-sm text-muted-foreground">
-            About, FAQ, Shipping, Lookbook — anything the built-in pages
-            don&apos;t already cover.
+            Manage all your site pages — built-in and custom.
           </p>
         </div>
         <Button asChild>
@@ -273,51 +395,69 @@ export function TenantPagesPage({
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <Input
-            placeholder="Search by title or slug…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
-          />
-        </CardHeader>
-        <CardContent>
-          {pagesQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading pages…</p>
-          )}
-          {!pagesQuery.isLoading && filtered.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No pages yet. Click <strong>New page</strong> to add your first.
+      {/* Built-in pages */}
+      <BuiltInPagesCard />
+
+      {/* Custom pages */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Custom pages</h2>
+            <p className="text-sm text-muted-foreground">
+              About, FAQ, Shipping, Lookbook — anything the built-in pages
+              don&apos;t cover.
             </p>
-          )}
-          {filtered.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title / Slug</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Nav</TableHead>
-                  <TableHead>Layout</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <PageRow
-                    key={p.id}
-                    page={p}
-                    editHref={`${editHrefBase}/${p.id}`}
-                    onToggled={() => pagesQuery.refetch()}
-                    onDeleted={() => pagesQuery.refetch()}
-                    onDuplicated={() => pagesQuery.refetch()}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <Input
+              placeholder="Search by title or slug…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+            />
+          </CardHeader>
+          <CardContent className="pt-0">
+            {pagesQuery.isLoading && (
+              <p className="text-sm text-muted-foreground">Loading pages…</p>
+            )}
+            {!pagesQuery.isLoading && filtered.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No custom pages yet.{" "}
+                <Link href={newHref} className="underline underline-offset-4">
+                  Create your first page
+                </Link>
+              </p>
+            )}
+            {filtered.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title / Slug</TableHead>
+                    <TableHead>Active</TableHead>
+                    <TableHead>Nav</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((p) => (
+                    <PageRow
+                      key={p.id}
+                      page={p}
+                      editHref={`${editHrefBase}/${p.id}`}
+                      onToggled={() => pagesQuery.refetch()}
+                      onDeleted={() => pagesQuery.refetch()}
+                      onDuplicated={() => pagesQuery.refetch()}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

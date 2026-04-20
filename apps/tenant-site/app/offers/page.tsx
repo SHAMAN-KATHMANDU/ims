@@ -1,24 +1,22 @@
-/**
- * /offers — a read-only list of products currently on an active
- * ProductDiscount. Matches the public /public/offers endpoint; the
- * page renders via the shared ProductGrid so the card chrome
- * (discount badge, struck-through MRP) reuses the listing logic.
- *
- * We don't pick up `products-index` here because the offers page is
- * a simpler, single-purpose view — tenants who want custom blocks on
- * /offers should wire a dedicated SiteLayout slot in a future phase.
- */
-
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getCategories, getNavPages, getOffers } from "@/lib/api";
+import {
+  getSite,
+  getCategories,
+  getNavPages,
+  getOffers,
+  getSiteLayout,
+} from "@/lib/api";
 import {
   SiteHeader,
   SiteFooter,
   ProductGrid,
 } from "@/components/templates/shared";
+import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { brandingDisplayName } from "@/lib/theme";
+import type { BlockDataContext } from "@/components/blocks/data-context";
+import type { BlockNode } from "@repo/shared";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -54,15 +52,51 @@ export default async function OffersPage({ searchParams }: PageProps) {
   const page = Number(getOne(params.page) ?? "1") || 1;
 
   const ctx = await getTenantContext();
-  const [site, offersList, categories, navPages] = await Promise.all([
+  const [site, offersList, categories, navPages, layout] = await Promise.all([
     getSite(ctx.host, ctx.tenantId),
     getOffers(ctx.host, ctx.tenantId, { page, limit: 24 }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "offers").catch(() => null),
   ]);
 
   if (!site) notFound();
 
+  // Block-first: if a tenant has built a custom "offers" layout in the site
+  // editor, use BlockRenderer. Falls back to the hardcoded grid below.
+  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+    const dataContext: BlockDataContext = {
+      site,
+      host: ctx.host,
+      tenantId: ctx.tenantId,
+      categories,
+      navPages,
+      products: offersList?.products ?? [],
+      featuredBlogPosts: [],
+      productsPage: page,
+      productsTotal: offersList?.total,
+      searchParams: params,
+    };
+    return (
+      <>
+        <SiteHeader
+          site={site}
+          host={ctx.host}
+          categories={categories}
+          navPages={navPages}
+        />
+        <main>
+          <BlockRenderer
+            nodes={layout.blocks as BlockNode[]}
+            dataContext={dataContext}
+          />
+        </main>
+        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
+      </>
+    );
+  }
+
+  // Fallback: hardcoded layout for tenants who haven't customised the page.
   const products = offersList?.products ?? [];
 
   return (

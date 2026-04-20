@@ -875,3 +875,93 @@ export async function downloadBulkUploadTemplate(): Promise<void> {
     handleApiError(error, "download template");
   }
 }
+
+// ============================================
+// Bulk Discount Upload
+// ============================================
+
+export interface DiscountBulkCreated {
+  productName: string;
+  discountType: string;
+  percentage: number;
+}
+
+export interface DiscountBulkSkipped {
+  row: number;
+  productCode?: string | null;
+  productName?: string | null;
+  reason: string;
+}
+
+export interface DiscountBulkUploadResponse {
+  message: string;
+  summary: {
+    total: number;
+    created: number;
+    skipped: number;
+    errors: number;
+  };
+  created: DiscountBulkCreated[];
+  skipped: DiscountBulkSkipped[];
+  errors: BulkUploadError[];
+}
+
+export async function bulkUploadDiscounts(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<DiscountBulkUploadResponse> {
+  if (!file) throw new Error("File is required");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await api.post<DiscountBulkUploadResponse>(
+      "/bulk/upload/discounts",
+      formData,
+      {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            onProgress(
+              Math.round((progressEvent.loaded * 100) / progressEvent.total),
+            );
+          }
+        },
+      },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    const axiosError = error as {
+      isAxiosError?: boolean;
+      response?: {
+        status?: number;
+        data?: { message?: string; missingColumns?: string[]; hint?: string };
+      };
+    };
+    if (
+      axiosError?.isAxiosError &&
+      axiosError.response?.status === 400 &&
+      axiosError.response?.data
+    ) {
+      const data = axiosError.response.data;
+      const err = new Error(data?.message || "Validation failed") as Error & {
+        responseData?: typeof data;
+      };
+      err.responseData = data;
+      throw err;
+    }
+    handleApiError(error, "bulk upload discounts");
+    throw error;
+  }
+}
+
+export async function downloadDiscountBulkTemplate(): Promise<void> {
+  try {
+    const response = await api.get<Blob>("/bulk/template?type=discounts", {
+      responseType: "blob",
+    });
+    downloadBlobFromResponse(response, "discounts_bulk_upload_template.xlsx");
+  } catch (error) {
+    handleApiError(error, "download discount template");
+  }
+}

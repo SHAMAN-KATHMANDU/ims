@@ -30,6 +30,7 @@ import {
   brandingToJson,
 } from "../validation";
 import { useUpdateSiteConfig } from "../hooks/use-tenant-site";
+import { FontPicker } from "./FontPicker";
 
 /**
  * Tabbed branding editor (Phase C.5 rewrite).
@@ -366,23 +367,37 @@ export function SiteBrandingForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="brand-heading-font">Heading font</Label>
-                  <Input
-                    id="brand-heading-font"
-                    placeholder="Inter"
-                    disabled={disabled}
-                    {...form.register("headingFont")}
+                  <Controller
+                    control={form.control}
+                    name="headingFont"
+                    render={({ field }) => (
+                      <FontPicker
+                        id="brand-heading-font"
+                        value={field.value ?? ""}
+                        onChange={(v) => field.onChange(v || undefined)}
+                        placeholder="Inter (default)"
+                        disabled={disabled}
+                      />
+                    )}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Applied to h1–h6. Use a Google Fonts family name.
+                    Applied to h1–h6.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="brand-body-font">Body font</Label>
-                  <Input
-                    id="brand-body-font"
-                    placeholder="Inter"
-                    disabled={disabled}
-                    {...form.register("bodyFont")}
+                  <Controller
+                    control={form.control}
+                    name="bodyFont"
+                    render={({ field }) => (
+                      <FontPicker
+                        id="brand-body-font"
+                        value={field.value ?? ""}
+                        onChange={(v) => field.onChange(v || undefined)}
+                        placeholder="Inter (default)"
+                        disabled={disabled}
+                      />
+                    )}
                   />
                   <p className="text-xs text-muted-foreground">
                     Applied to paragraphs, buttons, inputs.
@@ -392,11 +407,18 @@ export function SiteBrandingForm({
                   <Label htmlFor="brand-display-font">
                     Display font (optional)
                   </Label>
-                  <Input
-                    id="brand-display-font"
-                    placeholder="Playfair Display"
-                    disabled={disabled}
-                    {...form.register("displayFont")}
+                  <Controller
+                    control={form.control}
+                    name="displayFont"
+                    render={({ field }) => (
+                      <FontPicker
+                        id="brand-display-font"
+                        value={field.value ?? ""}
+                        onChange={(v) => field.onChange(v || undefined)}
+                        placeholder="Playfair Display (default)"
+                        disabled={disabled}
+                      />
+                    )}
                   />
                   <p className="text-xs text-muted-foreground">
                     Oversized hero / section-title font. Falls back to heading

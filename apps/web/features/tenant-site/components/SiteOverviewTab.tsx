@@ -14,10 +14,12 @@
  */
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  ExternalLink,
   FileText,
   LayoutGrid,
   Navigation as NavIcon,
@@ -43,6 +45,9 @@ interface SiteOverviewTabProps {
 }
 
 export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
+  const pathname = usePathname();
+  const workspaceSlug = pathname.split("/")[1] ?? "";
+  const editorHref = `/${workspaceSlug}/site-editor`;
   const navMenusQuery = useNavMenus();
   const layoutsQuery = useSiteLayouts();
   const pagesQuery = useTenantPages({ limit: 100 });
@@ -94,8 +99,9 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
     {
       label: "Design your pages",
       done: designConfigured,
-      href: "site/design",
+      href: editorHref,
       hint: "Compose your home page and product pages with blocks.",
+      openInNewTab: true,
     },
     {
       label: "Add contact info",
@@ -141,7 +147,8 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
           label="Layouts"
           value={layoutsQuery.isLoading ? "…" : String(layoutCount)}
           muted={layoutCount === 0}
-          href="site/design"
+          href={editorHref}
+          openInNewTab
         />
         <StatTile
           icon={<FileText className="h-4 w-4" />}
@@ -168,10 +175,10 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
             </div>
           </div>
           <Button asChild>
-            <Link href="site/design">
+            <a href={editorHref} target="_blank" rel="noopener noreferrer">
               Open design editor
-              <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
-            </Link>
+              <ExternalLink className="ml-1 h-4 w-4" aria-hidden="true" />
+            </a>
           </Button>
         </CardContent>
       </Card>
@@ -290,6 +297,7 @@ interface ChecklistItem {
   done: boolean;
   action?: () => void;
   href?: string;
+  openInNewTab?: boolean;
   hint: string;
   disabled?: boolean;
 }
@@ -326,6 +334,18 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
     "flex w-full rounded-md border border-transparent p-2 transition hover:border-border hover:bg-muted/40 disabled:opacity-50";
 
   if (item.href) {
+    if (item.openInNewTab) {
+      return (
+        <a
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={className}
+        >
+          {content}
+        </a>
+      );
+    }
     return (
       <Link href={item.href} className={className}>
         {content}
@@ -351,6 +371,7 @@ function StatTile({
   muted,
   onClick,
   href,
+  openInNewTab,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -358,6 +379,7 @@ function StatTile({
   muted?: boolean;
   onClick?: () => void;
   href?: string;
+  openInNewTab?: boolean;
 }) {
   const content = (
     <div className="flex h-full flex-col gap-2 rounded-lg border border-border bg-card p-4 text-left transition hover:border-primary/50">
@@ -375,6 +397,18 @@ function StatTile({
     </div>
   );
   if (href) {
+    if (openInNewTab) {
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+        >
+          {content}
+        </a>
+      );
+    }
     return (
       <Link href={href} className="block">
         {content}
