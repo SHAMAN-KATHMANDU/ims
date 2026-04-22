@@ -28,7 +28,6 @@ import {
   ChevronRight,
   Copy,
   Trash2,
-  Settings,
   EyeOff,
   Box,
   Hash,
