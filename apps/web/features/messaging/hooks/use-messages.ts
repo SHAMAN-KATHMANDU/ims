@@ -7,6 +7,8 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import {
   getMessages,
   sendMessage,
@@ -44,7 +46,11 @@ export const messageKeys = {
     [...messageKeys.lists(), conversationId] as const,
 };
 
-export function useMessages(conversationId: string | null) {
+export function useMessages(
+  conversationId: string | null,
+  options?: { enabled?: boolean },
+) {
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
   return useInfiniteQuery({
     queryKey: messageKeys.list(conversationId!),
     queryFn: ({ pageParam }) =>
@@ -56,14 +62,18 @@ export function useMessages(conversationId: string | null) {
       if (lastPage.length < 50) return undefined;
       return lastPage[lastPage.length - 1]?.id;
     },
-    enabled: !!conversationId,
+    enabled: messagingEnabled && !!conversationId && (options?.enabled ?? true),
   });
 }
 
 export function useSendMessage(conversationId: string) {
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: SendMessageData) => sendMessage(conversationId, data),
+    mutationFn: (data: SendMessageData) => {
+      if (!messagingEnabled) throw new Error("Feature disabled: MESSAGING");
+      return sendMessage(conversationId, data);
+    },
     onSuccess: (res) => {
       const newMsg = res.data;
       qc.setQueryData<InfiniteData<Message[]>>(
@@ -87,10 +97,19 @@ export function useSendMessage(conversationId: string) {
 }
 
 export function useAddMessageReaction(conversationId: string) {
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
-      addMessageReaction(conversationId, messageId, emoji),
+    mutationFn: ({
+      messageId,
+      emoji,
+    }: {
+      messageId: string;
+      emoji: string;
+    }) => {
+      if (!messagingEnabled) throw new Error("Feature disabled: MESSAGING");
+      return addMessageReaction(conversationId, messageId, emoji);
+    },
     onMutate: async ({ messageId, emoji }) => {
       await qc.cancelQueries({ queryKey: messageKeys.list(conversationId) });
       const previous = qc.getQueryData<InfiniteData<Message[]>>(
@@ -140,10 +159,19 @@ export function useAddMessageReaction(conversationId: string) {
 }
 
 export function useRemoveMessageReaction(conversationId: string) {
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
-      removeMessageReaction(conversationId, messageId, emoji),
+    mutationFn: ({
+      messageId,
+      emoji,
+    }: {
+      messageId: string;
+      emoji: string;
+    }) => {
+      if (!messagingEnabled) throw new Error("Feature disabled: MESSAGING");
+      return removeMessageReaction(conversationId, messageId, emoji);
+    },
     onMutate: async ({ messageId, emoji }) => {
       await qc.cancelQueries({ queryKey: messageKeys.list(conversationId) });
       const previous = qc.getQueryData<InfiniteData<Message[]>>(
@@ -178,10 +206,13 @@ export function useRemoveMessageReaction(conversationId: string) {
 }
 
 export function useEditConversationMessage(conversationId: string) {
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ messageId, text }: { messageId: string; text: string }) =>
-      editConversationMessage(conversationId, messageId, text),
+    mutationFn: ({ messageId, text }: { messageId: string; text: string }) => {
+      if (!messagingEnabled) throw new Error("Feature disabled: MESSAGING");
+      return editConversationMessage(conversationId, messageId, text);
+    },
     onSuccess: (updated) => {
       qc.setQueryData<InfiniteData<Message[]>>(
         messageKeys.list(conversationId),

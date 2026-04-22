@@ -87,9 +87,13 @@ export function useDeal(id: string, options?: { enabled?: boolean }) {
 }
 
 export function useCreateDeal() {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateDealData) => createDeal(data),
+    mutationFn: (data: CreateDealData) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return createDeal(data);
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: dealKeys.kanban() });
@@ -106,10 +110,13 @@ export function useCreateDeal() {
 }
 
 export function useUpdateDeal() {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateDealData }) =>
-      updateDeal(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateDealData }) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return updateDeal(id, data);
+    },
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
@@ -125,6 +132,7 @@ export function useUpdateDeal() {
 }
 
 export function useUpdateDealStage() {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -138,11 +146,13 @@ export function useUpdateDealStage() {
       boardPipelineId?: string;
       /** When set, API moves the deal to this pipeline (skip optimistic cross-board update). */
       targetPipelineId?: string;
-    }) =>
-      updateDealStage(id, {
+    }) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return updateDealStage(id, {
         stage,
         ...(targetPipelineId ? { pipelineId: targetPipelineId } : {}),
-      }),
+      });
+    },
     onMutate: async ({ id, stage, boardPipelineId, targetPipelineId }) => {
       if (targetPipelineId || !boardPipelineId) return undefined;
       const queryKey = dealKeys.kanban(boardPipelineId);
@@ -183,9 +193,13 @@ export function useUpdateDealStage() {
 }
 
 export function useDeleteDeal() {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteDeal(id),
+    mutationFn: (id: string) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return deleteDeal(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
@@ -197,9 +211,13 @@ export function useDeleteDeal() {
 }
 
 export function useAddDealLineItem(dealId: string) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: AddDealLineItemData) => addDealLineItem(dealId, data),
+    mutationFn: (data: AddDealLineItemData) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return addDealLineItem(dealId, data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
@@ -210,9 +228,13 @@ export function useAddDealLineItem(dealId: string) {
 }
 
 export function useRemoveDealLineItem(dealId: string) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (lineItemId: string) => removeDealLineItem(dealId, lineItemId),
+    mutationFn: (lineItemId: string) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return removeDealLineItem(dealId, lineItemId);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
@@ -223,9 +245,13 @@ export function useRemoveDealLineItem(dealId: string) {
 }
 
 export function useConvertDealToSale(dealId: string) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (locationId: string) => convertDealToSale(dealId, locationId),
+    mutationFn: (locationId: string) => {
+      if (!dealsEnabled) throw new Error("Feature disabled: CRM_DEALS");
+      return convertDealToSale(dealId, locationId);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });

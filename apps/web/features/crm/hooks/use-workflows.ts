@@ -69,10 +69,14 @@ export function useWorkflowRuns(
 }
 
 export function useCreateWorkflow() {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: CreateWorkflowInput) => createWorkflow(data),
+    mutationFn: (data: CreateWorkflowInput) => {
+      if (!workflowsEnabled) throw new Error("Feature disabled: CRM_WORKFLOWS");
+      return createWorkflow(data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -91,6 +95,7 @@ export function useCreateWorkflow() {
 }
 
 export function useInstallWorkflowTemplate() {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
@@ -100,7 +105,10 @@ export function useInstallWorkflowTemplate() {
     }: {
       templateKey: string;
       data?: InstallWorkflowTemplateInput;
-    }) => installWorkflowTemplate(templateKey, data),
+    }) => {
+      if (!workflowsEnabled) throw new Error("Feature disabled: CRM_WORKFLOWS");
+      return installWorkflowTemplate(templateKey, data);
+    },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: workflowKeys.templates() });
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
@@ -128,11 +136,14 @@ export function useInstallWorkflowTemplate() {
 }
 
 export function useUpdateWorkflow() {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateWorkflowInput }) =>
-      updateWorkflow(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateWorkflowInput }) => {
+      if (!workflowsEnabled) throw new Error("Feature disabled: CRM_WORKFLOWS");
+      return updateWorkflow(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.detail(id) });
@@ -153,10 +164,14 @@ export function useUpdateWorkflow() {
 }
 
 export function useDeleteWorkflow() {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => deleteWorkflow(id),
+    mutationFn: (id: string) => {
+      if (!workflowsEnabled) throw new Error("Feature disabled: CRM_WORKFLOWS");
+      return deleteWorkflow(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.templates() });

@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFeatureFlag } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import {
   getCompanies,
   getCompanyById,
@@ -24,7 +26,11 @@ export const companyKeys = {
   select: () => [...companyKeys.all, "select"] as const,
 };
 
-export function useCompaniesPaginated(params: CompanyListParams = {}) {
+export function useCompaniesPaginated(
+  params: CompanyListParams = {},
+  options?: { enabled?: boolean },
+) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: companyKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -35,28 +41,36 @@ export function useCompaniesPaginated(params: CompanyListParams = {}) {
     }),
     queryFn: () => getCompanies(params),
     placeholderData: (prev) => prev,
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useCompany(id: string) {
+export function useCompany(id: string, options?: { enabled?: boolean }) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: companyKeys.detail(id),
     queryFn: () => getCompanyById(id),
-    enabled: !!id,
+    enabled: crmEnabled && !!id && (options?.enabled ?? true),
   });
 }
 
-export function useCompaniesForSelect() {
+export function useCompaniesForSelect(options?: { enabled?: boolean }) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: companyKeys.select(),
     queryFn: () => listCompaniesForSelect(),
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
 export function useCreateCompany() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateCompanyData) => createCompany(data),
+    mutationFn: (data: CreateCompanyData) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return createCompany(data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: companyKeys.lists() });
       qc.invalidateQueries({ queryKey: companyKeys.select() });
@@ -65,10 +79,13 @@ export function useCreateCompany() {
 }
 
 export function useUpdateCompany() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyData }) =>
-      updateCompany(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateCompanyData }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return updateCompany(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: companyKeys.lists() });
       qc.invalidateQueries({ queryKey: companyKeys.detail(id) });
@@ -78,9 +95,13 @@ export function useUpdateCompany() {
 }
 
 export function useDeleteCompany() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteCompany(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteCompany(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: companyKeys.lists() });
       qc.invalidateQueries({ queryKey: companyKeys.select() });

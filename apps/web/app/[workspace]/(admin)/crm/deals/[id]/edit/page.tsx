@@ -4,15 +4,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import { useDeal, useUpdateDeal } from "@/features/crm";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealForm } from "@/features/crm";
 import type { UpdateDealData } from "@/features/crm";
-import { WORKSPACE_ROOT } from "@/constants/routes";
-import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
-import { EnvFeature } from "@/features/flags";
-import { Feature } from "@repo/shared";
+import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 
 export default function EditDealPage() {
   const params = useParams();
@@ -43,44 +39,37 @@ export default function EditDealPage() {
 
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.CRM_DEALS}>
-      <FeaturePageGuard feature={Feature.SALES_PIPELINE}>
-        <AuthGuard
-          roles={["admin", "superAdmin"]}
-          unauthorizedPath={WORKSPACE_ROOT}
-        >
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-4 mb-6">
-              <Link href={`${basePath}/crm/deals/${id}`}>
-                <Button variant="ghost">Back</Button>
-              </Link>
-              <h1 className="text-3xl font-bold">Edit Deal</h1>
-            </div>
-            <DealForm
-              mode="edit"
-              deal={deal}
-              basePath={basePath}
-              defaultValues={{
-                name: deal.name,
-                value: Number(deal.value),
-                pipelineId: deal.pipelineId,
-                stage: deal.stage,
-                expectedCloseDate: deal.expectedCloseDate
-                  ? new Date(deal.expectedCloseDate).toISOString().slice(0, 10)
-                  : "",
-                status: deal.status,
-                contactId: deal.contactId ?? undefined,
-                companyId: deal.companyId ?? undefined,
-                assignedToId: deal.assignedToId ?? "",
-                editReason: deal.editReason ?? null,
-                stageNames,
-              }}
-              onSubmit={handleSubmit}
-              onCancel={() => router.push(`${basePath}/crm/deals/${id}`)}
-              isLoading={updateMutation.isPending}
-            />
-          </div>
-        </AuthGuard>
-      </FeaturePageGuard>
+      <div className="max-w-2xl">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href={`${basePath}/crm/deals/${id}`}>
+            <Button variant="ghost">Back</Button>
+          </Link>
+          <h1 className="text-3xl font-bold">Edit Deal</h1>
+        </div>
+        <DealForm
+          mode="edit"
+          deal={deal}
+          basePath={basePath}
+          defaultValues={{
+            name: deal.name,
+            value: Number(deal.value),
+            pipelineId: deal.pipelineId,
+            stage: deal.stage,
+            expectedCloseDate: deal.expectedCloseDate
+              ? new Date(deal.expectedCloseDate).toISOString().slice(0, 10)
+              : "",
+            status: deal.status,
+            contactId: deal.contactId ?? undefined,
+            companyId: deal.companyId ?? undefined,
+            assignedToId: deal.assignedToId ?? "",
+            editReason: deal.editReason ?? null,
+            stageNames,
+          }}
+          onSubmit={handleSubmit}
+          onCancel={() => router.push(`${basePath}/crm/deals/${id}`)}
+          isLoading={updateMutation.isPending}
+        />
+      </div>
     </EnvFeaturePageGuard>
   );
 }

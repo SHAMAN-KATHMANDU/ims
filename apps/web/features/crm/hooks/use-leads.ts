@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFeatureFlag } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import {
   getLeads,
   getLeadById,
@@ -24,7 +26,11 @@ export const leadKeys = {
   detail: (id: string) => [...leadKeys.details(), id] as const,
 };
 
-export function useLeadsPaginated(params: LeadListParams = {}) {
+export function useLeadsPaginated(
+  params: LeadListParams = {},
+  options?: { enabled?: boolean },
+) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: leadKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -38,21 +44,27 @@ export function useLeadsPaginated(params: LeadListParams = {}) {
     }),
     queryFn: () => getLeads(params),
     placeholderData: (prev) => prev,
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useLead(id: string) {
+export function useLead(id: string, options?: { enabled?: boolean }) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: leadKeys.detail(id),
     queryFn: () => getLeadById(id),
-    enabled: !!id,
+    enabled: crmEnabled && !!id && (options?.enabled ?? true),
   });
 }
 
 export function useCreateLead() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateLeadData) => createLead(data),
+    mutationFn: (data: CreateLeadData) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return createLead(data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -61,10 +73,13 @@ export function useCreateLead() {
 }
 
 export function useUpdateLead() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateLeadData }) =>
-      updateLead(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateLeadData }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return updateLead(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
@@ -74,9 +89,13 @@ export function useUpdateLead() {
 }
 
 export function useDeleteLead() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteLead(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteLead(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -85,6 +104,7 @@ export function useDeleteLead() {
 }
 
 export function useConvertLead() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -98,7 +118,10 @@ export function useConvertLead() {
         dealValue?: number;
         pipelineId?: string;
       };
-    }) => convertLead(id, data),
+    }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return convertLead(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
@@ -110,10 +133,19 @@ export function useConvertLead() {
 }
 
 export function useAssignLead() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, assignedToId }: { id: string; assignedToId: string }) =>
-      assignLead(id, assignedToId),
+    mutationFn: ({
+      id,
+      assignedToId,
+    }: {
+      id: string;
+      assignedToId: string;
+    }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return assignLead(id, assignedToId);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });

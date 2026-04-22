@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFeatureFlag } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import {
   getTasks,
   getTaskById,
@@ -27,7 +29,11 @@ export const taskKeys = {
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };
 
-export function useTasksPaginated(params: TaskListParams = {}) {
+export function useTasksPaginated(
+  params: TaskListParams = {},
+  options?: { enabled?: boolean },
+) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: taskKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -44,21 +50,27 @@ export function useTasksPaginated(params: TaskListParams = {}) {
     }),
     queryFn: () => getTasks(params),
     placeholderData: (prev) => prev,
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useTask(id: string) {
+export function useTask(id: string, options?: { enabled?: boolean }) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: taskKeys.detail(id),
     queryFn: () => getTaskById(id),
-    enabled: !!id,
+    enabled: crmEnabled && !!id && (options?.enabled ?? true),
   });
 }
 
 export function useCreateTask() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateTaskData) => createTask(data),
+    mutationFn: (data: CreateTaskData) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return createTask(data);
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -79,10 +91,13 @@ export function useCreateTask() {
 }
 
 export function useUpdateTask() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTaskData }) =>
-      updateTask(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateTaskData }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return updateTask(id, data);
+    },
     onSuccess: (data, { id, data: updateData }) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
@@ -102,9 +117,13 @@ export function useUpdateTask() {
 }
 
 export function useCompleteTask() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => completeTask(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return completeTask(id);
+    },
     onSuccess: (data, id) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
@@ -123,9 +142,13 @@ export function useCompleteTask() {
 }
 
 export function useDeleteTask() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteTask(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteTask(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -135,9 +158,13 @@ export function useDeleteTask() {
 }
 
 export function useBulkCompleteTasks() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (ids: string[]) => bulkCompleteTasks(ids),
+    mutationFn: (ids: string[]) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return bulkCompleteTasks(ids);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -147,10 +174,13 @@ export function useBulkCompleteTasks() {
 }
 
 export function useBulkDeleteTasks() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) =>
-      bulkDeleteTasks(ids, reason),
+    mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return bulkDeleteTasks(ids, reason);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
