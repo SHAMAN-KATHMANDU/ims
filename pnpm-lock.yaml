@@ -14,6 +14,7 @@ overrides:
   serialize-javascript: 7.0.3
   multer: ^2.1.1
   vitest>vite: ^6.4.1
+  protobufjs@<7.5.5: ^7.5.5
 
 importers:
   .:
@@ -8704,14 +8705,14 @@ packages:
       {
         integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==,
       }
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@7.2.3:
     resolution:
       {
         integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==,
       }
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   global-directory@4.0.1:
     resolution:
@@ -11556,10 +11557,10 @@ packages:
         integrity: sha512-TwEZ+X+yCJmYfL7TPUOcvBZ4QfoT5YenQiJuX//0th53DE6w0xxLEtfK3iyryQFddXuvkIk51EEgrJQ0WJkOmQ==,
       }
 
-  protobufjs@7.5.4:
+  protobufjs@7.5.5:
     resolution:
       {
-        integrity: sha512-CvexbZtbov6jW2eXAvLukXjXUW1TzFaivC46BpWc/3BpcCysb5Vffu+B3XHMm8lVEuy2Mm4XGex8hBSg1yapPg==,
+        integrity: sha512-3wY1AxV+VBNW8Yypfd1yQY9pXnqTAN+KwQxL8iYm3/BjKYMNg4i0owhEe26PWDOMaIrzeeF98Lqd5NGz4omiIg==,
       }
     engines: { node: ">=12.0.0" }
 
@@ -15030,7 +15031,7 @@ snapshots:
     dependencies:
       google-auth-library: 10.6.2
       p-retry: 4.6.2
-      protobufjs: 7.5.4
+      protobufjs: 7.5.5
       ws: 8.19.0
     transitivePeerDependencies:
       - bufferutil
@@ -15046,7 +15047,7 @@ snapshots:
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
-      protobufjs: 7.5.4
+      protobufjs: 7.5.5
       yargs: 17.7.2
 
   "@hookform/resolvers@3.10.0(react-hook-form@7.70.0(react@19.2.0))":
@@ -15883,7 +15884,7 @@ snapshots:
       "@opentelemetry/sdk-logs": 0.213.0(@opentelemetry/api@1.9.0)
       "@opentelemetry/sdk-metrics": 2.6.0(@opentelemetry/api@1.9.0)
       "@opentelemetry/sdk-trace-base": 2.6.0(@opentelemetry/api@1.9.0)
-      protobufjs: 7.5.4
+      protobufjs: 7.5.5
 
   "@opentelemetry/propagator-b3@2.6.0(@opentelemetry/api@1.9.0)":
     dependencies:
@@ -21793,7 +21794,7 @@ snapshots:
 
   property-information@7.1.0: {}
 
-  protobufjs@7.5.4:
+  protobufjs@7.5.5:
     dependencies:
       "@protobufjs/aspromise": 1.1.2
       "@protobufjs/base64": 1.1.2
