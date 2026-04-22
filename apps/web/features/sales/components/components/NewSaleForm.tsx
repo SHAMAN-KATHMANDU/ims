@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -26,7 +26,11 @@ import {
   formatCurrency,
   previewSale,
 } from "../../services/sales.service";
-import { NewSaleFormSchema, type NewSaleFormInput } from "../../validation";
+import {
+  NewSaleFormSchema,
+  type NewSaleFormInput,
+  type CreateSaleItemInput,
+} from "../../validation";
 import {
   Dialog,
   DialogContent,
@@ -235,12 +239,6 @@ interface SaleItem {
 
 type PaymentMethod = string;
 
-interface PaymentEntry {
-  id: string;
-  method: PaymentMethod;
-  amount: number;
-}
-
 interface NewSaleFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -275,47 +273,119 @@ export function NewSaleForm({
     [enabledPaymentMethods],
   );
 
-  // Form state
-  const [locationId, setLocationId] = useState("");
-  const [memberPhone, setMemberPhone] = useState("");
-  const [memberName, setMemberName] = useState("");
-  const [contactId, setContactId] = useState<string | null>(null);
+  // Transient UI-only state (not form fields)
   const [contactSearch, setContactSearch] = useState("");
   const [showContactDropdown, setShowContactDropdown] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<SaleItem[]>([]);
-  const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const cartItemsRef = useRef<HTMLDivElement>(null);
-  const prevItemsLengthRef = useRef(items.length);
-  const [isCreditSale, setIsCreditSale] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethod>(enabledPaymentMethods[0]?.code ?? "CASH");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [promoCode, setPromoCode] = useState("");
+  const prevItemsLengthRef = useRef(0);
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [promoCodeValidating, setPromoCodeValidating] = useState(false);
-  const debouncedPromoCode = useDebounce(promoCode, 2000);
 
   const validationForm = useForm<NewSaleFormInput>({
     resolver: zodResolver(NewSaleFormSchema),
     mode: "onBlur",
-    defaultValues: { locationId: "", items: [] },
+    defaultValues: {
+      locationId: "",
+      memberPhone: "",
+      memberName: "",
+      contactId: null,
+      notes: "",
+      isCreditSale: false,
+      items: [],
+      payments: [],
+      promoCode: "",
+      discountMode: "individual",
+      aggregateDiscountAmount: 0,
+      selectedPaymentMethod: enabledPaymentMethods[0]?.code ?? "CASH",
+      paymentAmount: "",
+    },
   });
+  const { setValue, register } = validationForm;
 
-  useEffect(() => {
-    validationForm.setValue("locationId", locationId);
-  }, [locationId, validationForm]);
+  // Reactive reads of all RHF scalar fields (same variable names as old useState)
+  // ?? fallbacks narrow `T | undefined` → `T` since optional schema fields widen the return type
+  const locationId =
+    useWatch({
+      control: validationForm.control,
+      name: "locationId",
+      defaultValue: "",
+    }) ?? "";
+  const memberPhone =
+    useWatch({
+      control: validationForm.control,
+      name: "memberPhone",
+      defaultValue: "",
+    }) ?? "";
+  const memberName =
+    useWatch({
+      control: validationForm.control,
+      name: "memberName",
+      defaultValue: "",
+    }) ?? "";
+  const contactId =
+    useWatch({
+      control: validationForm.control,
+      name: "contactId",
+      defaultValue: null,
+    }) ?? null;
+  const isCreditSale =
+    useWatch({
+      control: validationForm.control,
+      name: "isCreditSale",
+      defaultValue: false,
+    }) ?? false;
+  const promoCode =
+    useWatch({
+      control: validationForm.control,
+      name: "promoCode",
+      defaultValue: "",
+    }) ?? "";
+  const discountMode =
+    useWatch({
+      control: validationForm.control,
+      name: "discountMode",
+      defaultValue: "individual",
+    }) ?? "individual";
+  const aggregateDiscountAmount =
+    useWatch({
+      control: validationForm.control,
+      name: "aggregateDiscountAmount",
+      defaultValue: 0,
+    }) ?? 0;
+  const selectedPaymentMethod =
+    useWatch({
+      control: validationForm.control,
+      name: "selectedPaymentMethod",
+      defaultValue: enabledPaymentMethods[0]?.code ?? "CASH",
+    }) ??
+    enabledPaymentMethods[0]?.code ??
+    "CASH";
+  const paymentAmount =
+    useWatch({
+      control: validationForm.control,
+      name: "paymentAmount",
+      defaultValue: "",
+    }) ?? "";
 
-  useEffect(() => {
-    validationForm.setValue(
-      "items",
-      items.map((i) => ({
-        variationId: i.variationId,
-        subVariationId: i.subVariationId ?? null,
-        quantity: i.quantity,
-      })),
-    );
-  }, [items, validationForm]);
+  const debouncedPromoCode = useDebounce(promoCode, 2000);
+
+  // Field arrays — single source of truth for items and payments
+  const {
+    append: appendItem,
+    remove: removeItem,
+    update: updateItem,
+    replace: replaceItems,
+    fields: rawItemFields,
+  } = useFieldArray({ control: validationForm.control, name: "items" });
+  /** Cast to SaleItem so all display fields are accessible; runtime always has them. */
+  type SaleItemField = SaleItem & { id: string };
+  const itemsFields = rawItemFields as unknown as SaleItemField[];
+
+  const {
+    append: appendPayment,
+    remove: removePayment,
+    fields: paymentsFields,
+  } = useFieldArray({ control: validationForm.control, name: "payments" });
 
   // Contact search (200ms debounce) — must be before auto-fill effect
   const debouncedContactSearch = useDebounce(contactSearch, 200);
@@ -330,21 +400,21 @@ export function NewSaleForm({
 
   // Auto-scroll cart to show newly added items (fix #281)
   useEffect(() => {
-    if (items.length > prevItemsLengthRef.current) {
+    if (itemsFields.length > prevItemsLengthRef.current) {
       cartItemsRef.current?.lastElementChild?.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
       });
     }
-    prevItemsLengthRef.current = items.length;
-  }, [items.length]);
+    prevItemsLengthRef.current = itemsFields.length;
+  }, [itemsFields.length]);
 
   // Credit sale requires member or contact; clear credit sale if both are cleared
   useEffect(() => {
     if (!memberPhone.trim() && !contactId && isCreditSale) {
-      setIsCreditSale(false);
+      setValue("isCreditSale", false);
     }
-  }, [memberPhone, contactId, isCreditSale]);
+  }, [memberPhone, contactId, isCreditSale, setValue]);
 
   // When contact is selected, auto-fill phone and name from contact
   useEffect(() => {
@@ -353,11 +423,11 @@ export function NewSaleForm({
       if (c) {
         const phone = c.member?.phone ?? c.phone ?? "";
         const name = [c.firstName, c.lastName].filter(Boolean).join(" ").trim();
-        if (phone) setMemberPhone(phone);
-        if (name) setMemberName(name);
+        if (phone) setValue("memberPhone", phone);
+        if (name) setValue("memberName", name);
       }
     }
-  }, [contactId, contactOptions]);
+  }, [contactId, contactOptions, setValue]);
 
   // Validate promo code when debounced value changes
   useEffect(() => {
@@ -365,16 +435,16 @@ export function NewSaleForm({
       if (!debouncedPromoCode.trim()) {
         setPromoCodeError(null);
         // Clear promo codes from all items
-        setItems((prevItems) =>
-          prevItems.map((item) => ({
+        replaceItems(
+          itemsFields.map((item) => ({
             ...item,
             promoCode: undefined,
-          })),
+          })) as unknown as CreateSaleItemInput[],
         );
         return;
       }
 
-      if (items.length === 0) return;
+      if (itemsFields.length === 0) return;
 
       setPromoCodeValidating(true);
       setPromoCodeError(null);
@@ -385,38 +455,38 @@ export function NewSaleForm({
         if (foundPromo) {
           if (!foundPromo.isActive) {
             setPromoCodeError("Promo code is not active");
-            setItems((prevItems) =>
-              prevItems.map((item) => ({
+            replaceItems(
+              itemsFields.map((item) => ({
                 ...item,
                 promoCode: undefined,
-              })),
+              })) as unknown as CreateSaleItemInput[],
             );
           } else {
             // Apply promo code to all items (backend will validate eligibility)
-            setItems((prevItems) =>
-              prevItems.map((item) => ({
+            replaceItems(
+              itemsFields.map((item) => ({
                 ...item,
                 promoCode: debouncedPromoCode.trim(),
-              })),
+              })) as unknown as CreateSaleItemInput[],
             );
             setPromoCodeError(null);
           }
         } else {
           setPromoCodeError("Promo code not found");
-          setItems((prevItems) =>
-            prevItems.map((item) => ({
+          replaceItems(
+            itemsFields.map((item) => ({
               ...item,
               promoCode: undefined,
-            })),
+            })) as unknown as CreateSaleItemInput[],
           );
         }
       } catch {
         setPromoCodeError("Error validating promo code");
-        setItems((prevItems) =>
-          prevItems.map((item) => ({
+        replaceItems(
+          itemsFields.map((item) => ({
             ...item,
             promoCode: undefined,
-          })),
+          })) as unknown as CreateSaleItemInput[],
         );
       } finally {
         setPromoCodeValidating(false);
@@ -427,14 +497,7 @@ export function NewSaleForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedPromoCode]);
 
-  // Discount mode: 'individual' (per product) or 'aggregate' (whole sale)
-  const [discountMode, setDiscountMode] = useState<"individual" | "aggregate">(
-    "individual",
-  );
-  const [_aggregateDiscountId, setAggregateDiscountId] =
-    useState<string>("none");
-  const [aggregateDiscountAmount, setAggregateDiscountAmount] =
-    useState<number>(0);
+  // Discount mode is now managed by RHF (discountMode, aggregateDiscountAmount)
 
   // Inventory — search-only: hook only fetches once locationId + search are present.
   const [productSearch, setProductSearch] = useState("");
@@ -478,9 +541,12 @@ export function NewSaleForm({
       (method) => method.code === selectedPaymentMethod,
     );
     if (!selectedExists) {
-      setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
+      setValue(
+        "selectedPaymentMethod",
+        enabledPaymentMethods[0]?.code ?? "CASH",
+      );
     }
-  }, [enabledPaymentMethods, selectedPaymentMethod]);
+  }, [enabledPaymentMethods, selectedPaymentMethod, setValue]);
 
   // Clear cart, search, and any scanned product whenever location changes.
   // (Inventory is now driven by useLocationInventory; its queryKey changes with
@@ -489,11 +555,11 @@ export function NewSaleForm({
   useEffect(() => {
     if (prevLocationIdRef.current !== locationId) {
       prevLocationIdRef.current = locationId;
-      setItems([]);
+      replaceItems([]);
       setProductSearch("");
       setScannedProduct(null);
     }
-  }, [locationId]);
+  }, [locationId, replaceItems]);
 
   // Surface inventory fetch errors as a toast (parity with the previous imperative flow).
   useEffect(() => {
@@ -510,27 +576,29 @@ export function NewSaleForm({
 
   // When member is detected, auto-apply best eligible discount (matches backend logic)
   useEffect(() => {
-    if (!memberCheck?.isMember || items.length === 0) return;
-    setItems((prev) =>
-      prev.map((item) => {
-        if (!item.availableDiscounts?.length) return item;
+    if (!memberCheck?.isMember || itemsFields.length === 0) return;
+    replaceItems(
+      itemsFields.map((item) => {
+        if (!item.availableDiscounts?.length)
+          return item as unknown as CreateSaleItemInput;
         const itemSubtotal = item.unitPrice * item.quantity;
         const bestId = getBestMemberDiscountId(
           item.availableDiscounts,
           itemSubtotal,
         );
-        if (bestId === "none") return item;
+        if (bestId === "none") return item as unknown as CreateSaleItemInput;
         return {
           ...item,
           selectedDiscountId: bestId,
-        };
+        } as unknown as CreateSaleItemInput;
       }),
     );
-  }, [memberCheck?.isMember, items.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberCheck?.isMember, itemsFields.length]);
 
   // Fetch backend preview total (includes discount + promo) so payment matches exactly
   useEffect(() => {
-    if (!locationId || items.length === 0) {
+    if (!locationId || itemsFields.length === 0) {
       setPreviewResult(null);
       return;
     }
@@ -541,7 +609,7 @@ export function NewSaleForm({
       memberPhone: memberPhone.trim() || undefined,
       memberName: memberName.trim() || undefined,
       contactId: contactId ?? undefined,
-      items: items.map((i) => ({
+      items: itemsFields.map((i) => ({
         variationId: i.variationId,
         subVariationId: i.subVariationId ?? undefined,
         quantity: i.quantity,
@@ -576,7 +644,14 @@ export function NewSaleForm({
     return () => {
       cancelled = true;
     };
-  }, [locationId, memberPhone, memberName, contactId, items, items.length]);
+  }, [
+    locationId,
+    memberPhone,
+    memberName,
+    contactId,
+    itemsFields,
+    itemsFields.length,
+  ]);
 
   // Inventory is already filtered by API when we pass search; no client-side filtering needed
   const filteredInventory = useMemo<LocationInventoryItem[]>(
@@ -588,7 +663,7 @@ export function NewSaleForm({
   // Add item to sale
   const handleAddItem = async (inventoryItem: LocationInventoryItem) => {
     // Match by (variationId, subVariationId) so sub-variants are separate lines
-    const existingIndex = items.findIndex(
+    const existingIndex = itemsFields.findIndex(
       (item) =>
         item.variationId === inventoryItem.variationId &&
         (item.subVariationId ?? null) ===
@@ -597,14 +672,12 @@ export function NewSaleForm({
 
     if (existingIndex !== -1) {
       // Increment quantity if not at max
-      const existingItem = items[existingIndex];
+      const existingItem = itemsFields[existingIndex];
       if (existingItem && existingItem.quantity < inventoryItem.quantity) {
-        const newItems = [...items];
-        const itemToUpdate = newItems[existingIndex];
-        if (itemToUpdate) {
-          itemToUpdate.quantity += 1;
-          setItems(newItems);
-        }
+        updateItem(existingIndex, {
+          ...existingItem,
+          quantity: existingItem.quantity + 1,
+        } as unknown as CreateSaleItemInput);
       }
       return;
     }
@@ -627,23 +700,20 @@ export function NewSaleForm({
       !promoCodeError && debouncedPromoCode.trim()
         ? debouncedPromoCode.trim()
         : undefined;
-    setItems([
-      ...items,
-      {
-        variationId: inventoryItem.variationId,
-        subVariationId: inventoryItem.subVariationId ?? undefined,
-        subVariationName: inventoryItem.subVariation?.name,
-        productName: inventoryItem.variation.product.name,
-        imsCode: inventoryItem.variation.product.imsCode ?? "",
-        attributeLabel: attrLabel,
-        unitPrice: Number(inventoryItem.variation.product.mrp),
-        quantity: 1,
-        maxQuantity: inventoryItem.quantity,
-        selectedDiscountId: defaultDiscountId,
-        availableDiscounts: discounts,
-        promoCode: validPromo,
-      },
-    ]);
+    appendItem({
+      variationId: inventoryItem.variationId,
+      subVariationId: inventoryItem.subVariationId ?? undefined,
+      subVariationName: inventoryItem.subVariation?.name,
+      productName: inventoryItem.variation.product.name,
+      imsCode: inventoryItem.variation.product.imsCode ?? "",
+      attributeLabel: attrLabel,
+      unitPrice: Number(inventoryItem.variation.product.mrp),
+      quantity: 1,
+      maxQuantity: inventoryItem.quantity,
+      selectedDiscountId: defaultDiscountId,
+      availableDiscounts: discounts,
+      promoCode: validPromo,
+    } as unknown as CreateSaleItemInput);
     setProductSearch(""); // Clear search after adding
   };
 
@@ -682,21 +752,19 @@ export function NewSaleForm({
     subVariation: { id: string; name: string } | null,
     maxQty: number,
   ) => {
-    const existingIndex = items.findIndex(
+    const existingIndex = itemsFields.findIndex(
       (item) =>
         item.variationId === variation.id &&
         (item.subVariationId ?? null) === (subVariation?.id ?? null),
     );
     if (existingIndex !== -1) {
-      const existingItem = items[existingIndex];
+      const existingItem = itemsFields[existingIndex];
       if (existingItem && existingItem.quantity < maxQty) {
-        const newItems = [...items];
-        const itemToUpdate = newItems[existingIndex];
-        if (itemToUpdate) {
-          itemToUpdate.quantity += 1;
-          itemToUpdate.maxQuantity = maxQty;
-          setItems(newItems);
-        }
+        updateItem(existingIndex, {
+          ...existingItem,
+          quantity: existingItem.quantity + 1,
+          maxQuantity: maxQty,
+        } as unknown as CreateSaleItemInput);
       }
       return;
     }
@@ -715,41 +783,39 @@ export function NewSaleForm({
       !promoCodeError && debouncedPromoCode.trim()
         ? debouncedPromoCode.trim()
         : undefined;
-    setItems([
-      ...items,
-      {
-        variationId: variation.id,
-        subVariationId: subVariation?.id ?? undefined,
-        subVariationName: subVariation?.name,
-        productName: product.name,
-        imsCode: product.imsCode ?? "",
-        attributeLabel: displayLabel || undefined,
-        unitPrice: Number(product.mrp),
-        quantity: 1,
-        maxQuantity: maxQty,
-        selectedDiscountId: defaultDiscountId,
-        availableDiscounts: discounts,
-        promoCode: validPromo,
-      },
-    ]);
+    appendItem({
+      variationId: variation.id,
+      subVariationId: subVariation?.id ?? undefined,
+      subVariationName: subVariation?.name,
+      productName: product.name,
+      imsCode: product.imsCode ?? "",
+      attributeLabel: displayLabel || undefined,
+      unitPrice: Number(product.mrp),
+      quantity: 1,
+      maxQuantity: maxQty,
+      selectedDiscountId: defaultDiscountId,
+      availableDiscounts: discounts,
+      promoCode: validPromo,
+    } as unknown as CreateSaleItemInput);
     setScannedProduct(null);
   };
 
   // Update item quantity
   const handleQuantityChange = (index: number, delta: number) => {
-    const newItems = [...items];
-    const item = newItems[index];
+    const item = itemsFields[index];
     if (!item) return;
     const newQuantity = item.quantity + delta;
     if (newQuantity >= 1 && newQuantity <= item.maxQuantity) {
-      item.quantity = newQuantity;
-      setItems(newItems);
+      updateItem(index, {
+        ...item,
+        quantity: newQuantity,
+      } as unknown as CreateSaleItemInput);
     }
   };
 
   // Remove item
   const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    removeItem(index);
   };
 
   const getItemDiscountDisplay = (item: SaleItem): number => {
@@ -776,14 +842,17 @@ export function NewSaleForm({
   const subtotal =
     previewResult?.subtotal ??
     Math.round(
-      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) *
-        100,
+      itemsFields.reduce(
+        (sum, item) => sum + item.unitPrice * item.quantity,
+        0,
+      ) * 100,
     ) / 100;
   const totalDiscountAll = previewResult?.discount ?? 0;
   const promoDiscount = previewResult?.promoDiscount ?? 0;
   const localProductDiscountSum =
     Math.round(
-      items.reduce((sum, item) => sum + getItemDiscountDisplay(item), 0) * 100,
+      itemsFields.reduce((sum, item) => sum + getItemDiscountDisplay(item), 0) *
+        100,
     ) / 100;
   const productDiscountDisplay =
     previewResult != null
@@ -803,14 +872,19 @@ export function NewSaleForm({
     );
 
   const handleRemovePromo = () => {
-    setPromoCode("");
+    setValue("promoCode", "");
     setPromoCodeError(null);
-    setItems((prev) => prev.map((i) => ({ ...i, promoCode: undefined })));
+    replaceItems(
+      itemsFields.map((i) => ({
+        ...i,
+        promoCode: undefined,
+      })) as unknown as CreateSaleItemInput[],
+    );
   };
 
   const totalPayment =
     Math.round(
-      payments.reduce((sum, payment) => sum + payment.amount, 0) * 100,
+      paymentsFields.reduce((sum, payment) => sum + payment.amount, 0) * 100,
     ) / 100;
   const remainingAmount =
     Math.round((expectedTotal - totalPayment) * 100) / 100;
@@ -819,63 +893,122 @@ export function NewSaleForm({
   useEffect(() => {
     if (
       isCreditSale &&
-      payments.length > 0 &&
+      paymentsFields.length > 0 &&
       expectedTotal > 0 &&
       Math.abs(totalPayment - expectedTotal) < 0.01
     ) {
-      setIsCreditSale(false);
+      setValue("isCreditSale", false);
       toast({
         title: "Full payment detected",
         description:
           "Credit sale unchecked — payment total matches order total.",
       });
     }
-  }, [isCreditSale, payments, totalPayment, expectedTotal, toast]);
+  }, [
+    isCreditSale,
+    paymentsFields,
+    totalPayment,
+    expectedTotal,
+    toast,
+    setValue,
+  ]);
 
   // Payment handlers
   const handleAddPayment = () => {
     const amount = Number(paymentAmount);
     if (amount > 0) {
       const rounded = Math.round(amount * 100) / 100;
-      setPayments([
-        ...payments,
-        {
-          id: `${selectedPaymentMethod}-${Date.now()}`,
-          method: selectedPaymentMethod,
-          amount: rounded,
-        },
-      ]);
-      setPaymentAmount("");
+      appendPayment({
+        id: `${selectedPaymentMethod}-${Date.now()}`,
+        method: selectedPaymentMethod,
+        amount: rounded,
+      });
+      setValue("paymentAmount", "");
     }
   };
 
   const handleAddRemaining = () => {
     if (remainingAmount <= 0) return;
-    setPayments([
-      ...payments,
-      {
-        id: `${selectedPaymentMethod}-${Date.now()}`,
-        method: selectedPaymentMethod,
-        amount: remainingAmount,
-      },
-    ]);
-    setPaymentAmount("");
+    appendPayment({
+      id: `${selectedPaymentMethod}-${Date.now()}`,
+      method: selectedPaymentMethod,
+      amount: remainingAmount,
+    });
+    setValue("paymentAmount", "");
   };
 
-  const handleRemovePayment = (id: string) => {
-    setPayments(payments.filter((p) => p.id !== id));
+  const handleRemovePayment = (index: number) => {
+    removePayment(index);
   };
 
-  // Handle submit (only when Complete Sale was clicked; prevents Enter from submitting)
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!completeSaleClickedRef.current) return;
+  /** Fresh defaults recomputed each call so selectedPaymentMethod is always current. */
+  const getFreshDefaults = (): NewSaleFormInput => ({
+    locationId: "",
+    memberPhone: "",
+    memberName: "",
+    contactId: null,
+    notes: "",
+    isCreditSale: false,
+    items: [],
+    payments: [],
+    promoCode: "",
+    discountMode: "individual",
+    aggregateDiscountAmount: 0,
+    selectedPaymentMethod: enabledPaymentMethods[0]?.code ?? "CASH",
+    paymentAmount: "",
+  });
 
-    const isValid = await validationForm.trigger();
-    if (!isValid) return;
+  /** Shared cleanup: called after successful submit and when dialog closes. */
+  const resetForm = () => {
+    validationForm.reset(getFreshDefaults());
+    setContactSearch("");
+    setProductSearch("");
+    setPromoCodeError(null);
+    setPreviewResult(null);
+    completeSaleClickedRef.current = false;
+  };
 
-    const submittedPhone = memberPhone.trim() || undefined;
+  /**
+   * Maps validated RHF data + rich itemsFields/paymentsFields into the API shape.
+   * No side-effects — safe to test in isolation.
+   */
+  const buildCreateSaleData = (data: NewSaleFormInput): CreateSaleData => ({
+    locationId: data.locationId,
+    memberPhone: data.memberPhone?.trim() || undefined,
+    memberName: data.memberName?.trim() || undefined,
+    contactId: data.contactId || undefined,
+    items: itemsFields.map((item) => ({
+      variationId: item.variationId,
+      subVariationId: item.subVariationId ?? undefined,
+      quantity: item.quantity,
+      discountId:
+        !item.manualDiscountPercent &&
+        !item.manualDiscountAmount &&
+        item.selectedDiscountId &&
+        item.selectedDiscountId !== "none"
+          ? item.selectedDiscountId
+          : undefined,
+      promoCode: item.promoCode?.trim() || undefined,
+      manualDiscountPercent:
+        (item.manualDiscountPercent ?? 0) > 0
+          ? item.manualDiscountPercent
+          : undefined,
+      manualDiscountAmount:
+        (item.manualDiscountAmount ?? 0) > 0
+          ? item.manualDiscountAmount
+          : undefined,
+      discountReason: item.discountReason?.trim() || undefined,
+    })),
+    notes: data.notes?.trim() || undefined,
+    payments: paymentsFields.map((p) => ({
+      method: p.method,
+      amount: Math.round(p.amount * 100) / 100,
+    })),
+    isCreditSale: data.isCreditSale || undefined,
+  });
 
+  /** RHF calls this only after schema validation passes. */
+  const onValid = async (data: NewSaleFormInput) => {
     if (
       !isCreditSale &&
       (totalPayment <= 0 || Math.abs(totalPayment - expectedTotal) > 0.01)
@@ -889,7 +1022,7 @@ export function NewSaleForm({
       return;
     }
 
-    const manualDiscountWithoutReason = items.find(
+    const manualDiscountWithoutReason = itemsFields.find(
       (i) =>
         ((i.manualDiscountPercent ?? 0) > 0 ||
           (i.manualDiscountAmount ?? 0) > 0) &&
@@ -905,87 +1038,26 @@ export function NewSaleForm({
       return;
     }
 
-    await onSubmit({
-      locationId,
-      memberPhone: submittedPhone,
-      memberName: memberName.trim() || undefined,
-      contactId: contactId || undefined,
-      items: items.map((item) => ({
-        variationId: item.variationId,
-        subVariationId: item.subVariationId ?? undefined,
-        quantity: item.quantity,
-        discountId:
-          !item.manualDiscountPercent &&
-          !item.manualDiscountAmount &&
-          item.selectedDiscountId &&
-          item.selectedDiscountId !== "none"
-            ? item.selectedDiscountId
-            : undefined,
-        promoCode: item.promoCode?.trim() || undefined,
-        manualDiscountPercent:
-          (item.manualDiscountPercent ?? 0) > 0
-            ? item.manualDiscountPercent
-            : undefined,
-        manualDiscountAmount:
-          (item.manualDiscountAmount ?? 0) > 0
-            ? item.manualDiscountAmount
-            : undefined,
-        discountReason: item.discountReason?.trim() || undefined,
-      })),
-      notes: notes.trim() || undefined,
-      payments: payments.map((p) => ({
-        method: p.method,
-        amount: Math.round(p.amount * 100) / 100,
-      })),
-      isCreditSale: isCreditSale || undefined,
-    });
+    await onSubmit(buildCreateSaleData(data));
+    resetForm();
+  };
 
-    // Reset form
-    validationForm.reset({ locationId: "", items: [] });
-    setLocationId("");
-    setMemberPhone("");
-    setMemberName("");
-    setContactId(null);
-    setContactSearch("");
-    setNotes("");
-    setItems([]);
-    setProductSearch("");
-    setPayments([]);
-    setIsCreditSale(false);
-    setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
-    setPaymentAmount("");
-    setDiscountMode("individual");
-    setAggregateDiscountId("none");
-    setAggregateDiscountAmount(0);
-    setPromoCode("");
-    setPromoCodeError(null);
-    setPreviewResult(null);
-    completeSaleClickedRef.current = false;
+  /**
+   * <form> onSubmit handler — guards against Enter-key submission, then
+   * delegates to RHF's handleSubmit which validates and calls onValid.
+   */
+  const onFormSubmit = (e: React.FormEvent) => {
+    if (!completeSaleClickedRef.current) {
+      e.preventDefault();
+      return;
+    }
+    void validationForm.handleSubmit(onValid)(e);
   };
 
   // Reset form when dialog closes
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      completeSaleClickedRef.current = false;
-      validationForm.reset({ locationId: "", items: [] });
-      setLocationId("");
-      setMemberPhone("");
-      setMemberName("");
-      setContactId(null);
-      setContactSearch("");
-      setNotes("");
-      setItems([]);
-      setProductSearch("");
-      setPayments([]);
-      setIsCreditSale(false);
-      setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
-      setPaymentAmount("");
-      setDiscountMode("individual");
-      setAggregateDiscountId("none");
-      setAggregateDiscountAmount(0);
-      setPromoCode("");
-      setPromoCodeError(null);
-      setPreviewResult(null);
+      resetForm();
     }
     onOpenChange(newOpen);
   };
@@ -993,7 +1065,7 @@ export function NewSaleForm({
   const formContent = (
     <form
       ref={formRef}
-      onSubmit={handleSubmit}
+      onSubmit={onFormSubmit}
       className="flex flex-col h-full overflow-hidden"
       onKeyDown={(e) => {
         if (e.key !== "Enter") return;
@@ -1066,7 +1138,7 @@ export function NewSaleForm({
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => {
-                    setItems([]);
+                    replaceItems([]);
                     setShowClearCartConfirm(false);
                   }}
                 >
@@ -1096,12 +1168,12 @@ export function NewSaleForm({
                               render={({ field }) => (
                                 <div
                                   className={
-                                    items.length > 0
+                                    itemsFields.length > 0
                                       ? "cursor-pointer [&_button]:pointer-events-none"
                                       : ""
                                   }
                                   onClick={
-                                    items.length > 0
+                                    itemsFields.length > 0
                                       ? () => setShowClearCartConfirm(true)
                                       : undefined
                                   }
@@ -1110,15 +1182,14 @@ export function NewSaleForm({
                                     value={field.value}
                                     onValueChange={(v) => {
                                       field.onChange(v);
-                                      setLocationId(v);
                                     }}
                                     onOpenChange={(open) => {
                                       if (!open) field.onBlur();
                                     }}
-                                    disabled={items.length > 0}
+                                    disabled={itemsFields.length > 0}
                                   >
                                     <SelectTrigger className="bg-background border-border">
-                                      {items.length > 0 ? (
+                                      {itemsFields.length > 0 ? (
                                         <span className="flex items-center gap-2">
                                           <Lock
                                             className="h-4 w-4 shrink-0 text-muted-foreground"
@@ -1138,7 +1209,7 @@ export function NewSaleForm({
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                  {items.length > 0 && (
+                                  {itemsFields.length > 0 && (
                                     <p className="text-xs text-muted-foreground mt-1">
                                       Clear cart to change showroom
                                     </p>
@@ -1181,7 +1252,7 @@ export function NewSaleForm({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setContactId(null);
+                                    setValue("contactId", null);
                                     setContactSearch("");
                                   }}
                                   aria-label="Remove contact"
@@ -1225,7 +1296,7 @@ export function NewSaleForm({
                                           type="button"
                                           className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
                                           onMouseDown={() => {
-                                            setContactId(c.id);
+                                            setValue("contactId", c.id);
                                             setContactSearch("");
                                             setShowContactDropdown(false);
                                           }}
@@ -1254,12 +1325,18 @@ export function NewSaleForm({
                           <Label className="text-xs font-medium text-muted-foreground">
                             Phone (optional — for walk-in or member lookup)
                           </Label>
-                          <PhoneInput
-                            value={memberPhone}
-                            onChange={setMemberPhone}
-                            numberInputId="customer-phone"
-                            placeholder="e.g. 9800000000"
-                            className="[&_input]:bg-background [&_input]:border-border"
+                          <Controller
+                            name="memberPhone"
+                            control={validationForm.control}
+                            render={({ field }) => (
+                              <PhoneInput
+                                value={field.value ?? ""}
+                                onChange={field.onChange}
+                                numberInputId="customer-phone"
+                                placeholder="e.g. 9800000000"
+                                className="[&_input]:bg-background [&_input]:border-border"
+                              />
+                            )}
                           />
                           {memberPhone && (
                             <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -1277,10 +1354,7 @@ export function NewSaleForm({
                               ) : (
                                 <Input
                                   type="text"
-                                  value={memberName}
-                                  onChange={(e) =>
-                                    setMemberName(e.target.value)
-                                  }
+                                  {...register("memberName")}
                                   placeholder="Customer name (optional)"
                                   className="h-8 text-sm bg-background border-border"
                                 />
@@ -1290,12 +1364,20 @@ export function NewSaleForm({
                         </div>
 
                         <div className="flex items-center gap-3 mt-4">
-                          <Checkbox
-                            id="credit-sale"
-                            checked={isCreditSale}
-                            disabled={!memberPhone.trim() && !contactId}
-                            onCheckedChange={(c) => setIsCreditSale(c === true)}
-                            className="border-border opacity-100 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:opacity-100 disabled:opacity-50"
+                          <Controller
+                            name="isCreditSale"
+                            control={validationForm.control}
+                            render={({ field }) => (
+                              <Checkbox
+                                id="credit-sale"
+                                checked={field.value}
+                                disabled={!memberPhone.trim() && !contactId}
+                                onCheckedChange={(c) =>
+                                  field.onChange(c === true)
+                                }
+                                className="border-border opacity-100 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:opacity-100 disabled:opacity-50"
+                              />
+                            )}
                           />
                           <Label
                             htmlFor="credit-sale"
@@ -1551,7 +1633,7 @@ export function NewSaleForm({
                             {validationForm.formState.errors.items.message}
                           </p>
                         )}
-                        {items.length === 0 ? (
+                        {itemsFields.length === 0 ? (
                           <div className="flex flex-col items-center justify-center py-12">
                             <div className="text-muted-foreground text-sm">
                               Cart is empty
@@ -1573,7 +1655,9 @@ export function NewSaleForm({
                                       : "outline"
                                   }
                                   size="sm"
-                                  onClick={() => setDiscountMode("individual")}
+                                  onClick={() =>
+                                    setValue("discountMode", "individual")
+                                  }
                                   className="flex-1 text-xs"
                                 >
                                   Per Item
@@ -1586,7 +1670,9 @@ export function NewSaleForm({
                                       : "outline"
                                   }
                                   size="sm"
-                                  onClick={() => setDiscountMode("aggregate")}
+                                  onClick={() =>
+                                    setValue("discountMode", "aggregate")
+                                  }
                                   className="flex-1 text-xs"
                                 >
                                   Whole Sale
@@ -1598,19 +1684,23 @@ export function NewSaleForm({
                                     Aggregate Discount (Flat Amount)
                                   </Label>
                                   <div className="flex items-center gap-2">
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      step={0.01}
-                                      value={aggregateDiscountAmount || ""}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        setAggregateDiscountAmount(
-                                          val >= 0 ? val : 0,
-                                        );
-                                      }}
-                                      placeholder="0.00"
-                                      className="h-9"
+                                    <Controller
+                                      name="aggregateDiscountAmount"
+                                      control={validationForm.control}
+                                      render={({ field }) => (
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          step={0.01}
+                                          value={field.value || ""}
+                                          onChange={(e) => {
+                                            const val = Number(e.target.value);
+                                            field.onChange(val >= 0 ? val : 0);
+                                          }}
+                                          placeholder="0.00"
+                                          className="h-9"
+                                        />
+                                      )}
                                     />
                                     {aggregateDiscountAmount > 0 && (
                                       <div className="text-sm font-semibold text-green-600 dark:text-green-500 tabular-nums whitespace-nowrap">
@@ -1635,9 +1725,9 @@ export function NewSaleForm({
                               ref={cartItemsRef}
                               className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
                             >
-                              {items.map((item, index) => (
+                              {itemsFields.map((item, index) => (
                                 <div
-                                  key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
+                                  key={item.id}
                                   className="bg-muted/30 border rounded-lg p-4 space-y-3"
                                 >
                                   <div className="flex items-start justify-between">
@@ -1726,11 +1816,10 @@ export function NewSaleForm({
                                           item.selectedDiscountId ?? "none"
                                         }
                                         onValueChange={(value) => {
-                                          const next = [...items];
-                                          const row = next[index];
-                                          if (row)
-                                            row.selectedDiscountId = value;
-                                          setItems(next);
+                                          updateItem(index, {
+                                            ...item,
+                                            selectedDiscountId: value,
+                                          } as unknown as CreateSaleItemInput);
                                         }}
                                       >
                                         <SelectTrigger className="h-8 text-xs">
@@ -1786,17 +1875,17 @@ export function NewSaleForm({
                                                     100,
                                                     Math.max(0, Number(v) || 0),
                                                   );
-                                            const next = [...items];
-                                            const row = next[index];
-                                            if (row) {
-                                              row.manualDiscountPercent = num;
-                                              if (num != null)
-                                                row.manualDiscountAmount =
-                                                  undefined;
-                                              if (!num)
-                                                row.discountReason = undefined;
-                                            }
-                                            setItems(next);
+                                            updateItem(index, {
+                                              ...item,
+                                              manualDiscountPercent: num,
+                                              manualDiscountAmount:
+                                                num != null
+                                                  ? undefined
+                                                  : item.manualDiscountAmount,
+                                              discountReason: !num
+                                                ? undefined
+                                                : item.discountReason,
+                                            } as unknown as CreateSaleItemInput);
                                           }}
                                         />
                                         <span className="text-muted-foreground self-center">
@@ -1817,17 +1906,17 @@ export function NewSaleForm({
                                               v === ""
                                                 ? undefined
                                                 : Math.max(0, Number(v) || 0);
-                                            const next = [...items];
-                                            const row = next[index];
-                                            if (row) {
-                                              row.manualDiscountAmount = num;
-                                              if (num != null)
-                                                row.manualDiscountPercent =
-                                                  undefined;
-                                              if (!num)
-                                                row.discountReason = undefined;
-                                            }
-                                            setItems(next);
+                                            updateItem(index, {
+                                              ...item,
+                                              manualDiscountAmount: num,
+                                              manualDiscountPercent:
+                                                num != null
+                                                  ? undefined
+                                                  : item.manualDiscountPercent,
+                                              discountReason: !num
+                                                ? undefined
+                                                : item.discountReason,
+                                            } as unknown as CreateSaleItemInput);
                                           }}
                                         />
                                         <Input
@@ -1835,12 +1924,11 @@ export function NewSaleForm({
                                           className="h-7 flex-1 min-w-[120px] text-xs"
                                           value={item.discountReason ?? ""}
                                           onChange={(e) => {
-                                            const next = [...items];
-                                            const row = next[index];
-                                            if (row)
-                                              row.discountReason =
-                                                e.target.value || undefined;
-                                            setItems(next);
+                                            updateItem(index, {
+                                              ...item,
+                                              discountReason:
+                                                e.target.value || undefined,
+                                            } as unknown as CreateSaleItemInput);
                                           }}
                                         />
                                         {discountMode === "individual" &&
@@ -1866,16 +1954,13 @@ export function NewSaleForm({
                                             size="sm"
                                             className="h-7 text-xs text-muted-foreground"
                                             onClick={() => {
-                                              const next = [...items];
-                                              const row = next[index];
-                                              if (row) {
-                                                row.manualDiscountPercent =
-                                                  undefined;
-                                                row.manualDiscountAmount =
-                                                  undefined;
-                                                row.discountReason = undefined;
-                                              }
-                                              setItems(next);
+                                              updateItem(index, {
+                                                ...item,
+                                                manualDiscountPercent:
+                                                  undefined,
+                                                manualDiscountAmount: undefined,
+                                                discountReason: undefined,
+                                              } as unknown as CreateSaleItemInput);
                                             }}
                                           >
                                             Clear
@@ -1918,7 +2003,7 @@ export function NewSaleForm({
                   <Card className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col">
                     <CardContent className="pt-6 flex flex-col flex-1">
                       <SaleSection title="Order Summary">
-                        {items.length === 0 ? (
+                        {itemsFields.length === 0 ? (
                           <p className="text-sm text-muted-foreground py-4 text-center">
                             Add products to see total
                           </p>
@@ -1990,20 +2075,28 @@ export function NewSaleForm({
                         )}
                       </SaleSection>
 
-                      {items.length > 0 && (
+                      {itemsFields.length > 0 && (
                         <>
                           {/* Promo Code */}
                           <SaleSection title="Promo Code">
                             <div className="flex gap-2">
                               <div className="relative flex-1">
-                                <Input
-                                  value={promoCode}
-                                  onChange={(e) =>
-                                    setPromoCode(e.target.value.toUpperCase())
-                                  }
-                                  placeholder="Enter promo code..."
-                                  className="uppercase pr-24"
-                                  disabled={promoCodeValidating}
+                                <Controller
+                                  name="promoCode"
+                                  control={validationForm.control}
+                                  render={({ field }) => (
+                                    <Input
+                                      value={field.value}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          e.target.value.toUpperCase(),
+                                        )
+                                      }
+                                      placeholder="Enter promo code..."
+                                      className="uppercase pr-24"
+                                      disabled={promoCodeValidating}
+                                    />
+                                  )}
                                 />
                                 {promoCodeValidating && (
                                   <Loader2
@@ -2020,7 +2113,7 @@ export function NewSaleForm({
                                   )}
                               </div>
                               {(promoCode.trim().length > 0 ||
-                                items.some((i) => i.promoCode)) && (
+                                itemsFields.some((i) => i.promoCode)) && (
                                 <Button
                                   type="button"
                                   variant="outline"
@@ -2042,34 +2135,37 @@ export function NewSaleForm({
                           {/* Payment */}
                           <SaleSection title="Payment">
                             <div className="flex gap-2">
-                              <Select
-                                value={selectedPaymentMethod}
-                                onValueChange={(v) =>
-                                  setSelectedPaymentMethod(v as PaymentMethod)
-                                }
-                              >
-                                <SelectTrigger className="w-[120px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {enabledPaymentMethods.map((method) => (
-                                    <SelectItem
-                                      key={method.code}
-                                      value={method.code}
-                                    >
-                                      {method.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <Controller
+                                name="selectedPaymentMethod"
+                                control={validationForm.control}
+                                render={({ field }) => (
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={(v) =>
+                                      field.onChange(v as PaymentMethod)
+                                    }
+                                  >
+                                    <SelectTrigger className="w-[120px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {enabledPaymentMethods.map((method) => (
+                                        <SelectItem
+                                          key={method.code}
+                                          value={method.code}
+                                        >
+                                          {method.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
                               <Input
                                 type="number"
                                 min={0}
                                 step={0.01}
-                                value={paymentAmount}
-                                onChange={(e) =>
-                                  setPaymentAmount(e.target.value)
-                                }
+                                {...register("paymentAmount")}
                                 placeholder={
                                   remainingAmount > 0
                                     ? `Remaining: ${formatCurrency(remainingAmount)}`
@@ -2102,9 +2198,9 @@ export function NewSaleForm({
                                 </Button>
                               )}
                             </div>
-                            {payments.length > 0 && (
+                            {paymentsFields.length > 0 && (
                               <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
-                                {payments.map((p) => (
+                                {paymentsFields.map((p, index) => (
                                   <div
                                     key={p.id}
                                     className="flex items-center justify-between p-2 bg-muted rounded border"
@@ -2126,7 +2222,7 @@ export function NewSaleForm({
                                         size="icon"
                                         className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
                                         onClick={() =>
-                                          handleRemovePayment(p.id)
+                                          handleRemovePayment(index)
                                         }
                                         aria-label={`Remove ${paymentMethodLabelMap.get(p.method) ?? p.method} payment of ${formatCurrency(p.amount)}`}
                                       >
@@ -2157,17 +2253,16 @@ export function NewSaleForm({
                           {/* Notes */}
                           <SaleSection title="Notes" className="mt-2">
                             <Textarea
-                              value={notes}
-                              onChange={(e) => setNotes(e.target.value)}
+                              {...register("notes")}
                               placeholder="Add notes for this sale..."
                               rows={3}
                               className="resize-none"
                             />
                           </SaleSection>
 
-                          {/* Validation Error — only show when !isCreditSale && payments.length > 0 */}
+                          {/* Validation Error — only show when !isCreditSale && paymentsFields.length > 0 */}
                           {!isCreditSale &&
-                            payments.length > 0 &&
+                            paymentsFields.length > 0 &&
                             Math.abs(expectedTotal - totalPayment) > 0.01 && (
                               <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
                                 Payment mismatch: {formatCurrency(totalPayment)}{" "}
@@ -2181,7 +2276,7 @@ export function NewSaleForm({
                             disabled={
                               isLoading ||
                               !locationId ||
-                              items.length === 0 ||
+                              itemsFields.length === 0 ||
                               (!isCreditSale &&
                                 (totalPayment <= 0 ||
                                   Math.abs(totalPayment - expectedTotal) >
