@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { ArrowLeft, Globe, PowerOff, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Globe, PowerOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,83 +25,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
-import { cn } from "@/lib/utils";
 import { useTenant } from "@/features/tenants";
 import {
   useTenantSiteConfig,
   useEnableTenantWebsite,
   useDisableTenantWebsite,
-  useSiteTemplates,
-  type SiteTemplate,
 } from "../hooks/use-tenant-website";
 import { TenantNavTabs } from "./TenantNavTabs";
 
 function isNotFoundError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 404;
-}
-
-function TemplateCard({
-  template,
-  selected,
-  onPick,
-  disabled,
-}: {
-  template: SiteTemplate;
-  selected: boolean;
-  onPick: () => void;
-  disabled: boolean;
-}) {
-  const primary =
-    (template.defaultBranding as Record<string, unknown> | null)?.colors &&
-    ((template.defaultBranding as { colors?: { primary?: string } }).colors
-      ?.primary ??
-      "#ddd");
-
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={disabled}
-      aria-pressed={selected}
-      aria-label={
-        selected
-          ? `${template.name} (current template). Re-apply`
-          : `Apply ${template.name} template`
-      }
-      className={cn(
-        "group flex flex-col overflow-hidden rounded-lg border text-left transition-all",
-        "hover:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60",
-        selected && "border-foreground ring-2 ring-foreground/20",
-      )}
-    >
-      <div
-        aria-hidden="true"
-        className="h-24 w-full"
-        style={{ background: typeof primary === "string" ? primary : "#ddd" }}
-      />
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <div className="flex items-center justify-between">
-          <span className="font-medium">{template.name}</span>
-          {selected && (
-            <CheckCircle2
-              className="h-4 w-4 text-foreground"
-              aria-hidden="true"
-            />
-          )}
-        </div>
-        {template.description && (
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {template.description}
-          </p>
-        )}
-        {template.category && (
-          <Badge variant="secondary" className="mt-auto self-start text-[10px]">
-            {template.category}
-          </Badge>
-        )}
-      </div>
-    </button>
-  );
 }
 
 export function TenantWebsitePage() {
@@ -112,25 +45,21 @@ export function TenantWebsitePage() {
 
   const { data: tenant } = useTenant(tenantId);
   const siteConfigQuery = useTenantSiteConfig(tenantId);
-  const templatesQuery = useSiteTemplates();
   const enableMutation = useEnableTenantWebsite(tenantId);
   const disableMutation = useDisableTenantWebsite(tenantId);
 
-  const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
   const notEnabled =
     siteConfigQuery.isError && isNotFoundError(siteConfigQuery.error);
   const config = siteConfigQuery.data ?? null;
-  const activeTemplateId = config?.templateId ?? null;
   const websiteEnabled = config?.websiteEnabled ?? false;
 
-  const handleEnable = async (templateSlug?: string) => {
+  const handleEnable = async () => {
     try {
-      setPendingSlug(templateSlug ?? "__no_template__");
-      await enableMutation.mutateAsync(templateSlug);
+      await enableMutation.mutateAsync(undefined);
       toast({
-        title: websiteEnabled ? "Template applied" : "Website enabled",
+        title: websiteEnabled ? "Website re-enabled" : "Website enabled",
         description: tenant?.name,
       });
     } catch (error) {
@@ -140,13 +69,7 @@ export function TenantWebsitePage() {
           error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
-    } finally {
-      setPendingSlug(null);
     }
-  };
-
-  const handleDisable = () => {
-    setDisableDialogOpen(true);
   };
 
   const confirmDisable = async () => {
@@ -211,17 +134,15 @@ export function TenantWebsitePage() {
           <div>
             {notEnabled || !websiteEnabled ? (
               <Button
-                onClick={() => handleEnable()}
+                onClick={handleEnable}
                 disabled={enableMutation.isPending}
               >
-                {enableMutation.isPending && !pendingSlug?.includes("__no_")
-                  ? "Enabling…"
-                  : "Enable website"}
+                {enableMutation.isPending ? "Enabling…" : "Enable website"}
               </Button>
             ) : (
               <Button
                 variant="outline"
-                onClick={handleDisable}
+                onClick={() => setDisableDialogOpen(true)}
                 disabled={disableMutation.isPending}
               >
                 <PowerOff className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -238,59 +159,14 @@ export function TenantWebsitePage() {
                 {config.isPublished ? "Yes" : "No"}
               </Badge>
             </div>
-            <div>
-              <span className="text-muted-foreground">Template: </span>
-              {config.template ? (
+            {config.template && (
+              <div>
+                <span className="text-muted-foreground">Template: </span>
                 <Badge variant="secondary">{config.template.name}</Badge>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  None picked
-                </span>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         )}
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Template catalog</CardTitle>
-          <CardDescription>
-            {notEnabled || !websiteEnabled
-              ? "Pick a template below to enable the website feature with it pre-applied."
-              : "Switch the template applied to this tenant's website. The tenant's own customizations are preserved."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {templatesQuery.isLoading ? (
-            <p
-              className="py-6 text-center text-sm text-muted-foreground"
-              role="status"
-              aria-live="polite"
-            >
-              Loading templates…
-            </p>
-          ) : templatesQuery.data && templatesQuery.data.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {templatesQuery.data.map((t) => (
-                <TemplateCard
-                  key={t.id}
-                  template={t}
-                  selected={activeTemplateId === t.id}
-                  onPick={() => handleEnable(t.slug)}
-                  disabled={
-                    enableMutation.isPending ||
-                    (!t.isActive && activeTemplateId !== t.id)
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No templates available.
-            </p>
-          )}
-        </CardContent>
       </Card>
 
       <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>

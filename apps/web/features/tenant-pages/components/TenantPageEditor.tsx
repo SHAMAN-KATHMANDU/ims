@@ -80,9 +80,15 @@ function toApiPayload(values: TenantPageFormInput): CreateTenantPageData {
 export function TenantPageEditor({
   page,
   backHref,
+  onBack,
+  onCreated,
+  disablePreview = false,
 }: {
   page?: TenantPage | null;
-  backHref: string;
+  backHref?: string;
+  onBack?: () => void;
+  onCreated?: (page: TenantPage) => void;
+  disablePreview?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -136,7 +142,11 @@ export function TenantPageEditor({
       } else {
         const created = await createMutation.mutateAsync(payload);
         toast({ title: "Page created (draft)" });
-        router.push(`${backHref}/${created.id}`);
+        if (onCreated) {
+          onCreated(created);
+        } else if (backHref) {
+          router.push(`${backHref}/${created.id}`);
+        }
       }
     } catch (error) {
       toast({
@@ -205,7 +215,10 @@ export function TenantPageEditor({
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(backHref)}
+            onClick={() => {
+              if (onBack) onBack();
+              else if (backHref) router.push(backHref);
+            }}
           >
             Back
           </Button>
@@ -227,7 +240,7 @@ export function TenantPageEditor({
 
       <div
         className={
-          isEdit
+          isEdit && !disablePreview
             ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
             : ""
         }
@@ -423,7 +436,7 @@ export function TenantPageEditor({
           </Card>
         </div>
 
-        {isEdit && (
+        {isEdit && !disablePreview && (
           <div className="xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)]">
             <Card className="flex h-full flex-col">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">

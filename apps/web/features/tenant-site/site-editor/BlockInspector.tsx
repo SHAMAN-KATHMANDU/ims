@@ -37,7 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  ChevronRight,
+  RotateCcw,
+  X,
+  FileText,
+  Palette,
+  Settings2,
+} from "lucide-react";
 import {
   useEditorStore,
   selectSelectedBlock,
@@ -51,43 +60,198 @@ import {
   CustomInspectorPanel,
 } from "./HeaderFooterInspectors";
 
+type InspectorTab = "content" | "design" | "advanced";
+
 export function BlockInspector() {
   const selected = useEditorStore(selectSelectedBlock);
   const selectedId = useEditorStore(selectSelectedId);
+  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const setSelected = useEditorStore((s) => s.setSelected);
+  const [tab, setTab] = useState<InspectorTab>("content");
 
   if (!selected || !selectedId) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-        Select a block to edit its properties.
+        <div className="space-y-2">
+          <div className="text-[13px] text-foreground/80">
+            No block selected
+          </div>
+          <div className="text-[11.5px] text-muted-foreground/70 max-w-[200px]">
+            Click any block in the preview to edit its properties.
+          </div>
+        </div>
       </div>
     );
   }
 
   const entry = getCatalogEntry(selected.kind);
+
+  const handleReset = () => {
+    if (!entry) return;
+    if (!confirm(`Reset "${entry.label}" to default values?`)) return;
+    const defaults = entry.createDefaultProps() as Record<string, unknown>;
+    // Strip current props by overwriting with defaults; updateBlockProps merges,
+    // so we keep previously-unset keys as-is. For reset, we want a full replace.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateBlockProps(selectedId, defaults as any);
+  };
+
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <div className="text-sm font-semibold">
-          {entry?.label ?? selected.kind}
+      <div className="border-b border-border px-3 py-2.5">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-0.5 text-[10.5px] text-muted-foreground/70 uppercase tracking-wider font-medium">
+          <span>{entry?.category ?? "Block"}</span>
+          <ChevronRight size={10} />
+          <span className="text-foreground/70">
+            {entry?.label ?? selected.kind}
+          </span>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {entry?.description}
+        {/* Title + actions */}
+        <div className="flex items-start justify-between gap-2 mt-1">
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-foreground leading-tight">
+              {entry?.label ?? selected.kind}
+            </div>
+            {entry?.description && (
+              <div className="text-[11px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">
+                {entry.description}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={handleReset}
+              title="Reset to defaults"
+              className="h-7 w-7 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <RotateCcw size={12} />
+            </button>
+            <button
+              onClick={() => setSelected(null)}
+              title="Deselect (Esc)"
+              className="h-7 w-7 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
       </div>
+      {/* Tabs */}
+      <div className="border-b border-border px-2 pt-1.5 flex items-center gap-0.5 shrink-0">
+        <InspectorTabButton
+          active={tab === "content"}
+          onClick={() => setTab("content")}
+          icon={FileText}
+          label="Content"
+        />
+        <InspectorTabButton
+          active={tab === "design"}
+          onClick={() => setTab("design")}
+          icon={Palette}
+          label="Design"
+        />
+        <InspectorTabButton
+          active={tab === "advanced"}
+          onClick={() => setTab("advanced")}
+          icon={Settings2}
+          label="Advanced"
+        />
+      </div>
+
       <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
-        <InspectorBoundary label="Visibility">
-          <VisibilitySection block={selected} />
-        </InspectorBoundary>
-        <InspectorBoundary label="Style">
-          <StyleOverrideSection block={selected} />
-        </InspectorBoundary>
-        <InspectorBoundary label="Block fields">
-          <BlockForm block={selected} />
-        </InspectorBoundary>
-        <InspectorBoundary label="Advanced">
-          <AdvancedSection block={selected} />
-        </InspectorBoundary>
+        {tab === "content" && (
+          <InspectorBoundary label="Block fields">
+            <BlockForm block={selected} />
+          </InspectorBoundary>
+        )}
+        {tab === "design" && (
+          <>
+            <InspectorBoundary label="Spacing">
+              <SpacingVisualizer block={selected} />
+            </InspectorBoundary>
+            <InspectorBoundary label="Style">
+              <StyleOverrideSection block={selected} />
+            </InspectorBoundary>
+            <InspectorBoundary label="Visibility">
+              <VisibilitySection block={selected} />
+            </InspectorBoundary>
+          </>
+        )}
+        {tab === "advanced" && (
+          <InspectorBoundary label="Advanced">
+            <AdvancedSection block={selected} />
+          </InspectorBoundary>
+        )}
       </div>
+    </div>
+  );
+}
+
+function InspectorTabButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "flex-1 flex items-center justify-center gap-1.5 h-8 rounded-t-md text-[12px] font-medium transition-colors " +
+        (active
+          ? "bg-card text-foreground border-b-2 border-primary"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border-b-2 border-transparent")
+      }
+    >
+      <Icon size={12} />
+      {label}
+    </button>
+  );
+}
+
+/**
+ * Compact margin/padding visualizer. Outer box = margin, inner box = padding,
+ * innermost = content. Each numeric shows the current preset value.
+ */
+function SpacingVisualizer({ block }: { block: BlockNode }) {
+  const style = block.style ?? {};
+  const marginY = style.marginY ?? "—";
+  const paddingY = style.paddingY ?? "—";
+  const paddingX = style.paddingX ?? "—";
+  const fmt = (v: unknown) => (v === undefined || v === null ? "—" : String(v));
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">
+        Margin / Padding
+      </div>
+      <div className="relative">
+        {/* Outer box — margin */}
+        <div className="rounded-sm border border-dashed border-amber-500/50 bg-amber-50/40 dark:bg-amber-950/20 p-3">
+          <div className="flex items-center justify-center text-[9px] uppercase tracking-widest text-amber-700/80 dark:text-amber-300/80 mb-1">
+            margin · {fmt(marginY)}
+          </div>
+          {/* Padding box */}
+          <div className="rounded-sm border border-dashed border-emerald-500/60 bg-emerald-50/50 dark:bg-emerald-950/20 p-2">
+            <div className="flex items-center justify-between text-[9px] uppercase tracking-widest text-emerald-700/80 dark:text-emerald-300/80 mb-1">
+              <span>padding X · {fmt(paddingX)}</span>
+              <span>Y · {fmt(paddingY)}</span>
+            </div>
+            {/* Content */}
+            <div className="rounded-sm bg-card border border-border py-2 text-center text-[10px] text-muted-foreground">
+              Content
+            </div>
+          </div>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground/70 mt-2">
+        Edit the dropdowns below to change these presets.
+      </p>
     </div>
   );
 }

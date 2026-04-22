@@ -146,6 +146,7 @@ export function HeadingBlock({ props }: BlockComponentProps<HeadingProps>) {
     >
       {props.eyebrow && (
         <div
+          data-editable-text="eyebrow"
           style={{
             fontSize: "0.72rem",
             letterSpacing: "0.15em",
@@ -158,6 +159,7 @@ export function HeadingBlock({ props }: BlockComponentProps<HeadingProps>) {
         </div>
       )}
       <Tag
+        data-editable-text="text"
         style={{
           fontSize: size,
           fontFamily: "var(--font-display)",
@@ -172,6 +174,7 @@ export function HeadingBlock({ props }: BlockComponentProps<HeadingProps>) {
       </Tag>
       {props.subtitle && (
         <p
+          data-editable-text="subtitle"
           style={{
             fontSize: "1.05rem",
             color: "var(--color-muted)",
@@ -335,7 +338,7 @@ export function ButtonBlock({ props }: BlockComponentProps<ButtonProps>) {
             : {}),
         }}
       >
-        {props.label}
+        <span data-editable-text="label">{props.label}</span>
       </Link>
     </div>
   );
