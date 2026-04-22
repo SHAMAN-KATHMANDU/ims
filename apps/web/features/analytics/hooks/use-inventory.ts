@@ -68,11 +68,15 @@ export function useInventorySummary() {
 }
 
 /**
- * Hook for fetching inventory for a specific location
+ * Hook for fetching inventory for a specific location.
+ * Pass `options.enabled: false` (or an explicit boolean) to additionally gate
+ * the query — useful for search-only surfaces that only fetch once a query has
+ * been entered.
  */
 export function useLocationInventory(
   locationId: string,
   params: LocationInventoryParams = {},
+  options?: { enabled?: boolean },
 ) {
   const normalizedParams: LocationInventoryParams = {
     page: params.page ?? DEFAULT_PAGE,
@@ -84,8 +88,9 @@ export function useLocationInventory(
   return useQuery({
     queryKey: inventoryKeys.locationList(locationId, normalizedParams),
     queryFn: () => getLocationInventory(locationId, normalizedParams),
-    enabled: !!locationId,
+    enabled: !!locationId && (options?.enabled ?? true),
     placeholderData: (previousData) => previousData,
+    staleTime: 30 * 1000,
   });
 }
 

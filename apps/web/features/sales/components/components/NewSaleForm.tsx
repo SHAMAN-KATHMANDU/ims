@@ -10,7 +10,7 @@ import { useCheckMember } from "@/features/members";
 import { useContactsPaginated } from "@/features/crm";
 import { useToast } from "@/hooks/useToast";
 import {
-  getLocationInventory,
+  useLocationInventory,
   type LocationInventoryItem,
 } from "@/features/analytics";
 import { searchPromoByCode } from "@/features/promos";
@@ -436,11 +436,19 @@ export function NewSaleForm({
   const [aggregateDiscountAmount, setAggregateDiscountAmount] =
     useState<number>(0);
 
-  // Inventory state — search-only: fetch only when user types (debounced)
-  const [inventory, setInventory] = useState<LocationInventoryItem[]>([]);
-  const [inventoryLoading, setInventoryLoading] = useState(false);
+  // Inventory — search-only: hook only fetches once locationId + search are present.
   const [productSearch, setProductSearch] = useState("");
   const debouncedProductSearch = useDebounce(productSearch, 300);
+  const inventorySearch = debouncedProductSearch.trim();
+  const {
+    data: locationInventoryResult,
+    isFetching: inventoryLoading,
+    error: inventoryError,
+  } = useLocationInventory(
+    locationId,
+    { search: inventorySearch, limit: 30 },
+    { enabled: !!locationId && !!inventorySearch },
+  );
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [showClearCartConfirm, setShowClearCartConfirm] = useState(false);
@@ -474,43 +482,31 @@ export function NewSaleForm({
     }
   }, [enabledPaymentMethods, selectedPaymentMethod]);
 
-  // Clear items, inventory, search when location changes
+  // Clear cart, search, and any scanned product whenever location changes.
+  // (Inventory is now driven by useLocationInventory; its queryKey changes with
+  // locationId so cached results for the prior location are dropped automatically.)
   const prevLocationIdRef = useRef(locationId);
   useEffect(() => {
     if (prevLocationIdRef.current !== locationId) {
       prevLocationIdRef.current = locationId;
       setItems([]);
-      setInventory([]);
       setProductSearch("");
       setScannedProduct(null);
     }
   }, [locationId]);
 
-  // Search-only: fetch inventory only when user types (debounced 300ms)
+  // Surface inventory fetch errors as a toast (parity with the previous imperative flow).
   useEffect(() => {
-    if (!locationId || !debouncedProductSearch.trim()) {
-      setInventory([]);
-      return;
-    }
-    setInventoryLoading(true);
-    getLocationInventory(locationId, {
-      search: debouncedProductSearch.trim(),
-      limit: 30,
-    })
-      .then((res) => {
-        setInventory(res.data.filter((item) => item.quantity > 0));
-      })
-      .catch((err) => {
-        console.error(err);
-        toast({
-          title: "Failed to search inventory",
-          description: err instanceof Error ? err.message : "Please try again.",
-          variant: "destructive",
-        });
-        setInventory([]);
-      })
-      .finally(() => setInventoryLoading(false));
-  }, [locationId, debouncedProductSearch, toast]);
+    if (!inventoryError) return;
+    toast({
+      title: "Failed to search inventory",
+      description:
+        inventoryError instanceof Error
+          ? inventoryError.message
+          : "Please try again.",
+      variant: "destructive",
+    });
+  }, [inventoryError, toast]);
 
   // When member is detected, auto-apply best eligible discount (matches backend logic)
   useEffect(() => {
@@ -583,7 +579,11 @@ export function NewSaleForm({
   }, [locationId, memberPhone, memberName, contactId, items, items.length]);
 
   // Inventory is already filtered by API when we pass search; no client-side filtering needed
-  const filteredInventory = inventory;
+  const filteredInventory = useMemo<LocationInventoryItem[]>(
+    () =>
+      (locationInventoryResult?.data ?? []).filter((item) => item.quantity > 0),
+    [locationInventoryResult],
+  );
 
   // Add item to sale
   const handleAddItem = async (inventoryItem: LocationInventoryItem) => {
