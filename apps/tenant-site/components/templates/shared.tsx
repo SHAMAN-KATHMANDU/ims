@@ -876,6 +876,7 @@ export function Hero({
           }}
         >
           <h1
+            data-editable-text="title"
             style={{
               fontSize: "clamp(2.75rem, 6vw, 5rem)",
               fontFamily: "var(--font-display)",
@@ -889,6 +890,7 @@ export function Hero({
           </h1>
           {tagline && (
             <p
+              data-editable-text="subtitle"
               style={{
                 fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
                 color: "rgba(255,255,255,0.88)",
@@ -938,6 +940,7 @@ export function Hero({
           style={{ position: "relative", textAlign: "center" }}
         >
           <h1
+            data-editable-text="title"
             style={{
               fontSize: "clamp(2.25rem, 5vw, 3.75rem)",
               fontFamily: "var(--font-display)",
@@ -951,6 +954,7 @@ export function Hero({
           </h1>
           {tagline && (
             <p
+              data-editable-text="subtitle"
               style={{
                 fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
                 color: imageUrl
@@ -1039,6 +1043,7 @@ export function Hero({
   const textContent = (
     <>
       <h1
+        data-editable-text="title"
         style={{
           fontSize,
           marginBottom: "1.5rem",
@@ -1053,6 +1058,7 @@ export function Hero({
       </h1>
       {tagline && (
         <p
+          data-editable-text="subtitle"
           style={{
             fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
             color:

@@ -84,9 +84,13 @@ function toApiPayload(values: BlogPostFormInput): CreateBlogPostData {
 export function BlogPostEditor({
   post,
   backHref,
+  onBack,
+  onCreated,
 }: {
   post?: BlogPost | null;
-  backHref: string;
+  backHref?: string;
+  onBack?: () => void;
+  onCreated?: (post: BlogPost) => void;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -148,7 +152,11 @@ export function BlogPostEditor({
       } else {
         const created = await createMutation.mutateAsync(payload);
         toast({ title: "Draft created" });
-        router.push(`${backHref}/${created.id}`);
+        if (onCreated) {
+          onCreated(created);
+        } else if (backHref) {
+          router.push(`${backHref}/${created.id}`);
+        }
       }
     } catch (error) {
       toast({
@@ -201,7 +209,10 @@ export function BlogPostEditor({
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push(backHref)}
+            onClick={() => {
+              if (onBack) onBack();
+              else if (backHref) router.push(backHref);
+            }}
           >
             Back
           </Button>
