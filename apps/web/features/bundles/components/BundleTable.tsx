@@ -2,19 +2,11 @@
 
 import { format } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-  type SortOrder,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { type SortOrder } from "@/components/ui/table";
 import type { Bundle, BundlePricingStrategy } from "../types";
 
 interface BundleTableProps {
@@ -48,161 +40,122 @@ export function BundleTable({
   hasActiveFilters,
   onClearFilters,
 }: BundleTableProps) {
-  if (isLoading) {
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Slug</TableHead>
-            <TableHead>Pricing</TableHead>
-            <TableHead>Products</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <TableRow key={i}>
-              {Array.from({ length: 7 }).map((__, j) => (
-                <TableCell key={j}>
-                  <Skeleton className="h-4 w-full" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  }
-
-  if (bundles.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium">No bundles yet</p>
-        <p className="text-xs text-muted-foreground">
-          {hasActiveFilters
-            ? "Try clearing the filters to see more bundles."
-            : "Create your first bundle to start grouping products together."}
-        </p>
-        {hasActiveFilters && onClearFilters && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="mt-2"
-          >
-            Clear filters
-          </Button>
-        )}
-      </div>
-    );
-  }
+  const columns: DataTableColumn<Bundle>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortKey: "name",
+      cellClassName: "max-w-[240px] truncate font-medium",
+      cell: (b) => b.name,
+    },
+    {
+      id: "slug",
+      header: "Slug",
+      cellClassName: "text-xs text-muted-foreground font-mono",
+      cell: (b) => b.slug,
+    },
+    {
+      id: "pricing",
+      header: "Pricing",
+      cellClassName: "text-sm",
+      cell: (b) => (
+        <>
+          {PRICING_LABEL[b.pricingStrategy]}
+          {b.pricingStrategy === "DISCOUNT_PCT" && b.discountPct !== null && (
+            <span className="text-muted-foreground"> ({b.discountPct}%)</span>
+          )}
+          {b.pricingStrategy === "FIXED" && b.fixedPrice !== null && (
+            <span className="text-muted-foreground"> ({b.fixedPrice})</span>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "products",
+      header: "Products",
+      cellClassName: "text-sm",
+      cell: (b) =>
+        `${b.productIds.length} product${b.productIds.length === 1 ? "" : "s"}`,
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (b) => (
+        <Badge
+          variant="secondary"
+          className={
+            b.active
+              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+              : "bg-muted text-muted-foreground"
+          }
+        >
+          {b.active ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "updatedAt",
+      header: "Updated",
+      sortKey: "updatedAt",
+      cellClassName: "text-xs text-muted-foreground",
+      cell: (b) => format(new Date(b.updatedAt), "MMM d, yyyy"),
+    },
+  ];
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <SortableTableHead
-            sortKey="name"
-            currentSortBy={sortBy}
-            currentSortOrder={sortOrder}
-            onSort={onSort}
-          >
-            Name
-          </SortableTableHead>
-          <TableHead>Slug</TableHead>
-          <TableHead>Pricing</TableHead>
-          <TableHead>Products</TableHead>
-          <TableHead>Status</TableHead>
-          <SortableTableHead
-            sortKey="updatedAt"
-            currentSortBy={sortBy}
-            currentSortOrder={sortOrder}
-            onSort={onSort}
-          >
-            Updated
-          </SortableTableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {bundles.map((b) => {
-          const busy = pendingId === b.id;
-          return (
-            <TableRow key={b.id} data-state={busy ? "selected" : undefined}>
-              <TableCell className="max-w-[240px] truncate font-medium">
-                {b.name}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground font-mono">
-                {b.slug}
-              </TableCell>
-              <TableCell className="text-sm">
-                {PRICING_LABEL[b.pricingStrategy]}
-                {b.pricingStrategy === "DISCOUNT_PCT" &&
-                  b.discountPct !== null && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ({b.discountPct}%)
-                    </span>
-                  )}
-                {b.pricingStrategy === "FIXED" && b.fixedPrice !== null && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    ({b.fixedPrice})
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-sm">
-                {b.productIds.length} product
-                {b.productIds.length === 1 ? "" : "s"}
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="secondary"
-                  className={
-                    b.active
-                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                      : "bg-muted text-muted-foreground"
-                  }
-                >
-                  {b.active ? "Active" : "Inactive"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {format(new Date(b.updatedAt), "MMM d, yyyy")}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="inline-flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => onEdit(b)}
-                    aria-label={`Edit bundle ${b.name}`}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => onDelete(b)}
-                    aria-label={`Delete bundle ${b.name}`}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <DataTable<Bundle>
+      data={bundles}
+      columns={columns}
+      getRowKey={(b) => b.id}
+      isLoading={isLoading}
+      skeletonRows={6}
+      sort={{ sortBy, sortOrder, onSort }}
+      rowClassName={(b) => (pendingId === b.id ? "opacity-60" : undefined)}
+      emptyState={{
+        title: "No bundles yet",
+        description: hasActiveFilters
+          ? "Try clearing the filters to see more bundles."
+          : "Create your first bundle to start grouping products together.",
+        action:
+          hasActiveFilters && onClearFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : undefined,
+      }}
+      actions={(b) => {
+        const busy = pendingId === b.id;
+        return (
+          <div className="inline-flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onEdit(b)}
+              aria-label={`Edit bundle ${b.name}`}
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onDelete(b)}
+              aria-label={`Delete bundle ${b.name}`}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      }}
+    />
   );
 }
