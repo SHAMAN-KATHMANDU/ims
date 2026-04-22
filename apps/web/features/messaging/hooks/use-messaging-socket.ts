@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import { acquireSocket, releaseSocket } from "@/lib/socket";
 import { conversationKeys } from "./use-conversations";
 import { messageKeys } from "./use-messages";
@@ -36,8 +38,10 @@ function sortConversationsByLastMessageAtDesc(
 
 export function useMessagingSocket() {
   const qc = useQueryClient();
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
 
   useEffect(() => {
+    if (!messagingEnabled) return;
     const socket = acquireSocket();
     const messageInvalidationTimers = new Map<
       string,
@@ -209,5 +213,5 @@ export function useMessagingSocket() {
       socket.off("messaging:message-edited", onMessageEdited);
       releaseSocket();
     };
-  }, [qc]);
+  }, [qc, messagingEnabled]);
 }

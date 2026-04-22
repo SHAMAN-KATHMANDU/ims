@@ -47,15 +47,17 @@ export function usePipelineTemplates(options?: { enabled?: boolean }) {
   });
 }
 
-export function usePipeline(id: string) {
+export function usePipeline(id: string, options?: { enabled?: boolean }) {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   return useQuery({
     queryKey: pipelineKeys.detail(id),
     queryFn: () => getPipelineById(id),
-    enabled: !!id,
+    enabled: pipelinesEnabled && !!id && (options?.enabled ?? true),
   });
 }
 
 export function useCreatePipeline() {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
@@ -65,12 +67,17 @@ export function useCreatePipeline() {
       isDefault?: boolean;
       closedWonStageName?: string | null;
       closedLostStageName?: string | null;
-    }) => createPipeline(data),
+    }) => {
+      if (!pipelinesEnabled)
+        throw new Error("Feature disabled: CRM_PIPELINES_TAB");
+      return createPipeline(data);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: pipelineKeys.lists() }),
   });
 }
 
 export function useUpdatePipeline() {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -85,7 +92,11 @@ export function useUpdatePipeline() {
         closedWonStageName?: string | null;
         closedLostStageName?: string | null;
       };
-    }) => updatePipeline(id, data),
+    }) => {
+      if (!pipelinesEnabled)
+        throw new Error("Feature disabled: CRM_PIPELINES_TAB");
+      return updatePipeline(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pipelineKeys.lists() });
       qc.invalidateQueries({ queryKey: pipelineKeys.detail(id) });
@@ -94,17 +105,27 @@ export function useUpdatePipeline() {
 }
 
 export function useDeletePipeline() {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deletePipeline(id),
+    mutationFn: (id: string) => {
+      if (!pipelinesEnabled)
+        throw new Error("Feature disabled: CRM_PIPELINES_TAB");
+      return deletePipeline(id);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: pipelineKeys.lists() }),
   });
 }
 
 export function useSeedPipelineFramework() {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => seedPipelineFramework(),
+    mutationFn: () => {
+      if (!pipelinesEnabled)
+        throw new Error("Feature disabled: CRM_PIPELINES_TAB");
+      return seedPipelineFramework();
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: pipelineKeys.lists() });
       qc.invalidateQueries({ queryKey: ["contacts"] });

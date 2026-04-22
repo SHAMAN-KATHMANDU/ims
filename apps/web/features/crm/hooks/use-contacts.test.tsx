@@ -5,6 +5,7 @@ import { QueryClientWrapper } from "@/test-utils/query-client-wrapper";
 
 const mockGetContacts = vi.fn();
 const mockCreateContact = vi.fn();
+const mockUseFeatureFlag = vi.fn(() => true);
 
 vi.mock("../services/contact.service", () => ({
   getContacts: (...args: unknown[]) => mockGetContacts(...args),
@@ -14,6 +15,8 @@ vi.mock("../services/contact.service", () => ({
   deleteContact: vi.fn(),
   getContactTags: vi.fn(),
   createContactTag: vi.fn(),
+  updateContactTag: vi.fn(),
+  deleteContactTag: vi.fn(),
   addContactNote: vi.fn(),
   deleteContactNote: vi.fn(),
   addContactAttachment: vi.fn(),
@@ -21,6 +24,11 @@ vi.mock("../services/contact.service", () => ({
   addContactCommunication: vi.fn(),
   importContactsCsv: vi.fn(),
   exportContactsCsv: vi.fn(),
+}));
+
+vi.mock("@/features/flags", () => ({
+  useFeatureFlag: () => mockUseFeatureFlag(),
+  useEnvFeatureFlag: vi.fn(() => true),
 }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -32,6 +40,7 @@ import { useContactsPaginated, useCreateContact } from "./use-contacts";
 describe("useContactsPaginated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(true);
     mockGetContacts.mockResolvedValue({
       contacts: [],
       pagination: { page: 1, limit: 20, totalItems: 0, totalPages: 0 },
@@ -48,11 +57,24 @@ describe("useContactsPaginated", () => {
 
     expect(mockGetContacts).toHaveBeenCalled();
   });
+
+  it("does not fetch contacts when CRM feature is disabled", async () => {
+    mockUseFeatureFlag.mockReturnValue(false);
+
+    const { result } = renderHook(
+      () => useContactsPaginated({ page: 1, limit: 10 }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(mockGetContacts).not.toHaveBeenCalled();
+  });
 });
 
 describe("useCreateContact", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(true);
     mockCreateContact.mockResolvedValue({ id: "c1", name: "Contact 1" });
   });
 

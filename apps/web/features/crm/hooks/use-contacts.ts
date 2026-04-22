@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFeatureFlag } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import {
   getContacts,
   getContactById,
@@ -38,7 +40,11 @@ export const contactKeys = {
     [...contactKeys.all, "tags", params] as const,
 };
 
-export function useContactsPaginated(params: ContactListParams = {}) {
+export function useContactsPaginated(
+  params: ContactListParams = {},
+  options?: { enabled?: boolean },
+) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: contactKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -54,28 +60,39 @@ export function useContactsPaginated(params: ContactListParams = {}) {
     }),
     queryFn: () => getContacts(params),
     placeholderData: (prev) => prev,
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useContact(id: string) {
+export function useContact(id: string, options?: { enabled?: boolean }) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: contactKeys.detail(id),
     queryFn: () => getContactById(id),
-    enabled: !!id,
+    enabled: crmEnabled && !!id && (options?.enabled ?? true),
   });
 }
 
-export function useContactTags(params?: GetContactTagsParams) {
+export function useContactTags(
+  params?: GetContactTagsParams,
+  options?: { enabled?: boolean },
+) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   return useQuery({
     queryKey: contactKeys.tags(params),
     queryFn: () => getContactTags(params),
+    enabled: crmEnabled && (options?.enabled ?? true),
   });
 }
 
 export function useCreateContact() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateContactData) => createContact(data),
+    mutationFn: (data: CreateContactData) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return createContact(data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -86,10 +103,13 @@ export function useCreateContact() {
 }
 
 export function useUpdateContact() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateContactData }) =>
-      updateContact(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateContactData }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return updateContact(id, data);
+    },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: contactKeys.detail(id) });
@@ -101,9 +121,13 @@ export function useUpdateContact() {
 }
 
 export function useDeleteContact() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteContact(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteContact(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -114,9 +138,13 @@ export function useDeleteContact() {
 }
 
 export function useCreateContactTag() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => createContactTag(name),
+    mutationFn: (name: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return createContactTag(name);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -125,10 +153,13 @@ export function useCreateContactTag() {
 }
 
 export function useUpdateContactTag() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      updateContactTag(id, name),
+    mutationFn: ({ id, name }: { id: string; name: string }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return updateContactTag(id, name);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -137,9 +168,13 @@ export function useUpdateContactTag() {
 }
 
 export function useDeleteContactTag() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => deleteContactTag(id),
+    mutationFn: (id: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteContactTag(id);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
       qc.invalidateQueries({ queryKey: crmKeys.all });
@@ -148,28 +183,38 @@ export function useDeleteContactTag() {
 }
 
 export function useAddContactNote(contactId: string) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => addContactNote(contactId, content),
+    mutationFn: (content: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return addContactNote(contactId, content);
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
 }
 
 export function useDeleteContactNote(contactId: string) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (noteId: string) => deleteContactNote(contactId, noteId),
+    mutationFn: (noteId: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteContactNote(contactId, noteId);
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
 }
 
 export function useAddContactAttachment(contactId: string) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   const { uploadFile } = useS3DirectUpload();
   return useMutation({
     mutationFn: async (file: File) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
       const { key, contentType } = await uploadFile({
         file,
         purpose: "contact_attachment",
@@ -188,32 +233,43 @@ export function useAddContactAttachment(contactId: string) {
 }
 
 export function useDeleteContactAttachment(contactId: string) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (attachmentId: string) =>
-      deleteContactAttachment(contactId, attachmentId),
+    mutationFn: (attachmentId: string) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return deleteContactAttachment(contactId, attachmentId);
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
 }
 
 export function useAddContactCommunication(contactId: string) {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
       type: "CALL" | "EMAIL" | "MEETING";
       subject?: string;
       notes?: string;
-    }) => addContactCommunication(contactId, data),
+    }) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return addContactCommunication(contactId, data);
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
 }
 
 export function useImportContacts() {
+  const crmEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => importContactsCsv(file),
+    mutationFn: (file: File) => {
+      if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
+      return importContactsCsv(file);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });

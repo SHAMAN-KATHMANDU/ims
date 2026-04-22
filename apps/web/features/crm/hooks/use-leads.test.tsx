@@ -5,6 +5,7 @@ import { QueryClientWrapper } from "@/test-utils/query-client-wrapper";
 
 const mockGetLeads = vi.fn();
 const mockCreateLead = vi.fn();
+const mockUseFeatureFlag = vi.fn(() => true);
 
 vi.mock("../services/lead.service", () => ({
   getLeads: (...args: unknown[]) => mockGetLeads(...args),
@@ -16,6 +17,11 @@ vi.mock("../services/lead.service", () => ({
   assignLead: vi.fn(),
 }));
 
+vi.mock("@/features/flags", () => ({
+  useFeatureFlag: () => mockUseFeatureFlag(),
+  useEnvFeatureFlag: vi.fn(() => true),
+}));
+
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientWrapper>{children}</QueryClientWrapper>
 );
@@ -25,6 +31,7 @@ import { useLeadsPaginated, useCreateLead } from "./use-leads";
 describe("useLeadsPaginated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(true);
     mockGetLeads.mockResolvedValue({
       leads: [],
       pagination: { page: 1, limit: 20, totalItems: 0, totalPages: 0 },
@@ -41,11 +48,24 @@ describe("useLeadsPaginated", () => {
 
     expect(mockGetLeads).toHaveBeenCalled();
   });
+
+  it("does not fetch leads when CRM feature is disabled", async () => {
+    mockUseFeatureFlag.mockReturnValue(false);
+
+    const { result } = renderHook(
+      () => useLeadsPaginated({ page: 1, limit: 10 }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(mockGetLeads).not.toHaveBeenCalled();
+  });
 });
 
 describe("useCreateLead", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseFeatureFlag.mockReturnValue(true);
     mockCreateLead.mockResolvedValue({ id: "l1", name: "Lead 1" });
   });
 

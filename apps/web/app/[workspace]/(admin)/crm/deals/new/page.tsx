@@ -4,14 +4,10 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import { useCreateDeal } from "@/features/crm";
-import { AuthGuard } from "@/components/auth/auth-guard";
 import { Button } from "@/components/ui/button";
 import { DealForm } from "@/features/crm";
 import type { CreateDealData } from "@/features/crm";
-import { WORKSPACE_ROOT } from "@/constants/routes";
-import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
-import { EnvFeature } from "@/features/flags";
-import { Feature } from "@repo/shared";
+import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 
 export default function NewDealPage() {
   const params = useParams();
@@ -30,27 +26,20 @@ export default function NewDealPage() {
 
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.CRM_DEALS}>
-      <FeaturePageGuard feature={Feature.SALES_PIPELINE}>
-        <AuthGuard
-          roles={["admin", "superAdmin"]}
-          unauthorizedPath={WORKSPACE_ROOT}
-        >
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-4 mb-6">
-              <Link href={`${basePath}/crm/deals`}>
-                <Button variant="ghost">Back</Button>
-              </Link>
-              <h1 className="text-3xl font-bold">New Deal</h1>
-            </div>
-            <DealForm
-              mode="create"
-              onSubmit={handleSubmit}
-              onCancel={() => router.push(`${basePath}/crm/deals`)}
-              isLoading={createMutation.isPending}
-            />
-          </div>
-        </AuthGuard>
-      </FeaturePageGuard>
+      <div className="max-w-2xl">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href={`${basePath}/crm/deals`}>
+            <Button variant="ghost">Back</Button>
+          </Link>
+          <h1 className="text-3xl font-bold">New Deal</h1>
+        </div>
+        <DealForm
+          mode="create"
+          onSubmit={handleSubmit}
+          onCancel={() => router.push(`${basePath}/crm/deals`)}
+          isLoading={createMutation.isPending}
+        />
+      </div>
     </EnvFeaturePageGuard>
   );
 }
