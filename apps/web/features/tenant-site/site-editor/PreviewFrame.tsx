@@ -114,6 +114,25 @@ const EDITOR_OVERLAY_CSS = `
 `;
 
 /**
+ * One-shot same-origin probe. Cross-origin iframes either throw on
+ * `contentDocument` access (Safari) or return null (Chrome/Firefox);
+ * same-origin always gives a usable Document.
+ */
+function probeSameOrigin(frame: HTMLIFrameElement | null): boolean {
+  if (!frame) return false;
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return false;
+    // Accessing location.href on a cross-origin document throws, even
+    // when contentDocument itself returns a Document proxy.
+    void doc.location.href;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Observes block positions inside the iframe and returns them in
  * iframe-document coordinates (top-left of contentDocument = 0,0).
  * Re-measures on mutations, resizes, and iframe scroll.
@@ -121,11 +140,13 @@ const EDITOR_OVERLAY_CSS = `
 function useIframeBlockRects(
   iframeRef: React.RefObject<HTMLIFrameElement | null>,
   iframeReady: number,
+  enabled: boolean,
 ): BlockRect[] {
   const [rects, setRects] = useState<BlockRect[]>([]);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const frame = iframeRef.current;
     if (!frame) return;
     let disposed = false;
@@ -217,7 +238,7 @@ function useIframeBlockRects(
       // cross-origin — skip
       return;
     }
-  }, [iframeRef, iframeReady]);
+  }, [iframeRef, iframeReady, enabled]);
 
   return rects;
 }
@@ -430,6 +451,10 @@ export function PreviewFrame({
   const [showGrid, setShowGrid] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeReady, setIframeReady] = useState(0);
+  // null = not probed yet, true/false = probed. In-canvas editing
+  // (click-to-select, inline edit, drag overlay) only works when the
+  // preview URL shares this origin.
+  const [isSameOrigin, setIsSameOrigin] = useState<boolean | null>(null);
 
   const src = useMemo(() => {
     if (!previewUrl) return null;
@@ -441,7 +466,8 @@ export function PreviewFrame({
   }, [previewUrl, refreshKey, showGrid, productId]);
 
   // Inject editor overlay CSS + click-to-select handler on every iframe load.
-  // Tries same-origin access; silently no-ops if cross-origin.
+  // Short-circuits when the preview URL is cross-origin (same-origin probe
+  // runs on load and gates all DOM access below).
   useEffect(() => {
     const frame = iframeRef.current;
     if (!frame) return;
@@ -449,6 +475,9 @@ export function PreviewFrame({
     let dblclickHandler: ((e: Event) => void) | null = null;
 
     const tryInject = () => {
+      const sameOrigin = probeSameOrigin(frame);
+      setIsSameOrigin(sameOrigin);
+      if (!sameOrigin) return false;
       try {
         const doc = frame.contentDocument;
         if (!doc) return false;
@@ -590,49 +619,47 @@ export function PreviewFrame({
 
   // Keep iframe's data-editor-selected attribute in sync with parent selection.
   useEffect(() => {
+    if (isSameOrigin !== true) return;
     const frame = iframeRef.current;
     if (!frame) return;
-    try {
-      const doc = frame.contentDocument;
-      if (!doc) return;
-      doc.querySelectorAll("[data-editor-selected]").forEach((el) => {
-        el.removeAttribute("data-editor-selected");
-      });
-      if (selectedId) {
-        const el = doc.querySelector(
-          `[data-block-id="${CSS.escape(selectedId)}"]`,
-        );
-        if (el) el.setAttribute("data-editor-selected", "true");
-      }
-    } catch {
-      // cross-origin — skip
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    doc.querySelectorAll("[data-editor-selected]").forEach((el) => {
+      el.removeAttribute("data-editor-selected");
+    });
+    if (selectedId) {
+      const el = doc.querySelector(
+        `[data-block-id="${CSS.escape(selectedId)}"]`,
+      );
+      if (el) el.setAttribute("data-editor-selected", "true");
     }
-  }, [selectedId, iframeReady]);
+  }, [selectedId, iframeReady, isSameOrigin]);
 
   // Live block rects + overlay portal target.
-  const blockRects = useIframeBlockRects(iframeRef, iframeReady);
+  const blockRects = useIframeBlockRects(
+    iframeRef,
+    iframeReady,
+    isSameOrigin === true,
+  );
   const [overlayTarget, setOverlayTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    try {
-      const body = iframeRef.current?.contentDocument?.body ?? null;
-      setOverlayTarget(body);
-    } catch {
+    if (isSameOrigin !== true) {
       setOverlayTarget(null);
+      return;
     }
-  }, [iframeReady]);
+    const body = iframeRef.current?.contentDocument?.body ?? null;
+    setOverlayTarget(body);
+  }, [iframeReady, isSameOrigin]);
 
   // Make the iframe body `position: relative` so absolute-positioned overlay
   // children use the body as their containing block.
   useEffect(() => {
-    try {
-      const body = iframeRef.current?.contentDocument?.body;
-      if (!body) return;
-      const prev = body.style.position;
-      if (prev !== "relative") body.style.position = "relative";
-    } catch {
-      // ignore
-    }
-  }, [iframeReady]);
+    if (isSameOrigin !== true) return;
+    const body = iframeRef.current?.contentDocument?.body;
+    if (!body) return;
+    const prev = body.style.position;
+    if (prev !== "relative") body.style.position = "relative";
+  }, [iframeReady, isSameOrigin]);
 
   const stableOnReorder = useCallback(
     (id: string, toIndex: number) => {
@@ -746,7 +773,23 @@ export function PreviewFrame({
               overlayTarget,
             )}
         </div>
-        {!loading && src && (
+        {!loading && src && isSameOrigin === false && (
+          <div className="mx-auto mt-2 max-w-2xl rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-center text-[11px] text-muted-foreground">
+            Preview is served from a different origin, so click-to-select and
+            inline editing are disabled here. Edit blocks from the right panel,
+            or{" "}
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              open the preview in a new tab
+            </a>
+            .
+          </div>
+        )}
+        {!loading && src && isSameOrigin !== false && (
           <div className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-muted-foreground">
             If the preview is blank, your tenant-site deployment may be behind
             this branch or the frame ancestor allowlist hasn&apos;t been widened
