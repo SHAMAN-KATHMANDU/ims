@@ -1,20 +1,10 @@
 "use client";
 
-import { useCallback } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
-import { type User } from "../../hooks/use-users";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { type SortOrder } from "@/components/ui/table";
 import { Edit2, Trash2 } from "lucide-react";
+import { type User } from "../../hooks/use-users";
 
 interface UserTableProps {
   users: User[];
@@ -38,240 +28,102 @@ export function UserTable({
   onSort,
   onEdit,
   onDelete,
-  selectedUsers = new Set(),
+  selectedUsers,
   onSelectionChange,
   hasActiveFilters,
   onClearFilters,
 }: UserTableProps) {
-  const canSort = Boolean(onSort);
-
-  const handleSelectUser = useCallback(
-    (userId: string, checked: boolean) => {
-      if (!onSelectionChange) return;
-      const newSelection = new Set(selectedUsers);
-      if (checked) {
-        newSelection.add(userId);
-      } else {
-        newSelection.delete(userId);
-      }
-      onSelectionChange(newSelection);
+  const columns: DataTableColumn<User>[] = [
+    {
+      id: "username",
+      header: "Username",
+      sortKey: "username",
+      cellClassName: "font-medium",
+      cell: (u) => u.username,
     },
-    [selectedUsers, onSelectionChange],
-  );
-
-  const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (!onSelectionChange) return;
-      if (checked) {
-        onSelectionChange(new Set(users.map((u) => u.id)));
-      } else {
-        onSelectionChange(new Set());
-      }
+    {
+      id: "role",
+      header: "Role",
+      cell: (u) => (
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+          {u.role}
+        </span>
+      ),
     },
-    [users, onSelectionChange],
-  );
-
-  const allSelected =
-    users.length > 0 && users.every((u) => selectedUsers.has(u.id));
-
-  const baseColumnCount = 4;
-  const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
-
-  if (isLoading) {
-    return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {onSelectionChange && (
-                <TableHead className="w-12">
-                  <Checkbox disabled aria-label="Select all users" />
-                </TableHead>
-              )}
-              <TableHead>Username</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[...Array(5)].map((_, i) => (
-              <TableRow key={i}>
-                {onSelectionChange && <TableCell className="w-12" />}
-                <TableCell>
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell className="text-right">
-                  <Skeleton className="h-8 w-16 ml-auto" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  if (users.length === 0) {
-    return (
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {onSelectionChange && (
-                <TableHead className="w-12">
-                  <Checkbox disabled aria-label="Select all users" />
-                </TableHead>
-              )}
-              <TableHead>Username</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell colSpan={columnCount} className="text-center py-10">
-                {hasActiveFilters ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-sm font-medium">
-                      No users match your filters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Try a different search or role.
-                    </p>
-                    {onClearFilters && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={onClearFilters}
-                      >
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No users yet</p>
-                )}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
+    {
+      id: "createdAt",
+      header: "Created At",
+      sortKey: "createdAt",
+      cell: (u) => new Date(u.createdAt).toLocaleDateString(),
+    },
+  ];
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {onSelectionChange && (
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all users"
-                />
-              </TableHead>
-            )}
-            {canSort ? (
-              <SortableTableHead
-                sortKey="username"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort!}
-              >
-                Username
-              </SortableTableHead>
-            ) : (
-              <TableHead>Username</TableHead>
-            )}
-            {canSort ? (
-              <SortableTableHead
-                sortKey="role"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort!}
-              >
-                Role
-              </SortableTableHead>
-            ) : (
-              <TableHead>Role</TableHead>
-            )}
-            {canSort ? (
-              <SortableTableHead
-                sortKey="createdAt"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort!}
-              >
-                Created At
-              </SortableTableHead>
-            ) : (
-              <TableHead>Created At</TableHead>
-            )}
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              {onSelectionChange && (
-                <TableCell
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-12"
-                >
-                  <Checkbox
-                    checked={selectedUsers.has(user.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectUser(user.id, checked === true)
-                    }
-                    aria-label={`Select ${user.username}`}
-                  />
-                </TableCell>
-              )}
-              <TableCell className="font-medium">{user.username}</TableCell>
-              <TableCell>
-                <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                  {user.role}
-                </span>
-              </TableCell>
-              <TableCell>
-                {new Date(user.createdAt).toLocaleDateString()}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onEdit(user)}
-                  aria-label={`Edit ${user.username}`}
-                >
-                  <Edit2 className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(user)}
-                  aria-label={`Delete ${user.username}`}
-                >
-                  <Trash2
-                    className="h-4 w-4 text-destructive"
-                    aria-hidden="true"
-                  />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <DataTable<User>
+      data={users}
+      columns={columns}
+      getRowKey={(u) => u.id}
+      isLoading={isLoading}
+      skeletonRows={5}
+      sort={
+        onSort
+          ? {
+              sortBy: sortBy ?? "",
+              sortOrder: (sortOrder ?? "none") as SortOrder,
+              onSort: onSort as (sortBy: string, sortOrder: SortOrder) => void,
+            }
+          : undefined
+      }
+      selection={
+        onSelectionChange
+          ? {
+              selectedIds: selectedUsers ?? new Set(),
+              onChange: onSelectionChange,
+              getRowId: (u) => u.id,
+            }
+          : undefined
+      }
+      emptyState={{
+        title: hasActiveFilters
+          ? "No users match your filters"
+          : "No users yet",
+        description: hasActiveFilters
+          ? "Try a different search or role."
+          : undefined,
+        action:
+          hasActiveFilters && onClearFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : undefined,
+      }}
+      actions={(u) => (
+        <div className="inline-flex gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(u)}
+            aria-label={`Edit ${u.username}`}
+          >
+            <Edit2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(u)}
+            aria-label={`Delete ${u.username}`}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+    />
   );
 }

@@ -1,20 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
 import { format } from "date-fns";
 import { Check, Star, Trash2, X } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 import type { Review, ReviewStatus } from "../hooks/use-reviews";
 
@@ -48,192 +39,130 @@ export function ReviewTable({
   hasActiveFilters,
   onClearFilters,
 }: ReviewTableProps) {
-  const handleSelectOne = useCallback(
-    (id: string, checked: boolean) => {
-      const next = new Set(selectedIds);
-      if (checked) next.add(id);
-      else next.delete(id);
-      onSelectionChange(next);
+  const columns: DataTableColumn<Review>[] = [
+    {
+      id: "product",
+      header: "Product",
+      cellClassName: "max-w-[200px] truncate font-medium",
+      cell: (r) => r.product?.name ?? "—",
     },
-    [selectedIds, onSelectionChange],
-  );
-
-  const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (checked) onSelectionChange(new Set(reviews.map((r) => r.id)));
-      else onSelectionChange(new Set());
+    {
+      id: "rating",
+      header: "Rating",
+      cell: (r) => <RatingStars value={r.rating} />,
     },
-    [reviews, onSelectionChange],
-  );
-
-  const allSelected =
-    reviews.length > 0 && reviews.every((r) => selectedIds.has(r.id));
-  const someSelected =
-    reviews.some((r) => selectedIds.has(r.id)) && !allSelected;
-
-  if (isLoading) {
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10" />
-            <TableHead>Product</TableHead>
-            <TableHead>Rating</TableHead>
-            <TableHead>Review</TableHead>
-            <TableHead>Author</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <TableRow key={i}>
-              {Array.from({ length: 8 }).map((__, j) => (
-                <TableCell key={j}>
-                  <Skeleton className="h-4 w-full" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  }
-
-  if (reviews.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium">No reviews to moderate</p>
-        <p className="text-xs text-muted-foreground">
-          {hasActiveFilters
-            ? "Try clearing the filters to see more reviews."
-            : "New reviews from your storefront will land here for moderation."}
-        </p>
-        {hasActiveFilters && onClearFilters && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="mt-2"
-          >
-            Clear filters
-          </Button>
-        )}
-      </div>
-    );
-  }
+    {
+      id: "review",
+      header: "Review",
+      cellClassName: "max-w-[320px]",
+      cell: (r) => {
+        if (!r.title && !r.body) {
+          return (
+            <span className="text-xs text-muted-foreground">(no content)</span>
+          );
+        }
+        return (
+          <>
+            {r.title && (
+              <div className="truncate text-sm font-medium">{r.title}</div>
+            )}
+            {r.body && (
+              <div className="line-clamp-2 text-xs text-muted-foreground">
+                {r.body}
+              </div>
+            )}
+          </>
+        );
+      },
+    },
+    {
+      id: "author",
+      header: "Author",
+      cellClassName: "text-sm",
+      cell: (r) => r.authorName ?? "Anonymous",
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (r) => <StatusBadge status={r.status} />,
+    },
+    {
+      id: "createdAt",
+      header: "Created",
+      cellClassName: "text-xs text-muted-foreground",
+      cell: (r) => format(new Date(r.createdAt), "MMM d, yyyy"),
+    },
+  ];
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-10">
-            <Checkbox
-              checked={allSelected}
-              data-state={
-                someSelected
-                  ? "indeterminate"
-                  : allSelected
-                    ? "checked"
-                    : "unchecked"
-              }
-              onCheckedChange={(v) => handleSelectAll(Boolean(v))}
-              aria-label="Select all reviews on this page"
-            />
-          </TableHead>
-          <TableHead>Product</TableHead>
-          <TableHead>Rating</TableHead>
-          <TableHead>Review</TableHead>
-          <TableHead>Author</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {reviews.map((r) => {
-          const busy = pendingId === r.id;
-          return (
-            <TableRow key={r.id} data-state={busy ? "selected" : undefined}>
-              <TableCell>
-                <Checkbox
-                  checked={selectedIds.has(r.id)}
-                  onCheckedChange={(v) => handleSelectOne(r.id, Boolean(v))}
-                  aria-label={`Select review by ${r.authorName ?? "anonymous"}`}
-                />
-              </TableCell>
-              <TableCell className="max-w-[200px] truncate font-medium">
-                {r.product?.name ?? "—"}
-              </TableCell>
-              <TableCell>
-                <RatingStars value={r.rating} />
-              </TableCell>
-              <TableCell className="max-w-[320px]">
-                {r.title && (
-                  <div className="truncate text-sm font-medium">{r.title}</div>
-                )}
-                {r.body && (
-                  <div className="line-clamp-2 text-xs text-muted-foreground">
-                    {r.body}
-                  </div>
-                )}
-                {!r.title && !r.body && (
-                  <span className="text-xs text-muted-foreground">
-                    (no content)
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-sm">
-                {r.authorName ?? "Anonymous"}
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={r.status} />
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {format(new Date(r.createdAt), "MMM d, yyyy")}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="inline-flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy || r.status === "APPROVED"}
-                    onClick={() => onApprove(r)}
-                    aria-label="Approve review"
-                  >
-                    <Check className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy || r.status === "REJECTED"}
-                    onClick={() => onReject(r)}
-                    aria-label="Reject review"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => onDelete(r)}
-                    aria-label="Delete review"
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <DataTable<Review>
+      data={reviews}
+      columns={columns}
+      getRowKey={(r) => r.id}
+      isLoading={isLoading}
+      skeletonRows={6}
+      selection={{
+        selectedIds,
+        onChange: onSelectionChange,
+        getRowId: (r) => r.id,
+      }}
+      rowClassName={(r) => (pendingId === r.id ? "opacity-60" : undefined)}
+      emptyState={{
+        title: "No reviews to moderate",
+        description: hasActiveFilters
+          ? "Try clearing the filters to see more reviews."
+          : "New reviews from your storefront will land here for moderation.",
+        action:
+          hasActiveFilters && onClearFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : undefined,
+      }}
+      actions={(r) => {
+        const busy = pendingId === r.id;
+        return (
+          <div className="inline-flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy || r.status === "APPROVED"}
+              onClick={() => onApprove(r)}
+              aria-label="Approve review"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy || r.status === "REJECTED"}
+              onClick={() => onReject(r)}
+              aria-label="Reject review"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onDelete(r)}
+              aria-label="Delete review"
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        );
+      }}
+    />
   );
 }
 

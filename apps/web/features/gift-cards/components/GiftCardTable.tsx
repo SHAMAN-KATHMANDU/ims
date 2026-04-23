@@ -2,19 +2,11 @@
 
 import { format } from "date-fns";
 import { Ban } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-  type SortOrder,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { TableRow, type SortOrder } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/format";
 import type { GiftCard, GiftCardStatus } from "../types";
 
@@ -59,128 +51,107 @@ export function GiftCardTable({
   hasActiveFilters,
   onClearFilters,
 }: GiftCardTableProps) {
-  if (isLoading) {
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Balance</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Recipient</TableHead>
-            <TableHead>Expires</TableHead>
-            <TableHead>Issued</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <TableRow key={i}>
-              {Array.from({ length: 8 }).map((__, j) => (
-                <TableCell key={j}>
-                  <Skeleton className="h-4 w-full" />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  }
-
-  if (giftCards.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border py-12 text-center">
-        <p className="text-sm font-medium">No gift cards yet</p>
-        <p className="text-xs text-muted-foreground">
-          {hasActiveFilters
-            ? "Try clearing the filters to see more gift cards."
-            : "Issue your first gift card to start selling them."}
-        </p>
-        {hasActiveFilters && onClearFilters && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClearFilters}
-            className="mt-2"
-          >
-            Clear filters
-          </Button>
-        )}
-      </div>
-    );
-  }
+  const columns: DataTableColumn<GiftCard>[] = [
+    {
+      id: "code",
+      header: "Code",
+      cellClassName: "font-mono text-xs",
+      cell: (gc) => gc.code,
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      cellClassName: "text-sm",
+      cell: (gc) => formatCents(gc.amount),
+    },
+    {
+      id: "balance",
+      header: "Balance",
+      cellClassName: "text-sm font-medium",
+      cell: (gc) => formatCents(gc.balance),
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (gc) => (
+        <Badge variant="secondary" className={STATUS_STYLES[gc.status]}>
+          {STATUS_LABEL[gc.status]}
+        </Badge>
+      ),
+    },
+    {
+      id: "recipient",
+      header: "Recipient",
+      cellClassName: "max-w-[200px] truncate text-sm text-muted-foreground",
+      cell: (gc) => gc.recipientEmail ?? "—",
+    },
+    {
+      id: "expires",
+      header: "Expires",
+      cellClassName: "text-xs text-muted-foreground",
+      cell: (gc) =>
+        gc.expiresAt ? format(new Date(gc.expiresAt), "MMM d, yyyy") : "Never",
+    },
+    {
+      id: "createdAt",
+      header: "Issued",
+      sortKey: "createdAt",
+      cellClassName: "text-xs text-muted-foreground",
+      cell: (gc) => format(new Date(gc.createdAt), "MMM d, yyyy"),
+    },
+  ];
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Code</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Balance</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Recipient</TableHead>
-          <TableHead>Expires</TableHead>
-          <SortableTableHead
-            sortKey="createdAt"
-            currentSortBy={sortBy}
-            currentSortOrder={sortOrder}
-            onSort={onSort}
+    <DataTable<GiftCard>
+      data={giftCards}
+      columns={columns}
+      getRowKey={(gc) => gc.id}
+      isLoading={isLoading}
+      skeletonRows={6}
+      sort={{ sortBy, sortOrder, onSort }}
+      emptyState={{
+        title: "No gift cards yet",
+        description: hasActiveFilters
+          ? "Try clearing the filters to see more gift cards."
+          : "Issue your first gift card to start selling them.",
+        action:
+          hasActiveFilters && onClearFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : undefined,
+      }}
+      renderRow={(gc, defaultCells, { rowKey }) => {
+        const busy = pendingId === gc.id;
+        return (
+          <TableRow key={rowKey} data-state={busy ? "selected" : undefined}>
+            {defaultCells}
+          </TableRow>
+        );
+      }}
+      actions={(gc) => {
+        const busy = pendingId === gc.id;
+        const canVoid = gc.status === "ACTIVE";
+        return (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={busy || !canVoid}
+            onClick={() => onVoid(gc)}
+            aria-label={`Void gift card ${gc.code}`}
+            className="text-destructive hover:text-destructive"
           >
-            Issued
-          </SortableTableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {giftCards.map((gc) => {
-          const busy = pendingId === gc.id;
-          const canVoid = gc.status === "ACTIVE";
-          return (
-            <TableRow key={gc.id} data-state={busy ? "selected" : undefined}>
-              <TableCell className="font-mono text-xs">{gc.code}</TableCell>
-              <TableCell className="text-sm">
-                {formatCents(gc.amount)}
-              </TableCell>
-              <TableCell className="text-sm font-medium">
-                {formatCents(gc.balance)}
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={STATUS_STYLES[gc.status]}>
-                  {STATUS_LABEL[gc.status]}
-                </Badge>
-              </TableCell>
-              <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                {gc.recipientEmail ?? "—"}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {gc.expiresAt
-                  ? format(new Date(gc.expiresAt), "MMM d, yyyy")
-                  : "Never"}
-              </TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {format(new Date(gc.createdAt), "MMM d, yyyy")}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy || !canVoid}
-                  onClick={() => onVoid(gc)}
-                  aria-label={`Void gift card ${gc.code}`}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Ban className="mr-1 h-4 w-4" aria-hidden="true" />
-                  Void
-                </Button>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+            <Ban className="mr-1 h-4 w-4" aria-hidden="true" />
+            Void
+          </Button>
+        );
+      }}
+    />
   );
 }
