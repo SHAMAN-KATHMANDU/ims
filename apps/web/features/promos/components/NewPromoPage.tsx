@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useCreatePromo } from "../hooks/use-promos";
-import { PromoForm } from "./components/PromoForm";
+import { PromoForm } from "./PromoForm";
 
 export function NewPromoPage() {
   const router = useRouter();

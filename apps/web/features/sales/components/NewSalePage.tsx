@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/features/locations";
 import { useCreateSale } from "../hooks/use-sales";
-import { NewSaleForm } from "./components/NewSaleForm";
+import { NewSaleForm } from "./NewSaleForm";
 
 export function NewSalePage() {
   const router = useRouter();

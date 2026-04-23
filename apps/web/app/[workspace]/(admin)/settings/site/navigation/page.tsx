@@ -1,4 +1,4 @@
-import { NavMenuPanel } from "@/features/tenant-site/components/NavMenuPanel";
+import { NavMenuPanel } from "@/features/tenant-site";
 
 export const metadata = { title: "Site navigation" };
 

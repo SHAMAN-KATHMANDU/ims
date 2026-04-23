@@ -14,7 +14,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import { useCreateErrorReport } from "@/features/settings/hooks/use-settings";
+import { useCreateErrorReport } from "@/features/settings";
 import { useToast } from "@/hooks/useToast";
 import { Loader2, Bug } from "lucide-react";
 

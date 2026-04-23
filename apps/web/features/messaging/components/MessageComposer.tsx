@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { useSendMessage } from "../hooks/use-messages";
 import type { Message } from "../services/messaging.service";
 import { cn } from "@/lib/utils";
-import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { useS3DirectUpload } from "@/features/media";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 
 function replyPreviewSnippet(msg: Message): string {

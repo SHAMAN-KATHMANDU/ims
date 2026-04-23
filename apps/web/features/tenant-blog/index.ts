@@ -1,5 +1,7 @@
 export { TenantBlogPage } from "./components/TenantBlogPage";
 export { BlogPostEditor } from "./components/BlogPostEditor";
+export { BlogStatusBadge } from "./components/BlogStatusBadge";
+export { BlogMarkdownEditor } from "./components/BlogMarkdownEditor";
 export { BlogCategoryManager } from "./components/BlogCategoryManager";
 
 export {

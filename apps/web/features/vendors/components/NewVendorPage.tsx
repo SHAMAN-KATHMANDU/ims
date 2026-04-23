@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import type { CreateOrUpdateVendorData } from "../hooks/use-vendors";
 import { useCreateVendor } from "../hooks/use-vendors";
-import { VendorForm } from "./components/VendorForm";
+import { VendorForm } from "./VendorForm";
 
 export function NewVendorPage() {
   const router = useRouter();

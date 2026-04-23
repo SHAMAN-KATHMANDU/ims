@@ -15,7 +15,7 @@ import {
   type SubscriptionStatus,
   type PlanTier,
 } from "../hooks/use-tenants";
-import { TenantForm } from "./components/TenantForm";
+import { TenantForm } from "./TenantForm";
 import { TenantNavTabs } from "@/features/sites";
 import {
   Card,

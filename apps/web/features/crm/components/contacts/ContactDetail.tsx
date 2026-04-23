@@ -41,7 +41,7 @@ import { useCreateTask } from "../../hooks/use-tasks";
 import { useCreateDeal } from "../../hooks/use-deals";
 import { usePipelines } from "../../hooks/use-pipelines";
 import { useUsers, type User } from "@/features/users";
-import { LogActivityDialog } from "../components/LogActivityDialog";
+import { LogActivityDialog } from "../LogActivityDialog";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {

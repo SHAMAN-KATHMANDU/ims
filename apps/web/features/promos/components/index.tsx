@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/data-table-pagination";
 import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { useIsMobile } from "@/hooks/useMobile";
-import { PromoForm } from "./components/PromoForm";
+import { PromoForm } from "./PromoForm";
 
 interface PromoPageProps {
   /** When true, page is read-only for all roles (no add/edit/delete). Used under Products. */

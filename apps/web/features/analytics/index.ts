@@ -17,4 +17,4 @@ export { CustomersPromosPage } from "./components/CustomersPromosPage";
 export { FinancialPage } from "./components/FinancialPage";
 export { TrendsPage } from "./components/TrendsPage";
 export { PivotPage } from "./components/PivotPage";
-export { AnalyticsFilterBar } from "./components/components/AnalyticsFilterBar";
+export { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";

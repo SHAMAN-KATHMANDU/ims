@@ -42,10 +42,7 @@ import {
   useDuplicateTenantPage,
 } from "../hooks/use-tenant-pages";
 import type { TenantPageListItem } from "../services/tenant-pages.service";
-import {
-  useSiteConfig,
-  useUpdateSiteConfig,
-} from "@/features/tenant-site/hooks/use-tenant-site";
+import { useSiteConfig, useUpdateSiteConfig } from "@/features/tenant-site";
 
 // Built-in pages every tenant site has
 const BUILT_IN_PAGES: {

@@ -12,7 +12,7 @@ import {
   useStartTransit,
   useCompleteTransfer,
 } from "../hooks/use-transfers";
-import { TransferForm } from "./components/TransferForm";
+import { TransferForm } from "./TransferForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 

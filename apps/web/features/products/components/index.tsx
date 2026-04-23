@@ -30,13 +30,13 @@ import {
   selectClearSelection,
 } from "@/store/product-selection-store";
 import { type CreateProductData } from "@/features/products";
-import { ProductForm } from "./components/ProductForm";
-import { ProductTable } from "./components/ProductTable";
-import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
-import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialog";
+import { ProductForm } from "./ProductForm";
+import { ProductTable } from "./ProductTable";
+import { ProductDeleteDialog } from "./dialogs/ProductDeleteDialog";
+import { VariationDeleteDialog } from "./dialogs/VariationDeleteDialog";
 import { getVariationAttributeDisplay } from "./utils/helpers";
-import { ErrorDialog } from "./components/dialogs/ErrorDialog";
-import { BulkUploadDialog } from "./components/BulkUploadDialog";
+import { ErrorDialog } from "./dialogs/ErrorDialog";
+import { BulkUploadDialog } from "./BulkUploadDialog";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { useTenantUsage } from "@/features/dashboard";
 import { EnvFeature } from "@/features/flags";

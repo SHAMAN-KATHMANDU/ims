@@ -11,7 +11,7 @@ import {
   type PlanTier,
   type SubscriptionStatus,
 } from "../hooks/use-tenants";
-import { TenantTable } from "./components/TenantTable";
+import { TenantTable } from "./TenantTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

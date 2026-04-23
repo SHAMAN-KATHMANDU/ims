@@ -13,10 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { GripVertical, Plus, Search, Trash2, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  useProductsPaginated,
-  type Product,
-} from "@/features/products/hooks/use-products";
+import { useProductsPaginated, type Product } from "@/features/products";
 
 interface ProductPickerFieldProps {
   value: string[] | undefined;

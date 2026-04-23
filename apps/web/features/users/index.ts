@@ -24,6 +24,16 @@ export {
   updateUser,
   deleteUser,
   changePassword,
+  getPasswordResetRequests,
+  approvePasswordResetRequest,
+  escalatePasswordResetRequest,
+  rejectPasswordResetRequest,
+} from "./services/user.service";
+export type {
+  PasswordResetRequest,
+  PasswordResetStatus,
+  GetPasswordResetRequestsParams,
+  PasswordResetRequestsResponse,
 } from "./services/user.service";
 export { CreateUserSchema, UpdateUserSchema, TENANT_ROLES } from "./validation";
 export type {

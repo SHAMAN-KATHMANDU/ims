@@ -21,7 +21,7 @@ import {
   useInventoryOpsAnalytics,
 } from "@/features/analytics";
 import { useProductsPaginated } from "@/features/products";
-import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,

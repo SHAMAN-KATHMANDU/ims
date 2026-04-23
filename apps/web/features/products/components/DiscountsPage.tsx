@@ -1,7 +1,7 @@
 "use client";
 
-import { DiscountTypesCard } from "./components/DiscountTypesCard";
-import { DiscountsTab } from "./components/DiscountsTab";
+import { DiscountTypesCard } from "./DiscountTypesCard";
+import { DiscountsTab } from "./DiscountsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function DiscountsPage() {

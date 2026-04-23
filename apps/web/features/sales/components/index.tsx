@@ -32,11 +32,11 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "../hooks/use-sales";
-import { SalesTable } from "./components/SalesTable";
-import { NewSaleForm } from "./components/NewSaleForm";
-import { SaleDetail } from "./components/SaleDetail";
-import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
-import { SalesFilterBar } from "./components/SalesFilterBar";
+import { SalesTable } from "./SalesTable";
+import { NewSaleForm } from "./NewSaleForm";
+import { SaleDetail } from "./SaleDetail";
+import { SaleBulkUploadDialog } from "./SaleBulkUploadDialog";
+import { SalesFilterBar } from "./SalesFilterBar";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";

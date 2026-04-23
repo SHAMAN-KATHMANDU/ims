@@ -8,7 +8,7 @@ import { Image as ImageIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
-import { MediaLibraryPickerDialog } from "@/components/media/MediaLibraryPickerDialog";
+import { MediaLibraryPickerDialog } from "@/features/media";
 
 /**
  * Split-pane markdown editor. Left: textarea. Right: live preview rendered

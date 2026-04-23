@@ -47,7 +47,7 @@ import type {
   BlogPost,
   CreateBlogPostData,
 } from "../services/tenant-blog.service";
-import { MediaPickerField } from "@/components/media/MediaPickerField";
+import { MediaPickerField } from "@/features/media";
 import { BlogMarkdownEditor } from "./BlogMarkdownEditor";
 import { BlogStatusBadge } from "./BlogStatusBadge";
 

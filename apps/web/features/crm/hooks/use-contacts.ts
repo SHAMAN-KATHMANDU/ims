@@ -26,7 +26,7 @@ import {
   type GetContactTagsParams,
 } from "../services/contact.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
-import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { useS3DirectUpload } from "@/features/media";
 import { crmKeys } from "./use-crm";
 
 export const contactKeys = {

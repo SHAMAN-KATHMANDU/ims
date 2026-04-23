@@ -14,9 +14,16 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
-import { UserSalesReportFilterBar } from "@/features/sales/components/components/UserSalesReportFilterBar";
+import { UserSalesReportFilterBar } from "@/features/sales";
 import { useActiveLocations } from "@/features/locations";
-import { format, startOfDay, endOfDay, subDays, subMonths, subYears } from "date-fns";
+import {
+  format,
+  startOfDay,
+  endOfDay,
+  subDays,
+  subMonths,
+  subYears,
+} from "date-fns";
 
 export default function UserSalesReportPage() {
   const today = new Date();

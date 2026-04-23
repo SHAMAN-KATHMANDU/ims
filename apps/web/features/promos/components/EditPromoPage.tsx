@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import type { CreateOrUpdatePromoData } from "../hooks/use-promos";
 import { usePromo, useUpdatePromo } from "../hooks/use-promos";
-import { PromoForm } from "./components/PromoForm";
+import { PromoForm } from "./PromoForm";
 
 export function EditPromoPage() {
   const router = useRouter();
