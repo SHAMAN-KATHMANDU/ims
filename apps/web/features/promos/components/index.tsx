@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import {
   usePromosPaginated,
   useCreatePromo,
@@ -59,6 +60,7 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   const userRole = useAuthStore(selectUserRole);
   const readOnly = readOnlyProp === true ? true : userRole === "user";
   const isMobile = useIsMobile();
+  const promotionsEnabled = useEnvFeatureFlag(EnvFeature.PROMOTIONS);
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -221,6 +223,7 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
               </label>
             </div>
             {!readOnly &&
+              promotionsEnabled &&
               (isMobile ? (
                 <Button asChild>
                   <Link href={`${basePath}/promos/new`} className="gap-2">
