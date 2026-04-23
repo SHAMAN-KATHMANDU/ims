@@ -82,8 +82,10 @@ export class PermissionService {
       overwritesByResource.get(overwrite.resourceId)!.push(overwrite);
     }
 
-    // Apply overwrites node by node
-    let perms = Buffer.from(baseMask);
+    // Apply overwrites node by node. Annotated as plain `Buffer` so the
+    // helper return types (Buffer<ArrayBufferLike>) assign cleanly without
+    // tripping the Buffer<ArrayBuffer> narrow inferred from Buffer.from().
+    let perms: Buffer = Buffer.from(baseMask);
     for (const resource of chain) {
       const nodeOverwrites = overwritesByResource.get(resource.id) || [];
 

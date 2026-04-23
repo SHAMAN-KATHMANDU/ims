@@ -2641,12 +2641,14 @@ export const PERMISSIONS = [
   }
 })();
 
-// Derived lookups built at startup
-export const PERMISSION_BY_KEY = new Map(
-  PERMISSIONS.map((p) => [p.key, p] as const),
+// Derived lookups built at startup. Typed as PermissionDef so callers see the
+// uniform interface (with optional `implies`/`dangerous`) instead of the
+// narrow per-entry literal union TS would otherwise infer.
+export const PERMISSION_BY_KEY: ReadonlyMap<string, PermissionDef> = new Map(
+  PERMISSIONS.map((p): [string, PermissionDef] => [p.key, p as PermissionDef]),
 );
-export const PERMISSION_BY_BIT = new Map(
-  PERMISSIONS.map((p) => [p.bit, p] as const),
+export const PERMISSION_BY_BIT: ReadonlyMap<number, PermissionDef> = new Map(
+  PERMISSIONS.map((p): [number, PermissionDef] => [p.bit, p as PermissionDef]),
 );
 
 function groupBy<T, K extends string | number>(

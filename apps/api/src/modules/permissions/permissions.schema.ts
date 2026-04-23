@@ -33,32 +33,36 @@ export const CreateRoleSchema = z.object({
 
 export type CreateRoleDto = z.infer<typeof CreateRoleSchema>;
 
-export const UpdateRoleSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Role name is required")
-    .max(255, "Role name must be less than 255 characters")
-    .optional(),
-  priority: z
-    .number()
-    .int("Priority must be an integer")
-    .min(1, "Priority must be at least 1")
-    .optional(),
-  permissions: z
-    .string()
-    .regex(
-      /^[A-Za-z0-9+/]*={0,2}$/,
-      "Permissions must be a valid base64 string",
-    )
-    .optional(),
-  color: z
-    .string()
-    .regex(
-      /^#[0-9A-Fa-f]{6}$/,
-      "Color must be a valid hex color code (e.g., #FF0000)",
-    )
-    .optional(),
-});
+export const UpdateRoleSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Role name is required")
+      .max(255, "Role name must be less than 255 characters")
+      .optional(),
+    priority: z
+      .number()
+      .int("Priority must be an integer")
+      .min(1, "Priority must be at least 1")
+      .optional(),
+    permissions: z
+      .string()
+      .regex(
+        /^[A-Za-z0-9+/]*={0,2}$/,
+        "Permissions must be a valid base64 string",
+      )
+      .optional(),
+    color: z
+      .string()
+      .regex(
+        /^#[0-9A-Fa-f]{6}$/,
+        "Color must be a valid hex color code (e.g., #FF0000)",
+      )
+      .optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
 
 export type UpdateRoleDto = z.infer<typeof UpdateRoleSchema>;
 

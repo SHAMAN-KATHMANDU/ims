@@ -161,7 +161,9 @@ describe("PermissionsController", () => {
       const roleData = { id: "r1", name: "Editor" };
       mockService.getRoleById.mockResolvedValue(roleData);
 
-      const req = makeReq({ params: { roleId: "r1" } });
+      const req = makeReq({
+        params: { roleId: "11111111-1111-1111-1111-111111111111" },
+      });
       const res = mockRes() as Response;
 
       await controller.getRoleById(req, res);
@@ -197,7 +199,7 @@ describe("PermissionsController", () => {
       mockService.updateRole.mockResolvedValue(updatedRole);
 
       const req = makeReq({
-        params: { roleId: "r1" },
+        params: { roleId: "11111111-1111-1111-1111-111111111111" },
         body: { name: "Updated Editor", priority: 600 },
       });
       const res = mockRes() as Response;
@@ -216,7 +218,9 @@ describe("PermissionsController", () => {
     it("deletes a role successfully", async () => {
       mockService.deleteRole.mockResolvedValue(undefined);
 
-      const req = makeReq({ params: { roleId: "r1" } });
+      const req = makeReq({
+        params: { roleId: "11111111-1111-1111-1111-111111111111" },
+      });
       const res = mockRes() as Response;
 
       await controller.deleteRole(req, res);
@@ -252,8 +256,8 @@ describe("PermissionsController", () => {
       mockService.assignUserToRole.mockResolvedValue(assignment);
 
       const req = makeReq({
-        params: { roleId: "r1" },
-        body: { userId: "u2" },
+        params: { roleId: "11111111-1111-1111-1111-111111111111" },
+        body: { userId: "22222222-2222-2222-2222-222222222222" },
       });
       const res = mockRes() as Response;
 
@@ -268,7 +272,7 @@ describe("PermissionsController", () => {
 
     it("returns 400 on invalid userId", async () => {
       const req = makeReq({
-        params: { roleId: "r1" },
+        params: { roleId: "11111111-1111-1111-1111-111111111111" },
         body: { userId: "not-a-uuid" },
       });
       const res = mockRes() as Response;
@@ -287,7 +291,10 @@ describe("PermissionsController", () => {
       mockService.unassignUserFromRole.mockResolvedValue(undefined);
 
       const req = makeReq({
-        params: { roleId: "r1", userId: "u2" },
+        params: {
+          roleId: "11111111-1111-1111-1111-111111111111",
+          userId: "22222222-2222-2222-2222-222222222222",
+        },
       });
       const res = mockRes() as Response;
 
@@ -315,7 +322,7 @@ describe("PermissionsController", () => {
       mockService.listPermissionOverwrites.mockResolvedValue(overwrites);
 
       const req = makeReq({
-        params: { resourceId: "res1" },
+        params: { resourceId: "33333333-3333-3333-3333-333333333333" },
       });
       const res = mockRes() as Response;
 
@@ -340,8 +347,12 @@ describe("PermissionsController", () => {
       mockService.upsertPermissionOverwrite.mockResolvedValue(overwrite);
 
       const req = makeReq({
-        params: { resourceId: "res1" },
-        body: { subjectType: "ROLE", roleId: "r1", allow: "AQAA" },
+        params: { resourceId: "33333333-3333-3333-3333-333333333333" },
+        body: {
+          subjectType: "ROLE",
+          roleId: "11111111-1111-1111-1111-111111111111",
+          allow: "AQAA",
+        },
       });
       const res = mockRes() as Response;
 
@@ -356,7 +367,7 @@ describe("PermissionsController", () => {
 
     it("returns 400 when roleId missing for ROLE subject type", async () => {
       const req = makeReq({
-        params: { resourceId: "res1" },
+        params: { resourceId: "33333333-3333-3333-3333-333333333333" },
         body: { subjectType: "ROLE", allow: "AQAA" }, // Missing roleId
       });
       const res = mockRes() as Response;
@@ -372,7 +383,10 @@ describe("PermissionsController", () => {
       mockService.deletePermissionOverwrite.mockResolvedValue(undefined);
 
       const req = makeReq({
-        params: { resourceId: "res1", overwriteId: "ow1" },
+        params: {
+          resourceId: "33333333-3333-3333-3333-333333333333",
+          overwriteId: "44444444-4444-4444-4444-444444444444",
+        },
       });
       const res = mockRes() as Response;
 
@@ -391,7 +405,7 @@ describe("PermissionsController", () => {
       mockService.getEffectivePermissions.mockResolvedValue("AQAAAAAAAAAA");
 
       const req = makeReq({
-        query: { resourceId: "res1" },
+        query: { resourceId: "33333333-3333-3333-3333-333333333333" },
       });
       const res = mockRes() as Response;
 
@@ -401,7 +415,7 @@ describe("PermissionsController", () => {
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: {
-          resourceId: "res1",
+          resourceId: "33333333-3333-3333-3333-333333333333",
           permissions: "AQAAAAAAAAAA",
         },
       });
@@ -426,7 +440,12 @@ describe("PermissionsController", () => {
       mockService.bulkResolvePermissions.mockResolvedValue(perms);
 
       const req = makeReq({
-        body: { resourceIds: ["res1", "res2"] },
+        body: {
+          resourceIds: [
+            "33333333-3333-3333-3333-333333333333",
+            "55555555-5555-5555-5555-555555555555",
+          ],
+        },
       });
       const res = mockRes() as Response;
 

@@ -70,21 +70,22 @@ export function buildSystemRoleBitset(
  */
 async function seedTenantRoles(tenantId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    // 1. Create WORKSPACE Resource (idempotent)
+    // 1. Create WORKSPACE Resource (idempotent).
+    // externalId reuses the tenantId — WORKSPACE is unique per tenant, and the
+    // schema's `(tenantId, externalId)` unique constraint requires a non-null value.
     const workspaceResource = await tx.resource.upsert({
       where: {
-        tenantId_type_externalId: {
+        tenantId_externalId: {
           tenantId,
-          type: "WORKSPACE",
-          externalId: null,
+          externalId: tenantId,
         },
       },
       create: {
         tenantId,
         type: "WORKSPACE",
-        externalId: null,
+        externalId: tenantId,
         parentId: null,
-        path: "/root/",
+        path: `/${tenantId}/`,
         depth: 0,
       },
       update: {},
@@ -119,7 +120,7 @@ async function seedTenantRoles(tenantId: string): Promise<void> {
     for (const sysRole of systemRoles) {
       const bitset = buildSystemRoleBitset(sysRole.legacy);
 
-      const role = await tx.role.upsert({
+      const role = await tx.rbacRole.upsert({
         where: {
           tenantId_name: {
             tenantId,

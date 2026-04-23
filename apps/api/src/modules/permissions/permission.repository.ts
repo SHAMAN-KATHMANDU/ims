@@ -36,7 +36,7 @@ export class PermissionRepository {
         tenantId,
       },
       select: {
-        role: {
+        rbacRole: {
           select: {
             id: true,
             permissions: true,
@@ -45,16 +45,16 @@ export class PermissionRepository {
         },
       },
       orderBy: {
-        role: {
+        rbacRole: {
           priority: "desc",
         },
       },
     });
 
     return userRoles.map((ur) => ({
-      id: ur.role.id,
-      permissions: ur.role.permissions,
-      priority: ur.role.priority,
+      id: ur.rbacRole.id,
+      permissions: Buffer.from(ur.rbacRole.permissions),
+      priority: ur.rbacRole.priority,
     }));
   }
 
@@ -135,7 +135,13 @@ export class PermissionRepository {
       },
     });
 
-    return overwrites;
+    return overwrites.map((o) => ({
+      resourceId: o.resourceId,
+      roleId: o.roleId,
+      userId: o.userId,
+      allow: Buffer.from(o.allow),
+      deny: Buffer.from(o.deny),
+    }));
   }
 }
 
