@@ -17,11 +17,13 @@ import { Handshake, Target, CheckSquare } from "lucide-react";
 import { ReportsLineChart } from "@/components/reports-charts";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 
 export function CrmDashboardPage() {
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const tasksEnabled = useEnvFeatureFlag(EnvFeature.TASKS);
 
   const { data, isLoading } = useCrmDashboard();
   const d = data?.data;
@@ -96,11 +98,13 @@ export function CrmDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{d.tasksDueToday}</div>
-            <Link href={`${basePath}/crm/tasks?dueToday=true`}>
-              <Button variant="link" className="h-auto p-0 text-xs">
-                View tasks
-              </Button>
-            </Link>
+            {tasksEnabled && (
+              <Link href={`${basePath}/crm/tasks?dueToday=true`}>
+                <Button variant="link" className="h-auto p-0 text-xs">
+                  View tasks
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
 

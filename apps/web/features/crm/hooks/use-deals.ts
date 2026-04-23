@@ -37,8 +37,11 @@ export const dealKeys = {
   all: ["deals"] as const,
   lists: () => [...dealKeys.all, "list"] as const,
   list: (params: DealListParams) => [...dealKeys.lists(), params] as const,
+  kanbans: () => [...dealKeys.all, "kanban"] as const,
   kanban: (pipelineId?: string) =>
-    [...dealKeys.all, "kanban", pipelineId] as const,
+    pipelineId
+      ? ([...dealKeys.kanbans(), pipelineId] as const)
+      : dealKeys.kanbans(),
   details: () => [...dealKeys.all, "detail"] as const,
   detail: (id: string) => [...dealKeys.details(), id] as const,
 };
@@ -98,7 +101,7 @@ export function useCreateDeal() {
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.all });
@@ -121,7 +124,7 @@ export function useUpdateDeal() {
     },
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
@@ -182,7 +185,7 @@ export function useUpdateDealStage() {
     },
     onSettled: (data, _error, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.all });
@@ -204,7 +207,7 @@ export function useDeleteDeal() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.all });
@@ -223,7 +226,7 @@ export function useAddDealLineItem(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -240,7 +243,7 @@ export function useRemoveDealLineItem(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -257,7 +260,7 @@ export function useConvertDealToSale(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: dealKeys.kanbans() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });

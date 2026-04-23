@@ -131,6 +131,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
   const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
+  const notificationsEnabled = useEnvFeatureFlag(EnvFeature.NOTIFICATIONS);
 
   const handleLogout = async () => {
     try {
@@ -173,7 +174,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         )}
       </div>
       <div className="flex items-center gap-1 md:gap-2">
-        {user?.role !== "platformAdmin" && (
+        {user?.role !== "platformAdmin" && notificationsEnabled && (
           <NotificationsBell basePath={basePath} />
         )}
         <ThemeToggle />

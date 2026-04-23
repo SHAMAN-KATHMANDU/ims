@@ -173,12 +173,31 @@ const EnvSchema = z
     const publicApiUrl =
       raw.API_PUBLIC_URL?.trim() ?? "http://localhost:4000/api/v1";
 
-    const appEnvRaw = raw.APP_ENV?.trim() || raw.NODE_ENV || "development";
-    const appEnv = APP_ENV_VALUES.includes(
-      appEnvRaw as (typeof APP_ENV_VALUES)[number],
-    )
-      ? (appEnvRaw as (typeof APP_ENV_VALUES)[number])
+    const appEnvRawInput =
+      raw.APP_ENV?.trim().toLowerCase() || raw.NODE_ENV?.trim().toLowerCase();
+    const appEnvRaw =
+      appEnvRawInput && appEnvRawInput.length > 0 ? appEnvRawInput : undefined;
+    // Default to the restrictive side of NODE_ENV when APP_ENV is missing or
+    // unrecognized. A misconfigured production deploy must NOT silently land
+    // in "development" and unlock every matrix flag.
+    const appEnvSafeDefault: (typeof APP_ENV_VALUES)[number] = isProd
+      ? "production"
       : "development";
+    const appEnv =
+      appEnvRaw &&
+      APP_ENV_VALUES.includes(appEnvRaw as (typeof APP_ENV_VALUES)[number])
+        ? (appEnvRaw as (typeof APP_ENV_VALUES)[number])
+        : appEnvSafeDefault;
+    if (
+      appEnvRaw &&
+      !APP_ENV_VALUES.includes(appEnvRaw as (typeof APP_ENV_VALUES)[number])
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[env] APP_ENV="${appEnvRaw}" is not a recognized value. ` +
+          `Valid values: ${APP_ENV_VALUES.join(", ")}. Resolved to "${appEnv}".`,
+      );
+    }
 
     /** Base origin for static assets (uploads); strip /api/v1 from API_PUBLIC_URL */
     const publicServerOrigin = publicApiUrl.replace(/\/api\/v1\/?$/, "");

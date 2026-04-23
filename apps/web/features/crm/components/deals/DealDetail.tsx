@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import { useDeal, useUpdateDealStage } from "../../hooks/use-deals";
 import { useActivitiesByDeal } from "../../hooks/use-activities";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -51,6 +52,7 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
         : (activityTypeFilter as "CALL" | "EMAIL" | "MEETING"),
   });
   const updateStageMutation = useUpdateDealStage();
+  const tasksEnabled = useEnvFeatureFlag(EnvFeature.TASKS);
 
   const deal = data?.deal;
   const activities = activitiesData?.activities ?? [];
@@ -225,9 +227,11 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
           </div>
         </TabsContent>
         <TabsContent value="tasks" className="mt-4 space-y-4">
-          <Link href={`${basePath}/crm/tasks/new?dealId=${dealId}`}>
-            <Button size="sm">Add Task</Button>
-          </Link>
+          {tasksEnabled && (
+            <Link href={`${basePath}/crm/tasks/new?dealId=${dealId}`}>
+              <Button size="sm">Add Task</Button>
+            </Link>
+          )}
           {tasks.length ? (
             <ul className="space-y-2">
               {tasks.map((t) => (
