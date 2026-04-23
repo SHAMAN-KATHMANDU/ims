@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
+import { SaleBulkUploadDialog } from "./SaleBulkUploadDialog";
 
 export function SalesBulkUploadPage() {
   const router = useRouter();

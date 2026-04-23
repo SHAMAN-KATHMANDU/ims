@@ -57,8 +57,8 @@ import {
 } from "@/features/analytics";
 import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { useSalesPaginated, useSale } from "@/features/sales";
-import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
-import { ChartInfoButton } from "./components/ChartInfoButton";
+import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
+import { ChartInfoButton } from "./ChartInfoButton";
 import { SalesTable, SaleDetail } from "@/features/sales";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {

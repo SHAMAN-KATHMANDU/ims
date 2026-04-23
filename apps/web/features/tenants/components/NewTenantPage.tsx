@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useCreateTenant } from "../hooks/use-tenants";
-import { TenantForm } from "./components/TenantForm";
+import { TenantForm } from "./TenantForm";
 
 export function NewTenantPage() {
   const router = useRouter();

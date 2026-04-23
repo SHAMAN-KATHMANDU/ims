@@ -19,11 +19,11 @@ import {
 } from "@/features/products";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { useDebounce } from "@/hooks/useDebounce";
-import { CategoryForm } from "./components/CategoryForm";
-import { CategoryTable } from "./components/CategoryTable";
-import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
-import { SubcategoryDeleteDialog } from "./components/dialogs/SubcategoryDeleteDialog";
-import { ErrorDialog } from "./components/dialogs/ErrorDialog";
+import { CategoryForm } from "./CategoryForm";
+import { CategoryTable } from "./CategoryTable";
+import { CategoryDeleteDialog } from "./dialogs/CategoryDeleteDialog";
+import { SubcategoryDeleteDialog } from "./dialogs/SubcategoryDeleteDialog";
+import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

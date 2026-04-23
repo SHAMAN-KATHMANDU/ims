@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCategories } from "@/features/products/hooks/use-products";
+import { useCategories } from "@/features/products";
 
 interface CategoryPickerFieldProps {
   value: string;

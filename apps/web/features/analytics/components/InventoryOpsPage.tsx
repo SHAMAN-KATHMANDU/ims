@@ -43,9 +43,9 @@ import {
   useInventoryOpsAnalytics,
   useInventoryExtendedAnalytics,
 } from "@/features/analytics";
-import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
 import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
-import { ChartInfoButton } from "./components/ChartInfoButton";
+import { ChartInfoButton } from "./ChartInfoButton";
 import { HeatmapTable } from "@/components/charts";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";

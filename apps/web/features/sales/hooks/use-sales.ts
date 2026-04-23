@@ -5,8 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { contactKeys } from "@/features/crm/hooks/use-contacts";
-import { crmKeys } from "@/features/crm/hooks/use-crm";
+import { contactKeys, crmKeys } from "@/features/crm";
 import {
   getSales,
   getSaleById,

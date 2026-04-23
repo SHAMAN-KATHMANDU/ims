@@ -6,7 +6,7 @@ import {
   TenantWebsitePageGuard,
   EnvFeature,
 } from "@/features/flags";
-import { SiteTabsNav } from "@/features/tenant-site/components/SiteTabsNav";
+import { SiteTabsNav } from "@/features/tenant-site";
 
 /**
  * Layout for the tenant website editor. Stacks three guards so child pages

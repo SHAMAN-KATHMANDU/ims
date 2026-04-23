@@ -28,7 +28,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
-import { useActiveLocations } from "@/features/locations/hooks/use-locations";
+import { useActiveLocations } from "@/features/locations";
 import { ConvertOrderFormSchema, formatMoney } from "../validation";
 import {
   useConvertWebsiteOrder,

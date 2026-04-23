@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { PasswordResetRequestsPage } from "@/features/settings/components/PasswordResetRequestsPage";
+import { PasswordResetRequestsPage } from "@/features/settings";
 
 export const metadata = { title: "Password Reset Requests" };
 

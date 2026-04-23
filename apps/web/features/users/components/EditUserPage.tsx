@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import type { UpdateUserData } from "../hooks/use-users";
 import { useUser, useUpdateUser } from "../hooks/use-users";
-import { UserForm, type UserFormValues } from "./components/UserForm";
+import { UserForm, type UserFormValues } from "./UserForm";
 import { type UserRoleType } from "@repo/shared";
 
 export function EditUserPage() {

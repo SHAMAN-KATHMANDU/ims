@@ -20,8 +20,8 @@ import {
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useDebounce } from "@/hooks/useDebounce";
-import { LocationForm } from "./components/LocationForm";
-import { LocationTable } from "./components/LocationTable";
+import { LocationForm } from "./LocationForm";
+import { LocationTable } from "./LocationTable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +53,7 @@ import {
   selectSelectedLocationIds,
   selectClearLocationSelection,
 } from "@/store/location-selection-store";
-import { BulkDeleteLocationsDialog } from "./components/BulkDeleteLocationsDialog";
+import { BulkDeleteLocationsDialog } from "./BulkDeleteLocationsDialog";
 import { useTenantUsage } from "@/features/dashboard";
 
 export function LocationsPage() {

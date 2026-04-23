@@ -1,7 +1,7 @@
 export { LocationsPage } from "./components/index";
 export { NewLocationPage } from "./components/NewLocationPage";
 export { EditLocationPage } from "./components/EditLocationPage";
-export { LocationForm } from "./components/components/LocationForm";
+export { LocationForm } from "./components/LocationForm";
 export {
   useLocationsPaginated,
   useLocation,

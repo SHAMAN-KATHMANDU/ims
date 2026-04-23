@@ -20,8 +20,8 @@ import {
 } from "../hooks/use-transfers";
 import { useActiveLocations } from "@/features/locations";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { TransferTable } from "./components/TransferTable";
-import { TransferDetail } from "./components/TransferDetail";
+import { TransferTable } from "./TransferTable";
+import { TransferDetail } from "./TransferDetail";
 import {
   Select,
   SelectContent,

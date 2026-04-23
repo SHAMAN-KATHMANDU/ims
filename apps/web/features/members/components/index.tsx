@@ -25,10 +25,10 @@ import {
 } from "../hooks/use-members";
 import type { MemberStatusFilter } from "../services/member.service";
 import { useIsMobile } from "@/hooks/useMobile";
-import { MemberTable } from "./components/MemberTable";
-import { MemberForm } from "./components/MemberForm";
-import { MemberDetail } from "./components/MemberDetail";
-import { MemberBulkUploadDialog } from "./components/MemberBulkUploadDialog";
+import { MemberTable } from "./MemberTable";
+import { MemberForm } from "./MemberForm";
+import { MemberDetail } from "./MemberDetail";
+import { MemberBulkUploadDialog } from "./MemberBulkUploadDialog";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";

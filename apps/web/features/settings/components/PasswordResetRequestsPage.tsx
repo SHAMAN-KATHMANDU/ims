@@ -33,7 +33,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
-import type { PasswordResetRequest } from "@/features/users/services/user.service";
+import type { PasswordResetRequest } from "@/features/users";
 
 const DEFAULT_PAGE_SIZE = 10;
 

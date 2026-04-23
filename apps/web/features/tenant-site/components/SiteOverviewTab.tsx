@@ -36,7 +36,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNavMenus } from "../hooks/use-nav-menus";
 import { useSiteLayouts } from "../hooks/use-site-layouts";
-import { useTenantPages } from "@/features/tenant-pages/hooks/use-tenant-pages";
+import { useTenantPages } from "@/features/tenant-pages";
 import type { SiteConfig } from "../hooks/use-tenant-site";
 
 interface SiteOverviewTabProps {

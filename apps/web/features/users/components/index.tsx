@@ -52,10 +52,10 @@ import { RoleGuard } from "@/components/auth/role-guard";
 import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { UserForm } from "./components/UserForm";
-import { UserTable } from "./components/UserTable";
-import { BulkChangePasswordDialog } from "./components/BulkChangePasswordDialog";
-import { BulkDeleteUsersDialog } from "./components/BulkDeleteUsersDialog";
+import { UserForm } from "./UserForm";
+import { UserTable } from "./UserTable";
+import { BulkChangePasswordDialog } from "./BulkChangePasswordDialog";
+import { BulkDeleteUsersDialog } from "./BulkDeleteUsersDialog";
 import type { UserFormValues } from "../validation";
 import { type UserRoleType } from "@repo/shared";
 

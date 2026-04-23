@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useCrmDashboard } from "@/features/crm/hooks/use-crm";
+import { useCrmDashboard } from "../hooks/use-crm";
 import { formatCurrency } from "@/lib/format";
 import {
   Card,

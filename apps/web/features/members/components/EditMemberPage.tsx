@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import type { UpdateMemberData } from "../hooks/use-members";
 import { useMember, useUpdateMember } from "../hooks/use-members";
-import { MemberForm } from "./components/MemberForm";
+import { MemberForm } from "./MemberForm";
 
 export function EditMemberPage() {
   const router = useRouter();

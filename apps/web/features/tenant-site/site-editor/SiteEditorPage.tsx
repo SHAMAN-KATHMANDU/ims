@@ -111,21 +111,21 @@ import {
   useBlogPosts,
   useBlogPost,
   useDeleteBlogPost,
-} from "@/features/tenant-blog/hooks/use-tenant-blog";
+  BlogPostEditor,
+  BlogStatusBadge,
+} from "@/features/tenant-blog";
 import type {
   BlogPost,
   BlogPostListItem,
   BlogPostStatus,
-} from "@/features/tenant-blog/services/tenant-blog.service";
-import { BlogPostEditor } from "@/features/tenant-blog/components/BlogPostEditor";
-import { BlogStatusBadge } from "@/features/tenant-blog/components/BlogStatusBadge";
+} from "@/features/tenant-blog";
 import {
   useTenantPages,
   useTenantPage,
-} from "@/features/tenant-pages/hooks/use-tenant-pages";
-import type { TenantPage as TenantPageModel } from "@/features/tenant-pages/services/tenant-pages.service";
-import { TenantPageEditor } from "@/features/tenant-pages/components/TenantPageEditor";
-import { useProductsPaginated } from "@/features/products/hooks/use-products";
+  TenantPageEditor,
+} from "@/features/tenant-pages";
+import type { TenantPage as TenantPageModel } from "@/features/tenant-pages";
+import { useProductsPaginated } from "@/features/products";
 import {
   useEditorStore,
   selectBlocks,

@@ -49,7 +49,7 @@ import type {
   TenantPage,
   CreateTenantPageData,
 } from "../services/tenant-pages.service";
-import { BlogMarkdownEditor } from "@/features/tenant-blog/components/BlogMarkdownEditor";
+import { BlogMarkdownEditor } from "@/features/tenant-blog";
 
 function toFormValues(page?: TenantPage | null): TenantPageFormInput {
   return {

@@ -10,7 +10,7 @@ import {
   useLocation as useLocationById,
   useUpdateLocation,
 } from "../hooks/use-locations";
-import { LocationForm } from "./components/LocationForm";
+import { LocationForm } from "./LocationForm";
 
 export function EditLocationPage() {
   const router = useRouter();

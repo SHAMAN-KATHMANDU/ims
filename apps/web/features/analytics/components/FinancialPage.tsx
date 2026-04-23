@@ -24,8 +24,8 @@ import {
 } from "recharts";
 import { useAnalyticsFilters } from "@/features/analytics";
 import { useFinancialAnalytics } from "@/features/analytics";
-import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
-import { ChartInfoButton } from "./components/ChartInfoButton";
+import { AnalyticsFilterBar } from "./AnalyticsFilterBar";
+import { ChartInfoButton } from "./ChartInfoButton";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";

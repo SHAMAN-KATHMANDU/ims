@@ -17,7 +17,7 @@ import {
   escalatePasswordResetRequest,
   rejectPasswordResetRequest,
   type GetPasswordResetRequestsParams,
-} from "@/features/users/services/user.service";
+} from "@/features/users";
 
 export const auditLogKeys = {
   all: ["audit-logs"] as const,

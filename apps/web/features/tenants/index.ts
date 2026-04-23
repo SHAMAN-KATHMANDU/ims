@@ -1,4 +1,5 @@
 export { TenantsPage } from "./components/index";
+export { PlatformResetRequestsPage } from "./components/PlatformResetRequestsPage";
 export { NewTenantPage } from "./components/NewTenantPage";
 export { EditTenantPage } from "./components/EditTenantPage";
 export {

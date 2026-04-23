@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useCreateLocation } from "../hooks/use-locations";
-import { LocationForm } from "./components/LocationForm";
+import { LocationForm } from "./LocationForm";
 
 export function NewLocationPage() {
   const router = useRouter();

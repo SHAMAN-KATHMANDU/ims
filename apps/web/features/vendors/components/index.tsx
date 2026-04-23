@@ -66,7 +66,7 @@ import {
   selectClearSelection,
   selectSetVendors,
 } from "@/store/vendor-selection-store";
-import { VendorForm } from "./components/VendorForm";
+import { VendorForm } from "./VendorForm";
 
 export function VendorPage() {
   const params = useParams();

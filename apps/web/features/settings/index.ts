@@ -2,6 +2,7 @@ export { SettingsPage } from "./components/index";
 export { UserLogsPage } from "./components/UserLogsPage";
 export { ErrorReportsPage } from "./components/ErrorReportsPage";
 export { AdminSettings } from "./components/AdminSettings";
+export { PasswordResetRequestsPage } from "./components/PasswordResetRequestsPage";
 export {
   useAuditLogs,
   useErrorReports,

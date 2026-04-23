@@ -45,7 +45,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Trash2, RotateCcw, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
-import { useTenants } from "@/features/tenants/hooks/use-tenants";
+import { useTenants } from "@/features/tenants";
 
 const ENTITY_TYPE_OPTIONS = [
   { value: "all", label: "All types" },

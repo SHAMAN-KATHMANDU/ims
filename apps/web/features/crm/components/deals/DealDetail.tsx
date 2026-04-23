@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LogActivityForm } from "../components/LogActivityForm";
+import { LogActivityForm } from "../LogActivityForm";
 import { DealLineItemsSection } from "./DealLineItemsSection";
 import type { Deal } from "../../services/deal.service";
 import { Check } from "lucide-react";

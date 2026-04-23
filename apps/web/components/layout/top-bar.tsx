@@ -33,7 +33,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { MediaLibraryPanel } from "@/components/media/MediaLibraryPanel";
+import { MediaLibraryPanel } from "@/features/media";
 import { useIsMobile } from "@/hooks/useMobile";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
