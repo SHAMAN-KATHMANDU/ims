@@ -119,6 +119,12 @@ model Tenant {
   bundles   Bundle[]
   giftCards GiftCard[]
 
+  // RBAC relations
+  rbacRoles           RbacRole[]
+  userRoles           UserRole[]
+  resources           Resource[]
+  permissionOverwrites PermissionOverwrite[]
+
   @@map("tenants")
 }
 
@@ -587,7 +593,7 @@ model User {
   tenantId    String    @map("tenant_id")
   username    String
   password    String
-  role        Role      @default(user)
+  role        Role   @default(user)
   lastLoginAt DateTime? @map("last_login_at")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -638,6 +644,10 @@ model User {
   assignedConversations Conversation[]    @relation("ConversationAssignedTo")
   sentMessages          Message[]         @relation("MessageSender")
   messageReactions      MessageReaction[] @relation("MessageReactions")
+
+  // RBAC relations
+  userRoles  UserRole[]
+  overwrites PermissionOverwrite[]
 
   @@unique([tenantId, username])
   @@map("users")
@@ -2691,4 +2701,174 @@ model WebhookEvent {
 
   @@index([providerEventId])
   @@map("webhook_events")
+}
+
+// ============================================
+// RBAC MODELS (Phase 1 Foundation)
+// ============================================
+
+/// Resource types for the RBAC system.
+/// Used for hierarchical permission resolution and audit logging.
+enum ResourceType {
+  WORKSPACE
+  PRODUCT
+  CATEGORY
+  VENDOR
+  LOCATION
+  TRANSFER
+  BUNDLE
+  GIFT_CARD
+  PROMO
+  COLLECTION
+  ATTRIBUTE_TYPE
+  DISCOUNT
+  SALE
+  WEBSITE_ORDER
+  ABANDONED_CART
+  CONTACT
+  COMPANY
+  LEAD
+  DEAL
+  PIPELINE
+  WORKFLOW
+  TASK
+  ACTIVITY
+  AUTOMATION
+  REMARKETING_CAMPAIGN
+  CONTACT_NOTE
+  BLOG_POST
+  PAGE
+  SITE
+  MEDIA
+  REVIEW
+  NAV_MENU
+  REPORT
+  DASHBOARD
+  CUSTOM_REPORT
+  USER
+  ROLE
+  MEMBER
+  AUDIT_LOG
+  TRASH_ITEM
+  AI_SETTING
+  WEBHOOK
+  API_KEY
+  INTEGRATION
+
+  @@map("resource_type")
+}
+
+/// Overwrite subject type (role-scoped or user-scoped).
+enum OverwriteSubjectType {
+  ROLE
+  USER
+
+  @@map("overwrite_subject_type")
+}
+
+/// RBAC role model. Scoped permissions and role-based access control.
+/// Holds precomputed bitset of permissions (64 bytes = 512 bits).
+model RbacRole {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String   @db.VarChar(255)
+  priority    Int      @default(0)
+  /// Bitset of allowed permissions (Bytes, 64 bytes fixed length).
+  permissions Bytes
+  /// System roles (e.g., Platform Admin, Super Admin) cannot be deleted.
+  isSystem    Boolean  @default(false) @map("is_system")
+  /// UI display color or badge (optional, e.g., "admin", "user").
+  color       String?  @db.VarChar(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users       UserRole[]
+  overwrites  PermissionOverwrite[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isSystem])
+  @@index([tenantId, priority])
+  @@map("rbac_roles")
+}
+
+/// User-role assignment (join table).
+/// Tenant admins can assign roles to users. Multiple roles per user allowed.
+model UserRole {
+  userId   String   @map("user_id")
+  roleId   String   @map("role_id")
+  tenantId String   @map("tenant_id")
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+  assignedBy   String?  @map("assigned_by") // User ID of the admin who assigned
+
+  // Relations
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rbacRole RbacRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([tenantId, userId])
+  @@index([tenantId, roleId])
+  @@map("user_roles")
+}
+
+/// Resource hierarchy node. Every created object (Product, Sale, Deal, etc.)
+/// gets a Resource row in the same transaction. Enables permission resolution.
+model Resource {
+  id         String       @id @default(uuid())
+  tenantId   String       @map("tenant_id")
+  type       ResourceType
+  /// External ID: the UUID of the Prisma model instance (Product.id, Sale.id, etc.)
+  externalId String       @map("external_id") @db.VarChar(36)
+  /// Parent resource ID (null for top-level resources like WORKSPACE).
+  parentId   String?      @map("parent_id")
+  /// Breadcrumb path for audit/analytics (e.g., "workspace/product/123").
+  path       String       @db.Text
+  /// Depth in hierarchy for efficient tree queries (0 = WORKSPACE root).
+  depth      Int          @default(0)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  // Relations
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent     Resource?           @relation("ResourceHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children   Resource[]          @relation("ResourceHierarchy")
+  overwrites PermissionOverwrite[]
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId, type])
+  @@index([tenantId, parentId])
+  @@index([tenantId, depth])
+  @@map("resources")
+}
+
+/// Permission overwrite (allow/deny at resource or resource subtree).
+/// XOR constraint: either roleId OR userId must be set, never both.
+model PermissionOverwrite {
+  id         String                @id @default(uuid())
+  tenantId   String                @map("tenant_id")
+  resourceId String                @map("resource_id")
+  subjectType OverwriteSubjectType  @map("subject_type")
+  /// roleId if subjectType == ROLE, else null
+  roleId     String?               @map("role_id")
+  /// userId if subjectType == USER, else null
+  userId     String?               @map("user_id")
+  /// Bitset of explicitly allowed bits (64 bytes).
+  allow      Bytes
+  /// Bitset of explicitly denied bits (64 bytes).
+  deny       Bytes
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resource Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  rbacRole RbacRole? @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, resourceId])
+  @@index([tenantId, roleId])
+  @@index([tenantId, userId])
+  // Partial unique indexes enforced in raw SQL migration (XOR constraint: roleId OR userId)
+  @@map("permission_overwrites")
 }

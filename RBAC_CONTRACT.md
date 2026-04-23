@@ -50,27 +50,65 @@ Locks the JS field names other agents must use when constructing repository call
 
 The catalog source of truth lives at `packages/shared/src/permissions/catalog.ts`. This section records **bit-range reservations per submodule** so other agents can sanity-check without grepping the full file. Append-only.
 
-| Range                                                            | Submodule                                    | Owner module |
-| ---------------------------------------------------------------- | -------------------------------------------- | ------------ |
-| 0–6                                                              | INVENTORY ▸ Products                         | INVENTORY    |
-| 7–10                                                             | INVENTORY ▸ Categories                       | INVENTORY    |
-| 11–15                                                            | INVENTORY ▸ Vendors                          | INVENTORY    |
-| 16–20                                                            | INVENTORY ▸ Locations                        | INVENTORY    |
-| 21–27                                                            | INVENTORY ▸ Transfers                        | INVENTORY    |
-| 28–34                                                            | INVENTORY ▸ Bundles                          | INVENTORY    |
-| 35–43                                                            | INVENTORY ▸ GiftCards                        | INVENTORY    |
-| 44–51                                                            | INVENTORY ▸ Promos                           | INVENTORY    |
-| 52–58                                                            | INVENTORY ▸ Collections                      | INVENTORY    |
-| 59–63                                                            | INVENTORY ▸ AttributeTypes                   | INVENTORY    |
-| 64–71                                                            | INVENTORY ▸ Discounts                        | INVENTORY    |
-| (rbac-core fills the remaining ranges as the catalog is written) |                                              |              |
-| 511                                                              | SETTINGS.ADMINISTRATOR (sentinel — last bit) | SETTINGS     |
+| Range   | Submodule                   | Count | Module    |
+| ------- | --------------------------- | ----- | --------- |
+| 0–6     | INVENTORY ▸ Products        | 7     | INVENTORY |
+| 7–10    | INVENTORY ▸ Categories      | 4     | INVENTORY |
+| 11–15   | INVENTORY ▸ Vendors         | 5     | INVENTORY |
+| 16–20   | INVENTORY ▸ Locations       | 5     | INVENTORY |
+| 21–27   | INVENTORY ▸ Transfers       | 7     | INVENTORY |
+| 28–32   | INVENTORY ▸ Bundles         | 5     | INVENTORY |
+| 33–39   | INVENTORY ▸ Gift Cards      | 7     | INVENTORY |
+| 40–45   | INVENTORY ▸ Promos          | 6     | INVENTORY |
+| 46–50   | INVENTORY ▸ Collections     | 5     | INVENTORY |
+| 51–54   | INVENTORY ▸ Attribute Types | 4     | INVENTORY |
+| 55–59   | INVENTORY ▸ Discounts       | 5     | INVENTORY |
+| 60–68   | SALES ▸ Sales               | 9     | SALES     |
+| 69–73   | SALES ▸ Website Orders      | 5     | SALES     |
+| 74–75   | SALES ▸ Abandoned Carts     | 2     | SALES     |
+| 76–84   | CRM ▸ Contacts              | 9     | CRM       |
+| 85–89   | CRM ▸ Companies             | 5     | CRM       |
+| 90–97   | CRM ▸ Leads                 | 8     | CRM       |
+| 98–106  | CRM ▸ Deals                 | 9     | CRM       |
+| 107–110 | CRM ▸ Pipelines             | 4     | CRM       |
+| 111–116 | CRM ▸ Workflows             | 6     | CRM       |
+| 117–123 | CRM ▸ Tasks                 | 7     | CRM       |
+| 124–127 | CRM ▸ Activities            | 4     | CRM       |
+| 128–134 | CRM ▸ Automations           | 7     | CRM       |
+| 135–138 | CRM ▸ Remarketing           | 4     | CRM       |
+| 139–142 | CRM ▸ Contact Notes         | 4     | CRM       |
+| 143–147 | WEBSITE ▸ Blog              | 5     | WEBSITE   |
+| 148–152 | WEBSITE ▸ Pages             | 5     | WEBSITE   |
+| 153–155 | WEBSITE ▸ Site              | 3     | WEBSITE   |
+| 156–160 | WEBSITE ▸ Media             | 5     | WEBSITE   |
+| 161–165 | WEBSITE ▸ Reviews           | 5     | WEBSITE   |
+| 166–169 | WEBSITE ▸ Nav Menus         | 4     | WEBSITE   |
+| 170–172 | REPORTS ▸ Analytics         | 3     | REPORTS   |
+| 173–177 | REPORTS ▸ Dashboards        | 5     | REPORTS   |
+| 178–183 | REPORTS ▸ Custom Reports    | 6     | REPORTS   |
+| 184–189 | SETTINGS ▸ Users            | 6     | SETTINGS  |
+| 190–195 | SETTINGS ▸ Roles            | 6     | SETTINGS  |
+| 196–199 | SETTINGS ▸ Members          | 4     | SETTINGS  |
+| 200–202 | SETTINGS ▸ Tenant           | 3     | SETTINGS  |
+| 203–205 | SETTINGS ▸ Audit            | 3     | SETTINGS  |
+| 206–208 | SETTINGS ▸ Trash            | 3     | SETTINGS  |
+| 209–211 | SETTINGS ▸ Error Reports    | 3     | SETTINGS  |
+| 212–215 | SETTINGS ▸ Domains          | 4     | SETTINGS  |
+| 216–217 | SETTINGS ▸ Notifications    | 2     | SETTINGS  |
+| 218–221 | SETTINGS ▸ Messaging        | 4     | SETTINGS  |
+| 222–227 | SETTINGS ▸ Webhooks         | 6     | SETTINGS  |
+| 228–231 | SETTINGS ▸ API Access       | 4     | SETTINGS  |
+| 232–234 | SETTINGS ▸ Integrations     | 3     | SETTINGS  |
+| 235–236 | SETTINGS ▸ AI Settings      | 2     | SETTINGS  |
+| 511     | SETTINGS ▸ ADMINISTRATOR    | 1     | SETTINGS  |
+
+**Summary: 237 permissions across 6 modules, 59 submodules. Bits 0–236 and 511 allocated; 237–510 reserved for future expansion.**
 
 **Rules:**
 
-- Bits are append-only. Never reuse a freed bit.
-- `ADMINISTRATOR` is pinned at bit `511` (last byte, last bit) to keep mid-range bits flexible.
-- Reservation gaps are intentional; they leave room for future actions in the same submodule.
+- Bits are append-only. Never reuse or reorder.
+- `ADMINISTRATOR` (bit 511) is pinned at the last bit to keep mid-range flexible.
+- Gaps (237–510) reserved for Phase 2 expansion without schema changes.
 
 ---
 

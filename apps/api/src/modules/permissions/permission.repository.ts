@@ -1,0 +1,142 @@
+/**
+ * Permission repository — pure data access layer.
+ * Fetches user roles, resources, and overwrites from Prisma.
+ */
+
+import prisma from "@/config/prisma";
+
+export interface RoleRow {
+  id: string;
+  permissions: Buffer;
+  priority: number;
+}
+
+export interface ResourceChainRow {
+  id: string;
+  path: string;
+  depth: number;
+}
+
+export interface OverwriteRow {
+  resourceId: string;
+  roleId?: string | null;
+  userId?: string | null;
+  allow: Buffer;
+  deny: Buffer;
+}
+
+export class PermissionRepository {
+  /**
+   * Get all roles assigned to a user in a tenant, ordered by priority descending.
+   */
+  async getUserRoles(tenantId: string, userId: string): Promise<RoleRow[]> {
+    const userRoles = await prisma.userRole.findMany({
+      where: {
+        userId,
+        tenantId,
+      },
+      select: {
+        role: {
+          select: {
+            id: true,
+            permissions: true,
+            priority: true,
+          },
+        },
+      },
+      orderBy: {
+        role: {
+          priority: "desc",
+        },
+      },
+    });
+
+    return userRoles.map((ur) => ({
+      id: ur.role.id,
+      permissions: ur.role.permissions,
+      priority: ur.role.priority,
+    }));
+  }
+
+  /**
+   * Fetch the ancestor chain for a resource (root-to-leaf).
+   * Uses the materialized path to reconstruct ancestors from the path string.
+   * Returns closest ancestors first so we can walk root-to-leaf.
+   */
+  async getResourceChain(
+    tenantId: string,
+    resourceId: string,
+  ): Promise<ResourceChainRow[]> {
+    const resource = await prisma.resource.findUnique({
+      where: { id: resourceId },
+      select: {
+        id: true,
+        path: true,
+        depth: true,
+      },
+    });
+
+    if (!resource) {
+      throw new Error(`Resource ${resourceId} not found`);
+    }
+
+    // path is like '/root/<id1>/<id2>/<self>'
+    // Extract all ancestor IDs from the path
+    const pathParts = resource.path.split("/").filter((p) => p.length > 0);
+    if (pathParts.length === 0) {
+      // Only root exists
+      return [];
+    }
+
+    // pathParts[0] is the root (WORKSPACE), pathParts[-1] is self
+    // We need to fetch all resources in the chain
+    const chain = await prisma.resource.findMany({
+      where: {
+        tenantId,
+        id: {
+          in: pathParts,
+        },
+      },
+      select: {
+        id: true,
+        path: true,
+        depth: true,
+      },
+      orderBy: {
+        depth: "asc", // root to leaf
+      },
+    });
+
+    return chain;
+  }
+
+  /**
+   * Get all overwrites (both role and user) for a set of resource IDs.
+   */
+  async getOverwritesForChain(
+    tenantId: string,
+    resourceIds: string[],
+  ): Promise<OverwriteRow[]> {
+    if (resourceIds.length === 0) return [];
+
+    const overwrites = await prisma.permissionOverwrite.findMany({
+      where: {
+        tenantId,
+        resourceId: {
+          in: resourceIds,
+        },
+      },
+      select: {
+        resourceId: true,
+        roleId: true,
+        userId: true,
+        allow: true,
+        deny: true,
+      },
+    });
+
+    return overwrites;
+  }
+}
+
+export const permissionRepository = new PermissionRepository();
