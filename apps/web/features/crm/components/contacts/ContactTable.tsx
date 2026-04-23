@@ -1,20 +1,11 @@
 "use client";
 
 import type { Contact } from "../../services/contact.service";
-import {
-  SortableTableHead,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Mail, Phone } from "lucide-react";
+import { Building2, Mail, Phone, Eye, Edit, Trash2 } from "lucide-react";
 import type { SortOrder } from "@/components/ui/table";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { getActiveJourneyType } from "../../utils/journey-type";
 
 type ContactEmptyVariant = "empty" | "no-results";
@@ -51,286 +42,214 @@ export function ContactTable({
   emptyVariant = "empty",
   onClearFilters,
 }: ContactTableProps) {
-  if (isLoading) {
-    return (
-      <>
-        {/* Mobile skeleton */}
-        <div className="sm:hidden space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-lg border p-3 space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-48" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-          ))}
-        </div>
-        {/* Desktop skeleton */}
-        <div className="hidden sm:block overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Company</TableHead>
-                {dealsEnabled && <TableHead>Deal Stage</TableHead>}
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  {dealsEnabled && (
-                    <TableCell>
-                      <Skeleton className="h-4 w-8" />
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <Skeleton className="h-8 w-20 ml-auto" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </>
-    );
-  }
+  // Build columns array, filtering based on dealsEnabled
+  const baseColumns: DataTableColumn<Contact>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortKey: "firstName",
+      cell: (c) => {
+        const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
+        return fullName || "—";
+      },
+    },
+    {
+      id: "email",
+      header: "Email",
+      sortKey: "email",
+      cell: (c) => c.email || "—",
+    },
+    {
+      id: "phone",
+      header: "Phone",
+      sortKey: "phone",
+      cell: (c) => c.phone || "—",
+    },
+    {
+      id: "company",
+      header: "Company",
+      sortKey: "companyId",
+      cell: (c) => c.company?.name || "—",
+    },
+    {
+      id: "tags",
+      header: "Tags",
+      cell: (c) =>
+        c.tagLinks && c.tagLinks.length > 0
+          ? c.tagLinks.map((l) => l.tag.name).join(", ")
+          : "—",
+    },
+  ];
 
-  if (contacts.length === 0) {
-    if (emptyVariant === "no-results") {
-      return (
-        <div className="rounded-md border py-8 text-center space-y-3 px-4">
-          <p className="text-muted-foreground text-sm">
-            No contacts match your search or filters. Try different keywords or
-            clear filters to see everyone.
-          </p>
-          {onClearFilters ? (
-            <Button variant="outline" size="sm" onClick={onClearFilters}>
-              Clear filters
-            </Button>
-          ) : null}
-        </div>
-      );
-    }
-    return (
-      <div className="rounded-md border py-8 text-center text-muted-foreground px-4 space-y-1">
-        <p className="font-medium text-foreground">No contacts yet</p>
-        <p className="text-sm">
-          Add a contact or import a list to get started.
-        </p>
-      </div>
-    );
-  }
+  // Conditionally add dealsEnabled column
+  const columns = dealsEnabled
+    ? [
+        ...baseColumns,
+        {
+          id: "dealStage",
+          header: "Deal Stage",
+          cell: (c) => {
+            const activeJourneyType = getActiveJourneyType(c.deals);
+            return activeJourneyType ? (
+              <Badge variant="outline" className="text-xs">
+                {activeJourneyType}
+              </Badge>
+            ) : (
+              "—"
+            );
+          },
+        } as DataTableColumn<Contact>,
+      ]
+    : baseColumns;
 
-  const dimmed = isFetching && !isLoading;
+  const hasActiveFilters = emptyVariant === "no-results";
 
   return (
-    <div
-      className={
-        dimmed
+    <DataTable<Contact>
+      data={contacts}
+      columns={columns}
+      getRowKey={(c) => c.id}
+      isLoading={isLoading}
+      skeletonRows={5}
+      sort={{
+        sortBy,
+        sortOrder,
+        onSort,
+      }}
+      emptyState={{
+        title: hasActiveFilters
+          ? "No contacts match your search or filters"
+          : "No contacts yet",
+        description: hasActiveFilters
+          ? "Try different keywords or clear filters to see everyone."
+          : "Add a contact or import a list to get started.",
+        action:
+          hasActiveFilters && onClearFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : undefined,
+      }}
+      renderMobileCard={(c) => {
+        const activeJourneyType = getActiveJourneyType(c.deals);
+        const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
+        return (
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <button
+                onClick={() => onView(c.id)}
+                className="text-sm font-semibold text-left hover:text-primary transition-colors"
+              >
+                {fullName}
+              </button>
+              {dealsEnabled && activeJourneyType && (
+                <Badge variant="outline" className="text-xs shrink-0">
+                  {activeJourneyType}
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {c.email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3" aria-hidden="true" />
+                  {c.email}
+                </span>
+              )}
+              {c.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" aria-hidden="true" />
+                  {c.phone}
+                </span>
+              )}
+              {c.company && (
+                <span className="flex items-center gap-1">
+                  <Building2 className="h-3 w-3" aria-hidden="true" />
+                  {c.company.name}
+                </span>
+              )}
+            </div>
+
+            {c.tagLinks && c.tagLinks.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {c.tagLinks.map((l) => (
+                  <Badge key={l.tag.id} variant="secondary" className="text-xs">
+                    {l.tag.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-1 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs flex-1"
+                onClick={() => onView(c.id)}
+              >
+                View
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs flex-1"
+                onClick={() => onEdit(c.id)}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+                onClick={() => onDelete(c.id)}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        );
+      }}
+      mobileBreakpoint="sm"
+      rowClassName={
+        isFetching && !isLoading
           ? "opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
           : "transition-opacity duration-[var(--duration-normal,200ms)]"
       }
-    >
-      {/* ── Mobile card list ─────────────────────────────────────────── */}
-      <div className="sm:hidden space-y-2">
-        {contacts.map((c) => {
-          const activeJourneyType = getActiveJourneyType(c.deals);
-          const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
-          return (
-            <div key={c.id} className="rounded-lg border bg-card p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <button
-                  onClick={() => onView(c.id)}
-                  className="text-sm font-semibold text-left hover:text-primary transition-colors"
-                >
-                  {fullName}
-                </button>
-                {dealsEnabled && activeJourneyType && (
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {activeJourneyType}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {c.email && (
-                  <span className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" aria-hidden="true" />
-                    {c.email}
-                  </span>
-                )}
-                {c.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" aria-hidden="true" />
-                    {c.phone}
-                  </span>
-                )}
-                {c.company && (
-                  <span className="flex items-center gap-1">
-                    <Building2 className="h-3 w-3" aria-hidden="true" />
-                    {c.company.name}
-                  </span>
-                )}
-              </div>
-
-              {c.tagLinks && c.tagLinks.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {c.tagLinks.map((l) => (
-                    <Badge
-                      key={l.tag.id}
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {l.tag.name}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-1 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs flex-1"
-                  onClick={() => onView(c.id)}
-                >
-                  View
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs flex-1"
-                  onClick={() => onEdit(c.id)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
-                  onClick={() => onDelete(c.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Desktop table ────────────────────────────────────────────── */}
-      <div className="hidden sm:block overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <SortableTableHead
-                sortKey="firstName"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Name
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="email"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Email
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="phone"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Phone
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="companyId"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Company
-              </SortableTableHead>
-              <TableHead>Tags</TableHead>
-              {dealsEnabled && <TableHead>Deal Stage</TableHead>}
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {contacts.map((c) => {
-              const activeJourneyType = getActiveJourneyType(c.deals);
-              return (
-                <TableRow key={c.id}>
-                  <TableCell>
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 font-medium"
-                      onClick={() => onView(c.id)}
-                    >
-                      {c.firstName} {c.lastName || ""}
-                    </Button>
-                  </TableCell>
-                  <TableCell>{c.email || "—"}</TableCell>
-                  <TableCell>{c.phone || "—"}</TableCell>
-                  <TableCell>{c.company?.name || "—"}</TableCell>
-                  <TableCell>
-                    {c.tagLinks?.map((l) => l.tag.name).join(", ") || "—"}
-                  </TableCell>
-                  {dealsEnabled && (
-                    <TableCell>
-                      {activeJourneyType ? (
-                        <Badge variant="outline" className="text-xs">
-                          {activeJourneyType}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                  )}
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onView(c.id)}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEdit(c.id)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => onDelete(c.id)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+      actions={(c) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onView(c.id)}
+            aria-label={`View ${c.firstName} ${c.lastName}`}
+          >
+            <Eye className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(c.id)}
+            aria-label={`Edit ${c.firstName} ${c.lastName}`}
+          >
+            <Edit className="h-4 w-4" aria-hidden="true" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(c.id)}
+            aria-label={`Delete ${c.firstName} ${c.lastName}`}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
+      className="rounded-md border overflow-x-auto"
+      tableClassName="min-w-[640px]"
+    />
   );
 }

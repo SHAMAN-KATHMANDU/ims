@@ -1,5 +1,8 @@
 "use client";
 
+import { format } from "date-fns";
+import { Edit2, RotateCcw, Trash2, MoreHorizontal } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -8,17 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-} from "@/components/ui/table";
-import { format } from "date-fns";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit2, RotateCcw, Trash2, MoreHorizontal } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import type { Category } from "@/features/products";
 
 interface CategoryTableProps {
@@ -41,17 +33,15 @@ interface CategoryTableProps {
   isRestoring?: boolean;
   subcategoriesByCategory?: Record<string, string[]>;
   totalItems?: number;
-  /** When provided, shows checkbox column and selection UI */
   selectedCategories?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
-  /** When set, the matching category row is highlighted (e.g. on duplicate error). */
   highlightCategoryId?: string | null;
 }
 
 export function CategoryTable({
   categories,
-  sortBy,
-  sortOrder,
+  sortBy = "",
+  sortOrder = "none",
   onSort,
   canManageProducts,
   onEdit,
@@ -64,22 +54,62 @@ export function CategoryTable({
   onSelectionChange,
   highlightCategoryId,
 }: CategoryTableProps) {
-  const canSort = Boolean(onSort);
-  const allSelected =
-    categories.length > 0 &&
-    categories.every((c) => selectedCategories.has(c.id));
-  const handleSelectAll = (checked: boolean) => {
-    if (!onSelectionChange) return;
-    if (checked) onSelectionChange(new Set(categories.map((c) => c.id)));
-    else onSelectionChange(new Set());
-  };
-  const handleSelectOne = (categoryId: string, checked: boolean) => {
-    if (!onSelectionChange) return;
-    const next = new Set(selectedCategories);
-    if (checked) next.add(categoryId);
-    else next.delete(categoryId);
-    onSelectionChange(next);
-  };
+  const columns: DataTableColumn<Category>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortKey: "name",
+      cellClassName: "font-medium",
+      cell: (c) => c.name,
+    },
+    {
+      id: "description",
+      header: "Description",
+      cellClassName: "text-muted-foreground",
+      cell: (c) => c.description || "-",
+    },
+    {
+      id: "subcategories",
+      header: "Subcategories",
+      cellClassName: "text-muted-foreground",
+      cell: (c) =>
+        subcategoriesByCategory[c.id] &&
+        subcategoriesByCategory[c.id]!.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {subcategoriesByCategory[c.id]!.map((sub) => (
+              <span
+                key={sub}
+                className="px-2 py-0.5 rounded-full bg-muted text-xs"
+              >
+                {sub}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span>-</span>
+        ),
+    },
+    {
+      id: "createdAt",
+      header: "Created",
+      sortKey: "createdAt",
+      cellClassName: "text-muted-foreground text-sm whitespace-nowrap",
+      cell: (c) =>
+        c.createdAt ? format(new Date(c.createdAt), "MMM d, yyyy") : "—",
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (c) =>
+        c.deletedAt ? (
+          <Badge variant="secondary">Deactivated</Badge>
+        ) : (
+          <Badge variant="default" className="bg-green-600">
+            Active
+          </Badge>
+        ),
+    },
+  ];
 
   return (
     <Card>
@@ -90,168 +120,79 @@ export function CategoryTable({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {onSelectionChange && (
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all categories"
-                  />
-                </TableHead>
-              )}
-              {canSort ? (
-                <SortableTableHead
-                  sortKey="name"
-                  currentSortBy={sortBy}
-                  currentSortOrder={sortOrder}
-                  onSort={onSort!}
-                >
-                  Name
-                </SortableTableHead>
-              ) : (
-                <TableHead>Name</TableHead>
-              )}
-              <TableHead>Description</TableHead>
-              <TableHead>Subcategories</TableHead>
-              {canSort ? (
-                <SortableTableHead
-                  sortKey="createdAt"
-                  currentSortBy={sortBy}
-                  currentSortOrder={sortOrder}
-                  onSort={onSort!}
-                >
-                  Created
-                </SortableTableHead>
-              ) : (
-                <TableHead>Created</TableHead>
-              )}
-              <TableHead>Status</TableHead>
-              {canManageProducts && (
-                <TableHead className="text-right">Actions</TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.map((category) => (
-              <TableRow
-                key={category.id}
-                id={`category-row-${category.id}`}
-                data-category-id={category.id}
-                className={
-                  highlightCategoryId === category.id
-                    ? "bg-amber-100 dark:bg-amber-950/50 animate-pulse"
-                    : undefined
+        <DataTable<Category>
+          data={categories}
+          columns={columns}
+          getRowKey={(c) => c.id}
+          sort={onSort ? { sortBy, sortOrder, onSort } : undefined}
+          selection={
+            onSelectionChange
+              ? {
+                  selectedIds: selectedCategories,
+                  onChange: onSelectionChange,
+                  getRowId: (c) => c.id,
                 }
-              >
-                {onSelectionChange && (
-                  <TableCell
-                    className="w-12"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedCategories.has(category.id)}
-                      onCheckedChange={(checked) =>
-                        handleSelectOne(category.id, checked === true)
-                      }
-                      aria-label={`Select ${category.name}`}
-                    />
-                  </TableCell>
-                )}
-                <TableCell className="font-medium">{category.name}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {category.description || "-"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {subcategoriesByCategory[category.id] &&
-                  subcategoriesByCategory[category.id]!.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {subcategoriesByCategory[category.id]!.map((sub) => (
-                        <span
-                          key={sub}
-                          className="px-2 py-0.5 rounded-full bg-muted text-xs"
-                        >
-                          {sub}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span>-</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                  {category.createdAt
-                    ? format(new Date(category.createdAt), "MMM d, yyyy")
-                    : "—"}
-                </TableCell>
-                <TableCell>
-                  {category.deletedAt ? (
-                    <Badge variant="secondary">Deactivated</Badge>
-                  ) : (
-                    <Badge variant="default" className="bg-green-600">
-                      Active
-                    </Badge>
-                  )}
-                </TableCell>
-                {canManageProducts && (
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal
-                            className="h-4 w-4"
-                            aria-hidden="true"
-                          />
-                          <span className="sr-only">
-                            Actions for {category.name}
-                          </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {category.deletedAt ? (
-                          onRestore && (
-                            <DropdownMenuItem
-                              onClick={() => onRestore(category)}
-                              disabled={isRestoring}
-                            >
-                              <RotateCcw
-                                className="mr-2 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Restore
-                            </DropdownMenuItem>
-                          )
-                        ) : (
-                          <>
-                            <DropdownMenuItem onClick={() => onEdit(category)}>
-                              <Edit2
-                                className="mr-2 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onClick={() => onDelete(category)}
-                            >
-                              <Trash2
-                                className="mr-2 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              : undefined
+          }
+          rowClassName={(c) =>
+            highlightCategoryId === c.id
+              ? "bg-amber-100 dark:bg-amber-950/50 animate-pulse"
+              : undefined
+          }
+          actions={
+            canManageProducts
+              ? (c) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        />
+                        <span className="sr-only">Actions for {c.name}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {c.deletedAt ? (
+                        onRestore && (
+                          <DropdownMenuItem
+                            onClick={() => onRestore(c)}
+                            disabled={isRestoring}
+                          >
+                            <RotateCcw
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            Restore
+                          </DropdownMenuItem>
+                        )
+                      ) : (
+                        <>
+                          <DropdownMenuItem onClick={() => onEdit(c)}>
+                            <Edit2
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => onDelete(c)}
+                          >
+                            <Trash2
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )
+              : undefined
+          }
+        />
       </CardContent>
     </Card>
   );

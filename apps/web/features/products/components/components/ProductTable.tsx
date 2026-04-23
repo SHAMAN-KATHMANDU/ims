@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Card,
   CardContent,
@@ -8,15 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,13 +29,13 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Edit2, Trash2, Loader2, X } from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
-import { Checkbox } from "@/components/ui/checkbox";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { type SortOrder } from "@/components/ui/table";
 import {
   getDiscountedPrices,
   getCategoryName,
@@ -57,6 +54,15 @@ import {
 } from "@/components/ui/sheet";
 import type { Product, ProductVariation, Category } from "@/features/products";
 import { formatCurrency } from "@/lib/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
 /** One table row: either one variation of a product, or the product with no variations */
 type ProductTableRow = {
@@ -159,32 +165,6 @@ function useDebouncedSearch(
 }
 
 // ============================================
-// Loading Skeleton Component
-// ============================================
-
-function ProductTableSkeleton({
-  rows = 5,
-  columns = 7,
-}: {
-  rows?: number;
-  columns?: number;
-}) {
-  return (
-    <>
-      {Array.from({ length: rows }).map((_, rowIndex) => (
-        <TableRow key={rowIndex}>
-          {Array.from({ length: columns }).map((_, colIndex) => (
-            <TableCell key={colIndex}>
-              <Skeleton className="h-4 w-full" />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
-  );
-}
-
-// ============================================
 // Main Component
 // ============================================
 
@@ -216,17 +196,14 @@ export function ProductTable({
   const [productForDetail, setProductForDetail] = useState<Product | null>(
     null,
   );
-  /** When location filter is "All", each variation row can pick a location from its own inventory */
   const [rowLocationByVariationId, setRowLocationByVariationId] = useState<
     Record<string, string>
   >({});
 
-  // Keep sheetProduct in sync with latest products prop data (which has locationInventory)
   const sheetProduct = productForDetail
     ? (products.find((p) => p.id === productForDetail.id) ?? productForDetail)
     : null;
 
-  // Resolve the selected location name from the product's own locationInventory data
   const selectedLocationName = selectedLocationId
     ? (() => {
         for (const v of sheetProduct?.variations ?? []) {
@@ -239,66 +216,293 @@ export function ProductTable({
       })()
     : undefined;
 
-  // Use debounced search hook for server-side search
   const { localSearch, handleSearchChange, clearSearch } = useDebouncedSearch(
     searchQuery,
     onSearchChange,
   );
 
-  // Selection handlers
-  const handleSelectProduct = useCallback(
-    (productId: string, checked: boolean) => {
-      if (!onSelectionChange) return;
-
-      const newSelection = new Set(selectedProducts);
-      if (checked) {
-        newSelection.add(productId);
+  const flattenedRows: ProductTableRow[] = useMemo(() => {
+    const rows: ProductTableRow[] = [];
+    for (const product of products) {
+      if (product.variations && product.variations.length > 0) {
+        for (const variation of product.variations) {
+          rows.push({ product, variation });
+        }
       } else {
-        newSelection.delete(productId);
+        rows.push({ product, variation: null });
       }
-      onSelectionChange(newSelection);
-    },
-    [selectedProducts, onSelectionChange],
-  );
+    }
+    return rows;
+  }, [products]);
 
-  const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (!onSelectionChange) return;
+  // Build columns array with conditional cost price columns
+  const columns: DataTableColumn<ProductTableRow>[] = useMemo(() => {
+    const baseColumns: DataTableColumn<ProductTableRow>[] = [
+      {
+        id: "imsCode",
+        header: "Product Code",
+        sortKey: canSort ? "imsCode" : undefined,
+        cell: (row) => (row.product as { imsCode?: string }).imsCode ?? "—",
+        cellClassName: "font-mono",
+      },
+      {
+        id: "name",
+        header: "Product Name",
+        sortKey: canSort ? "name" : undefined,
+        cell: (row) => row.product.name,
+        cellClassName: "font-medium",
+      },
+      {
+        id: "variations",
+        header: "Variations",
+        cell: (row) => {
+          const count = row.product.variations?.length ?? 0;
+          return count > 0 ? `${count} variation(s)` : "—";
+        },
+      },
+      {
+        id: "category",
+        header: "Category",
+        cell: (row) =>
+          getCategoryName(row.product.categoryId, row.product, categories),
+      },
+    ];
 
-      const currentPageIds = new Set(products.map((p) => p.id));
-      const newSelection = new Set(selectedProducts);
+    const costPriceColumns: DataTableColumn<ProductTableRow>[] = canSeeCostPrice
+      ? [
+          {
+            id: "costPrice",
+            header: "Cost Price",
+            sortKey: canSort ? "costPrice" : undefined,
+            cell: (row) => formatCurrency(Number(row.product.costPrice)),
+            cellClassName: "text-right",
+          },
+        ]
+      : [];
 
-      if (checked) {
-        currentPageIds.forEach((id) => newSelection.add(id));
-      } else {
-        currentPageIds.forEach((id) => newSelection.delete(id));
-      }
-      onSelectionChange(newSelection);
-    },
-    [products, selectedProducts, onSelectionChange],
-  );
+    const priceColumns: DataTableColumn<ProductTableRow>[] = [
+      {
+        id: "mrp",
+        header: "MRP",
+        sortKey: canSort ? "mrp" : undefined,
+        cell: (row) => formatCurrency(Number(row.product.mrp)),
+        cellClassName: "text-right",
+      },
+    ];
 
-  // Header checkbox: all selected (checked), some selected (indeterminate), none (unchecked)
-  const currentPageSelectedCount = products.filter((p) =>
-    selectedProducts.has(p.id),
-  ).length;
-  const allSelected =
-    products.length > 0 && currentPageSelectedCount === products.length;
-  const someSelected =
-    products.length > 0 &&
-    currentPageSelectedCount > 0 &&
-    currentPageSelectedCount < products.length;
-  const headerChecked = allSelected
-    ? true
-    : someSelected
-      ? "indeterminate"
-      : false;
+    const discountColumns: DataTableColumn<ProductTableRow>[] = !canSeeCostPrice
+      ? [
+          {
+            id: "normalPrice",
+            header: "Normal Price",
+            cell: (row) => {
+              const prices = getDiscountedPrices(row.product);
+              return prices.normal ? (
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(Number(prices.normal.price))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    ({prices.normal.percentage}% off)
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              );
+            },
+            cellClassName: "text-right",
+          },
+          {
+            id: "specialPrice",
+            header: "Special Price",
+            cell: (row) => {
+              const prices = getDiscountedPrices(row.product);
+              return prices.special ? (
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(Number(prices.special.price))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    ({prices.special.percentage}% off)
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              );
+            },
+            cellClassName: "text-right",
+          },
+          {
+            id: "memberPrice",
+            header: "Member Price",
+            cell: (row) => {
+              const prices = getDiscountedPrices(row.product);
+              return prices.member ? (
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(Number(prices.member.price))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    ({prices.member.percentage}% off)
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              );
+            },
+            cellClassName: "text-right",
+          },
+          {
+            id: "wholesalePrice",
+            header: "Wholesale Price",
+            cell: (row) => {
+              const prices = getDiscountedPrices(row.product);
+              return prices.wholesale ? (
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(Number(prices.wholesale.price))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    ({prices.wholesale.percentage}% off)
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              );
+            },
+            cellClassName: "text-right",
+          },
+        ]
+      : [];
 
-  // Calculate column count for empty state and expanded rows
-  // Base columns: Product Code, Name, Variations, Category, (Cost Price if admin), MRP, (4 discount prices if not admin), Stock = 7 or 10
-  // Add 1 for checkbox if selection is enabled
-  const baseColumnCount = canSeeCostPrice ? 7 : 10;
-  const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
+    const stockColumn: DataTableColumn<ProductTableRow>[] = [
+      {
+        id: "stock",
+        header: "Stock",
+        sortKey: canSort ? "totalStock" : undefined,
+        cell: (row) => {
+          const stock = selectedLocationId
+            ? getStockAtLocation(row.product, selectedLocationId)
+            : getTotalStock(row.product);
+          return <span className="font-medium">{stock}</span>;
+        },
+        cellClassName: "text-right",
+      },
+    ];
+
+    return [
+      ...baseColumns,
+      ...costPriceColumns,
+      ...priceColumns,
+      ...discountColumns,
+      ...stockColumn,
+    ];
+  }, [canSort, canSeeCostPrice, categories, selectedLocationId]);
+
+  const renderMobileCard = (row: ProductTableRow) => {
+    const discountedPrices = !canSeeCostPrice
+      ? getDiscountedPrices(row.product)
+      : {};
+    const displayStock = selectedLocationId
+      ? getStockAtLocation(row.product, selectedLocationId)
+      : getTotalStock(row.product);
+    const variationCount = row.product.variations?.length ?? 0;
+    const imsCode = (row.product as { imsCode?: string }).imsCode ?? "—";
+
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 active:bg-muted/60 cursor-pointer"
+        onClick={() => setProductForDetail(row.product)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setProductForDetail(row.product);
+          }
+        }}
+      >
+        <div className="flex gap-3">
+          {onSelectionChange && (
+            <div
+              className="shrink-0 pt-0.5"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Checkbox
+                checked={selectedProducts.has(row.product.id)}
+                onCheckedChange={(checked) =>
+                  onSelectionChange &&
+                  (() => {
+                    const newSelection = new Set(selectedProducts);
+                    if (checked) {
+                      newSelection.add(row.product.id);
+                    } else {
+                      newSelection.delete(row.product.id);
+                    }
+                    onSelectionChange(newSelection);
+                  })()
+                }
+                aria-label={`Select ${row.product.name}`}
+              />
+            </div>
+          )}
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold leading-snug line-clamp-2">
+                {row.product.name}
+              </p>
+            </div>
+            <p className="font-mono text-xs text-muted-foreground">{imsCode}</p>
+            <p className="text-sm text-muted-foreground line-clamp-1">
+              {getCategoryName(row.product.categoryId, row.product, categories)}
+            </p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-muted-foreground">MRP</p>
+                <p className="font-medium tabular-nums">
+                  {formatCurrency(Number(row.product.mrp))}
+                </p>
+              </div>
+              {canSeeCostPrice && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Cost</p>
+                  <p className="font-medium tabular-nums">
+                    {formatCurrency(Number(row.product.costPrice))}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-muted-foreground">Stock</p>
+                <p className="font-medium tabular-nums">{displayStock}</p>
+              </div>
+            </div>
+            {!canSeeCostPrice && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {[
+                  discountedPrices.normal &&
+                    `Normal ${formatCurrency(Number(discountedPrices.normal.price))}`,
+                  discountedPrices.special &&
+                    `Special ${formatCurrency(Number(discountedPrices.special.price))}`,
+                  discountedPrices.member &&
+                    `Member ${formatCurrency(Number(discountedPrices.member.price))}`,
+                  discountedPrices.wholesale &&
+                    `Wholesale ${formatCurrency(Number(discountedPrices.wholesale.price))}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {variationCount > 0
+                ? `${variationCount} variation${variationCount === 1 ? "" : "s"}`
+                : "No variations"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -321,7 +525,6 @@ export function ProductTable({
             </CardDescription>
           </div>
           <div className="flex w-full flex-col gap-3 md:w-auto md:max-w-none md:flex-row md:flex-nowrap md:items-center">
-            {/* Filter controls + search: stack on small screens, full-width search on phone */}
             {filterBar != null ? (
               <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:shrink-0">
                 {filterBar}
@@ -357,436 +560,51 @@ export function ProductTable({
         </div>
       </CardHeader>
       <CardContent className="space-y-0">
-        {/* Mobile: loading skeleton */}
-        {isLoading && (
-          <div className="space-y-3 md:hidden">
-            {Array.from({
-              length: Math.min(6, pagination.itemsPerPage || 10),
-            }).map((_, i) => (
-              <div key={i} className="rounded-lg border bg-card p-4 space-y-3">
-                <Skeleton className="h-5 w-2/3" />
-                <Skeleton className="h-4 w-1/3" />
-                <div className="grid grid-cols-2 gap-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <DataTable<ProductTableRow>
+          data={flattenedRows}
+          columns={columns}
+          getRowKey={(row) =>
+            row.variation ? row.variation.id : `${row.product.id}-no-var`
+          }
+          isLoading={isLoading}
+          skeletonRows={pagination.itemsPerPage}
+          sort={
+            onSort
+              ? {
+                  sortBy: sortBy ?? "",
+                  sortOrder: (sortOrder ?? "none") as SortOrder,
+                  onSort,
+                }
+              : undefined
+          }
+          selection={
+            onSelectionChange
+              ? {
+                  selectedIds: selectedProducts,
+                  onChange: onSelectionChange,
+                  getRowId: (row) => row.product.id,
+                }
+              : undefined
+          }
+          emptyState={{
+            title: localSearch
+              ? "No products match your search"
+              : "No products yet",
+            description: localSearch
+              ? "Try a different search term."
+              : undefined,
+            action: localSearch ? (
+              <Button variant="outline" size="sm" onClick={clearSearch}>
+                Clear search
+              </Button>
+            ) : undefined,
+          }}
+          renderMobileCard={renderMobileCard}
+          mobileBreakpoint="md"
+          onRowClick={(row) => setProductForDetail(row.product)}
+          rowClassName="cursor-pointer hover:bg-muted/50"
+        />
 
-        {/* Mobile: empty */}
-        {!isLoading && products.length === 0 && (
-          <div className="rounded-lg border border-dashed py-10 text-center md:hidden">
-            {localSearch ? (
-              <div className="flex flex-col items-center gap-2">
-                <p className="text-sm font-medium">
-                  No products match your search
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Try a different search term.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={clearSearch}
-                >
-                  Clear search
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No products yet</p>
-            )}
-          </div>
-        )}
-
-        {/* Mobile: product cards */}
-        {!isLoading && products.length > 0 && (
-          <div className="space-y-3 md:hidden">
-            {products.map((product) => {
-              const discountedPrices = !canSeeCostPrice
-                ? getDiscountedPrices(product)
-                : {};
-              const displayStock = selectedLocationId
-                ? getStockAtLocation(product, selectedLocationId)
-                : getTotalStock(product);
-              const variationCount = product.variations?.length ?? 0;
-              const imsCode = (product as { imsCode?: string }).imsCode ?? "—";
-
-              return (
-                <div key={product.id}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 active:bg-muted/60 cursor-pointer"
-                    onClick={() => setProductForDetail(product)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setProductForDetail(product);
-                      }
-                    }}
-                  >
-                    <div className="flex gap-3">
-                      {onSelectionChange && (
-                        <div
-                          className="shrink-0 pt-0.5"
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={selectedProducts.has(product.id)}
-                            onCheckedChange={(checked) =>
-                              handleSelectProduct(product.id, checked === true)
-                            }
-                            aria-label={`Select ${product.name}`}
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold leading-snug line-clamp-2">
-                            {product.name}
-                          </p>
-                        </div>
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {imsCode}
-                        </p>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {getCategoryName(
-                            product.categoryId,
-                            product,
-                            categories,
-                          )}
-                        </p>
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
-                          <div>
-                            <p className="text-xs text-muted-foreground">MRP</p>
-                            <p className="font-medium tabular-nums">
-                              {formatCurrency(Number(product.mrp))}
-                            </p>
-                          </div>
-                          {canSeeCostPrice && (
-                            <div>
-                              <p className="text-xs text-muted-foreground">
-                                Cost
-                              </p>
-                              <p className="font-medium tabular-nums">
-                                {formatCurrency(Number(product.costPrice))}
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs text-muted-foreground">
-                              Stock
-                            </p>
-                            <p className="font-medium tabular-nums">
-                              {displayStock}
-                            </p>
-                          </div>
-                        </div>
-                        {!canSeeCostPrice && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {[
-                              discountedPrices.normal &&
-                                `Normal ${formatCurrency(Number(discountedPrices.normal.price))}`,
-                              discountedPrices.special &&
-                                `Special ${formatCurrency(Number(discountedPrices.special.price))}`,
-                              discountedPrices.member &&
-                                `Member ${formatCurrency(Number(discountedPrices.member.price))}`,
-                              discountedPrices.wholesale &&
-                                `Wholesale ${formatCurrency(Number(discountedPrices.wholesale.price))}`,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {variationCount > 0
-                            ? `${variationCount} variation${variationCount === 1 ? "" : "s"}`
-                            : "No variations"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div className="hidden md:block overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {onSelectionChange && (
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={headerChecked}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all products on this page"
-                    />
-                  </TableHead>
-                )}
-                {canSort ? (
-                  <SortableTableHead
-                    sortKey="imsCode"
-                    currentSortBy={sortBy}
-                    currentSortOrder={sortOrder}
-                    onSort={onSort!}
-                  >
-                    Product Code
-                  </SortableTableHead>
-                ) : (
-                  <TableHead>Product Code</TableHead>
-                )}
-                {canSort ? (
-                  <SortableTableHead
-                    sortKey="name"
-                    currentSortBy={sortBy}
-                    currentSortOrder={sortOrder}
-                    onSort={onSort!}
-                  >
-                    Product Name
-                  </SortableTableHead>
-                ) : (
-                  <TableHead>Product Name</TableHead>
-                )}
-                <TableHead>Variations</TableHead>
-                <TableHead>Category</TableHead>
-                {canSeeCostPrice &&
-                  (canSort ? (
-                    <SortableTableHead
-                      sortKey="costPrice"
-                      currentSortBy={sortBy}
-                      currentSortOrder={sortOrder}
-                      onSort={onSort!}
-                    >
-                      Cost Price
-                    </SortableTableHead>
-                  ) : (
-                    <TableHead>Cost Price</TableHead>
-                  ))}
-                {canSort ? (
-                  <SortableTableHead
-                    sortKey="mrp"
-                    currentSortBy={sortBy}
-                    currentSortOrder={sortOrder}
-                    onSort={onSort!}
-                  >
-                    MRP
-                  </SortableTableHead>
-                ) : (
-                  <TableHead>MRP</TableHead>
-                )}
-                {!canSeeCostPrice && (
-                  <>
-                    <TableHead>Normal Price</TableHead>
-                    <TableHead>Special Price</TableHead>
-                    <TableHead>Member Price</TableHead>
-                    <TableHead>Wholesale Price</TableHead>
-                  </>
-                )}
-                {canSort ? (
-                  <SortableTableHead
-                    sortKey="totalStock"
-                    currentSortBy={sortBy}
-                    currentSortOrder={sortOrder}
-                    onSort={onSort!}
-                  >
-                    Stock
-                  </SortableTableHead>
-                ) : (
-                  <TableHead>Stock</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <ProductTableSkeleton
-                  rows={pagination.itemsPerPage}
-                  columns={columnCount}
-                />
-              ) : products.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={columnCount}
-                    className="text-center py-10"
-                  >
-                    {localSearch ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <p className="text-sm font-medium">
-                          No products match your search
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Try a different search term.
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={clearSearch}
-                        >
-                          Clear search
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No products yet
-                      </p>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                (() => {
-                  const rows: ProductTableRow[] = products.map((product) => ({
-                    product,
-                    variation: null,
-                  }));
-
-                  return rows.map(({ product }) => {
-                    const discountedPrices = !canSeeCostPrice
-                      ? getDiscountedPrices(product)
-                      : {};
-                    const _hasVariations =
-                      product.variations && product.variations.length > 0;
-                    const displayStock = selectedLocationId
-                      ? getStockAtLocation(product, selectedLocationId)
-                      : getTotalStock(product);
-                    const variationCount = product.variations?.length ?? 0;
-
-                    return (
-                      <TableRow
-                        key={product.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setProductForDetail(product)}
-                      >
-                        {onSelectionChange && (
-                          <TableCell
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-12"
-                          >
-                            <Checkbox
-                              checked={selectedProducts.has(product.id)}
-                              onCheckedChange={(checked) =>
-                                handleSelectProduct(
-                                  product.id,
-                                  checked === true,
-                                )
-                              }
-                              aria-label={`Select ${product.name}`}
-                            />
-                          </TableCell>
-                        )}
-                        <TableCell className="font-mono">
-                          {(product as { imsCode?: string }).imsCode ?? "—"}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.name}
-                        </TableCell>
-                        <TableCell>
-                          {variationCount > 0
-                            ? `${variationCount} variation(s)`
-                            : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {getCategoryName(
-                            product.categoryId,
-                            product,
-                            categories,
-                          )}
-                        </TableCell>
-                        {canSeeCostPrice && (
-                          <TableCell>
-                            {formatCurrency(Number(product.costPrice))}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          {formatCurrency(Number(product.mrp))}
-                        </TableCell>
-                        {!canSeeCostPrice && (
-                          <>
-                            <TableCell>
-                              {discountedPrices.normal ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.normal.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.normal.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.special ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.special.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.special.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.member ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.member.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.member.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.wholesale ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.wholesale.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.wholesale.percentage}%
-                                    off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
-                        <TableCell>
-                          <span className="font-medium">{displayStock}</span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  });
-                })()
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Product detail sheet */}
         <Sheet
           open={!!productForDetail}
           onOpenChange={(open) => {
@@ -1021,7 +839,6 @@ export function ProductTable({
           </SheetContent>
         </Sheet>
 
-        {/* Pagination Controls */}
         <DataTablePagination
           pagination={pagination}
           onPageChange={onPageChange}
