@@ -15,6 +15,11 @@ import {
   type PipelineType,
   type GetPipelinesParams,
 } from "../services/pipeline.service";
+import { contactKeys } from "./use-contacts";
+import { crmSettingsKeys } from "./use-crm-settings";
+import { workflowKeys } from "./use-workflows";
+import { dealKeys } from "./use-deals";
+import { taskKeys } from "./use-tasks";
 
 export const pipelineKeys = {
   all: ["pipelines"] as const,
@@ -128,11 +133,11 @@ export function useSeedPipelineFramework() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: pipelineKeys.lists() });
-      qc.invalidateQueries({ queryKey: ["contacts"] });
-      qc.invalidateQueries({ queryKey: ["crm-settings"] });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
+      qc.invalidateQueries({ queryKey: contactKeys.all });
+      qc.invalidateQueries({ queryKey: crmSettingsKeys.all });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
     },
   });
 }

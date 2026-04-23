@@ -19,6 +19,7 @@ import {
   type ReorderPagesInput,
   type ConvertToBlocksMode,
 } from "../services/tenant-pages.service";
+import { siteLayoutKeys } from "@/features/tenant-site";
 
 export const tenantPagesKeys = {
   all: ["tenant-pages"] as const,
@@ -134,7 +135,7 @@ export function useConvertPageToBlocks() {
       // Invalidate both pages (the conversion publishes implicitly so the
       // page row's metadata may shift) and site-layouts (a new row exists).
       qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
-      qc.invalidateQueries({ queryKey: ["site-layouts"] });
+      qc.invalidateQueries({ queryKey: siteLayoutKeys.all });
     },
   });
 }

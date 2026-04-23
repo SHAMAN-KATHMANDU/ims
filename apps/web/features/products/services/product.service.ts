@@ -5,6 +5,7 @@
  * Do not add React or UI logic.
  */
 
+import { type AxiosRequestConfig } from "axios";
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
 import {
@@ -535,27 +536,32 @@ export interface UpdateDiscountTypeData {
 
 export async function createDiscountType(
   data: CreateDiscountTypeData,
+  config?: AxiosRequestConfig,
 ): Promise<{ discountType: DiscountType }> {
   const response = await api.post<{
     message: string;
     discountType: DiscountType;
-  }>("/products/discount-types", data);
+  }>("/products/discount-types", data, config);
   return { discountType: response.data.discountType };
 }
 
 export async function updateDiscountType(
   id: string,
   data: UpdateDiscountTypeData,
+  config?: AxiosRequestConfig,
 ): Promise<{ discountType: DiscountType }> {
   const response = await api.put<{
     message: string;
     discountType: DiscountType;
-  }>(`/products/discount-types/${id}`, data);
+  }>(`/products/discount-types/${id}`, data, config);
   return { discountType: response.data.discountType };
 }
 
-export async function deleteDiscountType(id: string): Promise<void> {
-  await api.delete(`/products/discount-types/${id}`);
+export async function deleteDiscountType(
+  id: string,
+  config?: AxiosRequestConfig,
+): Promise<void> {
+  await api.delete(`/products/discount-types/${id}`, config);
 }
 
 // ============================================
@@ -744,6 +750,7 @@ export interface BulkUploadResponse {
 export async function bulkUploadProducts(
   file: File,
   onProgress?: (progress: number) => void,
+  config?: AxiosRequestConfig,
 ): Promise<BulkUploadResponse> {
   if (!file) {
     throw new Error("File is required");
@@ -759,6 +766,7 @@ export async function bulkUploadProducts(
       "/bulk/upload/products",
       formData,
       {
+        ...config,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total && onProgress) {
             const progress = Math.round(
@@ -909,6 +917,7 @@ export interface DiscountBulkUploadResponse {
 export async function bulkUploadDiscounts(
   file: File,
   onProgress?: (progress: number) => void,
+  config?: AxiosRequestConfig,
 ): Promise<DiscountBulkUploadResponse> {
   if (!file) throw new Error("File is required");
 
@@ -920,6 +929,7 @@ export async function bulkUploadDiscounts(
       "/bulk/upload/discounts",
       formData,
       {
+        ...config,
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total && onProgress) {
             onProgress(

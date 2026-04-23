@@ -5,7 +5,7 @@
  * Uses the shared axios instance from lib/axios.
  */
 
-import { AxiosError } from "axios";
+import { AxiosError, type AxiosRequestConfig } from "axios";
 import api from "@/lib/axios";
 import { getApiErrorMessage, handleApiError } from "@/lib/api-error";
 import {
@@ -245,7 +245,10 @@ export async function updateCategory(
 /**
  * Restore a deactivated category
  */
-export async function restoreCategory(id: string): Promise<Category> {
+export async function restoreCategory(
+  id: string,
+  config?: AxiosRequestConfig,
+): Promise<Category> {
   if (!id?.trim()) {
     throw new Error("Category ID is required");
   }
@@ -253,6 +256,8 @@ export async function restoreCategory(id: string): Promise<Category> {
   try {
     const response = await api.post<CategoryResponse>(
       `/categories/${id}/restore`,
+      undefined,
+      config,
     );
     return response.data.category;
   } catch (error) {

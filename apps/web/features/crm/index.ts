@@ -8,6 +8,7 @@ export * from "./hooks/use-activities";
 export * from "./hooks/use-notifications";
 export * from "./hooks/use-crm-settings";
 export * from "./hooks/use-crm";
+export { workflowKeys } from "./hooks/use-workflows";
 
 export type {
   Contact,

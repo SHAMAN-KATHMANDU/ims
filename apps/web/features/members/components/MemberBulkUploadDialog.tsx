@@ -8,6 +8,7 @@ import {
   downloadBulkUploadTemplate,
   type MemberBulkUploadResponse,
 } from "../services/member.service";
+import { memberKeys } from "../hooks/use-members";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,7 +59,7 @@ export function MemberBulkUploadDialog({
     },
     onSuccess: (data) => {
       setUploadResult(data);
-      queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
 
       if (data.summary.created > 0) {
         toast({

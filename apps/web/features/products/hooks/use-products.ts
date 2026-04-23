@@ -199,8 +199,7 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: (data: CreateProductData) => createProduct(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      queryClient.refetchQueries({ queryKey: productKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
 }
@@ -241,8 +240,7 @@ export function useDeleteProduct() {
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       deleteProduct(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      queryClient.refetchQueries({ queryKey: productKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
 }
@@ -258,9 +256,10 @@ export function useDeleteVariation() {
       productId: string;
       variationId: string;
     }) => deleteVariation(productId, variationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      queryClient.refetchQueries({ queryKey: productKeys.all });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: productKeys.detail(variables.productId),
+      });
     },
   });
 }
@@ -283,14 +282,18 @@ export function useBulkUploadProducts() {
     mutationFn: async (file: File) => {
       setUploadProgress(0);
       setUploadResult(null);
-      return bulkUploadProducts(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      return bulkUploadProducts(
+        file,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        { skipGlobalErrorToast: true },
+      );
     },
     onSuccess: (data) => {
       setUploadResult(data);
       // Invalidate products query to refresh the list
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
 
       if (data.summary.created > 0 || (data.summary.updated ?? 0) > 0) {
         const parts = [];
@@ -348,13 +351,17 @@ export function useBulkUploadDiscounts() {
     mutationFn: async (file: File) => {
       setUploadProgress(0);
       setUploadResult(null);
-      return bulkUploadDiscounts(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      return bulkUploadDiscounts(
+        file,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        { skipGlobalErrorToast: true },
+      );
     },
     onSuccess: (data) => {
       setUploadResult(data);
-      queryClient.invalidateQueries({ queryKey: ["productDiscounts"] });
+      queryClient.invalidateQueries({ queryKey: productDiscountKeys.all });
       if (data.summary.created > 0) {
         toast({
           title: "Bulk discount upload completed",
@@ -406,6 +413,7 @@ export function useCategoriesPaginated(params: CategoryListParams = {}) {
     queryKey: categoryKeys.list(normalizedParams),
     queryFn: () => getCategories(normalizedParams),
     placeholderData: (prev) => prev,
+    staleTime: 10 * 60 * 1000, // 10 minutes — categories are reference data
   });
 }
 
@@ -414,6 +422,7 @@ export function useCategories() {
   return useQuery({
     queryKey: categoryKeys.lists(),
     queryFn: getAllCategories,
+    staleTime: 10 * 60 * 1000, // 10 minutes — categories are reference data
   });
 }
 
@@ -456,7 +465,8 @@ export function useCreateDiscountType() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (data: CreateDiscountTypeData) => createDiscountType(data),
+    mutationFn: (data: CreateDiscountTypeData) =>
+      createDiscountType(data, { skipGlobalErrorToast: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
       toast({ title: "Discount type created" });
@@ -477,7 +487,7 @@ export function useUpdateDiscountType() {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateDiscountTypeData }) =>
-      updateDiscountType(id, data),
+      updateDiscountType(id, data, { skipGlobalErrorToast: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
       toast({ title: "Discount type updated" });
@@ -497,7 +507,8 @@ export function useDeleteDiscountType() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => deleteDiscountType(id),
+    mutationFn: (id: string) =>
+      deleteDiscountType(id, { skipGlobalErrorToast: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
       toast({ title: "Discount type deleted" });
@@ -609,7 +620,8 @@ export function useRestoreCategory() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => restoreCategory(id),
+    mutationFn: (id: string) =>
+      restoreCategory(id, { skipGlobalErrorToast: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
       toast({ title: "Category restored successfully" });

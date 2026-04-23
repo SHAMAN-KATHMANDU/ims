@@ -36,8 +36,13 @@ export function useNotifications(
   return useQuery({
     queryKey: notificationKeys.list(params),
     queryFn: () => getNotifications(params),
-    refetchInterval: 60 * 1000,
     enabled: notificationsEnabled && (options?.enabled ?? true),
+    refetchInterval: () => {
+      if (typeof document === "undefined") return false;
+      if (document.visibilityState !== "visible") return false;
+      return 2 * 60 * 1000;
+    },
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -46,8 +51,13 @@ export function useUnreadNotificationCount(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: notificationKeys.unreadCount(),
     queryFn: () => getUnreadCount(),
-    refetchInterval: 60 * 1000,
     enabled: notificationsEnabled && (options?.enabled ?? true),
+    refetchInterval: () => {
+      if (typeof document === "undefined") return false;
+      if (document.visibilityState !== "visible") return false;
+      return 2 * 60 * 1000;
+    },
+    refetchIntervalInBackground: false,
   });
 }
 

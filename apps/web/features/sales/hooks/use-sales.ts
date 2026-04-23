@@ -5,7 +5,13 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { contactKeys, crmKeys } from "@/features/crm";
+import {
+  contactKeys,
+  crmKeys,
+  dealKeys,
+  taskKeys,
+  workflowKeys,
+} from "@/features/crm";
 import {
   getSales,
   getSaleById,
@@ -177,18 +183,14 @@ export function useCreateSale() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
-      queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-      queryClient.refetchQueries({ queryKey: inventoryKeys.all });
       queryClient.invalidateQueries({ queryKey: productKeys.all });
-      queryClient.removeQueries({ queryKey: productKeys.all });
-      queryClient.refetchQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: contactKeys.all });
       queryClient.invalidateQueries({ queryKey: crmKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["deals", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
-      queryClient.invalidateQueries({ queryKey: ["workflows"] });
+      queryClient.invalidateQueries({ queryKey: dealKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: workflowKeys.all });
     },
   });
 }
