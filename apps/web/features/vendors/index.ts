@@ -29,3 +29,10 @@ export {
   updateVendor,
   deleteVendor,
 } from "./services/vendor.service";
+
+export {
+  useVendorSelectionStore,
+  selectSelectedVendorIds,
+  selectClearSelection as selectClearVendorSelection,
+  selectSetVendors,
+} from "./store/vendor-selection-store";

@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Eye, Edit } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { type SortOrder } from "@/components/ui/table";
@@ -65,16 +65,9 @@ export function MemberTable({
       id: "status",
       header: "Status",
       cell: (m) => (
-        <Badge
-          variant={m.isActive ? "default" : "secondary"}
-          className={
-            m.isActive
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-100 text-gray-800"
-          }
-        >
+        <StatusBadge variant={m.isActive ? "success" : "muted"}>
           {m.isActive ? "Active" : "Inactive"}
-        </Badge>
+        </StatusBadge>
       ),
     },
     {

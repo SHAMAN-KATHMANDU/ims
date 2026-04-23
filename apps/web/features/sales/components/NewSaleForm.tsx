@@ -56,6 +56,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -2290,10 +2291,9 @@ export function NewSaleForm({
                             )}
 
                           {/* Complete Sale Button */}
-                          <Button
+                          <SubmitButton
                             type="button"
                             disabled={
-                              isLoading ||
                               !locationId ||
                               itemsFields.length === 0 ||
                               (!isCreditSale &&
@@ -2306,25 +2306,16 @@ export function NewSaleForm({
                               completeSaleClickedRef.current = true;
                               formRef.current?.requestSubmit();
                             }}
-                          >
-                            {isLoading ? (
-                              <>
-                                <Loader2
-                                  className="mr-2 h-4 w-4 animate-spin"
-                                  aria-hidden="true"
-                                />
-                                Creating...
-                              </>
-                            ) : (
-                              <>
-                                <ShoppingCart
-                                  className="mr-2 h-4 w-4"
-                                  aria-hidden="true"
-                                />
-                                Complete Sale
-                              </>
-                            )}
-                          </Button>
+                            isLoading={isLoading}
+                            label="Complete Sale"
+                            loadingLabel="Creating..."
+                            icon={
+                              <ShoppingCart
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            }
+                          />
                         </>
                       )}
                     </CardContent>

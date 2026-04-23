@@ -76,3 +76,11 @@ export const selectClearSelection = (state: CategorySelectionState) =>
   state.clearSelection;
 export const selectSetCategories = (state: CategorySelectionState) =>
   state.setCategories;
+export const selectAddCategory = (state: CategorySelectionState) =>
+  state.addCategory;
+export const selectRemoveCategory = (state: CategorySelectionState) =>
+  state.removeCategory;
+export const selectToggleCategory = (state: CategorySelectionState) =>
+  state.toggleCategory;
+export const selectIsCategorySelected = (state: CategorySelectionState) =>
+  state.isSelected;

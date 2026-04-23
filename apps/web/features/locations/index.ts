@@ -30,3 +30,9 @@ export {
   updateLocation,
   deleteLocation,
 } from "./services/location.service";
+
+export {
+  useLocationSelectionStore,
+  selectSelectedLocationIds,
+  selectClearLocationSelection,
+} from "./store/location-selection-store";

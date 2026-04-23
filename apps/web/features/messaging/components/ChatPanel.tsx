@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowDown, ArrowLeft, MessageSquare } from "lucide-react";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore, selectUserId } from "@/store/auth-store";
 import { useConversation, useMarkRead } from "../hooks/use-conversations";
 import {
   useMessages,
@@ -53,7 +53,7 @@ export function ChatPanel({
     isFetchingNextPage,
   } = useMessages(conversationId);
   const { mutate: markRead } = useMarkRead();
-  const currentUserId = useAuthStore((s) => s.user?.id ?? "");
+  const currentUserId = useAuthStore(selectUserId);
   const addReaction = useAddMessageReaction(conversationId);
   const removeReaction = useRemoveMessageReaction(conversationId);
   const editMessage = useEditConversationMessage(conversationId);

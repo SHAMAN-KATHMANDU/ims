@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Loader2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -40,41 +40,39 @@ interface RunStatusBadgeProps {
 }
 
 function RunStatusBadge({ status }: RunStatusBadgeProps): ReactElement {
-  const variants = {
-    SUCCEEDED: {
-      icon: CheckCircle2,
-      label: "Succeeded",
-      className: "bg-green-100 text-green-800 border-green-200",
-    },
-    FAILED: {
-      icon: XCircle,
-      label: "Failed",
-      className: "bg-red-100 text-red-800 border-red-200",
-    },
-    SKIPPED: {
-      icon: SkipForward,
-      label: "Shadow",
-      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    RUNNING: {
-      icon: Loader2,
-      label: "Running",
-      className: "bg-blue-100 text-blue-800 border-blue-200",
-    },
+  const iconMap = {
+    SUCCEEDED: CheckCircle2,
+    FAILED: XCircle,
+    SKIPPED: SkipForward,
+    RUNNING: Loader2,
   } as const;
 
-  const { icon: Icon, label, className } = variants[status];
+  const labelMap = {
+    SUCCEEDED: "Succeeded",
+    FAILED: "Failed",
+    SKIPPED: "Shadow",
+    RUNNING: "Running",
+  } as const;
+
+  const variantMap = {
+    SUCCEEDED: "success" as const,
+    FAILED: "danger" as const,
+    SKIPPED: "warning" as const,
+    RUNNING: "info" as const,
+  } as const;
+
+  const Icon = iconMap[status];
+  const label = labelMap[status];
+  const variant = variantMap[status];
+
   return (
-    <Badge
-      variant="outline"
-      className={`gap-1 text-xs font-medium ${className}`}
-    >
+    <StatusBadge variant={variant} className="gap-1 text-xs font-medium">
       <Icon
         className={`h-3 w-3 ${status === "RUNNING" ? "animate-spin" : ""}`}
         aria-hidden
       />
       {label}
-    </Badge>
+    </StatusBadge>
   );
 }
 

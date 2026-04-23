@@ -33,6 +33,7 @@ import {
   TableRow,
   SortableTableHead,
 } from "@/components/ui/table";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search } from "lucide-react";
 import { format } from "date-fns";
@@ -361,16 +362,11 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                           : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={promo.isActive ? "default" : "secondary"}
-                          className={
-                            promo.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }
+                        <StatusBadge
+                          variant={promo.isActive ? "success" : "muted"}
                         >
                           {promo.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        </StatusBadge>
                       </TableCell>
                       <TableCell className="text-right">
                         {!readOnly && (

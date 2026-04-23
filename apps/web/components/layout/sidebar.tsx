@@ -13,6 +13,7 @@ import {
   selectTenant,
   selectToken,
   selectTenantWebsiteEnabled,
+  selectRefreshTenant,
 } from "@/store/auth-store";
 import {
   useSidebarStore,
@@ -350,7 +351,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const userRole = useAuthStore(selectUserRole);
   const tenant = useAuthStore(selectTenant);
   const token = useAuthStore(selectToken);
-  const refreshTenant = useAuthStore((s) => s.refreshTenant);
+  const refreshTenant = useAuthStore(selectRefreshTenant);
   const isMobile = useIsMobile();
   const sidebarWidth = useSidebarStore(selectSidebarWidth);
   const setSidebarWidth = useSidebarStore(selectSetSidebarWidth);

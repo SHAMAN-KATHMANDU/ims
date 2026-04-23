@@ -41,3 +41,9 @@ export type {
   UpdateUserInput,
   UserFormValues,
 } from "./validation";
+
+export {
+  useUserSelectionStore,
+  selectSelectedUserIds,
+  selectClearUserSelection,
+} from "./store/user-selection-store";

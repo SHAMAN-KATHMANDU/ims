@@ -23,3 +23,11 @@ export { SalesBulkUploadPage } from "./components/SalesBulkUploadPage";
 export { SalesTable } from "./components/SalesTable";
 export { SaleDetail } from "./components/SaleDetail";
 export { UserSalesReportFilterBar } from "./components/UserSalesReportFilterBar";
+
+export {
+  useSaleSelectionStore,
+  selectSelectedSaleIds,
+  selectSaleSelectionCount,
+  selectIsSaleSelected,
+  selectClearSaleSelection,
+} from "./store/sale-selection-store";

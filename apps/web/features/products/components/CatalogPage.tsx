@@ -26,7 +26,8 @@ import {
   useProductSelectionStore,
   selectSelectedProductIds,
   selectClearSelection,
-} from "@/store/product-selection-store";
+  selectSetProducts,
+} from "../store/product-selection-store";
 import { type CreateProductData, downloadProducts } from "@/features/products";
 import { ProductForm } from "./ProductForm";
 import { ProductTable } from "./ProductTable";
@@ -267,9 +268,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // Zustand store for product selection
   const selectedProductIds = useProductSelectionStore(selectSelectedProductIds);
   const clearSelection = useProductSelectionStore(selectClearSelection);
-  const setSelectedProductIds = useProductSelectionStore(
-    (state) => state.setProducts,
-  );
+  const setSelectedProductIds = useProductSelectionStore(selectSetProducts);
 
   // Dialog states
   const [productDialog, setProductDialog] = useState(false);

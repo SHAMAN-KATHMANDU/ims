@@ -48,9 +48,14 @@ import {
   Settings2,
 } from "lucide-react";
 import {
-  useEditorStore,
   selectSelectedBlock,
   selectSelectedId,
+  selectSetSelected,
+  selectUpdateBlockId,
+  selectUpdateBlockProps,
+  selectUpdateBlockStyle,
+  selectUpdateBlockVisibility,
+  useEditorStore,
 } from "./editor-store";
 import { getCatalogEntry } from "./block-catalog";
 import { ProductPickerField } from "./ProductPickerField";
@@ -65,8 +70,8 @@ type InspectorTab = "content" | "design" | "advanced";
 export function BlockInspector() {
   const selected = useEditorStore(selectSelectedBlock);
   const selectedId = useEditorStore(selectSelectedId);
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
-  const setSelected = useEditorStore((s) => s.setSelected);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
+  const setSelected = useEditorStore(selectSetSelected);
   const [tab, setTab] = useState<InspectorTab>("content");
 
   if (!selected || !selectedId) {
@@ -293,7 +298,7 @@ class InspectorBoundary extends Component<
 }
 
 function VisibilitySection({ block }: { block: BlockNode }) {
-  const updateBlockVisibility = useEditorStore((s) => s.updateBlockVisibility);
+  const updateBlockVisibility = useEditorStore(selectUpdateBlockVisibility);
   const vis = block.visibility ?? {};
   return (
     <div className="space-y-2">
@@ -371,7 +376,7 @@ function toSentinel(v: string | undefined): string {
 }
 
 function StyleOverrideSection({ block }: { block: BlockNode }) {
-  const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
+  const updateBlockStyle = useEditorStore(selectUpdateBlockStyle);
   const style = block.style ?? {};
 
   return (
@@ -982,7 +987,7 @@ function isTextishBlock(kind: string): boolean {
 }
 
 function AdvancedSection({ block }: { block: BlockNode }) {
-  const updateBlockId = useEditorStore((s) => s.updateBlockId);
+  const updateBlockId = useEditorStore(selectUpdateBlockId);
   const [editingId, setEditingId] = useState(block.id);
 
   // Sync when selection changes
@@ -1025,7 +1030,7 @@ function AdvancedSection({ block }: { block: BlockNode }) {
 }
 
 function BlockForm({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const schema = (BlockPropsSchemas as Record<string, z.ZodType<unknown>>)[
     block.kind
   ];
@@ -1428,7 +1433,7 @@ function FieldRenderer({
 }
 
 function JsonFallback({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   return (
     <div className="space-y-1">
       <Label>Raw props</Label>

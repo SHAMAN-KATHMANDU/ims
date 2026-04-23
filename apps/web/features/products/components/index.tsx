@@ -28,7 +28,8 @@ import {
   useProductSelectionStore,
   selectSelectedProductIds,
   selectClearSelection,
-} from "@/store/product-selection-store";
+  selectSetProducts,
+} from "../store/product-selection-store";
 import { type CreateProductData } from "@/features/products";
 import { ProductForm } from "./ProductForm";
 import { ProductTable } from "./ProductTable";
@@ -459,9 +460,7 @@ export function ProductPage() {
   // Zustand store for product selection
   const selectedProductIds = useProductSelectionStore(selectSelectedProductIds);
   const clearSelection = useProductSelectionStore(selectClearSelection);
-  const setSelectedProductIds = useProductSelectionStore(
-    (state) => state.setProducts,
-  );
+  const setSelectedProductIds = useProductSelectionStore(selectSetProducts);
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedProductIds);

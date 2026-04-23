@@ -11,3 +11,10 @@ export {
   permanentlyDeleteTrashItem,
 } from "./services/trash.service";
 export type { TrashItem, TrashListParams, TrashListResponse } from "./types";
+
+export {
+  useTrashSelectionStore,
+  selectSelectedTrashKeys,
+  selectTrashSelectionCount,
+  selectClearTrashSelection,
+} from "./store/trash-selection-store";

@@ -5,7 +5,7 @@
  */
 
 import { create } from "zustand";
-import { selectionStoreImpl } from "./createSelectionStore";
+import { selectionStoreImpl } from "@/lib/create-selection-store";
 
 interface TaskSelectionState {
   selectedTaskIds: Set<string>;
@@ -17,7 +17,10 @@ interface TaskSelectionState {
   isSelected: (taskId: string) => boolean;
 }
 
-export const useTaskSelectionStore = create<TaskSelectionState>()((set, get) => {
+export const useTaskSelectionStore = create<TaskSelectionState>()((
+  set,
+  get,
+) => {
   const impl = selectionStoreImpl(
     set as (
       p:
@@ -42,3 +45,9 @@ export const selectSelectedTaskIds = (state: TaskSelectionState) =>
   state.selectedTaskIds;
 export const selectClearTaskSelection = (state: TaskSelectionState) =>
   state.clearSelection;
+export const selectSetTasks = (state: TaskSelectionState) => state.setTasks;
+export const selectAddTask = (state: TaskSelectionState) => state.addTask;
+export const selectRemoveTask = (state: TaskSelectionState) => state.removeTask;
+export const selectToggleTask = (state: TaskSelectionState) => state.toggleTask;
+export const selectIsTaskSelected = (state: TaskSelectionState) =>
+  state.isSelected;

@@ -38,3 +38,11 @@ export type {
   MemberBulkUploadSummary,
   MemberBulkUploadResponse,
 } from "./services/member.service";
+
+export {
+  useMemberSelectionStore,
+  selectSelectedMemberIds,
+  selectMemberSelectionCount,
+  selectIsMemberSelected,
+  selectClearMemberSelection,
+} from "./store/member-selection-store";

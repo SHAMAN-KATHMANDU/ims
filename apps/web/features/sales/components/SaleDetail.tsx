@@ -43,7 +43,7 @@ import {
 } from "../hooks/use-sales";
 import { downloadReceiptPdf } from "../services/sales.service";
 import { useToast } from "@/hooks/useToast";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore, selectTenant } from "@/store/auth-store";
 import {
   MapPin,
   User,
@@ -84,7 +84,7 @@ export function SaleDetail({
   isLoading,
 }: SaleDetailProps) {
   const { toast } = useToast();
-  const tenant = useAuthStore((s) => s.tenant);
+  const tenant = useAuthStore(selectTenant);
   const addPaymentMutation = useAddPaymentToSale();
   const deleteSaleMutation = useDeleteSale();
   const editSaleMutation = useEditSale();

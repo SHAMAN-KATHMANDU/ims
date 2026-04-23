@@ -124,4 +124,29 @@ export default [
       ],
     },
   },
+  // Phase 9-P: Zustand selector lint rule.
+  // Rule: forbid inline arrow-function selectors in consumer code.
+  // Enforce exported `selectX` selectors instead to prevent unnecessary re-renders.
+  // See .claude/rules/frontend-architecture.md §Zustand store rules.
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    ignores: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/store/**",
+      "**/features/*/store/**",
+      "**/*-store.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.name=/^use[A-Z][a-zA-Z]*Store$/] ArrowFunctionExpression",
+          message:
+            "Pass an exported selector (e.g. selectUserRole) instead of an inline arrow. Inline selectors cause the component to re-render on every store change. See AUDIT §5.8.",
+        },
+      ],
+    },
+  },
 ];

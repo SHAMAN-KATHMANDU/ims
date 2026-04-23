@@ -11,6 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -177,9 +178,11 @@ export function VendorForm({
           <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {editingVendor ? "Save changes" : "Create vendor"}
-          </Button>
+          <SubmitButton
+            isLoading={isLoading}
+            label={editingVendor ? "Save changes" : "Create vendor"}
+            loadingLabel="Saving..."
+          />
         </div>
       </form>
     </Form>

@@ -83,3 +83,11 @@ export const selectIsSelected = (state: ProductSelectionState) =>
   state.isSelected;
 export const selectClearSelection = (state: ProductSelectionState) =>
   state.clearSelection;
+export const selectSetProducts = (state: ProductSelectionState) =>
+  state.setProducts;
+export const selectAddProduct = (state: ProductSelectionState) =>
+  state.addProduct;
+export const selectRemoveProduct = (state: ProductSelectionState) =>
+  state.removeProduct;
+export const selectToggleProduct = (state: ProductSelectionState) =>
+  state.toggleProduct;

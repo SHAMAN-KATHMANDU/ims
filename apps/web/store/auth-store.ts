@@ -106,6 +106,7 @@ export const useAuthStore = create<AuthState>()(
 // Selectors (for optimized re-renders)
 // ============================================
 
+// State selectors
 export const selectUser = (state: AuthState) => state.user;
 export const selectToken = (state: AuthState) => state.token;
 export const selectTenant = (state: AuthState) => state.tenant;
@@ -116,6 +117,8 @@ export const selectIsHydrated = (state: AuthState) => state.isHydrated;
 export const selectTenantWebsiteEnabled = (state: AuthState) =>
   state.tenant?.websiteEnabled === true;
 
+export const selectUserId = (state: AuthState) => state.user?.id ?? "";
+export const selectUsername = (state: AuthState) => state.user?.username ?? "";
 export const selectUserRole = (state: AuthState) => state.user?.role ?? null;
 export const selectIsAdmin = (state: AuthState) =>
   state.user?.role === "admin" || state.user?.role === "superAdmin";
@@ -126,3 +129,10 @@ export const selectTenantSlug = (state: AuthState) =>
 export const selectPlanTier = (state: AuthState) => state.tenant?.plan ?? null;
 export const selectSubscriptionStatus = (state: AuthState) =>
   state.tenant?.subscriptionStatus ?? null;
+
+// Action selectors
+export const selectSetAuth = (state: AuthState) => state.setAuth;
+export const selectSetTenant = (state: AuthState) => state.setTenant;
+export const selectRefreshTenant = (state: AuthState) => state.refreshTenant;
+export const selectClearAuth = (state: AuthState) => state.clearAuth;
+export const selectSetHydrated = (state: AuthState) => state.setHydrated;

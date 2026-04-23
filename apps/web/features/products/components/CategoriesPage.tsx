@@ -41,7 +41,7 @@ import {
   selectSelectedCategoryIds,
   selectClearSelection,
   selectSetCategories,
-} from "@/store/category-selection-store";
+} from "../store/category-selection-store";
 import {
   AlertDialog,
   AlertDialogAction,

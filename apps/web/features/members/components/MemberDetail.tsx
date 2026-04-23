@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -83,16 +83,9 @@ export function MemberDetail({
                   <p className="text-muted-foreground">{member.name}</p>
                 )}
               </div>
-              <Badge
-                variant={member.isActive ? "default" : "secondary"}
-                className={
-                  member.isActive
-                    ? "bg-green-100 text-green-800"
-                    : "bg-gray-100 text-gray-800"
-                }
-              >
+              <StatusBadge variant={member.isActive ? "success" : "muted"}>
                 {member.isActive ? "Active" : "Inactive"}
-              </Badge>
+              </StatusBadge>
             </div>
 
             <Separator />

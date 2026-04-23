@@ -12,7 +12,13 @@ import {
 import type { BlockNode, BlockStyleOverride } from "@repo/shared";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
-import { useEditorStore } from "./editor-store";
+import {
+  useEditorStore,
+  selectDuplicateBlock,
+  selectMoveBlock,
+  selectRemoveBlock,
+  selectUpdateBlockStyle,
+} from "./editor-store";
 
 // ---------------------------------------------------------------------------
 // In-memory style clipboard — survives the editor session, cleared on reload.
@@ -111,10 +117,10 @@ export function BlockContextMenu({
   blocks: BlockNode[];
   onClose: () => void;
 }) {
-  const moveBlock = useEditorStore((s) => s.moveBlock);
-  const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
-  const removeBlock = useEditorStore((s) => s.removeBlock);
-  const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
+  const moveBlock = useEditorStore(selectMoveBlock);
+  const duplicateBlock = useEditorStore(selectDuplicateBlock);
+  const removeBlock = useEditorStore(selectRemoveBlock);
+  const updateBlockStyle = useEditorStore(selectUpdateBlockStyle);
   const clipboard = useStyleClipboard();
   const { toast } = useToast();
 

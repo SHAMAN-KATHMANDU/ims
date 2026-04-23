@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, ListTree, Plus } from "lucide-react";
-import { useProducts, useCategories } from "@/features/products";
+import { useProductsPaginated, useCategories } from "@/features/products";
 import type { PromoCode, CreateOrUpdatePromoData } from "../hooks/use-promos";
 import { PromoFormSchema, type PromoFormInput } from "../validation";
 
@@ -79,7 +79,11 @@ export function PromoForm({
     defaultValues,
   });
 
-  const { data: allProducts = [] } = useProducts();
+  const { data: productsResult } = useProductsPaginated({
+    page: 1,
+    limit: 500,
+  });
+  const allProducts = productsResult?.data ?? [];
   const { data: categories = [] } = useCategories();
 
   const categoryIds = form.watch("categoryIds") ?? [];

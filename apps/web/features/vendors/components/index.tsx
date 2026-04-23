@@ -66,7 +66,7 @@ import {
   selectSelectedVendorIds,
   selectClearSelection,
   selectSetVendors,
-} from "@/store/vendor-selection-store";
+} from "../store/vendor-selection-store";
 import { VendorForm } from "./VendorForm";
 
 export function VendorPage() {

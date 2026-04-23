@@ -10,7 +10,8 @@ import {
   useMemberSelectionStore,
   selectSelectedMemberIds,
   selectClearMemberSelection,
-} from "@/store/member-selection-store";
+  selectSetMembers,
+} from "../store/member-selection-store";
 import { downloadMembers } from "../services/member.service";
 import {
   useMembersPaginated,
@@ -75,9 +76,7 @@ export function MembersPage() {
   // Zustand store for member selection
   const selectedMemberIds = useMemberSelectionStore(selectSelectedMemberIds);
   const clearSelection = useMemberSelectionStore(selectClearMemberSelection);
-  const setSelectedMemberIds = useMemberSelectionStore(
-    (state) => state.setMembers,
-  );
+  const setSelectedMemberIds = useMemberSelectionStore(selectSetMembers);
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);

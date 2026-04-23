@@ -16,6 +16,9 @@ import {
   selectTenant,
   selectIsAuthenticated,
   selectIsHydrated,
+  selectSetAuth,
+  selectSetTenant,
+  selectClearAuth,
 } from "@/store/auth-store";
 import type { LoginCredentials } from "../types";
 
@@ -34,9 +37,9 @@ export function useAuth() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isHydrated = useAuthStore(selectIsHydrated);
 
-  const setAuth = useAuthStore((s) => s.setAuth);
-  const setTenant = useAuthStore((s) => s.setTenant);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const setAuth = useAuthStore(selectSetAuth);
+  const setTenant = useAuthStore(selectSetTenant);
+  const clearAuth = useAuthStore(selectClearAuth);
 
   const {
     data: currentUserData,

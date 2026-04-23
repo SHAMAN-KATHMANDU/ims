@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import type { BlockNode } from "@repo/shared";
 import { cn } from "@/lib/utils";
-import { useEditorStore } from "./editor-store";
+import {
+  useEditorStore,
+  selectSetSelected,
+  selectMoveBlock,
+  selectDuplicateBlock,
+  selectRemoveBlock,
+} from "./editor-store";
 import { BLOCK_CATALOG } from "./block-catalog";
 
 export function BlockActionToolbar({
@@ -23,10 +29,10 @@ export function BlockActionToolbar({
   selectedId: string | null;
   onOpenMenu: (blockId: string, x: number, y: number) => void;
 }) {
-  const setSelected = useEditorStore((s) => s.setSelected);
-  const moveBlock = useEditorStore((s) => s.moveBlock);
-  const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
-  const removeBlock = useEditorStore((s) => s.removeBlock);
+  const setSelected = useEditorStore(selectSetSelected);
+  const moveBlock = useEditorStore(selectMoveBlock);
+  const duplicateBlock = useEditorStore(selectDuplicateBlock);
+  const removeBlock = useEditorStore(selectRemoveBlock);
 
   if (!selectedId) return null;
   const idx = blocks.findIndex((b) => b.id === selectedId);
