@@ -51,7 +51,7 @@ jobs:
   # Skipped entirely on workflow_dispatch (manual builds always run unconditionally).
   changes:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       api: ${{ steps.changes_filter.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web }}
