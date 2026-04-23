@@ -44,11 +44,12 @@ import { getCatalogEntry } from "./block-catalog";
 
 type Props = {
   onOpenPalette: () => void;
+  onContextMenu?: (blockId: string, x: number, y: number) => void;
 };
 
 const CONTAINER_KINDS = new Set(["section", "columns", "css-grid", "row"]);
 
-export function BlockTreePanel({ onOpenPalette }: Props) {
+export function BlockTreePanel({ onOpenPalette, onContextMenu }: Props) {
   const blocks = useEditorStore(selectBlocks);
   const selectedId = useEditorStore(selectSelectedId);
   const setSelected = useEditorStore((s) => s.setSelected);
@@ -107,6 +108,7 @@ export function BlockTreePanel({ onOpenPalette }: Props) {
                     onSelect={setSelected}
                     onRemove={removeBlock}
                     onDuplicate={duplicateBlock}
+                    onContextMenu={onContextMenu}
                   />
                 ))}
               </ul>
@@ -125,6 +127,7 @@ function TreeNode({
   onSelect,
   onRemove,
   onDuplicate,
+  onContextMenu,
 }: {
   block: BlockNode;
   depth: number;
@@ -132,6 +135,7 @@ function TreeNode({
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
+  onContextMenu?: (blockId: string, x: number, y: number) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isContainer = CONTAINER_KINDS.has(block.kind);
@@ -170,6 +174,15 @@ function TreeNode({
             : "border-transparent hover:border-border"
         } ${isDragging ? "z-10 shadow-md" : ""}`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        onContextMenu={
+          onContextMenu
+            ? (e) => {
+                e.preventDefault();
+                onSelect(block.id);
+                onContextMenu(block.id, e.clientX, e.clientY);
+              }
+            : undefined
+        }
       >
         {isContainer ? (
           <button
@@ -255,6 +268,7 @@ function TreeNode({
               onSelect={onSelect}
               onRemove={onRemove}
               onDuplicate={onDuplicate}
+              onContextMenu={onContextMenu}
             />
           ))}
         </ul>

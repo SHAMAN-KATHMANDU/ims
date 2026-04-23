@@ -1,11 +1,20 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
-import { CustomersPromosPage } from "@/features/analytics";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { LoadingPage } from "@/components/layout/loading-page";
 
-export const metadata = { title: "Customers & Promotions Analytics" };
+const CustomersPromosPage = dynamic(
+  () =>
+    import("@/features/analytics").then((m) => ({
+      default: m.CustomersPromosPage,
+    })),
+  { loading: () => <LoadingPage />, ssr: false },
+);
 
 /**
  * Customers, Products & Promotions Analytics – admin/superAdmin only.
