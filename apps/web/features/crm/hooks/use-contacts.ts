@@ -28,6 +28,8 @@ import {
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { useS3DirectUpload } from "@/features/media";
 import { crmKeys } from "./use-crm";
+import { taskKeys } from "./use-tasks";
+import { dealKeys } from "./use-deals";
 
 export const contactKeys = {
   all: ["contacts"] as const,
@@ -38,6 +40,7 @@ export const contactKeys = {
   detail: (id: string) => [...contactKeys.details(), id] as const,
   tags: (params?: GetContactTagsParams) =>
     [...contactKeys.all, "tags", params] as const,
+  tagsAll: () => [...contactKeys.all, "tags"] as const,
 };
 
 export function useContactsPaginated(
@@ -96,8 +99,8 @@ export function useCreateContact() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }
@@ -114,8 +117,8 @@ export function useUpdateContact() {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: contactKeys.detail(id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }
@@ -131,8 +134,8 @@ export function useDeleteContact() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }
@@ -146,7 +149,7 @@ export function useCreateContactTag() {
       return createContactTag(name);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: contactKeys.tagsAll() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -161,7 +164,7 @@ export function useUpdateContactTag() {
       return updateContactTag(id, name);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: contactKeys.tagsAll() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -176,7 +179,7 @@ export function useDeleteContactTag() {
       return deleteContactTag(id);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: contactKeys.tagsAll() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -273,8 +276,8 @@ export function useImportContacts() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }

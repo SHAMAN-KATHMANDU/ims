@@ -17,6 +17,18 @@ import { useAuthStore } from "@/store/auth-store";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/hooks/useToast";
 
+// Extend AxiosRequestConfig so every call-site can pass skipGlobalErrorToast
+// without casting. The response interceptor reads this flag to suppress the
+// global error toast when a mutation already handles errors in its own onError.
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    /** When true, the response interceptor will NOT show a global error toast.
+     *  Use in mutations that handle errors in their own onError handler to
+     *  avoid showing a duplicate toast from both the interceptor and the hook. */
+    skipGlobalErrorToast?: boolean;
+  }
+}
+
 // API base URL from environment variable with fallback
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
@@ -105,9 +117,7 @@ api.interceptors.response.use(
         isHandling401 = false;
       }, 3000);
     } else {
-      const skipToast = (
-        error.config as { skipGlobalErrorToast?: boolean } | undefined
-      )?.skipGlobalErrorToast;
+      const skipToast = error.config?.skipGlobalErrorToast;
       if (typeof window !== "undefined" && skipToast !== true) {
         const message = getApiErrorMessage(error);
         toast({ title: message, variant: "destructive" });

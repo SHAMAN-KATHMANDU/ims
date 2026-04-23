@@ -20,6 +20,7 @@ import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { contactKeys } from "./use-contacts";
 import { dealKeys } from "./use-deals";
 import { crmKeys } from "./use-crm";
+import { workflowKeys } from "./use-workflows";
 
 export const taskKeys = {
   all: ["tasks"] as const,
@@ -74,7 +75,7 @@ export function useCreateTask() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
       if (variables.contactId) {
         qc.refetchQueries({
           queryKey: contactKeys.detail(variables.contactId),
@@ -102,7 +103,7 @@ export function useUpdateTask() {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
       const contactId =
         (data as { task?: { contactId?: string | null } })?.task?.contactId ??
         updateData?.contactId;
@@ -128,7 +129,7 @@ export function useCompleteTask() {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
       const contactId = (data as { task?: { contactId?: string | null } })?.task
         ?.contactId;
       if (contactId) {
@@ -152,7 +153,7 @@ export function useDeleteTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }
@@ -168,7 +169,7 @@ export function useBulkCompleteTasks() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }
@@ -184,7 +185,7 @@ export function useBulkDeleteTasks() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
     },
   });
 }

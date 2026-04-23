@@ -80,6 +80,7 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
     queryKey: locationKeys.list(normalizedParams),
     queryFn: () => getLocations(normalizedParams),
     placeholderData: (previousData) => previousData,
+    staleTime: 10 * 60 * 1000, // 10 minutes — locations are reference data
   });
 }
 

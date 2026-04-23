@@ -11,6 +11,7 @@ import {
   type Activity,
   type GetActivitiesParams,
 } from "../services/activity.service";
+import { crmKeys } from "./use-crm";
 
 export const activityKeys = {
   all: ["activities"] as const,
@@ -71,7 +72,7 @@ export function useCreateActivity() {
           queryKey: activityKeys.byDeal(variables.dealId),
         });
       }
-      qc.invalidateQueries({ queryKey: ["crm"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -86,7 +87,7 @@ export function useDeleteActivity() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: activityKeys.all });
-      qc.invalidateQueries({ queryKey: ["crm"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }

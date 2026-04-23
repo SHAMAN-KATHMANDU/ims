@@ -24,6 +24,8 @@ import {
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { contactKeys } from "./use-contacts";
 import { crmKeys } from "./use-crm";
+import { taskKeys } from "./use-tasks";
+import { workflowKeys } from "./use-workflows";
 
 type DealsKanbanData = {
   pipeline: unknown;
@@ -98,8 +100,8 @@ export function useCreateDeal() {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
       if (variables.contactId) {
         qc.invalidateQueries({
           queryKey: contactKeys.detail(variables.contactId),
@@ -119,11 +121,11 @@ export function useUpdateDeal() {
     },
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
       if (result?.deal?.id && result.deal.id !== variables.id) {
         qc.invalidateQueries({ queryKey: dealKeys.detail(result.deal.id) });
       }
@@ -180,10 +182,10 @@ export function useUpdateDealStage() {
     },
     onSettled: (data, _error, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
       if (variables?.id)
         qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
       if (data?.deal?.id && data.deal.id !== variables?.id)
@@ -202,10 +204,10 @@ export function useDeleteDeal() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
-      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
-      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: workflowKeys.all });
     },
   });
 }
@@ -221,7 +223,7 @@ export function useAddDealLineItem(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -238,7 +240,7 @@ export function useRemoveDealLineItem(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
@@ -255,7 +257,7 @@ export function useConvertDealToSale(dealId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });

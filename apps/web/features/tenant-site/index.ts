@@ -17,6 +17,8 @@ export {
   tenantSiteKeys,
 } from "./hooks/use-tenant-site";
 
+export { siteLayoutKeys } from "./hooks/use-site-layouts";
+
 export type {
   SiteConfig,
   SiteTemplate,

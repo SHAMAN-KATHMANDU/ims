@@ -46,7 +46,7 @@ export function useAuth() {
     queryKey: authKeys.user(),
     queryFn: getCurrentUser,
     enabled: isAuthenticated && isHydrated,
-    staleTime: 5 * 60 * 1000,
+    staleTime: Infinity, // auth user data — invalidate on mutation only
     retry: false,
   });
 

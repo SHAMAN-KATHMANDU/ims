@@ -9,6 +9,7 @@ import {
   type TenantSiteConfig,
   type SiteTemplate,
 } from "../services/site-platform.service";
+import { tenantDomainKeys } from "./use-tenant-domains";
 
 export type { TenantSiteConfig, SiteTemplate };
 
@@ -45,9 +46,7 @@ export function useEnableTenantWebsite(tenantId: string) {
       enableTenantWebsite(tenantId, templateSlug),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantWebsiteKeys.all });
-      queryClient.invalidateQueries({
-        queryKey: ["platform", "tenant-domains"],
-      });
+      queryClient.invalidateQueries({ queryKey: tenantDomainKeys.all });
     },
   });
 }

@@ -17,6 +17,8 @@ import {
 } from "../services/lead.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { crmKeys } from "./use-crm";
+import { contactKeys } from "./use-contacts";
+import { dealKeys } from "./use-deals";
 
 export const leadKeys = {
   all: ["leads"] as const,
@@ -125,8 +127,8 @@ export function useConvertLead() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
-      qc.invalidateQueries({ queryKey: ["contacts"] });
-      qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: contactKeys.all });
+      qc.invalidateQueries({ queryKey: dealKeys.all });
       qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
