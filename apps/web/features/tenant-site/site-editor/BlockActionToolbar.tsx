@@ -37,6 +37,7 @@ export function BlockActionToolbar({
   const canMoveDown = idx < blocks.length - 1;
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- site-editor toolbar stopPropagation; keyboard handled by Button children
     <div
       className="sticky top-3 z-20 mx-auto w-fit animate-in fade-in zoom-in-95 duration-150"
       onClick={(e) => e.stopPropagation()}

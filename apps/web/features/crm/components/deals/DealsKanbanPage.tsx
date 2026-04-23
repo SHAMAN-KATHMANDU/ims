@@ -407,9 +407,10 @@ export function DealsKanbanPage() {
                 </h3>
                 <div className="space-y-2">
                   {col.deals.map((deal) => (
-                    <div
+                    <button
+                      type="button"
                       key={deal.id}
-                      className="rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
+                      className="w-full text-left rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
                       onClick={() =>
                         router.push(`${basePath}/crm/deals/${deal.id}`)
                       }
@@ -438,7 +439,7 @@ export function DealsKanbanPage() {
                           )}
                         </div>
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -690,6 +691,7 @@ function DealCard({
     <>
       <Card className="cursor-grab active:cursor-grabbing hover:bg-muted/50 transition-colors">
         <CardHeader className="p-3 pb-1 flex flex-row items-start gap-2">
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- DnD drag handle; keyboard reorder handled by parent SortableContext */}
           <div
             {...dragHandleProps}
             className="touch-none shrink-0 mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"

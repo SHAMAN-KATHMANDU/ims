@@ -18,6 +18,7 @@ export function EmptyCanvas({
   setQuickAddOpen: (open: boolean) => void;
 }) {
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- canvas stopPropagation guard; not a focusable target
     <div
       className="py-24 px-8 text-center"
       onClick={(e) => e.stopPropagation()}

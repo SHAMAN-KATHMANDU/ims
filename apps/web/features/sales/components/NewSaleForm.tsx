@@ -1159,13 +1159,17 @@ export function NewSaleForm({
                       <SaleSection title="Location & Customer">
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
-                            <Label className="text-xs font-medium text-muted-foreground">
+                            <Label
+                              htmlFor="sale-location-select"
+                              className="text-xs font-medium text-muted-foreground"
+                            >
                               Showroom *
                             </Label>
                             <Controller
                               name="locationId"
                               control={validationForm.control}
                               render={({ field }) => (
+                                /* eslint-disable-next-line jsx-a11y/click-events-have-key-events -- form-field overlay wrapper; dialog opened by onClick handles keyboard */
                                 <div
                                   className={
                                     itemsFields.length > 0
@@ -1188,7 +1192,10 @@ export function NewSaleForm({
                                     }}
                                     disabled={itemsFields.length > 0}
                                   >
-                                    <SelectTrigger className="bg-background border-border">
+                                    <SelectTrigger
+                                      id="sale-location-select"
+                                      className="bg-background border-border"
+                                    >
                                       {itemsFields.length > 0 ? (
                                         <span className="flex items-center gap-2">
                                           <Lock
@@ -1229,7 +1236,10 @@ export function NewSaleForm({
 
                           {/* CRM Contact (primary customer selection) */}
                           <div className="space-y-2">
-                            <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                            <Label
+                              htmlFor="contact-search"
+                              className="text-xs font-medium text-muted-foreground flex items-center gap-1"
+                            >
                               <UserRound
                                 className="h-3 w-3"
                                 aria-hidden="true"
@@ -1268,6 +1278,7 @@ export function NewSaleForm({
                                   aria-hidden="true"
                                 />
                                 <Input
+                                  id="contact-search"
                                   value={contactSearch}
                                   onChange={(e) => {
                                     setContactSearch(e.target.value);
@@ -1322,7 +1333,10 @@ export function NewSaleForm({
 
                         {/* Phone (walk-in or from contact) */}
                         <div className="mt-4 space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">
+                          <Label
+                            htmlFor="customer-phone"
+                            className="text-xs font-medium text-muted-foreground"
+                          >
                             Phone (optional — for walk-in or member lookup)
                           </Label>
                           <Controller
@@ -1552,6 +1566,7 @@ export function NewSaleForm({
                                     .filter(Boolean)
                                     .join(" / ");
                                   return (
+                                    /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- inventory picker row; keyboard navigation handled by combobox parent */
                                     <div
                                       key={inv.id}
                                       className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
@@ -1680,7 +1695,10 @@ export function NewSaleForm({
                               </div>
                               {discountMode === "aggregate" && (
                                 <div className="space-y-2 p-3 bg-muted/30 border rounded-lg">
-                                  <Label className="text-xs font-medium">
+                                  <Label
+                                    htmlFor="aggregate-discount-amount"
+                                    className="text-xs font-medium"
+                                  >
                                     Aggregate Discount (Flat Amount)
                                   </Label>
                                   <div className="flex items-center gap-2">
@@ -1689,6 +1707,7 @@ export function NewSaleForm({
                                       control={validationForm.control}
                                       render={({ field }) => (
                                         <Input
+                                          id="aggregate-discount-amount"
                                           type="number"
                                           min={0}
                                           step={0.01}

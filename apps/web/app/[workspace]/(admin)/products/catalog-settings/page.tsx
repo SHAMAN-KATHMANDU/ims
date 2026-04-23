@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/layout/page-header";
 import { Tags, Layers } from "lucide-react";
 import { CategoriesPage, AttributeTypesPage } from "@/features/products";
 
@@ -24,12 +25,10 @@ export default function CatalogSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Catalog Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage product categories, subcategories, and attribute types.
-        </p>
-      </div>
+      <PageHeader
+        title="Catalog Settings"
+        description="Manage product categories, subcategories, and attribute types."
+      />
 
       <Tabs
         value={activeTab}

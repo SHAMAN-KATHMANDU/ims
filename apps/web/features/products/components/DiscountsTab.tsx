@@ -1150,8 +1150,9 @@ export function DiscountsTab() {
                 Download template
               </Button>
 
-              <div
-                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              <button
+                type="button"
+                className="w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() =>
                   document.getElementById("discount-bulk-input")?.click()
                 }
@@ -1181,7 +1182,7 @@ export function DiscountsTab() {
                     <p className="text-xs">.xlsx, .xls, .csv — max 10 MB</p>
                   </div>
                 )}
-              </div>
+              </button>
 
               {isBulkUploading && (
                 <div className="space-y-1">

@@ -484,9 +484,10 @@ export function LeadsPage() {
           </div>
         ) : (
           leads.map((lead) => (
-            <div
+            <button
+              type="button"
               key={lead.id}
-              className="rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
+              className="w-full text-left rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
               onClick={() => openView(lead.id)}
             >
               <div className="flex items-start justify-between gap-2">
@@ -514,6 +515,7 @@ export function LeadsPage() {
                 {lead.source && <span>{lead.source}</span>}
                 {lead.assignedTo && <span>{lead.assignedTo.username}</span>}
               </div>
+              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation wrapper inside a button; keyboard handled by parent */}
               <div
                 className="flex gap-1 pt-1"
                 onClick={(e) => e.stopPropagation()}
@@ -544,7 +546,7 @@ export function LeadsPage() {
                   Delete
                 </Button>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>

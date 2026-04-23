@@ -156,6 +156,7 @@ export function BlockContextMenu({
   const top = Math.min(state.y, vh - MENU_H - 8);
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- context menu rendered at pointer position; keyboard context menu handled by onContextMenu event
     <div
       role="menu"
       className="fixed z-[110] min-w-[200px] rounded-md border border-border bg-card shadow-xl py-1 text-[12.5px] animate-in fade-in zoom-in-95 duration-100"

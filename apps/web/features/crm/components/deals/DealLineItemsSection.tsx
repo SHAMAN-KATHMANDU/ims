@@ -181,7 +181,7 @@ export function DealLineItemsSection({
                 <th className="text-right p-2 font-medium">Qty</th>
                 <th className="text-right p-2 font-medium">Unit Price</th>
                 <th className="text-right p-2 font-medium">Total</th>
-                <th className="w-10" />
+                <th className="w-10" aria-hidden="true" />
               </tr>
             </thead>
             <tbody>

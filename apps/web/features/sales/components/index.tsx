@@ -41,6 +41,7 @@ import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   Download,
   Upload,
@@ -373,12 +374,10 @@ export function SalesPage() {
 
   return (
     <div className="space-y-6 min-w-0 w-full pb-24">
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Sales</h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Track and manage sales from showrooms
-        </p>
-      </div>
+      <PageHeader
+        title="Sales"
+        description="Track and manage sales from showrooms"
+      />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <SalesFilterBar

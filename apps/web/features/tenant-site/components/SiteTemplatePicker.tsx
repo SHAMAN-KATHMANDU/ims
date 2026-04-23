@@ -225,6 +225,7 @@ export function SiteTemplatePicker({
                   {templates.some((t) => t.slug === "blank") && (
                     <button
                       type="button"
+                      aria-label="Build your own template from a blank canvas"
                       onClick={() => {
                         const blankTpl = templates.find(
                           (t) => t.slug === "blank",

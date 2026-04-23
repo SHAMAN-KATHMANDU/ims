@@ -258,14 +258,14 @@ export function ContactForm({
         </div>
       </div>
       <div>
-        <Label>Company</Label>
+        <Label htmlFor="contact-company-select">Company</Label>
         <Select
           value={form.watch("companyId") || "__none__"}
           onValueChange={(v) =>
             form.setValue("companyId", v === "__none__" ? undefined : v)
           }
         >
-          <SelectTrigger className="mt-1">
+          <SelectTrigger id="contact-company-select" className="mt-1">
             <SelectValue placeholder="Select company" />
           </SelectTrigger>
           <SelectContent>
@@ -280,14 +280,14 @@ export function ContactForm({
       </div>
       {pipelinesEnabled && (
         <div>
-          <Label>Source</Label>
+          <Label htmlFor="contact-source-select">Source</Label>
           <Select
             value={form.watch("source") || "__none__"}
             onValueChange={(v) =>
               form.setValue("source", v === "__none__" ? undefined : v)
             }
           >
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="contact-source-select" className="mt-1">
               <SelectValue placeholder="Select source" />
             </SelectTrigger>
             <SelectContent>
@@ -302,8 +302,12 @@ export function ContactForm({
         </div>
       )}
       <div>
-        <Label>Tags</Label>
-        <div className="flex flex-wrap gap-2 mt-1 items-center">
+        <Label id="contact-tags-label">Tags</Label>
+        <div
+          role="group"
+          aria-labelledby="contact-tags-label"
+          className="flex flex-wrap gap-2 mt-1 items-center"
+        >
           {tags.map((tag) => {
             const current = form.watch("tagIds") ?? [];
             const checked = current.includes(tag.id);

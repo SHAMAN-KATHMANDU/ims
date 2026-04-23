@@ -520,6 +520,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
             </div>
 
             {/* ── Canvas ── */}
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- site-editor canvas; click-to-deselect, drag-drop surface; keyboard shortcuts handled globally */}
             <div
               className="flex-1 overflow-auto relative"
               style={{

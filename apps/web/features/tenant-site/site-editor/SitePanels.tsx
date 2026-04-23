@@ -9,6 +9,7 @@
  */
 
 import { Plus, Image } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SiteOverviewTab } from "../components/SiteOverviewTab";
 import { SiteBrandingForm } from "../components/SiteBrandingForm";
 import { SiteTemplatePicker } from "../components/SiteTemplatePicker";
@@ -108,9 +109,15 @@ export function MediaPanel() {
       title="Media"
       className="p-4"
       headerSlot={
-        <button className="h-7 w-7 grid place-items-center rounded text-muted-foreground/60 hover:bg-muted hover:text-foreground/80">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground/60 hover:text-foreground/80"
+          aria-label="Add media"
+        >
           <Plus size={14} />
-        </button>
+        </Button>
       }
     >
       <div className="flex flex-col items-center justify-center gap-2 h-32 rounded-lg border-2 border-dashed border-border text-[12px] text-muted-foreground/60 hover:border-primary/30 hover:bg-accent/20 cursor-pointer transition-colors">

@@ -294,6 +294,7 @@ function BlockOverlay({
         const active = r.id === hoverId || r.id === selectedId;
         return (
           <div
+            role="presentation"
             key={`grip-${r.id}`}
             onMouseEnter={() => setHoverId(r.id)}
             onMouseLeave={() => setHoverId(null)}
@@ -307,6 +308,7 @@ function BlockOverlay({
             }}
           >
             <div
+              role="presentation"
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData("application/x-editor-reorder", r.id);
@@ -345,6 +347,7 @@ function BlockOverlay({
         const active = dragOverIndex === i;
         return (
           <div
+            role="presentation"
             key={`zone-${i}`}
             onDragEnter={(e) => {
               e.preventDefault();

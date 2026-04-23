@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -389,42 +390,40 @@ export function VendorPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
-          <p className="text-muted-foreground">
-            Manage product vendors and their contact information.
-          </p>
-        </div>
-
-        {isMobile ? (
-          <Button asChild>
-            <Link href={`${basePath}/vendors/new`} className="gap-2">
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              New Vendor
-            </Link>
-          </Button>
-        ) : (
-          <>
+      <PageHeader
+        title="Vendors"
+        description="Manage product vendors and their contact information."
+        actions={
+          isMobile ? (
+            <Button asChild>
+              <Link href={`${basePath}/vendors/new`} className="gap-2">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                New Vendor
+              </Link>
+            </Button>
+          ) : (
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               New Vendor
             </Button>
-            <VendorForm
-              open={dialogOpen}
-              onOpenChange={(o) => {
-                setDialogOpen(o);
-                if (!o) resetForm();
-              }}
-              editingVendor={editingVendor}
-              onSubmit={handleSubmit}
-              onReset={resetForm}
-              isLoading={createMutation.isPending || updateMutation.isPending}
-              renderTrigger={false}
-            />
-          </>
-        )}
-      </div>
+          )
+        }
+      />
+
+      {!isMobile && (
+        <VendorForm
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) resetForm();
+          }}
+          editingVendor={editingVendor}
+          onSubmit={handleSubmit}
+          onReset={resetForm}
+          isLoading={createMutation.isPending || updateMutation.isPending}
+          renderTrigger={false}
+        />
+      )}
 
       {/* Vendor Products Dialog */}
       <Dialog

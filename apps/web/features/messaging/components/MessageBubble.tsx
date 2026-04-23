@@ -570,6 +570,7 @@ export function MessageBubble({
   );
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- hover/touch to reveal action buttons; not a focusable element
     <div
       className={cn(
         "group flex w-full gap-2",
