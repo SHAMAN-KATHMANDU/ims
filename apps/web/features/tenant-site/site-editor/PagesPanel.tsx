@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Search, Plus, Hash, Pencil } from "lucide-react";
 import type { SiteLayoutScope } from "@repo/shared";
 import { cn } from "@/lib/utils";
+import type { PanelId, EditorTarget } from "./types";
 
 // ---------------------------------------------------------------------------
-// Shared types & constants exported for SiteEditorPage
+// Re-export for convenience so callers can grab everything from PagesPanel
 // ---------------------------------------------------------------------------
+export type { PanelId, EditorTarget };
 
 export const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "home", label: "Home" },
@@ -20,22 +22,6 @@ export const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "404", label: "404 page" },
   { value: "landing", label: "Landing page" },
 ];
-
-export type PanelId =
-  | "pages"
-  | "blocks"
-  | "layers"
-  | "media"
-  | "overview"
-  | "branding"
-  | "theme"
-  | "nav"
-  | "seo"
-  | "contact"
-  | "domain"
-  | "blog";
-
-export type EditorTarget = { scope: SiteLayoutScope; pageId: string | null };
 
 // ---------------------------------------------------------------------------
 // PagesPanel
