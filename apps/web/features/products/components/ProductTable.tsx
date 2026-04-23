@@ -16,20 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
-import { Search, Edit2, Trash2, Loader2, X } from "lucide-react";
+import { Search, Loader2, X } from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -37,38 +24,16 @@ import {
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { type SortOrder } from "@/components/ui/table";
 import {
-  getDiscountedPrices,
   getCategoryName,
-  getVariationAttributeDisplay,
-  getVariationTotal,
-  getStockForVariationAtLocation,
-  getTotalStock,
+  getDiscountedPrices,
   getStockAtLocation,
-  getLocationsForVariation,
+  getTotalStock,
 } from "./utils/helpers";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import type { Product, ProductVariation, Category } from "@/features/products";
+import type { Product, Category } from "@/features/products";
 import { formatCurrency } from "@/lib/format";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-
-/** One table row: either one variation of a product, or the product with no variations */
-type ProductTableRow = {
-  product: Product;
-  variation: ProductVariation | null;
-};
+import { ProductTableRowPrimary, ProductDetailSheet } from "./ProductTableRow";
+import type { ProductTableRowData as ProductTableRow } from "./ProductTableRow";
 
 // ============================================
 // Types
@@ -196,31 +161,30 @@ export function ProductTable({
   const [productForDetail, setProductForDetail] = useState<Product | null>(
     null,
   );
-  const [rowLocationByVariationId, setRowLocationByVariationId] = useState<
-    Record<string, string>
-  >({});
-
-  const sheetProduct = productForDetail
-    ? (products.find((p) => p.id === productForDetail.id) ?? productForDetail)
-    : null;
-
-  const selectedLocationName = selectedLocationId
-    ? (() => {
-        for (const v of sheetProduct?.variations ?? []) {
-          const inv = v.locationInventory?.find(
-            (i) => i.location?.id === selectedLocationId,
-          );
-          if (inv?.location?.name) return inv.location.name;
-        }
-        return undefined;
-      })()
-    : undefined;
 
   const { localSearch, handleSearchChange, clearSearch } = useDebouncedSearch(
     searchQuery,
     onSearchChange,
   );
 
+  // ── Stable callbacks ─────────────────────────────────────────────────────
+  const getRowKey = useCallback(
+    (row: ProductTableRow) =>
+      row.variation ? row.variation.id : `${row.product.id}-no-var`,
+    [],
+  );
+
+  const getRowId = useCallback((row: ProductTableRow) => row.product.id, []);
+
+  const handleRowClick = useCallback((row: ProductTableRow) => {
+    setProductForDetail(row.product);
+  }, []);
+
+  const handleDetailSheetOpenChange = useCallback((open: boolean) => {
+    if (!open) setProductForDetail(null);
+  }, []);
+
+  // ── Flattened rows ────────────────────────────────────────────────────────
   const flattenedRows: ProductTableRow[] = useMemo(() => {
     const rows: ProductTableRow[] = [];
     for (const product of products) {
@@ -235,7 +199,10 @@ export function ProductTable({
     return rows;
   }, [products]);
 
-  // Build columns array with conditional cost price columns
+  // ── Columns ───────────────────────────────────────────────────────────────
+  // Heavy cell content (discount prices, stock) is delegated to
+  // ProductTableRowPrimary (React.memo). The cell() call itself is cheap;
+  // React.memo skips re-rendering the component when product is stable.
   const columns: DataTableColumn<ProductTableRow>[] = useMemo(() => {
     const baseColumns: DataTableColumn<ProductTableRow>[] = [
       {
@@ -295,81 +262,33 @@ export function ProductTable({
           {
             id: "normalPrice",
             header: "Normal Price",
-            cell: (row) => {
-              const prices = getDiscountedPrices(row.product);
-              return prices.normal ? (
-                <div>
-                  <div className="font-medium">
-                    {formatCurrency(Number(prices.normal.price))}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({prices.normal.percentage}% off)
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              );
-            },
+            cell: (row) => (
+              <ProductTableRowPrimary row={row} column="normalPrice" />
+            ),
             cellClassName: "text-right",
           },
           {
             id: "specialPrice",
             header: "Special Price",
-            cell: (row) => {
-              const prices = getDiscountedPrices(row.product);
-              return prices.special ? (
-                <div>
-                  <div className="font-medium">
-                    {formatCurrency(Number(prices.special.price))}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({prices.special.percentage}% off)
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              );
-            },
+            cell: (row) => (
+              <ProductTableRowPrimary row={row} column="specialPrice" />
+            ),
             cellClassName: "text-right",
           },
           {
             id: "memberPrice",
             header: "Member Price",
-            cell: (row) => {
-              const prices = getDiscountedPrices(row.product);
-              return prices.member ? (
-                <div>
-                  <div className="font-medium">
-                    {formatCurrency(Number(prices.member.price))}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({prices.member.percentage}% off)
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              );
-            },
+            cell: (row) => (
+              <ProductTableRowPrimary row={row} column="memberPrice" />
+            ),
             cellClassName: "text-right",
           },
           {
             id: "wholesalePrice",
             header: "Wholesale Price",
-            cell: (row) => {
-              const prices = getDiscountedPrices(row.product);
-              return prices.wholesale ? (
-                <div>
-                  <div className="font-medium">
-                    {formatCurrency(Number(prices.wholesale.price))}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({prices.wholesale.percentage}% off)
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">-</span>
-              );
-            },
+            cell: (row) => (
+              <ProductTableRowPrimary row={row} column="wholesalePrice" />
+            ),
             cellClassName: "text-right",
           },
         ]
@@ -380,12 +299,13 @@ export function ProductTable({
         id: "stock",
         header: "Stock",
         sortKey: canSort ? "totalStock" : undefined,
-        cell: (row) => {
-          const stock = selectedLocationId
-            ? getStockAtLocation(row.product, selectedLocationId)
-            : getTotalStock(row.product);
-          return <span className="font-medium">{stock}</span>;
-        },
+        cell: (row) => (
+          <ProductTableRowPrimary
+            row={row}
+            column="stock"
+            selectedLocationId={selectedLocationId}
+          />
+        ),
         cellClassName: "text-right",
       },
     ];
@@ -399,110 +319,126 @@ export function ProductTable({
     ];
   }, [canSort, canSeeCostPrice, categories, selectedLocationId]);
 
-  const renderMobileCard = (row: ProductTableRow) => {
-    const discountedPrices = !canSeeCostPrice
-      ? getDiscountedPrices(row.product)
-      : {};
-    const displayStock = selectedLocationId
-      ? getStockAtLocation(row.product, selectedLocationId)
-      : getTotalStock(row.product);
-    const variationCount = row.product.variations?.length ?? 0;
-    const imsCode = (row.product as { imsCode?: string }).imsCode ?? "—";
+  // ── Mobile card renderer ──────────────────────────────────────────────────
+  const renderMobileCard = useCallback(
+    (row: ProductTableRow) => {
+      const discountedPrices = !canSeeCostPrice
+        ? getDiscountedPrices(row.product)
+        : {};
+      const displayStock = selectedLocationId
+        ? getStockAtLocation(row.product, selectedLocationId)
+        : getTotalStock(row.product);
+      const variationCount = row.product.variations?.length ?? 0;
+      const imsCode = (row.product as { imsCode?: string }).imsCode ?? "—";
 
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 active:bg-muted/60 cursor-pointer"
-        onClick={() => setProductForDetail(row.product)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setProductForDetail(row.product);
-          }
-        }}
-      >
-        <div className="flex gap-3">
-          {onSelectionChange && (
-            <div
-              className="shrink-0 pt-0.5"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <Checkbox
-                checked={selectedProducts.has(row.product.id)}
-                onCheckedChange={(checked) =>
-                  onSelectionChange &&
-                  (() => {
-                    const newSelection = new Set(selectedProducts);
-                    if (checked) {
-                      newSelection.add(row.product.id);
-                    } else {
-                      newSelection.delete(row.product.id);
-                    }
-                    onSelectionChange(newSelection);
-                  })()
-                }
-                aria-label={`Select ${row.product.name}`}
-              />
-            </div>
-          )}
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold leading-snug line-clamp-2">
-                {row.product.name}
-              </p>
-            </div>
-            <p className="font-mono text-xs text-muted-foreground">{imsCode}</p>
-            <p className="text-sm text-muted-foreground line-clamp-1">
-              {getCategoryName(row.product.categoryId, row.product, categories)}
-            </p>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
-              <div>
-                <p className="text-xs text-muted-foreground">MRP</p>
-                <p className="font-medium tabular-nums">
-                  {formatCurrency(Number(row.product.mrp))}
+      return (
+        <div
+          role="button"
+          tabIndex={0}
+          className="w-full rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 active:bg-muted/60 cursor-pointer"
+          onClick={() => setProductForDetail(row.product)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setProductForDetail(row.product);
+            }
+          }}
+        >
+          <div className="flex gap-3">
+            {onSelectionChange && (
+              <div
+                className="shrink-0 pt-0.5"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  checked={selectedProducts.has(row.product.id)}
+                  onCheckedChange={(checked) =>
+                    onSelectionChange &&
+                    (() => {
+                      const newSelection = new Set(selectedProducts);
+                      if (checked) {
+                        newSelection.add(row.product.id);
+                      } else {
+                        newSelection.delete(row.product.id);
+                      }
+                      onSelectionChange(newSelection);
+                    })()
+                  }
+                  aria-label={`Select ${row.product.name}`}
+                />
+              </div>
+            )}
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold leading-snug line-clamp-2">
+                  {row.product.name}
                 </p>
               </div>
-              {canSeeCostPrice && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {imsCode}
+              </p>
+              <p className="text-sm text-muted-foreground line-clamp-1">
+                {getCategoryName(
+                  row.product.categoryId,
+                  row.product,
+                  categories,
+                )}
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm sm:grid-cols-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">Cost</p>
+                  <p className="text-xs text-muted-foreground">MRP</p>
                   <p className="font-medium tabular-nums">
-                    {formatCurrency(Number(row.product.costPrice))}
+                    {formatCurrency(Number(row.product.mrp))}
                   </p>
                 </div>
-              )}
-              <div>
-                <p className="text-xs text-muted-foreground">Stock</p>
-                <p className="font-medium tabular-nums">{displayStock}</p>
+                {canSeeCostPrice && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cost</p>
+                    <p className="font-medium tabular-nums">
+                      {formatCurrency(Number(row.product.costPrice))}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground">Stock</p>
+                  <p className="font-medium tabular-nums">{displayStock}</p>
+                </div>
               </div>
-            </div>
-            {!canSeeCostPrice && (
-              <p className="text-xs text-muted-foreground line-clamp-2">
-                {[
-                  discountedPrices.normal &&
-                    `Normal ${formatCurrency(Number(discountedPrices.normal.price))}`,
-                  discountedPrices.special &&
-                    `Special ${formatCurrency(Number(discountedPrices.special.price))}`,
-                  discountedPrices.member &&
-                    `Member ${formatCurrency(Number(discountedPrices.member.price))}`,
-                  discountedPrices.wholesale &&
-                    `Wholesale ${formatCurrency(Number(discountedPrices.wholesale.price))}`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+              {!canSeeCostPrice && (
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {[
+                    discountedPrices.normal &&
+                      `Normal ${formatCurrency(Number(discountedPrices.normal.price))}`,
+                    discountedPrices.special &&
+                      `Special ${formatCurrency(Number(discountedPrices.special.price))}`,
+                    discountedPrices.member &&
+                      `Member ${formatCurrency(Number(discountedPrices.member.price))}`,
+                    discountedPrices.wholesale &&
+                      `Wholesale ${formatCurrency(Number(discountedPrices.wholesale.price))}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {variationCount > 0
+                  ? `${variationCount} variation${variationCount === 1 ? "" : "s"}`
+                  : "No variations"}
               </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {variationCount > 0
-                ? `${variationCount} variation${variationCount === 1 ? "" : "s"}`
-                : "No variations"}
-            </p>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  };
+      );
+    },
+    [
+      canSeeCostPrice,
+      selectedLocationId,
+      categories,
+      onSelectionChange,
+      selectedProducts,
+    ],
+  );
 
   return (
     <Card>
@@ -563,9 +499,7 @@ export function ProductTable({
         <DataTable<ProductTableRow>
           data={flattenedRows}
           columns={columns}
-          getRowKey={(row) =>
-            row.variation ? row.variation.id : `${row.product.id}-no-var`
-          }
+          getRowKey={getRowKey}
           isLoading={isLoading}
           skeletonRows={pagination.itemsPerPage}
           sort={
@@ -582,7 +516,7 @@ export function ProductTable({
               ? {
                   selectedIds: selectedProducts,
                   onChange: onSelectionChange,
-                  getRowId: (row) => row.product.id,
+                  getRowId,
                 }
               : undefined
           }
@@ -601,243 +535,20 @@ export function ProductTable({
           }}
           renderMobileCard={renderMobileCard}
           mobileBreakpoint="md"
-          onRowClick={(row) => setProductForDetail(row.product)}
+          onRowClick={handleRowClick}
           rowClassName="cursor-pointer hover:bg-muted/50"
         />
 
-        <Sheet
+        <ProductDetailSheet
+          product={productForDetail}
+          products={products}
           open={!!productForDetail}
-          onOpenChange={(open) => {
-            if (!open) {
-              setProductForDetail(null);
-              setRowLocationByVariationId({});
-            }
-          }}
-        >
-          <SheetContent className="flex w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-            {sheetProduct && (
-              <>
-                <div className="shrink-0 border-b bg-muted/20 px-5 pt-4 pb-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {(sheetProduct as { imsCode?: string }).imsCode && (
-                      <span className="rounded-md border bg-background px-2 py-0.5 font-mono text-xs">
-                        {(sheetProduct as { imsCode?: string }).imsCode}
-                      </span>
-                    )}
-                    {selectedLocationId && selectedLocationName && (
-                      <span className="rounded-md border bg-background px-2 py-0.5 text-xs text-muted-foreground">
-                        {selectedLocationName}
-                      </span>
-                    )}
-                  </div>
-                  <SheetHeader className="mt-2 space-y-0">
-                    <SheetTitle className="text-left text-lg">
-                      {sheetProduct.name}
-                    </SheetTitle>
-                  </SheetHeader>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-                  <div className="space-y-4">
-                    <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Variations
-                    </h3>
-                    {!sheetProduct.variations?.length ? (
-                      <p className="text-sm text-muted-foreground">
-                        No variations.
-                      </p>
-                    ) : (
-                      <div className="overflow-x-auto -mx-1 px-1">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[56px]">Photo</TableHead>
-                              <TableHead>Variation</TableHead>
-                              {!selectedLocationId && (
-                                <TableHead>Location</TableHead>
-                              )}
-                              <TableHead className="text-right">
-                                Stock
-                              </TableHead>
-                              {canManageProducts &&
-                                (onEdit || onDeleteVariation) && (
-                                  <TableHead className="w-[100px] text-right">
-                                    Actions
-                                  </TableHead>
-                                )}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {sheetProduct.variations.map((variation) => {
-                              const variationLocations =
-                                getLocationsForVariation(variation);
-                              const rowLocId =
-                                rowLocationByVariationId[variation.id] ??
-                                variationLocations[0]?.id ??
-                                "";
-
-                              const stock = selectedLocationId
-                                ? getStockForVariationAtLocation(
-                                    variation,
-                                    selectedLocationId,
-                                  )
-                                : rowLocId
-                                  ? getStockForVariationAtLocation(
-                                      variation,
-                                      rowLocId,
-                                    )
-                                  : getVariationTotal(variation);
-
-                              const variationPhotos =
-                                (
-                                  variation as {
-                                    photos?: Array<{
-                                      photoUrl: string;
-                                      isPrimary?: boolean;
-                                    }>;
-                                  }
-                                ).photos ?? [];
-                              const primaryPhoto =
-                                variationPhotos.find((p) => p.isPrimary) ??
-                                variationPhotos[0];
-
-                              return (
-                                <TableRow key={variation.id}>
-                                  <TableCell className="w-[56px] p-1 align-middle">
-                                    {primaryPhoto?.photoUrl ? (
-                                      <div className="relative h-12 w-12 rounded border overflow-hidden shrink-0 bg-muted">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                          src={primaryPhoto.photoUrl}
-                                          alt=""
-                                          className="h-full w-full object-cover"
-                                          onError={(e) => {
-                                            e.currentTarget.style.display =
-                                              "none";
-                                          }}
-                                        />
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted-foreground text-xs">
-                                        —
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="font-medium">
-                                    {getVariationAttributeDisplay(variation) ||
-                                      "—"}
-                                  </TableCell>
-                                  {!selectedLocationId && (
-                                    <TableCell>
-                                      {variationLocations.length > 0 ? (
-                                        <Select
-                                          value={rowLocId || "_none"}
-                                          onValueChange={(value) => {
-                                            if (value === "_none") return;
-                                            setRowLocationByVariationId(
-                                              (prev) => ({
-                                                ...prev,
-                                                [variation.id]: value,
-                                              }),
-                                            );
-                                          }}
-                                        >
-                                          <SelectTrigger className="h-8 text-sm w-[140px]">
-                                            <SelectValue placeholder="Location" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {variationLocations.map((loc) => (
-                                              <SelectItem
-                                                key={loc.id}
-                                                value={loc.id}
-                                              >
-                                                {loc.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <span className="text-sm text-muted-foreground">
-                                          —
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                  )}
-                                  <TableCell className="text-right">
-                                    {stock}
-                                  </TableCell>
-                                  {canManageProducts &&
-                                    (onEdit || onDeleteVariation) && (
-                                      <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                          {onEdit && (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() =>
-                                                      onEdit(sheetProduct)
-                                                    }
-                                                    aria-label={`Edit ${sheetProduct.name}`}
-                                                  >
-                                                    <Edit2
-                                                      className="h-4 w-4"
-                                                      aria-hidden="true"
-                                                    />
-                                                  </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                  Edit product
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          )}
-                                          {onDeleteVariation && (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    onClick={() =>
-                                                      onDeleteVariation(
-                                                        sheetProduct,
-                                                        variation.id,
-                                                      )
-                                                    }
-                                                    aria-label={`Delete variation ${getVariationAttributeDisplay(variation) || variation.id}`}
-                                                  >
-                                                    <Trash2
-                                                      className="h-4 w-4"
-                                                      aria-hidden="true"
-                                                    />
-                                                  </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                  Delete variation
-                                                </TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                    )}
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </SheetContent>
-        </Sheet>
+          onOpenChange={handleDetailSheetOpenChange}
+          selectedLocationId={selectedLocationId}
+          canManageProducts={canManageProducts}
+          onEdit={onEdit}
+          onDeleteVariation={onDeleteVariation}
+        />
 
         <DataTablePagination
           pagination={pagination}

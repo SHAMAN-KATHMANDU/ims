@@ -1,11 +1,20 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import {
   EnvFeaturePageGuard,
   TenantWebsitePageGuard,
   EnvFeature,
 } from "@/features/flags";
-import { SiteEditorPage } from "@/features/tenant-site/site-editor/SiteEditorPage";
+import { LoadingPage } from "@/components/layout/loading-page";
 
-export const metadata = { title: "Site Designer" };
+const SiteEditorPage = dynamic(
+  () =>
+    import("@/features/tenant-site/site-editor/SiteEditorPage").then((m) => ({
+      default: m.SiteEditorPage,
+    })),
+  { loading: () => <LoadingPage />, ssr: false },
+);
 
 /**
  * Full-screen Webflow-style block editor.
