@@ -2,25 +2,18 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Building2, MoreHorizontal, Pencil, UserX } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Building2, UserX } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { type SortOrder } from "@/components/ui/table";
 import type { Tenant } from "../../hooks/use-tenants";
 
 interface TenantTableProps {
@@ -48,21 +41,18 @@ export function TenantTable({
   basePath,
   onDeactivate,
 }: TenantTableProps) {
-  const [sortBy, setSortBy] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
+  const [sortBy, setSortBy] = useState("");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("none");
 
-  const handleSort = useCallback(
-    (key: string, order: "asc" | "desc" | "none") => {
-      if (order === "none") {
-        setSortBy("");
-        setSortOrder("none");
-        return;
-      }
-      setSortBy(key);
-      setSortOrder(order);
-    },
-    [],
-  );
+  const handleSort = useCallback((key: string, order: SortOrder) => {
+    if (order === "none") {
+      setSortBy("");
+      setSortOrder("none");
+      return;
+    }
+    setSortBy(key);
+    setSortOrder(order);
+  }, []);
 
   const displayTenants = useMemo(() => {
     if (sortOrder === "none" || !sortBy) return tenants;
@@ -83,161 +73,95 @@ export function TenantTable({
     });
   }, [tenants, sortBy, sortOrder]);
 
-  if (isLoading) {
-    return (
-      <div
-        className="rounded-md border"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <span className="sr-only">Loading tenants…</span>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Plan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Users</TableHead>
-              <TableHead>Products</TableHead>
-              <TableHead className="w-[70px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {[1, 2, 3].map((i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <Skeleton className="h-4 w-32" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-12" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-8 w-8" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }
-
-  if (tenants.length === 0) {
-    return (
-      <div className="rounded-md border p-8 text-center">
-        <Building2
-          className="mx-auto h-12 w-12 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <h3 className="mt-4 text-lg font-semibold">No tenants yet</h3>
-        <p className="text-muted-foreground mt-2">
-          Onboard your first organization to get started.
-        </p>
-      </div>
-    );
-  }
+  const columns: DataTableColumn<Tenant>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortKey: "name",
+      cellClassName: "font-medium",
+      cell: (t) => t.name,
+    },
+    {
+      id: "slug",
+      header: "Slug",
+      cellClassName: "font-mono text-sm",
+      cell: (t) => t.slug,
+    },
+    {
+      id: "plan",
+      header: "Plan",
+      sortKey: "plan",
+      cell: (t) => <Badge variant="outline">{t.plan}</Badge>,
+    },
+    {
+      id: "subscriptionStatus",
+      header: "Status",
+      sortKey: "subscriptionStatus",
+      cell: (t) => (
+        <Badge variant={STATUS_VARIANT[t.subscriptionStatus] ?? "secondary"}>
+          {t.subscriptionStatus}
+        </Badge>
+      ),
+    },
+    {
+      id: "users",
+      header: "Users",
+      cell: (t) => t._count?.users ?? "—",
+    },
+    {
+      id: "products",
+      header: "Products",
+      cell: (t) => t._count?.products ?? "—",
+    },
+  ];
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <SortableTableHead
-              sortKey="name"
-              currentSortBy={sortBy || undefined}
-              currentSortOrder={sortOrder}
-              onSort={handleSort}
-            >
-              Name
-            </SortableTableHead>
-            <TableHead>Slug</TableHead>
-            <SortableTableHead
-              sortKey="plan"
-              currentSortBy={sortBy || undefined}
-              currentSortOrder={sortOrder}
-              onSort={handleSort}
-            >
-              Plan
-            </SortableTableHead>
-            <SortableTableHead
-              sortKey="subscriptionStatus"
-              currentSortBy={sortBy || undefined}
-              currentSortOrder={sortOrder}
-              onSort={handleSort}
-            >
-              Status
-            </SortableTableHead>
-            <TableHead>Users</TableHead>
-            <TableHead>Products</TableHead>
-            <TableHead className="w-[70px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayTenants.map((tenant) => (
-            <TableRow key={tenant.id}>
-              <TableCell className="font-medium">{tenant.name}</TableCell>
-              <TableCell className="font-mono text-sm">{tenant.slug}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{tenant.plan}</Badge>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant={
-                    STATUS_VARIANT[tenant.subscriptionStatus] ?? "secondary"
-                  }
-                >
-                  {tenant.subscriptionStatus}
-                </Badge>
-              </TableCell>
-              <TableCell>{tenant._count?.users ?? "—"}</TableCell>
-              <TableCell>{tenant._count?.products ?? "—"}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-                      <span className="sr-only">Actions for {tenant.name}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`${basePath}/platform/tenants/${tenant.id}/edit`}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                        Edit
-                      </Link>
-                    </DropdownMenuItem>
-                    {tenant.isActive && onDeactivate && (
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => onDeactivate(tenant)}
-                      >
-                        <UserX className="mr-2 h-4 w-4" aria-hidden="true" />
-                        Deactivate
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <DataTable<Tenant>
+      data={displayTenants}
+      columns={columns}
+      getRowKey={(t) => t.id}
+      isLoading={isLoading}
+      skeletonRows={3}
+      sort={{ sortBy, sortOrder, onSort: handleSort }}
+      emptyState={{
+        title: "No tenants yet",
+        description: (
+          <>
+            <Building2
+              className="mx-auto mb-2 h-12 w-12 text-muted-foreground"
+              aria-hidden="true"
+            />
+            Onboard your first organization to get started.
+          </>
+        ),
+      }}
+      actions={(t) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Actions for {t.name}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href={`${basePath}/platform/tenants/${t.id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+            {t.isActive && onDeactivate && (
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDeactivate(t)}
+              >
+                <UserX className="mr-2 h-4 w-4" aria-hidden="true" />
+                Deactivate
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    />
   );
 }
