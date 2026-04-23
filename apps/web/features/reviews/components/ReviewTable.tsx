@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Check, Star, Trash2, X } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
@@ -84,7 +84,7 @@ export function ReviewTable({
     {
       id: "status",
       header: "Status",
-      cell: (r) => <StatusBadge status={r.status} />,
+      cell: (r) => <ReviewStatusBadge status={r.status} />,
     },
     {
       id: "createdAt",
@@ -189,29 +189,25 @@ function RatingStars({ value }: { value: number }) {
   );
 }
 
-const STATUS_VARIANT: Record<
-  ReviewStatus,
-  { label: string; className: string }
-> = {
-  PENDING: {
-    label: "Pending",
-    className: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-  },
-  APPROVED: {
-    label: "Approved",
-    className: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
-  },
-  REJECTED: {
-    label: "Rejected",
-    className: "bg-red-100 text-red-800 hover:bg-red-100",
-  },
+const STATUS_VARIANT: Record<ReviewStatus, string> = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
 };
 
-function StatusBadge({ status }: { status: ReviewStatus }) {
-  const v = STATUS_VARIANT[status];
+const STATUS_BADGE_VARIANT: Record<
+  ReviewStatus,
+  "warning" | "success" | "danger"
+> = {
+  PENDING: "warning",
+  APPROVED: "success",
+  REJECTED: "danger",
+};
+
+function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   return (
-    <Badge variant="secondary" className={v.className}>
-      {v.label}
-    </Badge>
+    <StatusBadge variant={STATUS_BADGE_VARIANT[status]}>
+      {STATUS_VARIANT[status]}
+    </StatusBadge>
   );
 }

@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useEditorStore } from "./editor-store";
+import { useEditorStore, selectUpdateBlockProps } from "./editor-store";
 import type {
   NavBarProps,
   FooterColumnsProps,
@@ -106,7 +106,7 @@ const ALIGN_OPTIONS = [
 // ---------------------------------------------------------------------------
 
 export function NavBarInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as NavBarProps;
 
   const patch = (partial: Partial<NavBarProps>) =>
@@ -285,7 +285,7 @@ function NavItemRow({
 // ---------------------------------------------------------------------------
 
 export function LogoMarkInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as LogoMarkProps;
   const patch = (partial: Partial<LogoMarkProps>) =>
     updateBlockProps(block.id, { ...props, ...partial } as never);
@@ -359,7 +359,7 @@ export function LogoMarkInspector({ block }: { block: BlockNode }) {
 // ---------------------------------------------------------------------------
 
 export function UtilityBarInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as UtilityBarProps;
   const patch = (partial: Partial<UtilityBarProps>) =>
     updateBlockProps(block.id, { ...props, ...partial } as never);
@@ -439,7 +439,7 @@ export function UtilityBarInspector({ block }: { block: BlockNode }) {
 // ---------------------------------------------------------------------------
 
 export function FooterColumnsInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as FooterColumnsProps;
   const [expandedCols, setExpandedCols] = useState<Record<number, boolean>>({});
 
@@ -716,7 +716,7 @@ const SOCIAL_PLATFORMS = [
 ];
 
 export function SocialLinksInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as SocialLinksProps;
   const patch = (partial: Partial<SocialLinksProps>) =>
     updateBlockProps(block.id, { ...props, ...partial } as never);
@@ -890,7 +890,7 @@ const PAYMENT_METHODS = [
 ];
 
 export function PaymentIconsInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as PaymentIconsProps;
   const patch = (partial: Partial<PaymentIconsProps>) =>
     updateBlockProps(block.id, { ...props, ...partial } as never);
@@ -980,7 +980,7 @@ export function PaymentIconsInspector({ block }: { block: BlockNode }) {
 // ---------------------------------------------------------------------------
 
 export function CopyrightBarInspector({ block }: { block: BlockNode }) {
-  const updateBlockProps = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const props = block.props as CopyrightBarProps;
   const patch = (partial: Partial<CopyrightBarProps>) =>
     updateBlockProps(block.id, { ...props, ...partial } as never);

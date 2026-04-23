@@ -9,7 +9,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 import {
   getProducts,
-  getAllProducts,
   getProductById,
   createProduct,
   updateProduct,
@@ -146,17 +145,6 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     queryFn: () => getProducts(normalizedParams),
     placeholderData: (previousData) => previousData,
     refetchOnWindowFocus: true,
-  });
-}
-
-/**
- * Hook for fetching all products without pagination
- * @deprecated Use useProductsPaginated for better performance
- */
-export function useProducts() {
-  return useQuery({
-    queryKey: productKeys.lists(),
-    queryFn: getAllProducts,
   });
 }
 

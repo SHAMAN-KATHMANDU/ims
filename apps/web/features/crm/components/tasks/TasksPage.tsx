@@ -15,7 +15,7 @@ import {
   useBulkDeleteTasks,
 } from "../../hooks/use-tasks";
 import { useUsers } from "@/features/users";
-import { useTaskSelectionStore } from "@/store/task-selection-store";
+import { useTaskSelectionStore } from "../../store/task-selection-store";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";

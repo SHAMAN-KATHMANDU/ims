@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Ban } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { TableRow, type SortOrder } from "@/components/ui/table";
@@ -22,18 +22,21 @@ interface GiftCardTableProps {
   onClearFilters?: () => void;
 }
 
-const STATUS_STYLES: Record<GiftCardStatus, string> = {
-  ACTIVE: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100",
-  REDEEMED: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  EXPIRED: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-  VOIDED: "bg-muted text-muted-foreground",
-};
-
 const STATUS_LABEL: Record<GiftCardStatus, string> = {
   ACTIVE: "Active",
   REDEEMED: "Redeemed",
   EXPIRED: "Expired",
   VOIDED: "Voided",
+};
+
+const STATUS_VARIANT: Record<
+  GiftCardStatus,
+  "success" | "info" | "warning" | "muted"
+> = {
+  ACTIVE: "success",
+  REDEEMED: "info",
+  EXPIRED: "warning",
+  VOIDED: "muted",
 };
 
 function formatCents(cents: number): string {
@@ -74,9 +77,9 @@ export function GiftCardTable({
       id: "status",
       header: "Status",
       cell: (gc) => (
-        <Badge variant="secondary" className={STATUS_STYLES[gc.status]}>
+        <StatusBadge variant={STATUS_VARIANT[gc.status]}>
           {STATUS_LABEL[gc.status]}
-        </Badge>
+        </StatusBadge>
       ),
     },
     {

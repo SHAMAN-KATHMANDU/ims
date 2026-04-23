@@ -47,7 +47,8 @@ import {
   useUserSelectionStore,
   selectSelectedUserIds,
   selectClearUserSelection,
-} from "@/store/user-selection-store";
+  selectSetUsers,
+} from "../store/user-selection-store";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -82,7 +83,7 @@ export function UsersPage() {
 
   const selectedUserIds = useUserSelectionStore(selectSelectedUserIds);
   const clearSelection = useUserSelectionStore(selectClearUserSelection);
-  const setUsers = useUserSelectionStore((s) => s.setUsers);
+  const setUsers = useUserSelectionStore(selectSetUsers);
 
   const handleColumnSort = useCallback(
     (by: string, order: "asc" | "desc" | "none") => {

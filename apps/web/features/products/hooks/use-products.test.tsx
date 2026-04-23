@@ -47,11 +47,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientWrapper>{children}</QueryClientWrapper>
 );
 
-import {
-  useProductsPaginated,
-  useProducts,
-  useCreateProduct,
-} from "./use-products";
+import { useProductsPaginated, useCreateProduct } from "./use-products";
 
 describe("useProductsPaginated", () => {
   beforeEach(() => {
@@ -79,24 +75,6 @@ describe("useProductsPaginated", () => {
       }),
     );
     expect(result.current.data?.data).toEqual([]);
-  });
-});
-
-describe("useProducts", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetAllProducts.mockResolvedValue([]);
-  });
-
-  it("calls getAllProducts", async () => {
-    const { result } = renderHook(() => useProducts(), { wrapper });
-
-    await waitFor(() => {
-      expect(result.current.data).toBeDefined();
-    });
-
-    expect(mockGetAllProducts).toHaveBeenCalled();
-    expect(result.current.data).toEqual([]);
   });
 });
 

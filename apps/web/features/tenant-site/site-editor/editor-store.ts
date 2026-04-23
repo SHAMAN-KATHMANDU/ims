@@ -277,3 +277,26 @@ export const selectSelectedBlock = (s: EditorState): BlockNode | null => {
   return s.present.blocks.find((b) => b.id === s.selectedId) ?? null;
 };
 export const selectDirty = (s: EditorState) => s.dirty;
+
+// Action selectors
+export const selectSetSelected = (s: EditorState) => s.setSelected;
+export const selectLoad = (s: EditorState) => s.load;
+export const selectMarkClean = (s: EditorState) => s.markClean;
+export const selectAddBlock = (s: EditorState) => s.addBlock;
+export const selectRemoveBlock = (s: EditorState) => s.removeBlock;
+export const selectMoveBlock = (s: EditorState) => s.moveBlock;
+export const selectMoveBlockTo = (s: EditorState) => s.moveBlockTo;
+export const selectUpdateBlockProps = (s: EditorState) => s.updateBlockProps;
+export const selectUpdateBlockVisibility = (s: EditorState) =>
+  s.updateBlockVisibility;
+export const selectUpdateBlockId = (s: EditorState) => s.updateBlockId;
+export const selectUpdateBlockStyle = (s: EditorState) => s.updateBlockStyle;
+export const selectDuplicateBlock = (s: EditorState) => s.duplicateBlock;
+export const selectUpdateBlockResponsive = (s: EditorState) =>
+  s.updateBlockResponsive;
+export const selectUndo = (s: EditorState) => s.undo;
+export const selectRedo = (s: EditorState) => s.redo;
+export const selectCanUndo = (s: EditorState) => s.canUndo;
+export const selectCanRedo = (s: EditorState) => s.canRedo;
+export const selectCanUndoResult = (s: EditorState) => s.canUndo();
+export const selectCanRedoResult = (s: EditorState) => s.canRedo();

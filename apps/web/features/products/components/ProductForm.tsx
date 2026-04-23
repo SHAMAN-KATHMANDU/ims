@@ -9,6 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChevronLeft,
@@ -339,9 +340,11 @@ export function ProductForm({
               Next <ChevronRight className="h-4 w-4 ml-1" aria-hidden="true" />
             </Button>
           ) : (
-            <Button type="submit" disabled={form.isLoading}>
-              {form.isLoading ? "Saving..." : editingProduct ? "Update" : "Add"}
-            </Button>
+            <SubmitButton
+              isLoading={form.isLoading}
+              label={editingProduct ? "Update" : "Add"}
+              loadingLabel="Saving..."
+            />
           )}
         </div>
       </div>

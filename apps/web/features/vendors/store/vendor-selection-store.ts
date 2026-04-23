@@ -76,3 +76,10 @@ export const selectClearSelection = (state: VendorSelectionState) =>
   state.clearSelection;
 export const selectSetVendors = (state: VendorSelectionState) =>
   state.setVendors;
+export const selectAddVendor = (state: VendorSelectionState) => state.addVendor;
+export const selectRemoveVendor = (state: VendorSelectionState) =>
+  state.removeVendor;
+export const selectToggleVendor = (state: VendorSelectionState) =>
+  state.toggleVendor;
+export const selectIsVendorSelected = (state: VendorSelectionState) =>
+  state.isSelected;

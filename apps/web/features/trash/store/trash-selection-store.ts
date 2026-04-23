@@ -73,3 +73,13 @@ export const selectTrashSelectionCount = (state: TrashSelectionState) =>
   state.selectedTrashKeys.size;
 export const selectClearTrashSelection = (state: TrashSelectionState) =>
   state.clearSelection;
+export const selectSetTrashKeys = (state: TrashSelectionState) =>
+  state.setTrashKeys;
+export const selectAddTrashKey = (state: TrashSelectionState) =>
+  state.addTrashKey;
+export const selectRemoveTrashKey = (state: TrashSelectionState) =>
+  state.removeTrashKey;
+export const selectToggleTrashKey = (state: TrashSelectionState) =>
+  state.toggleTrashKey;
+export const selectIsTrashKeySelected = (state: TrashSelectionState) =>
+  state.isSelected;

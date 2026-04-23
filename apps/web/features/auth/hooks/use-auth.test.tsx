@@ -40,6 +40,11 @@ vi.mock("@/store/auth-store", () => ({
   selectTenant: (s: { tenant: unknown }) => s.tenant,
   selectIsAuthenticated: (s: { token: unknown }) => !!s.token,
   selectIsHydrated: (s: { isHydrated: unknown }) => s.isHydrated,
+  selectSetAuth: (s: { setAuth: unknown }) => s.setAuth,
+  selectSetTenant: (s: { setTenant: unknown }) => s.setTenant,
+  selectRefreshTenant: (s: { refreshTenant: unknown }) => s.refreshTenant,
+  selectClearAuth: (s: { clearAuth: unknown }) => s.clearAuth,
+  selectSetHydrated: (s: { setHydrated: unknown }) => s.setHydrated,
 }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (

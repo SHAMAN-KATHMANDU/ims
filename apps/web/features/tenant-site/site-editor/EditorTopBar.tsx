@@ -23,7 +23,14 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEditorStore, selectDirty } from "./editor-store";
+import {
+  useEditorStore,
+  selectDirty,
+  selectRedo,
+  selectUndo,
+  selectCanUndoResult,
+  selectCanRedoResult,
+} from "./editor-store";
 import { DEVICES, ACCENT, type DeviceKey } from "./editor-config";
 import type { PanelId } from "./types";
 
@@ -59,10 +66,10 @@ export function EditorTopBar({
   previewUrl,
   setPublishOpen,
 }: EditorTopBarProps) {
-  const canUndo = useEditorStore((s) => s.canUndo());
-  const canRedo = useEditorStore((s) => s.canRedo());
-  const undo = useEditorStore((s) => s.undo);
-  const redo = useEditorStore((s) => s.redo);
+  const canUndo = useEditorStore(selectCanUndoResult);
+  const canRedo = useEditorStore(selectCanRedoResult);
+  const undo = useEditorStore(selectUndo);
+  const redo = useEditorStore(selectRedo);
   const dirty = useEditorStore(selectDirty);
 
   return (

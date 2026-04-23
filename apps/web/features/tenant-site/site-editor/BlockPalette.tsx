@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SiteLayoutScope } from "@repo/shared";
-import { useEditorStore } from "./editor-store";
+import { useEditorStore, selectAddBlock } from "./editor-store";
 import {
   BLOCK_CATALOG,
   createBlockFromCatalog,
@@ -50,7 +50,7 @@ const CATEGORY_LABEL: Record<CatalogCategory, string> = {
 };
 
 export function BlockPalette({ open, onOpenChange, scope }: Props) {
-  const addBlock = useEditorStore((s) => s.addBlock);
+  const addBlock = useEditorStore(selectAddBlock);
   const [filter, setFilter] = useState("");
 
   const filtered = useMemo(() => {

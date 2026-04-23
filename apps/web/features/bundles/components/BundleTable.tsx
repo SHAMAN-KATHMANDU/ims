@@ -3,7 +3,7 @@
 import { format } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { type SortOrder } from "@/components/ui/table";
@@ -81,16 +81,9 @@ export function BundleTable({
       id: "status",
       header: "Status",
       cell: (b) => (
-        <Badge
-          variant="secondary"
-          className={
-            b.active
-              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-              : "bg-muted text-muted-foreground"
-          }
-        >
+        <StatusBadge variant={b.active ? "success" : "muted"}>
           {b.active ? "Active" : "Inactive"}
-        </Badge>
+        </StatusBadge>
       ),
     },
     {

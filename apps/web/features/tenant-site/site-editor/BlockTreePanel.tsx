@@ -39,7 +39,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEditorStore, selectBlocks, selectSelectedId } from "./editor-store";
+import {
+  selectBlocks,
+  selectDuplicateBlock,
+  selectMoveBlockTo,
+  selectRemoveBlock,
+  selectSelectedId,
+  selectSetSelected,
+  useEditorStore,
+} from "./editor-store";
 import { getCatalogEntry } from "./block-catalog";
 
 type Props = {
@@ -52,10 +60,10 @@ const CONTAINER_KINDS = new Set(["section", "columns", "css-grid", "row"]);
 export function BlockTreePanel({ onOpenPalette, onContextMenu }: Props) {
   const blocks = useEditorStore(selectBlocks);
   const selectedId = useEditorStore(selectSelectedId);
-  const setSelected = useEditorStore((s) => s.setSelected);
-  const moveBlockTo = useEditorStore((s) => s.moveBlockTo);
-  const removeBlock = useEditorStore((s) => s.removeBlock);
-  const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
+  const setSelected = useEditorStore(selectSetSelected);
+  const moveBlockTo = useEditorStore(selectMoveBlockTo);
+  const removeBlock = useEditorStore(selectRemoveBlock);
+  const duplicateBlock = useEditorStore(selectDuplicateBlock);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),

@@ -5,7 +5,7 @@
  */
 
 import { create } from "zustand";
-import { selectionStoreImpl } from "./createSelectionStore";
+import { selectionStoreImpl } from "@/lib/create-selection-store";
 
 interface SaleSelectionState {
   selectedSaleIds: Set<string>;
@@ -49,3 +49,7 @@ export const selectIsSaleSelected = (state: SaleSelectionState) =>
   state.isSelected;
 export const selectClearSaleSelection = (state: SaleSelectionState) =>
   state.clearSelection;
+export const selectSetSales = (state: SaleSelectionState) => state.setSales;
+export const selectAddSale = (state: SaleSelectionState) => state.addSale;
+export const selectRemoveSale = (state: SaleSelectionState) => state.removeSale;
+export const selectToggleSale = (state: SaleSelectionState) => state.toggleSale;

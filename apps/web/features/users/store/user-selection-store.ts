@@ -5,7 +5,7 @@
  */
 
 import { create } from "zustand";
-import { selectionStoreImpl } from "./createSelectionStore";
+import { selectionStoreImpl } from "@/lib/create-selection-store";
 
 interface UserSelectionState {
   selectedUserIds: Set<string>;
@@ -17,7 +17,10 @@ interface UserSelectionState {
   isSelected: (userId: string) => boolean;
 }
 
-export const useUserSelectionStore = create<UserSelectionState>()((set, get) => {
+export const useUserSelectionStore = create<UserSelectionState>()((
+  set,
+  get,
+) => {
   const impl = selectionStoreImpl(
     set as (
       p:
@@ -42,3 +45,9 @@ export const selectSelectedUserIds = (state: UserSelectionState) =>
   state.selectedUserIds;
 export const selectClearUserSelection = (state: UserSelectionState) =>
   state.clearSelection;
+export const selectSetUsers = (state: UserSelectionState) => state.setUsers;
+export const selectAddUser = (state: UserSelectionState) => state.addUser;
+export const selectRemoveUser = (state: UserSelectionState) => state.removeUser;
+export const selectToggleUser = (state: UserSelectionState) => state.toggleUser;
+export const selectIsUserSelected = (state: UserSelectionState) =>
+  state.isSelected;

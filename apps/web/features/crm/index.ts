@@ -50,3 +50,9 @@ export { CompanyForm } from "./components/companies/CompanyForm";
 export { TaskForm } from "./components/tasks/TaskForm";
 export { LeadForm } from "./components/leads/LeadForm";
 export { DealForm } from "./components/deals/DealForm";
+
+export {
+  useTaskSelectionStore,
+  selectSelectedTaskIds,
+  selectClearTaskSelection,
+} from "./store/task-selection-store";

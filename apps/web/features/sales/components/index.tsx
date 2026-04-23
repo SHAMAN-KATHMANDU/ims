@@ -21,7 +21,8 @@ import {
   useSaleSelectionStore,
   selectSelectedSaleIds,
   selectClearSaleSelection,
-} from "@/store/sale-selection-store";
+  selectSetSales,
+} from "../store/sale-selection-store";
 import { downloadSales } from "../services/sales.service";
 import {
   useSalesPaginated,
@@ -87,7 +88,7 @@ export function SalesPage() {
   // Zustand store for sale selection
   const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
   const clearSelection = useSaleSelectionStore(selectClearSaleSelection);
-  const setSelectedSaleIds = useSaleSelectionStore((state) => state.setSales);
+  const setSelectedSaleIds = useSaleSelectionStore(selectSetSales);
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);

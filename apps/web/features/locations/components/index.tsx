@@ -52,7 +52,8 @@ import {
   useLocationSelectionStore,
   selectSelectedLocationIds,
   selectClearLocationSelection,
-} from "@/store/location-selection-store";
+  selectSetLocations,
+} from "../store/location-selection-store";
 import { BulkDeleteLocationsDialog } from "./BulkDeleteLocationsDialog";
 import { useTenantUsage } from "@/features/dashboard";
 
@@ -90,7 +91,7 @@ export function LocationsPage() {
   const clearSelection = useLocationSelectionStore(
     selectClearLocationSelection,
   );
-  const setLocations = useLocationSelectionStore((s) => s.setLocations);
+  const setLocations = useLocationSelectionStore(selectSetLocations);
 
   // Data fetching — refetch on this page when dialog closes
   const {

@@ -16,10 +16,18 @@ import { useSiteConfig } from "../hooks/use-tenant-site";
 import { useTenantPages } from "@/features/tenant-pages";
 import { useProductsPaginated } from "@/features/products";
 import {
-  useEditorStore,
+  selectAddBlock,
   selectBlocks,
   selectDirty,
+  selectLoad,
+  selectMarkClean,
+  selectMoveBlockTo,
+  selectRedo,
   selectSelectedId,
+  selectSetSelected,
+  selectUndo,
+  selectUpdateBlockProps,
+  useEditorStore,
 } from "./editor-store";
 import { BlockInspector } from "./BlockInspector";
 import { PreviewFrame } from "./PreviewFrame";
@@ -170,15 +178,15 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   );
 
   // ---- Store ----
-  const load = useEditorStore((s) => s.load);
-  const undo = useEditorStore((s) => s.undo);
-  const redo = useEditorStore((s) => s.redo);
-  const addBlockToStore = useEditorStore((s) => s.addBlock);
+  const load = useEditorStore(selectLoad);
+  const undo = useEditorStore(selectUndo);
+  const redo = useEditorStore(selectRedo);
+  const addBlockToStore = useEditorStore(selectAddBlock);
   const blocks = useEditorStore(selectBlocks);
   const dirty = useEditorStore(selectDirty);
   const selectedId = useEditorStore(selectSelectedId);
-  const markClean = useEditorStore((s) => s.markClean);
-  const setSelected = useEditorStore((s) => s.setSelected);
+  const markClean = useEditorStore(selectMarkClean);
+  const setSelected = useEditorStore(selectSetSelected);
 
   // ---- Load layout ----
   useEffect(() => {
@@ -240,7 +248,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   );
 
   // ---- Inline text edit (double-click on canvas) ----
-  const updateBlockPropsAction = useEditorStore((s) => s.updateBlockProps);
+  const updateBlockPropsAction = useEditorStore(selectUpdateBlockProps);
   const handleInlineEdit = useCallback(
     (blockId: string, field: string, value: string) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -250,7 +258,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   );
 
   // ---- Canvas drag reorder + palette drop-in ----
-  const moveBlockToAction = useEditorStore((s) => s.moveBlockTo);
+  const moveBlockToAction = useEditorStore(selectMoveBlockTo);
   const handleReorder = useCallback(
     (blockId: string, toIndex: number) => moveBlockToAction(blockId, toIndex),
     [moveBlockToAction],

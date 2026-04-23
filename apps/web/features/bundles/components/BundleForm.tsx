@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
-import { useProducts } from "@/features/products";
+import { useProductsPaginated } from "@/features/products";
 import { BundleFormSchema, type BundleFormInput } from "../validation";
 import type { Bundle, CreateBundleData } from "../types";
 
@@ -77,7 +77,14 @@ export function BundleForm({
     defaultValues,
   });
 
-  const { data: allProducts = [] } = useProducts();
+  const { data: productsResult } = useProductsPaginated({
+    page: 1,
+    limit: 500,
+  });
+  const allProducts = useMemo(
+    () => productsResult?.data ?? [],
+    [productsResult?.data],
+  );
 
   useEffect(() => {
     if (open && editingBundle) {
