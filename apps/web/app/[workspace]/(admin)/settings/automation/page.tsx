@@ -1,21 +1,19 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
-import { AutomationBuilderPage } from "@/features/automation";
-import { EnvFeatureAnyPageGuard, EnvFeature } from "@/features/flags";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Automations" };
-
-export default function AutomationPage() {
-  return (
-    <EnvFeatureAnyPageGuard
-      envFeatures={[EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS]}
-    >
-      <AuthGuard
-        roles={["admin", "superAdmin"]}
-        unauthorizedPath={WORKSPACE_ROOT}
-      >
-        <AutomationBuilderPage />
-      </AuthGuard>
-    </EnvFeatureAnyPageGuard>
-  );
+/**
+ * /settings/automation → /settings/automations (permanent redirect).
+ *
+ * "automations" (plural) is the canonical URL for the automations section hub.
+ * This stub exists only to avoid 404s for any bookmarked or linked /automation URLs.
+ *
+ * The workspace slug is injected by Next.js as a route param and forwarded so
+ * the redirect lands on the correct tenant's page.
+ */
+export default async function AutomationRedirectPage({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace } = await params;
+  redirect(`/${workspace}/settings/automations`);
 }

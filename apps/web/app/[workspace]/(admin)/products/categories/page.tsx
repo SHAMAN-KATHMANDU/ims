@@ -1,16 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function CategoriesRedirect() {
-  const params = useParams();
-  const router = useRouter();
-  const workspace = (params?.workspace as string) ?? "admin";
-
-  useEffect(() => {
-    router.replace(`/${workspace}/products/catalog-settings?tab=categories`);
-  }, [workspace, router]);
-
-  return null;
+export default async function CategoriesRedirect({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace } = await params;
+  const slug = workspace?.trim() || "admin";
+  redirect(`/${slug}/products/catalog-settings?tab=categories`);
 }
