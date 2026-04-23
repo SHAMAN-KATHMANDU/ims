@@ -3,7 +3,11 @@ import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
-import { LoginSchema, ForgotPasswordSchema } from "./auth.schema";
+import {
+  LoginSchema,
+  ForgotPasswordSchema,
+  ChangePasswordSchema,
+} from "./auth.schema";
 import authService, { AuthService } from "./auth.service";
 
 class AuthController {
@@ -128,6 +132,73 @@ class AuthController {
         });
       }
       return sendControllerError(req, res, error, "Forgot password error");
+    }
+  };
+
+  changePassword = async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const requestId = (req as any).requestId;
+      const parsed = ChangePasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        logger.warn("Change password validation failed", requestId, {
+          userId: req.user.id,
+          tenantId: req.user.tenantId,
+          errors: parsed.error.flatten(),
+        });
+        return res.status(400).json({
+          message: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const { currentPassword, newPassword } = parsed.data;
+
+      const user = await this.service.changePassword(
+        req.user.id,
+        currentPassword,
+        newPassword,
+      );
+
+      // Audit log for successful password change
+      try {
+        await this.service.createPasswordChangeAuditLog({
+          userId: req.user.id,
+          tenantId: req.user.tenantId,
+          ip: req.ip ?? (req.socket as any)?.remoteAddress ?? undefined,
+          userAgent: req.get("user-agent") ?? undefined,
+        });
+      } catch (auditError) {
+        // Audit log failure is non-fatal
+        logger.error("Failed to log password change audit", requestId, {
+          userId: req.user.id,
+          error: auditError,
+        });
+      }
+
+      logger.info("Password changed successfully", requestId, {
+        userId: req.user.id,
+        tenantId: req.user.tenantId,
+      });
+
+      return res.status(200).json({
+        message: "Password changed successfully",
+        user: {
+          id: user.id,
+          username: user.username,
+          tenantId: user.tenantId,
+        },
+      });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({
+          message: appErr.message,
+        });
+      }
+      return sendControllerError(req, res, error, "Change password error");
     }
   };
 }
