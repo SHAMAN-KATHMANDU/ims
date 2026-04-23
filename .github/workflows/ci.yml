@@ -34,7 +34,7 @@ concurrency:
 jobs:
   pr-title:
     name: PR title check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
   # Detect which paths changed so we can run jobs conditionally.
   # For PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so full CI runs.
   changes:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
@@ -97,16 +97,16 @@ jobs:
 
   lint-api:
     name: Lint API
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Guard Prisma migrations — tenant FK must reference tenants(id)
@@ -125,16 +125,16 @@ jobs:
 
   lint-web:
     name: Lint Web
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint Web (and shared if needed)
@@ -207,16 +207,16 @@ jobs:
 
   test-web:
     name: Test Web
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Web tests
@@ -227,16 +227,16 @@ jobs:
 
   lint-tenant-site:
     name: Lint tenant-site
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint tenant-site (and shared if needed)
@@ -247,16 +247,16 @@ jobs:
 
   test-tenant-site:
     name: Test tenant-site
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run tenant-site unit tests
@@ -278,16 +278,16 @@ jobs:
 
   test-shared:
     name: Test shared package
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run shared package unit tests
@@ -298,18 +298,18 @@ jobs:
 
   typecheck:
     name: Type check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     # `any` includes tenant-site since Phase C.4, so a tenant-site-only change
     # still triggers the global typecheck.
     if: needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
@@ -423,23 +423,25 @@ jobs:
 
   trivy:
     name: Trivy security scan
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [changes]
     if: github.event_name == 'pull_request' && needs.changes.outputs.any == 'true'
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
+      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Trivy vulnerability scanner (filesystem)
         # cache-dir points to /tmp so the DB is never inside the scanned workspace
         # and persists across runs (no forced re-download every time).
+        # timeout raised to 15m — the default 5m is not enough for the self-hosted
+        # runner to complete a full DB download + fs scan.
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
@@ -447,5 +449,5 @@ jobs:
           severity: "CRITICAL,HIGH"
           exit-code: "1"
           ignore-unfixed: true
-          timeout: "5m"
+          timeout: "15m"
           cache-dir: "/tmp/trivy-cache"
