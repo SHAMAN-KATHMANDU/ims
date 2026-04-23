@@ -114,9 +114,25 @@ const EDITOR_OVERLAY_CSS = `
 `;
 
 /**
- * One-shot same-origin probe. Cross-origin iframes either throw on
- * `contentDocument` access (Safari) or return null (Chrome/Firefox);
- * same-origin always gives a usable Document.
+ * URL-level origin check. Cheap, synchronous, and — critically — never
+ * touches `contentDocument`, so it doesn't trip the SecurityError that
+ * Safari surfaces to the console even when caught.
+ */
+function isSameOriginUrl(url: string | null): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url, window.location.origin);
+    return u.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Same-origin probe for edge cases where the URL is same-origin but the
+ * document is still unusable (e.g. not yet loaded). Only call this AFTER
+ * `isSameOriginUrl(src)` returns true — touching `contentDocument` on a
+ * clearly cross-origin frame logs a SecurityError in Safari.
  */
 function probeSameOrigin(frame: HTMLIFrameElement | null): boolean {
   if (!frame) return false;
@@ -475,6 +491,13 @@ export function PreviewFrame({
     let dblclickHandler: ((e: Event) => void) | null = null;
 
     const tryInject = () => {
+      // Cheap URL check first — if the preview is clearly cross-origin,
+      // skip the contentDocument probe entirely so Safari doesn't log a
+      // SecurityError on every re-run of this effect.
+      if (!isSameOriginUrl(src)) {
+        setIsSameOrigin(false);
+        return false;
+      }
       const sameOrigin = probeSameOrigin(frame);
       setIsSameOrigin(sameOrigin);
       if (!sameOrigin) return false;
@@ -602,6 +625,10 @@ export function PreviewFrame({
 
     return () => {
       frame.removeEventListener("load", onLoad);
+      // Only touch contentDocument if we actually installed handlers —
+      // otherwise we'd re-trigger the Safari SecurityError log on every
+      // cross-origin cleanup.
+      if (!clickHandler && !dblclickHandler) return;
       try {
         const doc = frame.contentDocument;
         if (doc) {
