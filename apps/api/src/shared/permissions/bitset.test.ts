@@ -15,7 +15,7 @@ import {
 import {
   PERMISSION_BY_KEY,
   ADMINISTRATOR_BIT,
-} from "@/../../packages/shared/src/permissions/catalog";
+} from "@repo/shared/src/permissions/catalog";
 
 describe("bitset helpers", () => {
   describe("EMPTY_BITSET", () => {

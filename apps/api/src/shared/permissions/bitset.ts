@@ -5,8 +5,9 @@
 
 import {
   PERMISSION_BY_KEY,
+  PERMISSION_BY_BIT,
   ADMINISTRATOR_BIT,
-} from "@/../../packages/shared/src/permissions/catalog";
+} from "@repo/shared/src/permissions/catalog";
 
 export const BITSET_BYTES = 64; // 512 bits, append-only growth headroom
 export const EMPTY_BITSET = (): Buffer => Buffer.alloc(BITSET_BYTES, 0);
@@ -103,9 +104,6 @@ export function hasPermission(perms: Buffer, key: string): boolean {
  */
 export function applyImplies(buf: Buffer): Buffer {
   const result = Buffer.from(buf);
-  const {
-    PERMISSION_BY_BIT,
-  } = require("@/../../packages/shared/src/permissions/catalog");
 
   let changed = true;
   let iterations = 0;

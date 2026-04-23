@@ -21,7 +21,7 @@ import {
   BITSET_BYTES,
   toWire,
 } from "@/shared/permissions/bitset";
-import { ADMINISTRATOR_BIT } from "@/../../packages/shared/src/permissions/catalog";
+import { ADMINISTRATOR_BIT } from "@repo/shared/src/permissions/catalog";
 import { permissionRepository } from "./permission.repository";
 import { permissionCache } from "./permission.cache";
 import { createError } from "@/middlewares/errorHandler";

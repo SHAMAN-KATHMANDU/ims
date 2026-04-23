@@ -6,7 +6,7 @@ import { EMPTY_BITSET, setBit } from "@/shared/permissions/bitset";
 import {
   ADMINISTRATOR_BIT,
   PERMISSION_BY_KEY,
-} from "@/../../packages/shared/src/permissions/catalog";
+} from "@repo/shared/src/permissions/catalog";
 
 vi.mock("./permission.repository");
 vi.mock("./permission.cache");
