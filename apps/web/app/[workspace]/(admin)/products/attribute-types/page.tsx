@@ -1,18 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function AttributeTypesRedirect() {
-  const params = useParams();
-  const router = useRouter();
-  const workspace = (params?.workspace as string) ?? "admin";
-
-  useEffect(() => {
-    router.replace(
-      `/${workspace}/products/catalog-settings?tab=attribute-types`,
-    );
-  }, [workspace, router]);
-
-  return null;
+export default async function AttributeTypesRedirect({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace } = await params;
+  const slug = workspace?.trim() || "admin";
+  redirect(`/${slug}/products/catalog-settings?tab=attribute-types`);
 }
