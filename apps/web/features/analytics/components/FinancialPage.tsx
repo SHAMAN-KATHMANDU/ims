@@ -37,6 +37,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -140,14 +141,10 @@ export function FinancialPage() {
       className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
-          Financial Analytics
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm md:text-base">
-          Gross profit, COGS, discount ratio, and margin analysis
-        </p>
-      </header>
+      <PageHeader
+        title="Financial Analytics"
+        description="Gross profit, COGS, discount ratio, and margin analysis"
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0 flex-1">

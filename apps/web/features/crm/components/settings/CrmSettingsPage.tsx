@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -96,12 +97,10 @@ export default function CrmSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">CRM Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Configure pipelines and CRM contact metadata.
-        </p>
-      </div>
+      <PageHeader
+        title="CRM Settings"
+        description="Configure pipelines and CRM contact metadata."
+      />
 
       <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">

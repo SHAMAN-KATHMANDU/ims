@@ -28,6 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -187,14 +188,10 @@ export function CustomersPromosPage() {
       className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
-          Customers & Promotions
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm md:text-base">
-          Member insights, product performance, and promotion effectiveness
-        </p>
-      </header>
+      <PageHeader
+        title="Customers & Promotions"
+        description="Member insights, product performance, and promotion effectiveness"
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -509,6 +506,7 @@ export function CustomersPromosPage() {
                                   <td className="p-2">
                                     <span className="inline-flex items-center gap-2">
                                       <span
+                                        aria-hidden="true"
                                         className="analytics-legend-dot"
                                         data-color={colorToDataKey(
                                           RFM_COLORS[s.segment] ?? C.tm,

@@ -14,10 +14,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   type Member,
   type CreateMemberData,
@@ -112,224 +119,275 @@ export function MemberForm({
   });
 
   const formContent = (
-    <form onSubmit={handleSubmit}>
-      {!inline && (
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Member" : "Add New Member"}</DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? "Update member information."
-              : "Register a new member with their phone number."}
-          </DialogDescription>
-        </DialogHeader>
-      )}
-      {inline && (
-        <div className="space-y-1 mb-4">
-          <h2 className="text-2xl font-semibold">
-            {isEdit ? "Edit Member" : "Add New Member"}
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            {isEdit
-              ? "Update member information."
-              : "Register a new member with their phone number."}
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="phone-number">Phone Number *</Label>
-          <Controller
-            name="phone"
-            control={form.control}
-            render={({ field }) => (
-              <PhoneInput
-                value={field.value}
-                onChange={(v) => field.onChange(v ?? "")}
-                onBlur={field.onBlur}
-                numberInputId="phone-number"
-                placeholder="e.g. 9841234567"
-              />
-            )}
-          />
-          {form.formState.errors.phone && (
-            <p
-              id="phone-number-error"
-              role="alert"
-              className="text-sm text-destructive mt-1"
-            >
-              {form.formState.errors.phone.message}
+    <Form {...form}>
+      <form onSubmit={handleSubmit}>
+        {!inline && (
+          <DialogHeader>
+            <DialogTitle>
+              {isEdit ? "Edit Member" : "Add New Member"}
+            </DialogTitle>
+            <DialogDescription>
+              {isEdit
+                ? "Update member information."
+                : "Register a new member with their phone number."}
+            </DialogDescription>
+          </DialogHeader>
+        )}
+        {inline && (
+          <div className="space-y-1 mb-4">
+            <h2 className="text-2xl font-semibold">
+              {isEdit ? "Edit Member" : "Add New Member"}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {isEdit
+                ? "Update member information."
+                : "Register a new member with their phone number."}
             </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            {...form.register("name")}
-            placeholder="Customer name (optional)"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            {...form.register("email")}
-            placeholder="Email address (optional)"
-            aria-invalid={!!form.formState.errors.email}
-            aria-describedby={
-              form.formState.errors.email ? "email-error" : undefined
-            }
-          />
-          {form.formState.errors.email && (
-            <p
-              id="email-error"
-              role="alert"
-              className="text-sm text-destructive mt-1"
-            >
-              {form.formState.errors.email.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notes">Notes</Label>
-          <Textarea
-            id="notes"
-            {...form.register("notes")}
-            placeholder="Any additional notes..."
-            rows={2}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Input
-              id="gender"
-              {...form.register("gender")}
-              placeholder="e.g. Male, Female, Other"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="age">Age</Label>
-            <Input
-              id="age"
-              type="number"
-              min={0}
-              {...form.register("age")}
-              placeholder="Age in years"
-              aria-invalid={!!form.formState.errors.age}
-              aria-describedby={
-                form.formState.errors.age ? "age-error" : undefined
-              }
-            />
-            {form.formState.errors.age && (
-              <p
-                id="age-error"
-                role="alert"
-                className="text-sm text-destructive mt-1"
-              >
-                {form.formState.errors.age.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="address">Address</Label>
-          <Textarea
-            id="address"
-            {...form.register("address")}
-            placeholder="Customer address"
-            rows={2}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="birthday">Birthday</Label>
-          <Input id="birthday" type="date" {...form.register("birthday")} />
-        </div>
-
-        {isEdit && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="isActive">Active Status</Label>
-              <Controller
-                name="isActive"
-                control={form.control}
-                render={({ field }) => (
-                  <Switch
-                    id="isActive"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                )}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="memberStatus">Member Status</Label>
-              <Controller
-                name="memberStatus"
-                control={form.control}
-                render={({ field }) => (
-                  <select
-                    id="memberStatus"
-                    aria-label="Member status"
-                    className="border rounded-md px-3 py-2 text-sm w-full bg-background"
-                    value={field.value ?? "ACTIVE"}
-                    onChange={(e) =>
-                      field.onChange(
-                        e.target.value as
-                          | "ACTIVE"
-                          | "INACTIVE"
-                          | "PROSPECT"
-                          | "VIP",
-                      )
-                    }
-                    onBlur={field.onBlur}
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="PROSPECT">Prospect</option>
-                    <option value="VIP">VIP</option>
-                  </select>
-                )}
-              />
-            </div>
           </div>
         )}
-      </div>
 
-      <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          disabled={isLoading}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2
-                className="mr-2 h-4 w-4 animate-spin"
-                aria-hidden="true"
+        <div className="space-y-4 py-4">
+          {/* Phone uses numberInputId rather than the standard id prop so we
+              provide an explicit htmlFor="phone-number" to maintain the
+              label → input association required by the MemberForm tests. */}
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field: _field, fieldState }) => (
+              <FormItem>
+                <FormLabel htmlFor="phone-number">Phone Number *</FormLabel>
+                <Controller
+                  name="phone"
+                  control={form.control}
+                  render={({ field: controllerField }) => (
+                    <PhoneInput
+                      value={controllerField.value}
+                      onChange={(v) => controllerField.onChange(v ?? "")}
+                      onBlur={controllerField.onBlur}
+                      numberInputId="phone-number"
+                      placeholder="e.g. 9841234567"
+                    />
+                  )}
+                />
+                {fieldState.error && (
+                  <p
+                    id="phone-number-error"
+                    role="alert"
+                    className="text-sm text-destructive mt-1"
+                  >
+                    {fieldState.error.message}
+                  </p>
+                )}
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Customer name (optional)" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="email"
+                    placeholder="Email address (optional)"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Any additional notes..."
+                    rows={2}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="gender"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gender</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="e.g. Male, Female, Other" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="age"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Age</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      min={0}
+                      placeholder="Age in years"
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Customer address"
+                    rows={2}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="birthday"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Birthday</FormLabel>
+                <FormControl>
+                  <Input {...field} type="date" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {isEdit && (
+            <div className="space-y-3">
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between">
+                    <FormLabel>Active Status</FormLabel>
+                    <FormControl>
+                      <Switch
+                        id="isActive"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
               />
-              {isEdit ? "Updating..." : "Creating..."}
-            </>
-          ) : isEdit ? (
-            "Update Member"
-          ) : (
-            "Add Member"
+
+              <FormField
+                control={form.control}
+                name="memberStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Member Status</FormLabel>
+                    <FormControl>
+                      <select
+                        aria-label="Member status"
+                        className="border rounded-md px-3 py-2 text-sm w-full bg-background"
+                        value={field.value ?? "ACTIVE"}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value as
+                              | "ACTIVE"
+                              | "INACTIVE"
+                              | "PROSPECT"
+                              | "VIP",
+                          )
+                        }
+                        onBlur={field.onBlur}
+                      >
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                        <option value="PROSPECT">Prospect</option>
+                        <option value="VIP">VIP</option>
+                      </select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
           )}
-        </Button>
-      </DialogFooter>
-    </form>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2
+                  className="mr-2 h-4 w-4 animate-spin"
+                  aria-hidden="true"
+                />
+                {isEdit ? "Updating..." : "Creating..."}
+              </>
+            ) : isEdit ? (
+              "Update Member"
+            ) : (
+              "Add Member"
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 
   if (inline) {

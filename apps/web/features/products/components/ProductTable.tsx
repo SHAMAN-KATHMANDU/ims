@@ -347,6 +347,7 @@ export function ProductTable({
           <div className="flex gap-3">
             {onSelectionChange && (
               <div
+                role="presentation"
                 className="shrink-0 pt-0.5"
                 onClick={(e) => e.stopPropagation()}
                 onKeyDown={(e) => e.stopPropagation()}

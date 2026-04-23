@@ -3,10 +3,6 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +10,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Plus } from "lucide-react";
 import type { Vendor, CreateOrUpdateVendorData } from "../hooks/use-vendors";
 import { CreateVendorSchema, type CreateVendorInput } from "../validation";
@@ -84,100 +92,97 @@ export function VendorForm({
   };
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="vendor-name">Name *</Label>
-        <Input
-          id="vendor-name"
-          {...form.register("name")}
-          placeholder="Vendor name"
-          aria-invalid={!!form.formState.errors.name}
-          aria-describedby={
-            form.formState.errors.name ? "vendor-name-error" : undefined
-          }
+    <Form {...form}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name *</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Vendor name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        {form.formState.errors.name && (
-          <p
-            id="vendor-name-error"
-            role="alert"
-            className="text-sm text-destructive mt-1"
-          >
-            {form.formState.errors.name.message}
-          </p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="vendor-contact">Contact Person</Label>
-        <Input
-          id="vendor-contact"
-          {...form.register("contact")}
-          placeholder="Contact person name or email"
-          aria-invalid={!!form.formState.errors.contact}
-          aria-describedby={
-            form.formState.errors.contact ? "vendor-contact-error" : undefined
-          }
-        />
-        {form.formState.errors.contact && (
-          <p
-            id="vendor-contact-error"
-            role="alert"
-            className="text-sm text-destructive mt-1"
-          >
-            {form.formState.errors.contact.message}
-          </p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="vendor-phone">Phone</Label>
-        <PhoneInput
-          value={form.watch("phone") ?? ""}
-          onChange={(phone) =>
-            form.setValue("phone", phone || "", { shouldValidate: true })
-          }
-          placeholder="e.g. 9841234567"
-          numberInputId="vendor-phone"
-        />
-        {form.formState.errors.phone && (
-          <p
-            id="vendor-phone-error"
-            role="alert"
-            className="text-sm text-destructive mt-1"
-          >
-            {form.formState.errors.phone.message}
-          </p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="vendor-address">Address</Label>
-        <Input
-          id="vendor-address"
-          {...form.register("address")}
-          placeholder="Vendor address"
-          aria-invalid={!!form.formState.errors.address}
-          aria-describedby={
-            form.formState.errors.address ? "vendor-address-error" : undefined
-          }
-        />
-        {form.formState.errors.address && (
-          <p
-            id="vendor-address-error"
-            role="alert"
-            className="text-sm text-destructive mt-1"
-          >
-            {form.formState.errors.address.message}
-          </p>
-        )}
-      </div>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {editingVendor ? "Save changes" : "Create vendor"}
-        </Button>
-      </div>
-    </form>
+        <FormField
+          control={form.control}
+          name="contact"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact Person</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Contact person name or email"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Phone uses numberInputId rather than the standard id prop so we keep
+            a manual htmlFor="vendor-phone" binding instead of FormControl. */}
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field, fieldState }) => (
+            <div className="space-y-2">
+              <Label htmlFor="vendor-phone">Phone</Label>
+              <PhoneInput
+                value={field.value ?? ""}
+                onChange={(phone) =>
+                  form.setValue("phone", phone || "", { shouldValidate: true })
+                }
+                placeholder="e.g. 9841234567"
+                numberInputId="vendor-phone"
+              />
+              {fieldState.error && (
+                <p
+                  id="vendor-phone-error"
+                  role="alert"
+                  className="text-sm text-destructive mt-1"
+                >
+                  {fieldState.error.message}
+                </p>
+              )}
+            </div>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  placeholder="Vendor address"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {editingVendor ? "Save changes" : "Create vendor"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 
   if (inline) {

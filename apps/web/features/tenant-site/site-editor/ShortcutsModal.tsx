@@ -23,10 +23,12 @@ export function ShortcutsModal({
     ["?", "This panel"],
   ];
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- modal backdrop click-to-close; Escape key handled via onClose prop
     <div
       className="fixed inset-0 z-[100] bg-foreground/40 backdrop-blur-sm grid place-items-center animate-in fade-in duration-150"
       onClick={onClose}
     >
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation to prevent backdrop close */}
       <div
         className="bg-card rounded-xl shadow-2xl w-[400px] border border-border animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}

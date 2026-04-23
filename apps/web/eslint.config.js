@@ -1,5 +1,6 @@
 import { globalIgnores } from "eslint/config";
 import { nextJsConfig } from "@repo/eslint-config/next-js";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 /** @type {import("eslint").Linter.Config[]} */
 export default [
@@ -17,6 +18,52 @@ export default [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "react/prop-types": "off",
+    },
+  },
+  // Phase 8-E: jsx-a11y accessibility rules.
+  {
+    files: ["**/*.tsx"],
+    plugins: {
+      "jsx-a11y": jsxA11y,
+    },
+    rules: {
+      "jsx-a11y/no-static-element-interactions": "error",
+      "jsx-a11y/click-events-have-key-events": "error",
+      // controlComponents intentionally omits shadcn wrappers (Input, Select, Textarea,
+      // Button, Switch, etc.) — they handle a11y internally and the rule cannot analyse
+      // them statically, producing ~250 false positives.  Only native HTML interactive
+      // elements (the rule's default) are checked here.
+      "jsx-a11y/control-has-associated-label": [
+        "error",
+        {
+          labelAttributes: ["label"],
+          controlComponents: [],
+          ignoreElements: [
+            "audio",
+            "canvas",
+            "embed",
+            "input",
+            "textarea",
+            "tr",
+            "td",
+            "th",
+            "video",
+            "option",
+          ],
+          ignoreRoles: [
+            "grid",
+            "listbox",
+            "group",
+            "rowgroup",
+            "cell",
+            "columnheader",
+            "rowheader",
+            "tooltip",
+            "dialog",
+            "alertdialog",
+          ],
+        },
+      ],
     },
   },
   // Phase 4 architecture boundary enforcement.

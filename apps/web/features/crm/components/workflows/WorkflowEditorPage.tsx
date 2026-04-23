@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -274,14 +275,10 @@ export default function WorkflowEditorPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Deal pipeline rules
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Automate actions when deals move through pipeline stages.
-        </p>
-      </div>
+      <PageHeader
+        title="Deal pipeline rules"
+        description="Automate actions when deals move through pipeline stages."
+      />
 
       <WorkflowOnboarding />
 

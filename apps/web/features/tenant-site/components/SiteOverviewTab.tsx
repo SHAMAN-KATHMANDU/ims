@@ -416,8 +416,14 @@ function StatTile({
     );
   }
   return (
-    <button type="button" onClick={onClick} className="block w-full">
+    <Button
+      type="button"
+      onClick={onClick}
+      variant="ghost"
+      className="block w-full justify-start h-auto"
+      size="sm"
+    >
       {content}
-    </button>
+    </Button>
   );
 }

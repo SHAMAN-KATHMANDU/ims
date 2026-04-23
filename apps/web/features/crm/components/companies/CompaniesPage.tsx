@@ -381,9 +381,10 @@ export function CompaniesPage() {
           </div>
         ) : (
           companies.map((c) => (
-            <div
+            <button
+              type="button"
               key={c.id}
-              className="rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
+              className="w-full text-left rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
               onClick={() => openView(c.id)}
             >
               <div className="flex items-center gap-2">
@@ -409,6 +410,7 @@ export function CompaniesPage() {
                   </span>
                 )}
               </div>
+              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation wrapper inside a button; keyboard handled by parent */}
               <div
                 className="flex gap-1 pt-1"
                 onClick={(e) => e.stopPropagation()}
@@ -432,7 +434,7 @@ export function CompaniesPage() {
                   <Trash2 className="h-3 w-3" aria-hidden="true" />
                 </Button>
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>

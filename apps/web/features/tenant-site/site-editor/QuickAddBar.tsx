@@ -45,10 +45,12 @@ export function QuickAddBar({
   if (!open) return null;
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- modal backdrop click-to-close; Escape key handled via onClose prop
     <div
       className="fixed inset-0 z-[100] bg-foreground/20 backdrop-blur-sm flex items-start justify-center pt-24 animate-in fade-in duration-150"
       onClick={onClose}
     >
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation to prevent backdrop close */}
       <div
         className="bg-card rounded-xl shadow-2xl w-[520px] overflow-hidden border border-border animate-in fade-in zoom-in-95 slide-in-from-top-4 duration-200"
         onClick={(e) => e.stopPropagation()}

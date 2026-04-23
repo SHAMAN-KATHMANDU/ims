@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, Bot, RotateCcw } from "lucide-react";
@@ -80,12 +81,10 @@ export function AiSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Configure how the AI assistant responds to inbound messages.
-        </p>
-      </div>
+      <PageHeader
+        title="AI Settings"
+        description="Configure how the AI assistant responds to inbound messages."
+      />
 
       <Card>
         <CardHeader>

@@ -97,9 +97,10 @@ export function BlogPanel({
           </div>
         )}
         {posts.map((post) => (
-          <div
+          <button
+            type="button"
             key={post.id}
-            className="group flex items-start gap-2 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+            className="w-full text-left group flex items-start gap-2 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
             onClick={() => onEdit(post.id)}
           >
             <FileText
@@ -120,6 +121,7 @@ export function BlogPanel({
               </div>
             </div>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDelete(post);
@@ -129,7 +131,7 @@ export function BlogPanel({
             >
               <Trash2 size={11} />
             </button>
-          </div>
+          </button>
         ))}
         {!postsQuery.isLoading && posts.length === 0 && (
           <div className="text-center py-8 px-3 text-[12px] text-muted-foreground/80">

@@ -22,6 +22,7 @@ import {
   Banknote,
   Handshake,
 } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 
 export function AnalyticsIndexPage() {
   const params = useParams();
@@ -81,18 +82,10 @@ export function AnalyticsIndexPage() {
       className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Reports
-        </p>
-        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
-          Analytics
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm md:text-base max-w-2xl">
-          Choose a report to view detailed analytics and metrics. Key numbers
-          are at a glance; drill into each area for trends and breakdowns.
-        </p>
-      </header>
+      <PageHeader
+        title="Analytics"
+        description="Choose a report to view detailed analytics and metrics. Key numbers are at a glance; drill into each area for trends and breakdowns."
+      />
 
       <section
         aria-label="Report categories"
