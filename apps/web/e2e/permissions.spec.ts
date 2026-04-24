@@ -69,7 +69,7 @@ async function loginAs(
 }
 
 /** Extract the JWT from the Zustand auth-storage cookie (set by the browser). */
-async function getTokenFromPage(page: Page): Promise<string | null> {
+async function _getTokenFromPage(page: Page): Promise<string | null> {
   const cookies = await page.context().cookies();
   const authCookie = cookies.find((c) => c.name === "auth-storage");
   if (!authCookie) return null;

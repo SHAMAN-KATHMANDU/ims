@@ -33,7 +33,7 @@ import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
-import { Can, PermissionGate } from "@/features/permissions";
+import { PermissionGate } from "@/features/permissions";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

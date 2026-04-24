@@ -269,7 +269,7 @@ function groupByOrderedSubmodule(
   }
   return order.map((sub) => [
     sub,
-    (PERMISSIONS_BY_SUBMODULE[`${module}::${sub}` as never] ?? []).filter(
+    (PERMISSIONS_BY_SUBMODULE[`${module}::${sub}`] ?? []).filter(
       (p) => p.key !== "SETTINGS.ADMINISTRATOR",
     ) as PermissionDef[],
   ]);

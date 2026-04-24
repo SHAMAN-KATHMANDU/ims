@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
-import { Can, useCan } from "@/features/permissions";
+import { Can } from "@/features/permissions";
 import { useProductFormAdapter } from "../hooks/use-product-form-adapter";
 import {
   useProductsPaginated,

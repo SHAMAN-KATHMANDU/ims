@@ -13,7 +13,7 @@ import {
   changeMyPassword,
   type ChangeMyPasswordData,
   type ChangeMyPasswordResponse,
-} from "@/features/auth/services/auth.service";
+} from "@/features/auth";
 
 export function useChangeMyPassword() {
   return useMutation<ChangeMyPasswordResponse, Error, ChangeMyPasswordData>({

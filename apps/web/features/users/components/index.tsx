@@ -50,7 +50,7 @@ import {
   selectSetUsers,
 } from "../store/user-selection-store";
 import { RoleGuard } from "@/components/auth/role-guard";
-import { Can, useCan } from "@/features/permissions";
+import { useCan } from "@/features/permissions";
 import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";

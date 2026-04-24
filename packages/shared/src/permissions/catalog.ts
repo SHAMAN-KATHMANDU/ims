@@ -13,7 +13,7 @@ export interface PermissionDef {
   label: string;
   description: string;
   dangerous?: boolean;
-  implies?: string[];
+  implies?: readonly string[];
 }
 
 export type ModuleId =
@@ -2709,10 +2709,8 @@ function groupBy<T, K extends string | number>(
 }
 
 export const PERMISSIONS_BY_MODULE = groupBy(PERMISSIONS, (p) => p.module);
-export const PERMISSIONS_BY_SUBMODULE = groupBy(
-  PERMISSIONS,
-  (p) => `${p.module}::${p.submodule}` as any,
-);
+export const PERMISSIONS_BY_SUBMODULE: Record<string, PermissionDef[]> =
+  groupBy(PERMISSIONS, (p) => `${p.module}::${p.submodule}`);
 
 export const ADMINISTRATOR_BIT = PERMISSION_BY_KEY.get(
   "SETTINGS.ADMINISTRATOR",

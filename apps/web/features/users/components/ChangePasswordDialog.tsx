@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 
 import { useChangeMyPassword } from "../hooks/use-change-my-password";
-import { ChangeMyPasswordError } from "@/features/auth/services/auth.service";
+import { ChangeMyPasswordError } from "@/features/auth";
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 

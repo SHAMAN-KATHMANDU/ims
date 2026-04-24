@@ -1,4 +1,4 @@
-import { ProfilePage } from "@/features/users/components/ProfilePage";
+import { ProfilePage } from "@/features/users";
 
 export const metadata = { title: "Profile" };
 
