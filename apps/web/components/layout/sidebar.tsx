@@ -49,6 +49,7 @@ import {
   filterDashboardNavSections,
   type NavItemWithHref,
 } from "@/constants/dashboard-nav";
+import { useModuleAccessMap } from "@/features/permissions";
 
 function SidebarItem({
   item,
@@ -422,6 +423,9 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     [tenantWebsiteEnabled],
   );
 
+  // RBAC module access — fail-open while loading so nav doesn't flicker.
+  const moduleAccess = useModuleAccessMap();
+
   const filteredSections = useMemo(
     () =>
       filterDashboardNavSections(dashboardNavSections, {
@@ -431,6 +435,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         appEnv,
         enabledEnvFlagsSet,
         tenantFeatures,
+        moduleAccess,
       }),
     [
       userRole,
@@ -439,6 +444,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       appEnv,
       enabledEnvFlagsSet,
       tenantFeatures,
+      moduleAccess,
     ],
   );
 

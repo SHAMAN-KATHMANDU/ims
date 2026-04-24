@@ -44,6 +44,7 @@ import {
   EnvFeature,
   isEnvFeatureEnabled,
   parseFeatureFlagsEnv,
+  type ModuleId,
 } from "@repo/shared";
 import type { AppEnv } from "@repo/shared";
 
@@ -65,6 +66,14 @@ export interface NavItem {
   feature?: Feature;
   /** Per-tenant feature flag gate. Hides the item when the flag is false. */
   tenantFeature?: TenantFeatureKey;
+  /**
+   * RBAC module gate. When set, the item is hidden if the current user has no
+   * VIEW permission in this module. Applied on top of env/plan/role gates so
+   * all must pass for the item to be visible.
+   *
+   * Items without a `permModule` are always shown (no RBAC check).
+   */
+  permModule?: ModuleId;
   children?: NavItem[];
   href?: string;
   /** When true the link opens in a new browser tab. */
@@ -136,6 +145,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "crm/companies",
@@ -144,6 +154,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "crm/contacts",
@@ -152,6 +163,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "crm/deals",
@@ -160,6 +172,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM_DEALS,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "crm/tasks",
@@ -168,6 +181,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.TASKS,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "crm/notifications",
@@ -176,6 +190,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.NOTIFICATIONS,
         feature: Feature.SALES_PIPELINE,
+        // No permModule: notifications are not RBAC-gated
       },
     ],
   },
@@ -201,6 +216,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Receipt,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.SALES,
+        permModule: "SALES" as const,
       },
       {
         path: "sales/user-report",
@@ -208,6 +224,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: ListChecks,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.SALES_USER_REPORT,
+        permModule: "SALES" as const,
       },
       {
         path: "sales/website-orders",
@@ -216,6 +233,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.TENANT_WEBSITES,
         tenantFeature: "websiteEnabled",
+        permModule: "SALES" as const,
       },
     ],
   },
@@ -228,6 +246,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CATALOG,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "products/promos",
@@ -236,6 +255,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.PROMO_CODES,
         feature: Feature.PROMO_MANAGEMENT,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "transfers/new",
@@ -243,6 +263,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: ArrowLeftRight,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.TRANSFER_REQUEST,
+        permModule: "INVENTORY" as const,
       },
     ],
   },
@@ -255,6 +276,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Boxes,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.PRODUCTS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "products/catalog-settings",
@@ -262,6 +284,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Layers,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CATALOG_SETTINGS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "locations",
@@ -269,6 +292,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Warehouse,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.LOCATIONS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "vendors",
@@ -276,6 +300,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Truck,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.VENDORS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "transfers",
@@ -283,6 +308,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: PackageCheck,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.TRANSFERS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "products/discounts",
@@ -290,6 +316,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Percent,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.DISCOUNTS,
+        permModule: "INVENTORY" as const,
       },
       {
         path: "promos",
@@ -298,6 +325,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.PROMOTIONS,
         feature: Feature.PROMO_MANAGEMENT,
+        permModule: "INVENTORY" as const,
       },
     ],
   },
@@ -311,6 +339,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.REPORTS_SALES,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
       {
         path: "reports/analytics/inventory",
@@ -319,6 +348,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.REPORTS_INVENTORY,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
       {
         path: "reports/analytics/customers",
@@ -327,6 +357,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.REPORTS_CUSTOMERS,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
       {
         path: "reports/analytics/trends",
@@ -335,6 +366,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.REPORTS_TRENDS,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
       {
         path: "reports/analytics/financial",
@@ -343,6 +375,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.REPORTS_FINANCIAL,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
       {
         path: "reports/crm",
@@ -351,6 +384,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CRM_REPORTS,
         feature: Feature.ANALYTICS_ADVANCED,
+        permModule: "REPORTS" as const,
       },
     ],
   },
@@ -363,6 +397,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: UserCog,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.SETTINGS,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "settings/crm",
@@ -371,6 +406,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CRM_SETTINGS,
         feature: Feature.SALES_PIPELINE,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "settings/automations",
@@ -378,6 +414,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: LayoutGrid,
         roles: ["admin", "superAdmin"],
         envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
+        // No permModule: automation is not directly RBAC-gated in phase 3
       },
       {
         path: "settings/automation",
@@ -385,6 +422,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Zap,
         roles: ["admin", "superAdmin"],
         envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
+        // No permModule: automation is not directly RBAC-gated in phase 3
       },
       {
         path: "settings/crm/workflows",
@@ -393,6 +431,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CRM_WORKFLOWS,
         feature: Feature.SALES_PIPELINE,
+        permModule: "CRM" as const,
       },
       {
         path: "settings/ai",
@@ -400,6 +439,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: BrainCircuit,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.MESSAGING,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "users",
@@ -407,6 +447,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: Users,
         roles: ["superAdmin"],
         envFeature: EnvFeature.USERS_MANAGEMENT,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "settings/logs",
@@ -415,6 +456,7 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["superAdmin"],
         envFeature: EnvFeature.AUDIT_LOGS,
         feature: Feature.AUDIT_LOGS,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "settings/password-reset",
@@ -422,6 +464,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: KeyRound,
         roles: ["superAdmin"],
         envFeature: EnvFeature.PASSWORD_RESETS,
+        permModule: "SETTINGS" as const,
       },
       {
         path: "site-editor",
@@ -431,6 +474,7 @@ export const dashboardNavSections: NavSection[] = [
         envFeature: EnvFeature.TENANT_WEBSITES,
         tenantFeature: "websiteEnabled",
         openInNewTab: true,
+        permModule: "WEBSITE" as const,
       },
     ],
   },
@@ -448,6 +492,13 @@ export interface FilterDashboardNavOptions {
    * opt in explicitly.
    */
   tenantFeatures?: Partial<Record<TenantFeatureKey, boolean>>;
+  /**
+   * RBAC module access map (from `useModuleAccessMap()`).
+   * When provided, items with `permModule` set are only shown if the
+   * corresponding module value is `true`. `undefined` map = allow all
+   * (backward compatible: sidebar without RBAC still works).
+   */
+  moduleAccess?: Partial<Record<ModuleId, boolean>>;
 }
 
 /** Same visibility rules as the sidebar — single source for nav + command palette. */
@@ -460,6 +511,7 @@ export function filterDashboardNavSections(
     appEnv,
     enabledEnvFlagsSet,
     tenantFeatures,
+    moduleAccess,
   }: FilterDashboardNavOptions,
 ): Array<{ title: string; items: NavItemWithHref[] }> {
   if (!userRole) return [];
@@ -483,6 +535,14 @@ export function filterDashboardNavSections(
         .filter((item) => {
           if (!item.tenantFeature) return true;
           return tenantFeatures?.[item.tenantFeature] === true;
+        })
+        .filter((item) => {
+          // RBAC module gate: only applied when moduleAccess is provided.
+          // Missing map = allow (backward compatible; also allows during loading).
+          if (!item.permModule || !moduleAccess) return true;
+          // undefined in the map means "not yet computed" → allow (fail-open).
+          const access = moduleAccess[item.permModule];
+          return access !== false;
         })
         .map((item) => ({
           ...item,
