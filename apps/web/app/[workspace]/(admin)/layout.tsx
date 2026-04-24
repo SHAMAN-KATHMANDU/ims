@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { OnboardingGuard } from "@/components/auth/onboarding-guard";
+import { PlatformAdminRedirect } from "@/components/auth/platform-admin-redirect";
 import { WorkspaceSlugGuard } from "@/components/auth/workspace-slug-guard";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
@@ -25,9 +26,11 @@ export default async function AdminLayout({ children, params }: Props) {
   return (
     <AuthGuard loginPath={`/${slug}/login`}>
       <WorkspaceSlugGuard>
-        <OnboardingGuard>
-          <DashboardLayout>{children}</DashboardLayout>
-        </OnboardingGuard>
+        <PlatformAdminRedirect>
+          <OnboardingGuard>
+            <DashboardLayout>{children}</DashboardLayout>
+          </OnboardingGuard>
+        </PlatformAdminRedirect>
       </WorkspaceSlugGuard>
     </AuthGuard>
   );
