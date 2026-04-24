@@ -13,7 +13,43 @@ describe("PermissionService", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: user has no legacy admin role. Specific tests override.
+    vi.mocked(permissionRepository.getLegacyUserRole).mockResolvedValue(null);
     service = new PermissionService();
+  });
+
+  describe("legacy admin bypass", () => {
+    it("returns ADMINISTRATOR bitset for User.role='superAdmin' even without RbacRole rows", async () => {
+      vi.mocked(permissionCache.get).mockResolvedValue(null);
+      vi.mocked(permissionRepository.getLegacyUserRole).mockResolvedValue(
+        "superAdmin",
+      );
+      vi.mocked(permissionCache.set).mockResolvedValue(undefined);
+
+      const result = await service.getEffectivePermissions(
+        "tenant1",
+        "user1",
+        "resource1",
+      );
+
+      const expected = setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT);
+      expect(result).toEqual(expected);
+      // Did not load RbacRole rows or walk the chain
+      expect(permissionRepository.getUserRoles).not.toHaveBeenCalled();
+      expect(permissionRepository.getResourceChain).not.toHaveBeenCalled();
+    });
+
+    it("returns ADMINISTRATOR bitset for User.role='platformAdmin'", async () => {
+      vi.mocked(permissionCache.get).mockResolvedValue(null);
+      vi.mocked(permissionRepository.getLegacyUserRole).mockResolvedValue(
+        "platformAdmin",
+      );
+      vi.mocked(permissionCache.set).mockResolvedValue(undefined);
+
+      const result = await service.getEffectivePermissions("t", "u", "r");
+
+      expect(result).toEqual(setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT));
+    });
   });
 
   describe("getEffectivePermissions", () => {

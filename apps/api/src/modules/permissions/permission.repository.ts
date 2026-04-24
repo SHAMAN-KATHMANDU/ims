@@ -27,6 +27,23 @@ export interface OverwriteRow {
 
 export class PermissionRepository {
   /**
+   * Read the legacy `User.role` enum value. Used by the resolution engine to
+   * preserve `platformAdmin` / `superAdmin` admin semantics regardless of
+   * whether the new RbacRole rows have been seeded — these tenant-default
+   * admin roles always bypass permission checks.
+   */
+  async getLegacyUserRole(
+    tenantId: string,
+    userId: string,
+  ): Promise<string | null> {
+    const user = await prisma.user.findFirst({
+      where: { id: userId, tenantId },
+      select: { role: true },
+    });
+    return user?.role ?? null;
+  }
+
+  /**
    * Get all roles assigned to a user in a tenant, ordered by priority descending.
    */
   async getUserRoles(tenantId: string, userId: string): Promise<RoleRow[]> {

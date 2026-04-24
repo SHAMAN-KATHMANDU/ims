@@ -141,7 +141,9 @@ export type UpsertPermissionOverwriteDto = z.infer<
 // ============ Effective Permissions ============
 
 export const GetEffectivePermissionsQuerySchema = z.object({
-  resourceId: z.string().uuid("Resource ID must be a valid UUID"),
+  // Optional: when omitted, the controller resolves the tenant's WORKSPACE
+  // resource. Required to be a valid UUID when present.
+  resourceId: z.string().uuid("Resource ID must be a valid UUID").optional(),
 });
 
 export type GetEffectivePermissionsQueryDto = z.infer<
