@@ -1,20 +1,49 @@
 /**
  * Sites Router — tenant-scoped website management.
  * Mounted under /sites; inherits auth + tenant resolution from the main chain.
- * Role: admin or superAdmin (regular users can't edit site content).
+ * Permissions: WEBSITE.SITE.* — VIEW gate on read routes, UPDATE on mutations,
+ *              DEPLOY on publish/unpublish (dangerous).
  */
 
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import controller from "./sites.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
-router.use(authorizeRoles("admin", "superAdmin"));
+// Baseline VIEW gate covers GET routes; write routes stack a stricter gate.
+router.use(requirePermission("WEBSITE.SITE.VIEW", workspaceLocator()));
+
+// Pre-bound gates to keep per-route lines terse.
+const requireUpdate = requirePermission(
+  "WEBSITE.SITE.UPDATE",
+  workspaceLocator(),
+);
+const requireDeploy = requirePermission(
+  "WEBSITE.SITE.DEPLOY",
+  workspaceLocator(),
+);
+const requirePageView = requirePermission(
+  "WEBSITE.PAGES.VIEW",
+  workspaceLocator(),
+);
+const requirePageCreate = requirePermission(
+  "WEBSITE.PAGES.CREATE",
+  workspaceLocator(),
+);
+const requirePageUpdate = requirePermission(
+  "WEBSITE.PAGES.UPDATE",
+  workspaceLocator(),
+);
+const requirePageDelete = requirePermission(
+  "WEBSITE.PAGES.DELETE",
+  workspaceLocator(),
+);
 
 /**
  * @swagger
@@ -54,7 +83,7 @@ router.get("/config", asyncHandler(controller.getConfig));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.put("/config", asyncHandler(controller.updateConfig));
+router.put("/config", requireUpdate, asyncHandler(controller.updateConfig));
 
 /**
  * @swagger
@@ -94,7 +123,7 @@ router.get("/templates", asyncHandler(controller.listTemplates));
  *       403: { description: Website feature not enabled }
  *       404: { description: Template not found }
  */
-router.post("/template", asyncHandler(controller.pickTemplate));
+router.post("/template", requireUpdate, asyncHandler(controller.pickTemplate));
 
 /**
  * @swagger
@@ -109,7 +138,7 @@ router.post("/template", asyncHandler(controller.pickTemplate));
  *       400: { description: No template picked yet }
  *       403: { description: Website feature not enabled }
  */
-router.post("/publish", asyncHandler(controller.publish));
+router.post("/publish", requireDeploy, asyncHandler(controller.publish));
 
 /**
  * @swagger
@@ -123,7 +152,7 @@ router.post("/publish", asyncHandler(controller.publish));
  *       200: { description: Site unpublished }
  *       403: { description: Website feature not enabled }
  */
-router.post("/unpublish", asyncHandler(controller.unpublish));
+router.post("/unpublish", requireDeploy, asyncHandler(controller.unpublish));
 
 /**
  * @swagger
@@ -137,7 +166,7 @@ router.post("/unpublish", asyncHandler(controller.unpublish));
  *       200: { description: Pages list }
  *       403: { description: Website feature not enabled }
  */
-router.get("/pages", asyncHandler(controller.listPages));
+router.get("/pages", requirePageView, asyncHandler(controller.listPages));
 
 /**
  * @swagger
@@ -170,7 +199,7 @@ router.get("/pages", asyncHandler(controller.listPages));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.post("/pages", asyncHandler(controller.createPage));
+router.post("/pages", requirePageCreate, asyncHandler(controller.createPage));
 
 /**
  * @swagger
@@ -190,7 +219,7 @@ router.post("/pages", asyncHandler(controller.createPage));
  *       403: { description: Website feature not enabled }
  *       404: { description: Page not found }
  */
-router.get("/pages/:pageId", asyncHandler(controller.getPage));
+router.get("/pages/:pageId", requirePageView, asyncHandler(controller.getPage));
 
 /**
  * @swagger
@@ -227,7 +256,11 @@ router.get("/pages/:pageId", asyncHandler(controller.getPage));
  *       403: { description: Website feature not enabled }
  *       404: { description: Page not found }
  */
-router.put("/pages/:pageId", asyncHandler(controller.updatePage));
+router.put(
+  "/pages/:pageId",
+  requirePageUpdate,
+  asyncHandler(controller.updatePage),
+);
 
 /**
  * @swagger
@@ -247,7 +280,11 @@ router.put("/pages/:pageId", asyncHandler(controller.updatePage));
  *       403: { description: Website feature not enabled }
  *       404: { description: Page not found }
  */
-router.delete("/pages/:pageId", asyncHandler(controller.deletePage));
+router.delete(
+  "/pages/:pageId",
+  requirePageDelete,
+  asyncHandler(controller.deletePage),
+);
 
 /**
  * @swagger
@@ -287,7 +324,11 @@ router.delete("/pages/:pageId", asyncHandler(controller.deletePage));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.post("/blocks/:scope", asyncHandler(controller.upsertBlocks));
+router.post(
+  "/blocks/:scope",
+  requireUpdate,
+  asyncHandler(controller.upsertBlocks),
+);
 
 /**
  * @swagger
@@ -324,7 +365,11 @@ router.post("/blocks/:scope", asyncHandler(controller.upsertBlocks));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.post("/blocks/:scope/reorder", asyncHandler(controller.reorderBlocks));
+router.post(
+  "/blocks/:scope/reorder",
+  requireUpdate,
+  asyncHandler(controller.reorderBlocks),
+);
 
 /**
  * @swagger
@@ -365,7 +410,11 @@ router.post("/blocks/:scope/reorder", asyncHandler(controller.reorderBlocks));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.post("/blocks/:scope/add", asyncHandler(controller.addBlock));
+router.post(
+  "/blocks/:scope/add",
+  requireUpdate,
+  asyncHandler(controller.addBlock),
+);
 
 /**
  * @swagger
@@ -409,7 +458,11 @@ router.post("/blocks/:scope/add", asyncHandler(controller.addBlock));
  *       403: { description: Website feature not enabled }
  *       404: { description: Block not found }
  */
-router.put("/blocks/:scope/:blockId", asyncHandler(controller.updateBlock));
+router.put(
+  "/blocks/:scope/:blockId",
+  requireUpdate,
+  asyncHandler(controller.updateBlock),
+);
 
 /**
  * @swagger
@@ -437,7 +490,11 @@ router.put("/blocks/:scope/:blockId", asyncHandler(controller.updateBlock));
  *       403: { description: Website feature not enabled }
  *       404: { description: Block not found }
  */
-router.delete("/blocks/:scope/:blockId", asyncHandler(controller.deleteBlock));
+router.delete(
+  "/blocks/:scope/:blockId",
+  requireUpdate,
+  asyncHandler(controller.deleteBlock),
+);
 
 /**
  * @swagger
@@ -495,7 +552,7 @@ router.get("/globals", asyncHandler(controller.getGlobals));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.put("/globals", asyncHandler(controller.updateGlobals));
+router.put("/globals", requireUpdate, asyncHandler(controller.updateGlobals));
 
 /**
  * @swagger
@@ -556,7 +613,7 @@ router.get("/theme", asyncHandler(controller.getTheme));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.put("/theme", asyncHandler(controller.updateTheme));
+router.put("/theme", requireUpdate, asyncHandler(controller.updateTheme));
 
 /**
  * @swagger
@@ -596,6 +653,6 @@ router.get("/seo", asyncHandler(controller.getSeo));
  *       400: { description: Validation error }
  *       403: { description: Website feature not enabled }
  */
-router.put("/seo", asyncHandler(controller.updateSeo));
+router.put("/seo", requireUpdate, asyncHandler(controller.updateSeo));
 
 export default router;

@@ -229,6 +229,7 @@ class SaleController {
 
       const userRole = (req as { user?: { role?: string } }).user?.role;
       const userId = (req as { user?: { id?: string } }).user?.id;
+      const tenantId = req.user?.tenantId;
 
       const result = await saleService.getAllSales({
         page: query.page,
@@ -244,6 +245,7 @@ class SaleController {
         endDate: query.endDate,
         userRole,
         userId,
+        tenantId,
       });
 
       const paginated = createPaginationResult(

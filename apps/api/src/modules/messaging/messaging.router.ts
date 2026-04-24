@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import messagingController from "./messaging.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -10,7 +11,9 @@ const messagingRouter = Router();
 
 messagingRouter.use(enforceEnvFeature(EnvFeature.MESSAGING));
 messagingRouter.use(enforcePlanFeature("messaging"));
-messagingRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+messagingRouter.use(
+  requirePermission("SETTINGS.MESSAGING.VIEW", workspaceLocator()),
+);
 
 /**
  * @swagger

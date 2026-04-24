@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { validate } from "@/middlewares/validate";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import productController from "@/modules/products/product.controller";
@@ -148,7 +152,7 @@ const productRouter = Router();
  */
 productRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.CREATE", workspaceLocator()),
   enforcePlanLimits("products"),
   validate(CreateProductSchema),
   asyncHandler(productController.createProduct),
@@ -216,11 +220,8 @@ productRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedProductsResponse'
  */
-productRouter.get(
-  "/",
-  authorizeRoles("admin", "user", "superAdmin"),
-  asyncHandler(productController.getAllProducts),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+productRouter.get("/", asyncHandler(productController.getAllProducts));
 
 /**
  * @swagger
@@ -248,9 +249,10 @@ productRouter.get(
  *       404:
  *         description: Product not found
  */
+// GET /by-ims — POS lookup by barcode, no :id param; scope to workspace
 productRouter.get(
   "/by-ims",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.VIEW", workspaceLocator()),
   asyncHandler(productController.getProductByIms),
 );
 
@@ -282,9 +284,9 @@ productRouter.get(
  *       200:
  *         description: Categories retrieved successfully
  */
+// Helper: list categories — service-layer filterVisible (Phase 3 follow-up)
 productRouter.get(
   "/categories/list",
-  authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllCategories),
 );
 
@@ -316,9 +318,9 @@ productRouter.get(
  *       200:
  *         description: Discount types retrieved successfully
  */
+// Helper: list discount types — service-layer filterVisible (Phase 3 follow-up)
 productRouter.get(
   "/discount-types/list",
-  authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllDiscountTypes),
 );
 
@@ -348,7 +350,7 @@ productRouter.get(
  */
 productRouter.post(
   "/discount-types",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.DISCOUNTS.CREATE", workspaceLocator()),
   asyncHandler(productController.createDiscountType),
 );
 
@@ -368,12 +370,12 @@ productRouter.post(
  */
 productRouter.put(
   "/discount-types/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.DISCOUNTS.UPDATE", paramLocator("DISCOUNT")),
   asyncHandler(productController.updateDiscountType),
 );
 productRouter.delete(
   "/discount-types/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.DISCOUNTS.DELETE", paramLocator("DISCOUNT")),
   asyncHandler(productController.deleteDiscountType),
 );
 
@@ -434,9 +436,9 @@ productRouter.delete(
  *       200:
  *         description: Product discounts list
  */
+// List product discounts — service-layer filterVisible (Phase 3 follow-up)
 productRouter.get(
   "/discounts/list",
-  authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProductDiscounts),
 );
 
@@ -495,7 +497,7 @@ productRouter.get(
  */
 productRouter.get(
   "/:id/discounts",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.VIEW", paramLocator("PRODUCT")),
   asyncHandler(productController.getProductDiscounts),
 );
 
@@ -522,7 +524,7 @@ productRouter.get(
  */
 productRouter.get(
   "/:id",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.VIEW", paramLocator("PRODUCT")),
   asyncHandler(productController.getProductById),
 );
 
@@ -567,7 +569,7 @@ productRouter.get(
  */
 productRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.UPDATE", paramLocator("PRODUCT")),
   validate(UpdateProductSchema),
   asyncHandler(productController.updateProduct),
 );
@@ -595,7 +597,7 @@ productRouter.put(
  */
 productRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.DELETE", paramLocator("PRODUCT")),
   asyncHandler(productController.deleteProduct),
 );
 
@@ -630,7 +632,10 @@ productRouter.delete(
  */
 productRouter.delete(
   "/:productId/variations/:variationId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission(
+    "INVENTORY.PRODUCTS.UPDATE",
+    paramLocator("PRODUCT", "productId"),
+  ),
   asyncHandler(productController.deleteVariation),
 );
 

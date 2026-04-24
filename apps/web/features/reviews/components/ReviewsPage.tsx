@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Can, PermissionGate } from "@/features/permissions";
 import {
   Select,
   SelectContent,
@@ -142,149 +143,157 @@ export function ReviewsPage() {
   };
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Reviews</h1>
-        <p className="text-sm text-muted-foreground">
-          Moderate customer reviews before they appear on product pages.
-        </p>
-      </div>
-
-      {isError && (
-        <div className="flex items-center justify-between rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
-          <span className="text-destructive">Couldn&apos;t load reviews.</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-          >
-            Retry
-          </Button>
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search
-            className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by product name"
-            className="pl-8"
-            aria-label="Filter by product name"
-          />
+    <PermissionGate perm="WEBSITE.REVIEWS.VIEW">
+      <div className="space-y-4 p-6">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Reviews</h1>
+          <p className="text-sm text-muted-foreground">
+            Moderate customer reviews before they appear on product pages.
+          </p>
         </div>
 
-        <Select
-          value={status ?? STATUS_ALL}
-          onValueChange={(v) => {
-            setStatus(v === STATUS_ALL ? undefined : (v as ReviewStatus));
-            setPage(DEFAULT_PAGE);
-            setSelectedIds(new Set());
-          }}
-        >
-          <SelectTrigger className="w-44" aria-label="Filter by status">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={STATUS_ALL}>All statuses</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="APPROVED">Approved</SelectItem>
-            <SelectItem value="REJECTED">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {hasActiveFilters && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-          >
-            Clear filters
-          </Button>
-        )}
-      </div>
-
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between rounded-md border border-border bg-muted/50 px-4 py-2 text-sm">
-          <span>{selectedIds.size} selected on this page</span>
-          <div className="flex gap-2">
+        {isError && (
+          <div className="flex items-center justify-between rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+            <span className="text-destructive">
+              Couldn&apos;t load reviews.
+            </span>
             <Button
               type="button"
-              size="sm"
               variant="outline"
-              onClick={() => bulkPatch("APPROVED")}
-              disabled={updateMutation.isPending}
-            >
-              Approve selected
-            </Button>
-            <Button
-              type="button"
               size="sm"
-              variant="outline"
-              onClick={() => bulkPatch("REJECTED")}
-              disabled={updateMutation.isPending}
+              onClick={() => refetch()}
             >
-              Reject selected
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Clear
+              Retry
             </Button>
           </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full max-w-xs">
+            <Search
+              className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter by product name"
+              className="pl-8"
+              aria-label="Filter by product name"
+            />
+          </div>
+
+          <Select
+            value={status ?? STATUS_ALL}
+            onValueChange={(v) => {
+              setStatus(v === STATUS_ALL ? undefined : (v as ReviewStatus));
+              setPage(DEFAULT_PAGE);
+              setSelectedIds(new Set());
+            }}
+          >
+            <SelectTrigger className="w-44" aria-label="Filter by status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={STATUS_ALL}>All statuses</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="APPROVED">Approved</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
-      )}
 
-      <ReviewTable
-        reviews={visibleRows}
-        isLoading={isLoading}
-        selectedIds={selectedIds}
-        onSelectionChange={setSelectedIds}
-        onApprove={(r) => patchStatus(r, "APPROVED")}
-        onReject={(r) => patchStatus(r, "REJECTED")}
-        onDelete={setDeleteTarget}
-        pendingId={pendingId}
-        hasActiveFilters={hasActiveFilters}
-        onClearFilters={clearFilters}
-      />
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/50 px-4 py-2 text-sm">
+            <span>{selectedIds.size} selected on this page</span>
+            <div className="flex gap-2">
+              <Can perm="WEBSITE.REVIEWS.APPROVE">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => bulkPatch("APPROVED")}
+                  disabled={updateMutation.isPending}
+                >
+                  Approve selected
+                </Button>
+              </Can>
+              <Can perm="WEBSITE.REVIEWS.REJECT">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => bulkPatch("REJECTED")}
+                  disabled={updateMutation.isPending}
+                >
+                  Reject selected
+                </Button>
+              </Can>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
 
-      {total > 0 && (
-        <DataTablePagination
-          pagination={{
-            currentPage: page,
-            totalPages,
-            totalItems: total,
-            itemsPerPage: limit,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-          }}
-          onPageChange={changePage}
-          onPageSizeChange={changeLimit}
+        <ReviewTable
+          reviews={visibleRows}
           isLoading={isLoading}
-          itemLabel="reviews"
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onApprove={(r) => patchStatus(r, "APPROVED")}
+          onReject={(r) => patchStatus(r, "REJECTED")}
+          onDelete={setDeleteTarget}
+          pendingId={pendingId}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilters}
         />
-      )}
 
-      <DeleteConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
-        title="Delete review?"
-        description="This review will be removed from moderation and hidden from the storefront. This cannot be undone from the UI."
-        itemName={deleteTarget?.product?.name ?? "this review"}
-        showReasonField={false}
-        onConfirm={confirmDelete}
-        isLoading={deleteMutation.isPending}
-      />
-    </div>
+        {total > 0 && (
+          <DataTablePagination
+            pagination={{
+              currentPage: page,
+              totalPages,
+              totalItems: total,
+              itemsPerPage: limit,
+              hasNextPage: page < totalPages,
+              hasPrevPage: page > 1,
+            }}
+            onPageChange={changePage}
+            onPageSizeChange={changeLimit}
+            isLoading={isLoading}
+            itemLabel="reviews"
+          />
+        )}
+
+        <DeleteConfirmDialog
+          open={deleteTarget !== null}
+          onOpenChange={(o) => !o && setDeleteTarget(null)}
+          title="Delete review?"
+          description="This review will be removed from moderation and hidden from the storefront. This cannot be undone from the UI."
+          itemName={deleteTarget?.product?.name ?? "this review"}
+          showReasonField={false}
+          onConfirm={confirmDelete}
+          isLoading={deleteMutation.isPending}
+        />
+      </div>
+    </PermissionGate>
   );
 }

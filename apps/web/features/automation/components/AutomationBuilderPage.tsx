@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Can } from "@/features/permissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AutomationForm } from "./AutomationForm";
 import { AutomationOnboarding } from "./automation-onboarding";
@@ -398,17 +399,19 @@ export function AutomationBuilderPage() {
               className="min-w-[12rem] flex-1"
             />
             {!showAutomationForm && !showEmptyDefinitionsCtas ? (
-              <Button
-                type="button"
-                data-testid="automation-open-create-composer"
-                onClick={() => {
-                  setEditing(null);
-                  setDraftValues(undefined);
-                  setComposerOpen(true);
-                }}
-              >
-                Create automation
-              </Button>
+              <Can perm="CRM.AUTOMATIONS.CREATE">
+                <Button
+                  type="button"
+                  data-testid="automation-open-create-composer"
+                  onClick={() => {
+                    setEditing(null);
+                    setDraftValues(undefined);
+                    setComposerOpen(true);
+                  }}
+                >
+                  Create automation
+                </Button>
+              </Can>
             ) : null}
             <Button
               type="button"

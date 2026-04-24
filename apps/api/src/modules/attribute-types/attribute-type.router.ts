@@ -1,11 +1,13 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import attributeTypeController from "./attribute-type.controller";
 
 const router = Router();
-
-router.use(authorizeRoles("admin", "superAdmin"));
 
 /**
  * @swagger
@@ -30,6 +32,7 @@ router.use(authorizeRoles("admin", "superAdmin"));
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  */
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
 router.get("/", asyncHandler(attributeTypeController.list));
 
 /**
@@ -58,7 +61,11 @@ router.get("/", asyncHandler(attributeTypeController.list));
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  */
-router.post("/", asyncHandler(attributeTypeController.create));
+router.post(
+  "/",
+  requirePermission("INVENTORY.ATTRIBUTE_TYPES.CREATE", workspaceLocator()),
+  asyncHandler(attributeTypeController.create),
+);
 
 /**
  * @swagger
@@ -80,7 +87,14 @@ router.post("/", asyncHandler(attributeTypeController.create));
  *       403: { description: Forbidden }
  *       404: { description: Attribute type not found }
  */
-router.get("/:typeId/values", asyncHandler(attributeTypeController.listValues));
+router.get(
+  "/:typeId/values",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.VIEW",
+    paramLocator("ATTRIBUTE_TYPE", "typeId"),
+  ),
+  asyncHandler(attributeTypeController.listValues),
+);
 
 /**
  * @swagger
@@ -116,6 +130,10 @@ router.get("/:typeId/values", asyncHandler(attributeTypeController.listValues));
  */
 router.post(
   "/:typeId/values",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.UPDATE",
+    paramLocator("ATTRIBUTE_TYPE", "typeId"),
+  ),
   asyncHandler(attributeTypeController.createValue),
 );
 
@@ -155,6 +173,10 @@ router.post(
  */
 router.put(
   "/:typeId/values/:valueId",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.UPDATE",
+    paramLocator("ATTRIBUTE_TYPE", "typeId"),
+  ),
   asyncHandler(attributeTypeController.updateValue),
 );
 
@@ -184,6 +206,10 @@ router.put(
  */
 router.delete(
   "/:typeId/values/:valueId",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.UPDATE",
+    paramLocator("ATTRIBUTE_TYPE", "typeId"),
+  ),
   asyncHandler(attributeTypeController.deleteValue),
 );
 
@@ -207,7 +233,14 @@ router.delete(
  *       403: { description: Forbidden }
  *       404: { description: Attribute type not found }
  */
-router.get("/:id", asyncHandler(attributeTypeController.getById));
+router.get(
+  "/:id",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.VIEW",
+    paramLocator("ATTRIBUTE_TYPE"),
+  ),
+  asyncHandler(attributeTypeController.getById),
+);
 
 /**
  * @swagger
@@ -239,7 +272,14 @@ router.get("/:id", asyncHandler(attributeTypeController.getById));
  *       403: { description: Forbidden }
  *       404: { description: Attribute type not found }
  */
-router.put("/:id", asyncHandler(attributeTypeController.update));
+router.put(
+  "/:id",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.UPDATE",
+    paramLocator("ATTRIBUTE_TYPE"),
+  ),
+  asyncHandler(attributeTypeController.update),
+);
 
 /**
  * @swagger
@@ -261,6 +301,13 @@ router.put("/:id", asyncHandler(attributeTypeController.update));
  *       403: { description: Forbidden }
  *       404: { description: Attribute type not found }
  */
-router.delete("/:id", asyncHandler(attributeTypeController.delete));
+router.delete(
+  "/:id",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.DELETE",
+    paramLocator("ATTRIBUTE_TYPE"),
+  ),
+  asyncHandler(attributeTypeController.delete),
+);
 
 export default router;

@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Can, useCan } from "@/features/permissions";
 import { useToast } from "@/hooks/useToast";
 import {
   useTenantPages,
@@ -209,6 +210,9 @@ function PageRow({
   const deleteMutation = useDeleteTenantPage();
   const duplicateMutation = useDuplicateTenantPage();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { allowed: canPublish } = useCan("WEBSITE.PAGES.PUBLISH");
+  const { allowed: canUpdate } = useCan("WEBSITE.PAGES.UPDATE");
+  const { allowed: canDelete } = useCan("WEBSITE.PAGES.DELETE");
 
   const handleToggle = async () => {
     try {
@@ -257,8 +261,12 @@ function PageRow({
         <TableCell>
           <Switch
             checked={page.isPublished}
-            onCheckedChange={handleToggle}
-            disabled={publishMutation.isPending || unpublishMutation.isPending}
+            onCheckedChange={canPublish ? handleToggle : undefined}
+            disabled={
+              !canPublish ||
+              publishMutation.isPending ||
+              unpublishMutation.isPending
+            }
             aria-label={page.isPublished ? "Unpublish page" : "Publish page"}
           />
         </TableCell>
@@ -270,50 +278,60 @@ function PageRow({
           )}
         </TableCell>
         <TableCell className="text-right">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggle}
-            disabled={publishMutation.isPending || unpublishMutation.isPending}
-            aria-label={page.isPublished ? "Unpublish" : "Publish"}
-          >
-            {page.isPublished ? (
-              <EyeOff className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Eye className="h-4 w-4" aria-hidden="true" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={async () => {
-              try {
-                await duplicateMutation.mutateAsync(page.id);
-                toast({ title: "Page duplicated" });
-                onDuplicated();
-              } catch (error) {
-                toast({
-                  title: "Duplicate failed",
-                  description:
-                    error instanceof Error ? error.message : "Please try again",
-                  variant: "destructive",
-                });
+          {canPublish && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleToggle}
+              disabled={
+                publishMutation.isPending || unpublishMutation.isPending
               }
-            }}
-            disabled={duplicateMutation.isPending}
-            aria-label={`Duplicate ${page.title}`}
-          >
-            <Copy className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDeleteDialogOpen(true)}
-            disabled={deleteMutation.isPending}
-            aria-label={`Delete ${page.title}`}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </Button>
+              aria-label={page.isPublished ? "Unpublish" : "Publish"}
+            >
+              {page.isPublished ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </Button>
+          )}
+          {canUpdate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={async () => {
+                try {
+                  await duplicateMutation.mutateAsync(page.id);
+                  toast({ title: "Page duplicated" });
+                  onDuplicated();
+                } catch (error) {
+                  toast({
+                    title: "Duplicate failed",
+                    description:
+                      error instanceof Error
+                        ? error.message
+                        : "Please try again",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={duplicateMutation.isPending}
+              aria-label={`Duplicate ${page.title}`}
+            >
+              <Copy className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteMutation.isPending}
+              aria-label={`Delete ${page.title}`}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
         </TableCell>
       </TableRow>
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -384,12 +402,14 @@ export function TenantPagesPage({
             Manage all your site pages — built-in and custom.
           </p>
         </div>
-        <Button asChild>
-          <Link href={newHref}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            New page
-          </Link>
-        </Button>
+        <Can perm="WEBSITE.PAGES.CREATE">
+          <Button asChild>
+            <Link href={newHref}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              New page
+            </Link>
+          </Button>
+        </Can>
       </div>
 
       {/* Built-in pages */}

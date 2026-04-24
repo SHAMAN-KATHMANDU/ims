@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import transferController from "@/modules/transfers/transfer.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -53,7 +57,7 @@ const transferRouter = Router();
  */
 transferRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.CREATE", workspaceLocator()),
   asyncHandler(transferController.createTransfer),
 );
 
@@ -110,11 +114,8 @@ transferRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedTransfersResponse'
  */
-transferRouter.get(
-  "/",
-  authorizeRoles("admin", "user", "superAdmin"),
-  asyncHandler(transferController.getAllTransfers),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+transferRouter.get("/", asyncHandler(transferController.getAllTransfers));
 
 /**
  * @swagger
@@ -139,7 +140,7 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.VIEW", paramLocator("TRANSFER")),
   asyncHandler(transferController.getTransferById),
 );
 
@@ -166,7 +167,7 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id/logs",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.VIEW", paramLocator("TRANSFER")),
   asyncHandler(transferController.getTransferLogs),
 );
 
@@ -195,7 +196,7 @@ transferRouter.get(
  */
 transferRouter.put(
   "/:id/approve",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.APPROVE", paramLocator("TRANSFER")),
   asyncHandler(transferController.approveTransfer),
 );
 
@@ -222,9 +223,10 @@ transferRouter.put(
  *       404:
  *         description: Transfer not found
  */
+// Transit is the ship-out half of the approval flow — shares APPROVE.
 transferRouter.put(
   "/:id/transit",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.APPROVE", paramLocator("TRANSFER")),
   asyncHandler(transferController.startTransit),
 );
 
@@ -251,9 +253,10 @@ transferRouter.put(
  *       404:
  *         description: Transfer not found
  */
+// Complete = destination receives stock → RECEIVE
 transferRouter.put(
   "/:id/complete",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.RECEIVE", paramLocator("TRANSFER")),
   asyncHandler(transferController.completeTransfer),
 );
 
@@ -288,9 +291,10 @@ transferRouter.put(
  *       404:
  *         description: Transfer not found
  */
+// Cancel = reject the transfer → REJECT
 transferRouter.put(
   "/:id/cancel",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.TRANSFERS.REJECT", paramLocator("TRANSFER")),
   asyncHandler(transferController.cancelTransfer),
 );
 

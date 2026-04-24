@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import pipelineController from "./pipeline.controller";
@@ -11,6 +12,9 @@ const pipelineRouter = Router();
 pipelineRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 pipelineRouter.use(enforceEnvFeature(EnvFeature.CRM_PIPELINES_TAB));
 pipelineRouter.use(enforcePlanFeature("salesPipeline"));
+
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -35,7 +39,7 @@ pipelineRouter.use(enforcePlanFeature("salesPipeline"));
  */
 pipelineRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator),
   asyncHandler(pipelineController.create),
 );
 
@@ -52,7 +56,7 @@ pipelineRouter.post(
  */
 pipelineRouter.post(
   "/seed-framework",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator),
   asyncHandler(pipelineController.seedFramework),
 );
 
@@ -79,7 +83,11 @@ pipelineRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedPipelinesResponse'
  */
-pipelineRouter.get("/", asyncHandler(pipelineController.getAll));
+pipelineRouter.get(
+  "/",
+  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator),
+  asyncHandler(pipelineController.getAll),
+);
 
 /**
  * @swagger
@@ -96,6 +104,7 @@ pipelineRouter.get("/", asyncHandler(pipelineController.getAll));
  */
 pipelineRouter.get(
   "/templates",
+  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator),
   asyncHandler(pipelineController.listTemplates),
 );
 
@@ -116,7 +125,11 @@ pipelineRouter.get(
  *       200: { description: Pipeline details }
  *       404: { description: Not found }
  */
-pipelineRouter.get("/:id", asyncHandler(pipelineController.getById));
+pipelineRouter.get(
+  "/:id",
+  requirePermission("CRM.PIPELINES.VIEW", idLocator),
+  asyncHandler(pipelineController.getById),
+);
 
 /**
  * @swagger
@@ -144,7 +157,7 @@ pipelineRouter.get("/:id", asyncHandler(pipelineController.getById));
  */
 pipelineRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.PIPELINES.UPDATE", idLocator),
   asyncHandler(pipelineController.update),
 );
 
@@ -166,7 +179,7 @@ pipelineRouter.put(
  */
 pipelineRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.PIPELINES.DELETE", idLocator),
   asyncHandler(pipelineController.delete),
 );
 

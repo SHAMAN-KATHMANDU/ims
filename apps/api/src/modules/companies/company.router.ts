@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import companyController from "./company.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -8,6 +9,9 @@ const companyRouter = Router();
 
 companyRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 companyRouter.use(enforcePlanFeature("salesPipeline"));
+
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -20,7 +24,11 @@ companyRouter.use(enforcePlanFeature("salesPipeline"));
  *     responses:
  *       200: { description: Companies list }
  */
-companyRouter.get("/list", asyncHandler(companyController.listForSelect));
+companyRouter.get(
+  "/list",
+  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator),
+  asyncHandler(companyController.listForSelect),
+);
 
 /**
  * @swagger
@@ -30,21 +38,12 @@ companyRouter.get("/list", asyncHandler(companyController.listForSelect));
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name]
- *             properties:
- *               name: { type: string }
  *     responses:
  *       201: { description: Company created }
  */
 companyRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.COMPANIES.CREATE", workspaceLocator),
   asyncHandler(companyController.create),
 );
 
@@ -56,31 +55,14 @@ companyRouter.post(
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *       - in: query
- *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: sortBy
- *         schema: { type: string }
- *       - in: query
- *         name: sortOrder
- *         schema: { type: string, enum: [asc, desc] }
  *     responses:
- *       200:
- *         description: Companies list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedCompaniesResponse'
+ *       200: { description: Companies list }
  */
-companyRouter.get("/", asyncHandler(companyController.getAll));
+companyRouter.get(
+  "/",
+  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator),
+  asyncHandler(companyController.getAll),
+);
 
 /**
  * @swagger
@@ -90,16 +72,14 @@ companyRouter.get("/", asyncHandler(companyController.getAll));
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Company details }
- *       404: { description: Not found }
  */
-companyRouter.get("/:id", asyncHandler(companyController.getById));
+companyRouter.get(
+  "/:id",
+  requirePermission("CRM.COMPANIES.VIEW", idLocator),
+  asyncHandler(companyController.getById),
+);
 
 /**
  * @swagger
@@ -109,24 +89,12 @@ companyRouter.get("/:id", asyncHandler(companyController.getById));
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
  *     responses:
  *       200: { description: Company updated }
  */
 companyRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.COMPANIES.UPDATE", idLocator),
   asyncHandler(companyController.update),
 );
 
@@ -138,18 +106,12 @@ companyRouter.put(
  *     tags: [Companies]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Company deleted }
- *       404: { description: Not found }
  */
 companyRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.COMPANIES.DELETE", idLocator),
   asyncHandler(companyController.delete),
 );
 

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { Can } from "@/features/permissions";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import {
   useLocationsPaginated,
@@ -386,12 +387,14 @@ export function LocationsPage() {
                     </TooltipContent>
                   </Tooltip>
                 ) : (
-                  <Button asChild>
-                    <Link href={`${basePath}/locations/new`} className="gap-2">
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      Add Location
-                    </Link>
-                  </Button>
+                  <Can perm="INVENTORY.LOCATIONS.CREATE">
+                    <Button asChild>
+                      <Link href={`${basePath}/locations/new`} className="gap-2">
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add Location
+                      </Link>
+                    </Button>
+                  </Can>
                 )
               ) : (
                 <LocationForm

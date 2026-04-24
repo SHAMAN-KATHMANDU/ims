@@ -1,3 +1,4 @@
+import { PermissionGate } from "@/features/permissions";
 import { TenantPageEditor } from "@/features/tenant-pages";
 
 export const metadata = { title: "New page" };
@@ -8,5 +9,9 @@ type Props = {
 
 export default async function NewTenantPageRoute({ params }: Props) {
   const { workspace } = await params;
-  return <TenantPageEditor backHref={`/${workspace}/settings/site/pages`} />;
+  return (
+    <PermissionGate perm="WEBSITE.PAGES.CREATE">
+      <TenantPageEditor backHref={`/${workspace}/settings/site/pages`} />
+    </PermissionGate>
+  );
 }

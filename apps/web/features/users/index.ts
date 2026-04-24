@@ -1,6 +1,9 @@
 export { UsersPage } from "./components/index";
 export { NewUserPage } from "./components/NewUserPage";
 export { EditUserPage } from "./components/EditUserPage";
+export { ProfilePage } from "./components/ProfilePage";
+export { ChangePasswordDialog } from "./components/ChangePasswordDialog";
+export { useChangeMyPassword } from "./hooks/use-change-my-password";
 export {
   useUsers,
   useUser,

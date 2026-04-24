@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import dealController from "./deal.controller";
@@ -11,6 +12,9 @@ const dealRouter = Router();
 dealRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 dealRouter.use(enforceEnvFeature(EnvFeature.CRM_DEALS));
 dealRouter.use(enforcePlanFeature("salesPipeline"));
+
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -37,7 +41,11 @@ dealRouter.use(enforcePlanFeature("salesPipeline"));
  *     responses:
  *       201: { description: Deal created }
  */
-dealRouter.post("/", asyncHandler(dealController.create));
+dealRouter.post(
+  "/",
+  requirePermission("CRM.DEALS.CREATE", workspaceLocator),
+  asyncHandler(dealController.create),
+);
 
 /**
  * @swagger
@@ -60,7 +68,11 @@ dealRouter.post("/", asyncHandler(dealController.create));
  *     responses:
  *       200: { description: Discount authority result }
  */
-dealRouter.post("/check-discount", asyncHandler(dealController.checkDiscount));
+dealRouter.post(
+  "/check-discount",
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  asyncHandler(dealController.checkDiscount),
+);
 
 /**
  * @swagger
@@ -78,7 +90,11 @@ dealRouter.post("/check-discount", asyncHandler(dealController.checkDiscount));
  *     responses:
  *       200: { description: Deals grouped by stage }
  */
-dealRouter.get("/kanban", asyncHandler(dealController.getByPipeline));
+dealRouter.get(
+  "/kanban",
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  asyncHandler(dealController.getByPipeline),
+);
 
 /**
  * @swagger
@@ -118,7 +134,11 @@ dealRouter.get("/kanban", asyncHandler(dealController.getByPipeline));
  *             schema:
  *               $ref: '#/components/schemas/PaginatedDealsResponse'
  */
-dealRouter.get("/", asyncHandler(dealController.getAll));
+dealRouter.get(
+  "/",
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  asyncHandler(dealController.getAll),
+);
 
 /**
  * @swagger
@@ -137,7 +157,11 @@ dealRouter.get("/", asyncHandler(dealController.getAll));
  *       200: { description: Deal details }
  *       404: { description: Not found }
  */
-dealRouter.get("/:id", asyncHandler(dealController.getById));
+dealRouter.get(
+  "/:id",
+  requirePermission("CRM.DEALS.VIEW", idLocator),
+  asyncHandler(dealController.getById),
+);
 
 /**
  * @swagger
@@ -164,7 +188,11 @@ dealRouter.get("/:id", asyncHandler(dealController.getById));
  *     responses:
  *       200: { description: Deal updated }
  */
-dealRouter.put("/:id", asyncHandler(dealController.update));
+dealRouter.put(
+  "/:id",
+  requirePermission("CRM.DEALS.UPDATE", idLocator),
+  asyncHandler(dealController.update),
+);
 
 /**
  * @swagger
@@ -197,15 +225,25 @@ dealRouter.put("/:id", asyncHandler(dealController.update));
  *     responses:
  *       200: { description: Stage updated }
  */
-dealRouter.patch("/:id/stage", asyncHandler(dealController.updateStage));
+dealRouter.patch(
+  "/:id/stage",
+  requirePermission("CRM.DEALS.CHANGE_STAGE", idLocator),
+  asyncHandler(dealController.updateStage),
+);
 
-dealRouter.post("/:id/line-items", asyncHandler(dealController.addLineItem));
+dealRouter.post(
+  "/:id/line-items",
+  requirePermission("CRM.DEALS.CHANGE_VALUE", idLocator),
+  asyncHandler(dealController.addLineItem),
+);
 dealRouter.delete(
   "/:id/line-items/:lineItemId",
+  requirePermission("CRM.DEALS.CHANGE_VALUE", idLocator),
   asyncHandler(dealController.removeLineItem),
 );
 dealRouter.post(
   "/:id/convert-to-sale",
+  requirePermission("CRM.DEALS.UPDATE", idLocator),
   asyncHandler(dealController.convertToSale),
 );
 
@@ -227,7 +265,7 @@ dealRouter.post(
  */
 dealRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.DEALS.DELETE", idLocator),
   asyncHandler(dealController.delete),
 );
 

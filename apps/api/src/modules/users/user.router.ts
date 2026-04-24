@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import userController from "@/modules/users/user.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -10,7 +14,7 @@ const userRouter = Router();
  * @swagger
  * /users/password-reset-requests:
  *   get:
- *     summary: Get password reset requests (superAdmin only)
+ *     summary: Get password reset requests
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -20,7 +24,7 @@ const userRouter = Router();
  */
 userRouter.get(
   "/password-reset-requests",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.RESET_PASSWORD", workspaceLocator()),
   asyncHandler(userController.getPasswordResetRequests),
 );
 
@@ -28,7 +32,7 @@ userRouter.get(
  * @swagger
  * /users/password-reset-requests/{requestId}/approve:
  *   post:
- *     summary: Approve password reset (superAdmin only)
+ *     summary: Approve password reset
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -51,7 +55,7 @@ userRouter.get(
  */
 userRouter.post(
   "/password-reset-requests/:requestId/approve",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.RESET_PASSWORD", workspaceLocator()),
   asyncHandler(userController.approveResetRequest),
 );
 
@@ -59,7 +63,7 @@ userRouter.post(
  * @swagger
  * /users/password-reset-requests/{requestId}/escalate:
  *   post:
- *     summary: Escalate password reset to platform admin (superAdmin only)
+ *     summary: Escalate password reset to platform admin
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -73,7 +77,7 @@ userRouter.post(
  */
 userRouter.post(
   "/password-reset-requests/:requestId/escalate",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.RESET_PASSWORD", workspaceLocator()),
   asyncHandler(userController.escalateResetRequest),
 );
 
@@ -81,7 +85,7 @@ userRouter.post(
  * @swagger
  * /users/password-reset-requests/{requestId}/reject:
  *   post:
- *     summary: Reject password reset (superAdmin only)
+ *     summary: Reject password reset
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -95,7 +99,7 @@ userRouter.post(
  */
 userRouter.post(
   "/password-reset-requests/:requestId/reject",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.RESET_PASSWORD", workspaceLocator()),
   asyncHandler(userController.rejectResetRequest),
 );
 
@@ -107,51 +111,13 @@ userRouter.post(
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *               - role
- *             properties:
- *               username:
- *                 type: string
- *                 example: newuser
- *               password:
- *                 type: string
- *                 example: password123
- *               role:
- *                 type: string
- *                 enum: [superAdmin, admin, user]
- *                 example: admin
  *     responses:
  *       201:
  *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/UserPublic'
- *       400:
- *         description: Bad request or validation error
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - SuperAdmin role required
- *       409:
- *         description: User with this username already exists
  */
 userRouter.post(
   "/",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.CREATE", workspaceLocator()),
   enforcePlanLimits("users"),
   asyncHandler(userController.createUser),
 );
@@ -164,21 +130,10 @@ userRouter.post(
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Users retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedUsersResponse'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin or SuperAdmin role required
  */
 userRouter.get(
   "/",
-  authorizeRoles("superAdmin", "admin"),
+  requirePermission("SETTINGS.USERS.VIEW", workspaceLocator()),
   asyncHandler(userController.getAllUsers),
 );
 
@@ -190,36 +145,10 @@ userRouter.get(
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: User ID
- *     responses:
- *       200:
- *         description: User retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/UserPublic'
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - SuperAdmin role required
- *       404:
- *         description: User not found
  */
 userRouter.get(
   "/:id",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.VIEW", paramLocator("USER", "id")),
   asyncHandler(userController.getUserById),
 );
 
@@ -231,53 +160,10 @@ userRouter.get(
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: User ID
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               username:
- *                 type: string
- *               password:
- *                 type: string
- *               role:
- *                 type: string
- *                 enum: [superAdmin, admin, user]
- *     responses:
- *       200:
- *         description: User updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/UserPublic'
- *       400:
- *         description: Bad request
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - SuperAdmin role required
- *       404:
- *         description: User not found
- *       409:
- *         description: Username already exists
  */
 userRouter.put(
   "/:id",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.UPDATE", paramLocator("USER", "id")),
   asyncHandler(userController.updateUser),
 );
 
@@ -289,34 +175,10 @@ userRouter.put(
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: User ID
- *     responses:
- *       200:
- *         description: User deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - SuperAdmin role required
- *       404:
- *         description: User not found
  */
 userRouter.delete(
   "/:id",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.USERS.DELETE", paramLocator("USER", "id")),
   asyncHandler(userController.deleteUser),
 );
 

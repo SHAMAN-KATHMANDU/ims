@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import bundleController from "./bundle.controller";
@@ -28,29 +32,26 @@ const bundleRouter = Router();
  *     summary: Soft-delete bundle
  *     tags: [Bundles]
  */
-bundleRouter.get(
-  "/",
-  authorizeRoles("user", "admin", "superAdmin"),
-  asyncHandler(bundleController.getAllBundles),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+bundleRouter.get("/", asyncHandler(bundleController.getAllBundles));
 bundleRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.BUNDLES.CREATE", workspaceLocator()),
   asyncHandler(bundleController.createBundle),
 );
 bundleRouter.get(
   "/:id",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("INVENTORY.BUNDLES.VIEW", paramLocator("BUNDLE")),
   asyncHandler(bundleController.getBundleById),
 );
 bundleRouter.patch(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.BUNDLES.UPDATE", paramLocator("BUNDLE")),
   asyncHandler(bundleController.updateBundle),
 );
 bundleRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.BUNDLES.DELETE", paramLocator("BUNDLE")),
   asyncHandler(bundleController.deleteBundle),
 );
 

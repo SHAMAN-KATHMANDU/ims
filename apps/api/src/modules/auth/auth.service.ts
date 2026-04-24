@@ -193,6 +193,24 @@ export class AuthService {
         "If an account exists with this username, a password reset request has been submitted. Contact your administrator.",
     };
   }
+
+  async createPasswordChangeAuditLog(params: {
+    userId: string;
+    tenantId: string;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    await this.repo.createAuditLog({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      action: "SECURITY",
+      resource: "password",
+      resourceId: params.userId,
+      details: { action: "password_changed" },
+      ip: params.ip,
+      userAgent: params.userAgent,
+    });
+  }
 }
 
 export default new AuthService(authRepository);

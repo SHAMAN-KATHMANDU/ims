@@ -39,6 +39,11 @@ import pipelineRepository from "@/modules/pipelines/pipeline.repository";
 import dealRepository from "@/modules/deals/deal.repository";
 import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
 import automationService from "@/modules/automation/automation.service";
+import { permissionService } from "@/modules/permissions/permission.service";
+import {
+  resolveResourceId,
+  resolveWorkspaceResourceId,
+} from "@/shared/permissions/resourceLocator";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -496,6 +501,7 @@ export interface GetAllSalesParams {
   endDate?: string;
   userRole?: string;
   userId?: string;
+  tenantId?: string;
 }
 
 interface SalePaymentInput {
@@ -922,6 +928,15 @@ export async function deleteSale(
   deleteReason?: string | null,
 ) {
   const sale = await findSaleById(saleId);
+  if (sale) {
+    const resourceId = await resolveResourceId(sale.tenantId, "SALE", saleId);
+    await permissionService.assert(
+      sale.tenantId,
+      userId,
+      resourceId,
+      "SALES.SALES.DELETE",
+    );
+  }
   const result = await softDeleteSale(saleId, userId, deleteReason ?? null);
   if (!result) {
     throw Object.assign(new Error("Sale not found or already deleted"), {
@@ -986,6 +1001,13 @@ export async function editSale(
   if (!sale) {
     throw Object.assign(new Error("Sale not found"), { statusCode: 404 });
   }
+  const saleResourceId = await resolveResourceId(sale.tenantId, "SALE", saleId);
+  await permissionService.assert(
+    sale.tenantId,
+    userId,
+    saleResourceId,
+    "SALES.SALES.EDIT_AFTER_FINALIZE",
+  );
   if (sale.deletedAt) {
     throw Object.assign(new Error("Cannot edit a deleted sale"), {
       statusCode: 400,
@@ -1176,7 +1198,9 @@ export async function getAllSales(params: GetAllSalesParams) {
   let startDate = params.startDate;
   let endDate = params.endDate;
 
-  // Business rule: "user" role restricted to today and yesterday
+  // Business rule: "user" role restricted to today and yesterday window.
+  // (Date restriction is legacy and stays role-based; row-level visibility
+  // is enforced by SALES.SALES.VIEW vs VIEW_OWN_ONLY below.)
   if (params.userRole === "user") {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -1197,12 +1221,41 @@ export async function getAllSales(params: GetAllSalesParams) {
     }
   }
 
+  // Permission-based own-only restriction:
+  //   - SALES.SALES.VIEW        → full list (subject to other filters)
+  //   - SALES.SALES.VIEW_OWN_ONLY → force createdById = userId
+  // We resolve this only when tenantId+userId are provided (production auth
+  // path). Tests or internal callers without that context get the raw filter.
+  let effectiveCreatedById = params.createdById;
+  if (params.tenantId && params.userId) {
+    const workspaceResourceId = await resolveWorkspaceResourceId(
+      params.tenantId,
+    );
+    const canViewAll = await permissionService.can(
+      params.tenantId,
+      params.userId,
+      workspaceResourceId,
+      "SALES.SALES.VIEW",
+    );
+    if (!canViewAll) {
+      const canViewOwn = await permissionService.can(
+        params.tenantId,
+        params.userId,
+        workspaceResourceId,
+        "SALES.SALES.VIEW_OWN_ONLY",
+      );
+      if (canViewOwn) {
+        effectiveCreatedById = params.userId;
+      }
+    }
+  } else if (params.userRole === "user" && params.userId) {
+    // Back-compat shim until tenantId is plumbed through every call site
+    effectiveCreatedById = params.userId;
+  }
+
   const filter = {
     locationId: params.locationId,
-    createdById:
-      params.userRole === "user" && params.userId
-        ? params.userId
-        : params.createdById,
+    createdById: effectiveCreatedById,
     type: params.type,
     isCreditSale: params.isCreditSale,
     startDate,
@@ -1222,7 +1275,36 @@ export async function getAllSales(params: GetAllSalesParams) {
     findSalesPaginatedByFilter(filter, pagination),
   ]);
 
-  return { sales, totalItems, page: params.page, limit: params.limit };
+  // Row-level visibility — drops any rows the user cannot see based on
+  // per-resource overwrites. Translates business ids → Resource.ids first
+  // (the permission engine walks the Resource tree, not the domain pk).
+  let visibleSales = sales;
+  if (params.tenantId && params.userId && sales.length > 0) {
+    const tenantId = params.tenantId;
+    const userId = params.userId;
+    const resources = await Promise.all(
+      sales.map((s) => resolveResourceId(tenantId, "SALE", s.id)),
+    );
+    const resourceIdBySale = new Map<string, string>();
+    sales.forEach((s, i) => resourceIdBySale.set(s.id, resources[i]));
+    const visibleSet = await permissionService.filterVisible(
+      tenantId,
+      userId,
+      Array.from(new Set(resources)),
+      "SALES.SALES.VIEW",
+    );
+    visibleSales = sales.filter((s) => {
+      const rid = resourceIdBySale.get(s.id);
+      return rid ? visibleSet.has(rid) : false;
+    });
+  }
+
+  return {
+    sales: visibleSales,
+    totalItems,
+    page: params.page,
+    limit: params.limit,
+  };
 }
 
 export async function getSalesSinceLastLogin(

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useCan } from "@/features/permissions";
 import { Pencil, Trash2 } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -40,6 +41,8 @@ export function BundleTable({
   hasActiveFilters,
   onClearFilters,
 }: BundleTableProps) {
+  const { allowed: canUpdateBundle } = useCan("INVENTORY.BUNDLES.UPDATE");
+  const { allowed: canDeleteBundle } = useCan("INVENTORY.BUNDLES.DELETE");
   const columns: DataTableColumn<Bundle>[] = [
     {
       id: "name",
@@ -125,27 +128,31 @@ export function BundleTable({
         const busy = pendingId === b.id;
         return (
           <div className="inline-flex gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => onEdit(b)}
-              aria-label={`Edit bundle ${b.name}`}
-            >
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => onDelete(b)}
-              aria-label={`Delete bundle ${b.name}`}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            {canUpdateBundle && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onEdit(b)}
+                aria-label={`Edit bundle ${b.name}`}
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            )}
+            {canDeleteBundle && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onDelete(b)}
+                aria-label={`Delete bundle ${b.name}`}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            )}
           </div>
         );
       }}

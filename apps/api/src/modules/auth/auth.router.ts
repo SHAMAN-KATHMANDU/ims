@@ -1,7 +1,23 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
+
+/**
+ * Rate limiter for password change attempts.
+ * Limits to 5 attempts per 15 minutes per authenticated user.
+ */
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  keyGenerator: (req: any) => {
+    // Rate limit by user ID (authenticated)
+    return req.user?.id ?? req.ip ?? "unknown";
+  },
+  standardHeaders: false, // Don't send rate limit headers
+  skip: (req: any) => !req.user, // Skip if not authenticated
+});
 
 const authRouter = Router();
 
@@ -194,5 +210,75 @@ authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
  *         description: Server error
  */
 authRouter.post("/logout", verifyToken, asyncHandler(authController.logOut));
+
+/**
+ * @swagger
+ * /auth/me/password:
+ *   post:
+ *     summary: Change user password
+ *     description: Allows authenticated users to change their password. Requires current password for verification.
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: Current password (for verification)
+ *                 minLength: 1
+ *               newPassword:
+ *                 type: string
+ *                 description: New password (must be at least 8 characters)
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     username:
+ *                       type: string
+ *                     tenantId:
+ *                       type: string
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Current password is incorrect or user not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many password change attempts
+ *       500:
+ *         description: Server error
+ */
+authRouter.post(
+  "/me/password",
+  verifyToken,
+  changePasswordLimiter,
+  asyncHandler(authController.changePassword),
+);
 
 export default authRouter;

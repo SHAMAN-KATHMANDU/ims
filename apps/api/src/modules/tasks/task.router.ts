@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import taskController from "./task.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,6 +10,9 @@ const taskRouter = Router();
 taskRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 taskRouter.use(enforcePlanFeature("salesPipeline"));
 
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
+
 /**
  * @swagger
  * /tasks:
@@ -17,26 +21,30 @@ taskRouter.use(enforcePlanFeature("salesPipeline"));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [title]
- *             properties:
- *               title: { type: string }
- *               dealId: { type: string, format: uuid }
- *               dueDate: { type: string, format: date-time }
- *               isCompleted: { type: boolean }
  *     responses:
  *       201: { description: Task created }
  */
-taskRouter.post("/", asyncHandler(taskController.create));
+taskRouter.post(
+  "/",
+  requirePermission("CRM.TASKS.CREATE", workspaceLocator),
+  asyncHandler(taskController.create),
+);
 
-taskRouter.post("/bulk-complete", asyncHandler(taskController.bulkComplete));
-taskRouter.post("/bulk-delete", asyncHandler(taskController.bulkDelete));
-taskRouter.delete("/bulk", asyncHandler(taskController.bulkDelete));
+taskRouter.post(
+  "/bulk-complete",
+  requirePermission("CRM.TASKS.UPDATE", workspaceLocator),
+  asyncHandler(taskController.bulkComplete),
+);
+taskRouter.post(
+  "/bulk-delete",
+  requirePermission("CRM.TASKS.DELETE", workspaceLocator),
+  asyncHandler(taskController.bulkDelete),
+);
+taskRouter.delete(
+  "/bulk",
+  requirePermission("CRM.TASKS.DELETE", workspaceLocator),
+  asyncHandler(taskController.bulkDelete),
+);
 
 /**
  * @swagger
@@ -46,37 +54,14 @@ taskRouter.delete("/bulk", asyncHandler(taskController.bulkDelete));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *       - in: query
- *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: sortBy
- *         schema: { type: string }
- *       - in: query
- *         name: sortOrder
- *         schema: { type: string, enum: [asc, desc] }
- *       - in: query
- *         name: dealId
- *         schema: { type: string, format: uuid }
- *       - in: query
- *         name: isCompleted
- *         schema: { type: boolean }
  *     responses:
- *       200:
- *         description: Tasks list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedTasksResponse'
+ *       200: { description: Tasks list }
  */
-taskRouter.get("/", asyncHandler(taskController.getAll));
+taskRouter.get(
+  "/",
+  requirePermission("CRM.TASKS.VIEW", workspaceLocator),
+  asyncHandler(taskController.getAll),
+);
 
 /**
  * @swagger
@@ -86,16 +71,15 @@ taskRouter.get("/", asyncHandler(taskController.getAll));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Task details }
  *       404: { description: Not found }
  */
-taskRouter.get("/:id", asyncHandler(taskController.getById));
+taskRouter.get(
+  "/:id",
+  requirePermission("CRM.TASKS.VIEW", idLocator),
+  asyncHandler(taskController.getById),
+);
 
 /**
  * @swagger
@@ -105,24 +89,14 @@ taskRouter.get("/:id", asyncHandler(taskController.getById));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title: { type: string }
- *               dueDate: { type: string }
- *               isCompleted: { type: boolean }
  *     responses:
  *       200: { description: Task updated }
  */
-taskRouter.put("/:id", asyncHandler(taskController.update));
+taskRouter.put(
+  "/:id",
+  requirePermission("CRM.TASKS.UPDATE", idLocator),
+  asyncHandler(taskController.update),
+);
 
 /**
  * @swagger
@@ -132,15 +106,14 @@ taskRouter.put("/:id", asyncHandler(taskController.update));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Task completed }
  */
-taskRouter.post("/:id/complete", asyncHandler(taskController.complete));
+taskRouter.post(
+  "/:id/complete",
+  requirePermission("CRM.TASKS.UPDATE", idLocator),
+  asyncHandler(taskController.complete),
+);
 
 /**
  * @swagger
@@ -150,14 +123,13 @@ taskRouter.post("/:id/complete", asyncHandler(taskController.complete));
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Task deleted }
  */
-taskRouter.delete("/:id", asyncHandler(taskController.delete));
+taskRouter.delete(
+  "/:id",
+  requirePermission("CRM.TASKS.DELETE", idLocator),
+  asyncHandler(taskController.delete),
+);
 
 export default taskRouter;

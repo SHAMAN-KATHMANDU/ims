@@ -926,6 +926,58 @@ const swaggerDefinition: SwaggerDefinition = {
           },
         },
       },
+      Role: {
+        type: "object",
+        description: "RBAC Role with permission bitset",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          name: { type: "string", maxLength: 255 },
+          priority: {
+            type: "integer",
+            minimum: 1,
+            description: "Higher number = lower precedence",
+          },
+          permissions: {
+            type: "string",
+            description: "Base64-encoded 64-byte permission bitset",
+          },
+          isSystem: {
+            type: "boolean",
+            description: "System roles cannot be modified",
+          },
+          color: {
+            type: "string",
+            pattern: "^#[0-9A-Fa-f]{6}$",
+            nullable: true,
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PermissionOverwrite: {
+        type: "object",
+        description:
+          "Allow/deny permission overwrite for a subject on a resource",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          resourceId: { type: "string", format: "uuid" },
+          subjectType: { type: "string", enum: ["USER", "ROLE"] },
+          roleId: { type: "string", format: "uuid", nullable: true },
+          userId: { type: "string", format: "uuid", nullable: true },
+          allow: {
+            type: "string",
+            description: "Base64-encoded 64-byte allow bitset",
+          },
+          deny: {
+            type: "string",
+            description: "Base64-encoded 64-byte deny bitset",
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
     },
   },
   tags: [
@@ -974,6 +1026,23 @@ const swaggerDefinition: SwaggerDefinition = {
       name: "Media",
       description:
         "Presigned S3 uploads, media library assets, and public URL handling",
+    },
+    {
+      name: "Permissions - Roles",
+      description: "Custom role management (create, update, delete)",
+    },
+    {
+      name: "Permissions - Members",
+      description: "Assign and unassign users from roles",
+    },
+    {
+      name: "Permissions - Overwrites",
+      description:
+        "Permission overwrites (allow/deny bitsets per subject and resource)",
+    },
+    {
+      name: "Permissions - Effective",
+      description: "Resolve effective permissions for the current user",
     },
   ],
 };

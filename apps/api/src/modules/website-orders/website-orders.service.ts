@@ -27,6 +27,8 @@ import transferService from "@/modules/transfers/transfer.service";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
 import automationService from "@/modules/automation/automation.service";
+import { permissionService } from "@/modules/permissions/permission.service";
+import { resolveResourceId } from "@/shared/permissions/resourceLocator";
 import defaultRepo, {
   type WebsiteOrderListItem,
 } from "./website-orders.repository";
@@ -97,6 +99,7 @@ export class WebsiteOrdersService {
   async listOrders(
     tenantId: string,
     query: ListWebsiteOrdersQuery,
+    userId?: string,
   ): Promise<{
     orders: WebsiteOrderListItem[];
     total: number;
@@ -110,7 +113,33 @@ export class WebsiteOrdersService {
       status: query.status,
       search: query.search,
     });
-    return { orders, total, page: query.page, limit: query.limit };
+    // Row-level visibility: drop orders the user can't see per overwrite.
+    // Phase 1 stub returns the full set; Phase 2 enforces once real
+    // overwrites are registered.
+    let visibleOrders = orders;
+    if (userId && orders.length > 0) {
+      const resources = await Promise.all(
+        orders.map((o) => resolveResourceId(tenantId, "WEBSITE_ORDER", o.id)),
+      );
+      const resourceIdByOrder = new Map<string, string>();
+      orders.forEach((o, i) => resourceIdByOrder.set(o.id, resources[i]));
+      const visible = await permissionService.filterVisible(
+        tenantId,
+        userId,
+        Array.from(new Set(resources)),
+        "SALES.WEBSITE_ORDERS.VIEW",
+      );
+      visibleOrders = orders.filter((o) => {
+        const rid = resourceIdByOrder.get(o.id);
+        return rid ? visible.has(rid) : false;
+      });
+    }
+    return {
+      orders: visibleOrders,
+      total,
+      page: query.page,
+      limit: query.limit,
+    };
   }
 
   async getOrder(tenantId: string, id: string): Promise<WebsiteOrder> {
@@ -126,6 +155,13 @@ export class WebsiteOrdersService {
     userId: string,
   ): Promise<WebsiteOrder> {
     await this.assertEnabled(tenantId);
+    const resourceId = await resolveResourceId(tenantId, "WEBSITE_ORDER", id);
+    await permissionService.assert(
+      tenantId,
+      userId,
+      resourceId,
+      "SALES.WEBSITE_ORDERS.VERIFY",
+    );
     const existing = await this.repo.getOrderById(tenantId, id);
     if (!existing) throw createError("Order not found", 404);
     if (existing.status === "REJECTED") {
@@ -175,6 +211,13 @@ export class WebsiteOrdersService {
     input: RejectOrderInput,
   ): Promise<WebsiteOrder> {
     await this.assertEnabled(tenantId);
+    const resourceId = await resolveResourceId(tenantId, "WEBSITE_ORDER", id);
+    await permissionService.assert(
+      tenantId,
+      userId,
+      resourceId,
+      "SALES.WEBSITE_ORDERS.REJECT",
+    );
     const existing = await this.repo.getOrderById(tenantId, id);
     if (!existing) throw createError("Order not found", 404);
     if (existing.status === "CONVERTED_TO_SALE") {
@@ -188,8 +231,21 @@ export class WebsiteOrdersService {
     });
   }
 
-  async deleteOrder(tenantId: string, id: string): Promise<void> {
+  async deleteOrder(
+    tenantId: string,
+    id: string,
+    userId?: string,
+  ): Promise<void> {
     await this.assertEnabled(tenantId);
+    if (userId) {
+      const resourceId = await resolveResourceId(tenantId, "WEBSITE_ORDER", id);
+      await permissionService.assert(
+        tenantId,
+        userId,
+        resourceId,
+        "SALES.WEBSITE_ORDERS.REJECT",
+      );
+    }
     const existing = await this.repo.getOrderById(tenantId, id);
     if (!existing) throw createError("Order not found", 404);
     if (existing.status === "CONVERTED_TO_SALE") {
@@ -302,6 +358,17 @@ export class WebsiteOrdersService {
     input: ConvertOrderInput,
   ): Promise<WebsiteOrder> {
     await this.assertEnabled(tenantId);
+    const convertResourceId = await resolveResourceId(
+      tenantId,
+      "WEBSITE_ORDER",
+      id,
+    );
+    await permissionService.assert(
+      tenantId,
+      userId,
+      convertResourceId,
+      "SALES.WEBSITE_ORDERS.CONVERT",
+    );
     const order = await this.repo.getOrderById(tenantId, id);
     if (!order) throw createError("Order not found", 404);
     if (order.status !== "VERIFIED") {

@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/features/permissions";
 import {
   Card,
   CardContent,
@@ -150,24 +151,30 @@ export function WebsiteOrderDetailPage({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canVerify && (
-            <Button onClick={handleVerify} disabled={verifyMutation.isPending}>
-              <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-              {verifyMutation.isPending ? "Verifying…" : "Mark verified"}
-            </Button>
-          )}
-          {canConvert && (
-            <Button onClick={() => setConvertOpen(true)}>
-              <ShoppingCart className="mr-2 h-4 w-4" aria-hidden="true" />
-              Convert to sale
-            </Button>
-          )}
-          {canReject && (
-            <Button variant="outline" onClick={() => setRejectOpen(true)}>
-              <XCircle className="mr-2 h-4 w-4" aria-hidden="true" />
-              Reject
-            </Button>
-          )}
+          <Can perm="SALES.WEBSITE_ORDERS.VERIFY">
+            {canVerify && (
+              <Button onClick={handleVerify} disabled={verifyMutation.isPending}>
+                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                {verifyMutation.isPending ? "Verifying…" : "Mark verified"}
+              </Button>
+            )}
+          </Can>
+          <Can perm="SALES.WEBSITE_ORDERS.CONVERT">
+            {canConvert && (
+              <Button onClick={() => setConvertOpen(true)}>
+                <ShoppingCart className="mr-2 h-4 w-4" aria-hidden="true" />
+                Convert to sale
+              </Button>
+            )}
+          </Can>
+          <Can perm="SALES.WEBSITE_ORDERS.REJECT">
+            {canReject && (
+              <Button variant="outline" onClick={() => setRejectOpen(true)}>
+                <XCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                Reject
+              </Button>
+            )}
+          </Can>
           {canDelete && (
             <Button
               variant="ghost"

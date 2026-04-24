@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
+import { Can } from "@/features/permissions";
 import { useProductFormAdapter } from "../hooks/use-product-form-adapter";
 import {
   useProductsPaginated,
@@ -1165,105 +1166,119 @@ export function ProductPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             {canManageProducts && (
               <div className="flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download
-                      {selectedProductIds.size > 0 && (
-                        <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-                          {selectedProductIds.size}
-                        </span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleExport("excel")}
-                      disabled={isProductsLoading}
-                    >
-                      <FileSpreadsheet
-                        className="h-4 w-4 mr-2"
-                        aria-hidden="true"
-                      />
-                      Download as Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleExport("csv")}
-                      disabled={isProductsLoading}
-                    >
-                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download as CSV
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Can perm="INVENTORY.PRODUCTS.EXPORT">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <Download className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download
+                        {selectedProductIds.size > 0 && (
+                          <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                            {selectedProductIds.size}
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExport("excel")}
+                        disabled={isProductsLoading}
+                      >
+                        <FileSpreadsheet
+                          className="h-4 w-4 mr-2"
+                          aria-hidden="true"
+                        />
+                        Download as Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport("csv")}
+                        disabled={isProductsLoading}
+                      >
+                        <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download as CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Can>
                 <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
                   <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
-                    {isMobile ? (
-                      <Button variant="outline" asChild>
-                        <Link href={`${basePath}/products/bulk-upload`}>
+                    <Can perm="INVENTORY.PRODUCTS.IMPORT">
+                      {isMobile ? (
+                        <Button variant="outline" asChild>
+                          <Link href={`${basePath}/products/bulk-upload`}>
+                            <Upload
+                              className="h-4 w-4 mr-2"
+                              aria-hidden="true"
+                            />
+                            Bulk Upload
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={() => setBulkUploadDialog(true)}
+                        >
                           <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                           Bulk Upload
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => setBulkUploadDialog(true)}
-                      >
-                        <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                        Bulk Upload
-                      </Button>
-                    )}
+                        </Button>
+                      )}
+                    </Can>
                   </FeatureGuard>
                 </EnvFeatureGuard>
-                {isMobile ? (
-                  atProductLimit ? (
-                    <Button disabled className="gap-2">
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      Add Product
-                    </Button>
-                  ) : (
-                    <Button asChild>
-                      <Link href={`${basePath}/products/new`} className="gap-2">
+                <Can perm="INVENTORY.PRODUCTS.CREATE">
+                  {isMobile ? (
+                    atProductLimit ? (
+                      <Button disabled className="gap-2">
                         <Plus className="h-4 w-4" aria-hidden="true" />
                         Add Product
-                      </Link>
-                    </Button>
-                  )
-                ) : (
-                  <ProductForm
-                    open={productDialog}
-                    onOpenChange={setProductDialog}
-                    form={productForm}
-                    editingProduct={editingProduct}
-                    categories={categories}
-                    variations={productVariations}
-                    discounts={productDiscounts}
-                    discountTypes={discountTypes}
-                    onDiscountsChange={setProductDiscounts}
-                    attributeTypes={attributeTypes}
-                    productAttributeTypeIds={productAttributeTypeIds}
-                    onProductAttributeTypeIdsChange={setProductAttributeTypeIds}
-                    defaultLocationId={defaultLocationIdForCreate}
-                    onDefaultLocationChange={setDefaultLocationIdForCreate}
-                    onReset={handleResetProduct}
-                    onAddVariation={addVariationToForm}
-                    onRemoveVariation={removeVariationFromForm}
-                    onUpdateVariation={updateVariationInForm}
-                    onUpdateSubVariants={updateSubVariantsInForm}
-                    onAddPhoto={addPhotoToVariation}
-                    onRemovePhoto={removePhotoFromVariation}
-                    onSetPrimaryPhoto={setPrimaryPhoto}
-                    onShowError={(title, message) =>
-                      setErrorDialog({ open: true, title, message })
-                    }
-                    validateProduct={validateProduct}
-                    addDisabled={atProductLimit}
-                    mrpBelowCpAccepted={mrpBelowCpAccepted}
-                    onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
-                  />
-                )}
+                      </Button>
+                    ) : (
+                      <Button asChild>
+                        <Link
+                          href={`${basePath}/products/new`}
+                          className="gap-2"
+                        >
+                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          Add Product
+                        </Link>
+                      </Button>
+                    )
+                  ) : (
+                    <ProductForm
+                      open={productDialog}
+                      onOpenChange={setProductDialog}
+                      form={productForm}
+                      editingProduct={editingProduct}
+                      categories={categories}
+                      variations={productVariations}
+                      discounts={productDiscounts}
+                      discountTypes={discountTypes}
+                      onDiscountsChange={setProductDiscounts}
+                      attributeTypes={attributeTypes}
+                      productAttributeTypeIds={productAttributeTypeIds}
+                      onProductAttributeTypeIdsChange={
+                        setProductAttributeTypeIds
+                      }
+                      defaultLocationId={defaultLocationIdForCreate}
+                      onDefaultLocationChange={setDefaultLocationIdForCreate}
+                      onReset={handleResetProduct}
+                      onAddVariation={addVariationToForm}
+                      onRemoveVariation={removeVariationFromForm}
+                      onUpdateVariation={updateVariationInForm}
+                      onUpdateSubVariants={updateSubVariantsInForm}
+                      onAddPhoto={addPhotoToVariation}
+                      onRemovePhoto={removePhotoFromVariation}
+                      onSetPrimaryPhoto={setPrimaryPhoto}
+                      onShowError={(title, message) =>
+                        setErrorDialog({ open: true, title, message })
+                      }
+                      validateProduct={validateProduct}
+                      addDisabled={atProductLimit}
+                      mrpBelowCpAccepted={mrpBelowCpAccepted}
+                      onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
+                    />
+                  )}
+                </Can>
               </div>
             )}
           </div>

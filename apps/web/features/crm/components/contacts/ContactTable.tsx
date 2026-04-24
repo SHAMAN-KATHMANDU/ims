@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Mail, Phone, Eye, Edit, Trash2 } from "lucide-react";
 import type { SortOrder } from "@/components/ui/table";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
+import { Can } from "@/features/permissions";
 import { getActiveJourneyType } from "../../utils/journey-type";
 
 type ContactEmptyVariant = "empty" | "no-results";
@@ -194,22 +195,26 @@ export function ContactTable({
               >
                 View
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs flex-1"
-                onClick={() => onEdit(c.id)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
-                onClick={() => onDelete(c.id)}
-              >
-                Delete
-              </Button>
+              <Can perm="CRM.CONTACTS.UPDATE">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => onEdit(c.id)}
+                >
+                  Edit
+                </Button>
+              </Can>
+              <Can perm="CRM.CONTACTS.DELETE">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+                  onClick={() => onDelete(c.id)}
+                >
+                  Delete
+                </Button>
+              </Can>
             </div>
           </div>
         );
@@ -230,22 +235,26 @@ export function ContactTable({
           >
             <Eye className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(c.id)}
-            aria-label={`Edit ${c.firstName} ${c.lastName}`}
-          >
-            <Edit className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete(c.id)}
-            aria-label={`Delete ${c.firstName} ${c.lastName}`}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </Button>
+          <Can perm="CRM.CONTACTS.UPDATE">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(c.id)}
+              aria-label={`Edit ${c.firstName} ${c.lastName}`}
+            >
+              <Edit className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </Can>
+          <Can perm="CRM.CONTACTS.DELETE">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(c.id)}
+              aria-label={`Delete ${c.firstName} ${c.lastName}`}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </Can>
         </div>
       )}
       className="rounded-md border overflow-x-auto"

@@ -76,6 +76,7 @@ import bundleRouter, {
 import giftCardRouter, {
   publicGiftCardRouter,
 } from "@/modules/gift-cards/gift-card.router";
+import permissionsRouter from "@/modules/permissions/permissions.router";
 
 const router = Router();
 
@@ -177,5 +178,7 @@ router.use("/ai-settings", aiSettingsRouter);
 router.use("/media", mediaRouter);
 router.use("/bundles", bundleRouter);
 router.use("/gift-cards", giftCardRouter);
+router.use("/permissions", permissionsRouter);
+router.use("/roles", permissionsRouter);
 
 export default router;

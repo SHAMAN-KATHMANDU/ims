@@ -1,6 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { VendorPage } from "@/features/vendors";
+import { PermissionGate } from "@/features/permissions";
 
 export const metadata = { title: "Vendors" };
 
@@ -11,7 +12,9 @@ export default function Vendors() {
       roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
-      <VendorPage />
+      <PermissionGate perm="INVENTORY.VENDORS.VIEW">
+        <VendorPage />
+      </PermissionGate>
     </AuthGuard>
   );
 }

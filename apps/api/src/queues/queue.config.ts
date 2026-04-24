@@ -1,9 +1,11 @@
 import { Queue } from "bullmq";
 import { env } from "@/config/env";
+import { redis } from "@/config/redis";
 
 /**
  * Shared Redis connection config for all BullMQ queues/workers.
- * Uses a plain options object to avoid ioredis version mismatches.
+ * BullMQ accepts either a live ioredis instance or connection options.
+ * We use connection options for compatibility with cluster mode.
  */
 const redisUrl = new URL(env.redisUrl);
 export const redisConnection = {

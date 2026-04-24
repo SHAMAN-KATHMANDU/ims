@@ -9,3 +9,11 @@ export type {
   AuthUser,
   TenantInfo,
 } from "./types";
+export {
+  changeMyPassword,
+  ChangeMyPasswordError,
+} from "./services/auth.service";
+export type {
+  ChangeMyPasswordData,
+  ChangeMyPasswordResponse,
+} from "./services/auth.service";

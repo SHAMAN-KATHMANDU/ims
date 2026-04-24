@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { Can } from "@/features/permissions";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
@@ -404,15 +405,17 @@ export function TransfersPage() {
               Clear filters
             </Button>
           )}
-          <Button asChild variant="default" size="sm" className="sm:ml-auto">
-            <Link
-              href={`${basePath}/transfers/new`}
-              className="inline-flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Create transfer request
-            </Link>
-          </Button>
+          <Can perm="INVENTORY.TRANSFERS.CREATE">
+            <Button asChild variant="default" size="sm" className="sm:ml-auto">
+              <Link
+                href={`${basePath}/transfers/new`}
+                className="inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Create transfer request
+              </Link>
+            </Button>
+          </Can>
         </div>
       </div>
 

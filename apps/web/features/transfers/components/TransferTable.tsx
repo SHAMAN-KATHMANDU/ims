@@ -10,6 +10,7 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
+import { useCan } from "@/features/permissions";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,14 @@ export function TransferTable({
   hasActiveFilters,
   onClearFilters,
 }: TransferTableProps) {
+  const { allowed: canApproveTransfer } = useCan("INVENTORY.TRANSFERS.APPROVE");
+  const { allowed: canStartTransfer } = useCan(
+    "INVENTORY.TRANSFERS.START_TRANSIT",
+  );
+  const { allowed: canCompleteTransfer } = useCan(
+    "INVENTORY.TRANSFERS.COMPLETE",
+  );
+  const { allowed: canCancelTransfer } = useCan("INVENTORY.TRANSFERS.CANCEL");
   const columns: DataTableColumn<Transfer>[] = [
     {
       id: "transferCode",
@@ -193,7 +202,7 @@ export function TransferTable({
             {canManage && (
               <>
                 <DropdownMenuSeparator />
-                {canApprove(t) && onApproveAndFulfill && (
+                {canApprove(t) && canApproveTransfer && onApproveAndFulfill && (
                   <DropdownMenuItem
                     disabled={fulfillingTransferId === t.id}
                     onClick={() => onApproveAndFulfill(t)}
@@ -202,7 +211,7 @@ export function TransferTable({
                     Approve &amp; move stock
                   </DropdownMenuItem>
                 )}
-                {canApprove(t) && (
+                {canApprove(t) && canApproveTransfer && (
                   <DropdownMenuItem
                     disabled={fulfillingTransferId === t.id}
                     onClick={() => onApprove(t)}
@@ -211,19 +220,19 @@ export function TransferTable({
                     Approve only
                   </DropdownMenuItem>
                 )}
-                {canStartTransit(t) && (
+                {canStartTransit(t) && canStartTransfer && (
                   <DropdownMenuItem onClick={() => onStartTransit(t)}>
                     <Truck className="mr-2 h-4 w-4" aria-hidden="true" />
                     Start Transit
                   </DropdownMenuItem>
                 )}
-                {canComplete(t) && (
+                {canComplete(t) && canCompleteTransfer && (
                   <DropdownMenuItem onClick={() => onComplete(t)}>
                     <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
                     Complete
                   </DropdownMenuItem>
                 )}
-                {canCancel(t) && (
+                {canCancel(t) && canCancelTransfer && (
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() => onCancel(t)}

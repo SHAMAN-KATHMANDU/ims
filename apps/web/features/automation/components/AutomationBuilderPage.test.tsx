@@ -10,6 +10,30 @@ vi.mock("@/features/flags", () => ({
   useEnvFeatureFlag: () => false,
 }));
 
+// Phase 4 wrapped action buttons in <Can>, which calls useMyPermissions →
+// useQuery. This test renders without a QueryClientProvider, so stub the
+// permission hooks to allow everything.
+vi.mock("@/features/permissions", async () => {
+  const actual = await vi.importActual<typeof import("@/features/permissions")>(
+    "@/features/permissions",
+  );
+  return {
+    ...actual,
+    Can: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    PermissionGate: ({ children }: { children: React.ReactNode }) => (
+      <>{children}</>
+    ),
+    useCan: () => true,
+    useMyPermissions: () => ({
+      mask: undefined,
+      isLoading: false,
+      isError: false,
+    }),
+    useHasModule: () => true,
+    useModuleAccessMap: () => ({}),
+  };
+});
+
 const mockUseAutomationDefinitions = vi.fn();
 const mockUseAutomationRuns = vi.fn();
 const mockCreateMutate = vi.fn();

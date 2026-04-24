@@ -22,8 +22,11 @@ import {
   Bell,
   Images,
   Trash2,
+  KeyRound,
+  UserCircle2,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
+import { ChangePasswordDialog } from "@/features/users";
 import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -130,6 +133,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const notificationsEnabled = useEnvFeatureFlag(EnvFeature.NOTIFICATIONS);
 
@@ -203,6 +207,24 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link
+                href={`${basePath}/profile`}
+                className="flex items-center w-full"
+              >
+                <UserCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setChangePasswordOpen(true);
+              }}
+            >
+              <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
+              Change password
+            </DropdownMenuItem>
             {user?.role !== "platformAdmin" && mediaUploadEnabled && (
               <DropdownMenuItem
                 onSelect={(e) => {
@@ -234,6 +256,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         <ReportErrorDialog
           open={reportErrorOpen}
           onOpenChange={setReportErrorOpen}
+        />
+        <ChangePasswordDialog
+          open={changePasswordOpen}
+          onOpenChange={setChangePasswordOpen}
         />
         {user?.role !== "platformAdmin" && mediaUploadEnabled && (
           <Sheet open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>

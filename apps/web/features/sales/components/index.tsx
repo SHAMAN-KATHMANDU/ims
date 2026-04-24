@@ -41,6 +41,7 @@ import { SalesFilterBar } from "./SalesFilterBar";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { Can, PermissionGate } from "@/features/permissions";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -374,211 +375,228 @@ export function SalesPage() {
   );
 
   return (
-    <div className="space-y-6 min-w-0 w-full pb-24">
-      <PageHeader
-        title="Sales"
-        description="Track and manage sales from showrooms"
-      />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
-        <SalesFilterBar
-          search={search}
-          onSearchChange={handleSearchChange}
-          typeFilter={typeFilter}
-          onTypeChange={handleTypeChange}
-          creditFilter={creditFilter}
-          onCreditChange={handleCreditFilterChange}
-          locationFilter={locationFilter}
-          onLocationChange={handleLocationChange}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={handleSortChange}
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={(date) => {
-            setStartDate(date);
-            setPage(DEFAULT_PAGE);
-          }}
-          onEndDateChange={(date) => {
-            setEndDate(date);
-            setPage(DEFAULT_PAGE);
-          }}
-          onClearDates={clearDateFilters}
-          onClearAllFilters={clearAllFilters}
-          hasActiveFilters={hasActiveFilters}
-          showrooms={showrooms}
-          dateShortcuts={dateShortcuts}
-          onDateShortcut={applyDateShortcut}
-          isUserRole={isUserRole}
-          today={today}
+    <PermissionGate perm="SALES.SALES.VIEW">
+      <div className="space-y-6 min-w-0 w-full pb-24">
+        <PageHeader
+          title="Sales"
+          description="Track and manage sales from showrooms"
         />
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {canManageSales && (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Download
-                    {selectedSaleIds.size > 0 && (
-                      <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-                        {selectedSaleIds.size}
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleExport("excel")}
-                    disabled={salesLoading}
-                  >
-                    <FileSpreadsheet
-                      className="h-4 w-4 mr-2"
-                      aria-hidden="true"
-                    />
-                    Download as Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleExport("csv")}
-                    disabled={salesLoading}
-                  >
-                    <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Download as CSV
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_SALES}>
-                <FeatureGuard feature={Feature.BULK_UPLOAD_SALES}>
-                  {isMobile ? (
-                    <Button variant="outline" asChild>
-                      <Link href={`${basePath}/sales/bulk-upload`}>
-                        <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                        Bulk Upload
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() => setBulkUploadDialog(true)}
-                    >
-                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Bulk Upload
-                    </Button>
-                  )}
-                </FeatureGuard>
-              </EnvFeatureGuard>
-            </>
-          )}
-          {canManageSales &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/sales/new`} className="gap-2">
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  New Sale
-                </Link>
-              </Button>
-            ) : (
-              <NewSaleForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                locations={locations}
-                onSubmit={handleCreateSale}
-                isLoading={createSaleMutation.isPending}
-              />
-            ))}
-        </div>
-      </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
+          <SalesFilterBar
+            search={search}
+            onSearchChange={handleSearchChange}
+            typeFilter={typeFilter}
+            onTypeChange={handleTypeChange}
+            creditFilter={creditFilter}
+            onCreditChange={handleCreditFilterChange}
+            locationFilter={locationFilter}
+            onLocationChange={handleLocationChange}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={handleSortChange}
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={(date) => {
+              setStartDate(date);
+              setPage(DEFAULT_PAGE);
+            }}
+            onEndDateChange={(date) => {
+              setEndDate(date);
+              setPage(DEFAULT_PAGE);
+            }}
+            onClearDates={clearDateFilters}
+            onClearAllFilters={clearAllFilters}
+            hasActiveFilters={hasActiveFilters}
+            showrooms={showrooms}
+            dateShortcuts={dateShortcuts}
+            onDateShortcut={applyDateShortcut}
+            isUserRole={isUserRole}
+            today={today}
+          />
 
-      <SalesTable
-        sales={sales}
-        isLoading={salesLoading}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSort={handleColumnSort}
-        onView={handleView}
-        currentPage={salesPagination?.currentPage || 1}
-        itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}
-        selectedSales={selectedSaleIds}
-        onSelectionChange={setSelectedSaleIds}
-        hasActiveFilters={hasActiveFilters}
-        onClearFilters={clearAllFilters}
-      />
-
-      {/* Pagination */}
-      {salesPagination && (
-        <DataTablePagination
-          pagination={salesPagination}
-          onPageChange={setPage}
-          onPageSizeChange={handlePageSizeChange}
-          isLoading={salesLoading}
-        />
-      )}
-
-      {/* Sale Detail Dialog */}
-      <SaleDetail
-        open={!!selectedSaleId}
-        onOpenChange={(open) => !open && setSelectedSaleId(null)}
-        sale={selectedSale || null}
-        isLoading={saleLoading}
-      />
-
-      <SaleBulkUploadDialog
-        open={bulkUploadDialog}
-        onOpenChange={setBulkUploadDialog}
-      />
-
-      {/* Sticky bulk action bar when items selected */}
-      {selectedSaleIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <span className="text-sm font-medium">
-              {selectedSaleIds.size} item{selectedSaleIds.size !== 1 ? "s" : ""}{" "}
-              selected
-            </span>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <Can perm="SALES.SALES.EXPORT">
               {canManageSales && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm">
-                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleExport("excel")}
-                      disabled={salesLoading}
-                    >
-                      <FileSpreadsheet
-                        className="h-4 w-4 mr-2"
-                        aria-hidden="true"
-                      />
-                      Download as Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleExport("csv")}
-                      disabled={salesLoading}
-                    >
-                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download as CSV
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <Download className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download
+                        {selectedSaleIds.size > 0 && (
+                          <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                            {selectedSaleIds.size}
+                          </span>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExport("excel")}
+                        disabled={salesLoading}
+                      >
+                        <FileSpreadsheet
+                          className="h-4 w-4 mr-2"
+                          aria-hidden="true"
+                        />
+                        Download as Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport("csv")}
+                        disabled={salesLoading}
+                      >
+                        <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download as CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_SALES}>
+                    <FeatureGuard feature={Feature.BULK_UPLOAD_SALES}>
+                      {isMobile ? (
+                        <Button variant="outline" asChild>
+                          <Link href={`${basePath}/sales/bulk-upload`}>
+                            <Upload
+                              className="h-4 w-4 mr-2"
+                              aria-hidden="true"
+                            />
+                            Bulk Upload
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={() => setBulkUploadDialog(true)}
+                        >
+                          <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                          Bulk Upload
+                        </Button>
+                      )}
+                    </FeatureGuard>
+                  </EnvFeatureGuard>
+                </>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={clearSelection}
-                className="shrink-0"
-                aria-label="Clear selection"
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
+            </Can>
+            <Can perm="SALES.SALES.CREATE">
+              {canManageSales &&
+                (isMobile ? (
+                  <Button asChild>
+                    <Link href={`${basePath}/sales/new`} className="gap-2">
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      New Sale
+                    </Link>
+                  </Button>
+                ) : (
+                  <NewSaleForm
+                    open={formOpen}
+                    onOpenChange={setFormOpen}
+                    locations={locations}
+                    onSubmit={handleCreateSale}
+                    isLoading={createSaleMutation.isPending}
+                  />
+                ))}
+            </Can>
           </div>
         </div>
-      )}
-    </div>
+
+        <SalesTable
+          sales={sales}
+          isLoading={salesLoading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleColumnSort}
+          onView={handleView}
+          currentPage={salesPagination?.currentPage || 1}
+          itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}
+          selectedSales={selectedSaleIds}
+          onSelectionChange={setSelectedSaleIds}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearAllFilters}
+        />
+
+        {/* Pagination */}
+        {salesPagination && (
+          <DataTablePagination
+            pagination={salesPagination}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={salesLoading}
+          />
+        )}
+
+        {/* Sale Detail Dialog */}
+        <SaleDetail
+          open={!!selectedSaleId}
+          onOpenChange={(open) => !open && setSelectedSaleId(null)}
+          sale={selectedSale || null}
+          isLoading={saleLoading}
+        />
+
+        <SaleBulkUploadDialog
+          open={bulkUploadDialog}
+          onOpenChange={setBulkUploadDialog}
+        />
+
+        {/* Sticky bulk action bar when items selected */}
+        {selectedSaleIds.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <span className="text-sm font-medium">
+                {selectedSaleIds.size} item
+                {selectedSaleIds.size !== 1 ? "s" : ""} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Can perm="SALES.SALES.EXPORT">
+                  {canManageSales && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm">
+                          <Download
+                            className="h-4 w-4 mr-2"
+                            aria-hidden="true"
+                          />
+                          Download
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleExport("excel")}
+                          disabled={salesLoading}
+                        >
+                          <FileSpreadsheet
+                            className="h-4 w-4 mr-2"
+                            aria-hidden="true"
+                          />
+                          Download as Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport("csv")}
+                          disabled={salesLoading}
+                        >
+                          <FileText
+                            className="h-4 w-4 mr-2"
+                            aria-hidden="true"
+                          />
+                          Download as CSV
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </Can>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearSelection}
+                  className="shrink-0"
+                  aria-label="Clear selection"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </PermissionGate>
   );
 }

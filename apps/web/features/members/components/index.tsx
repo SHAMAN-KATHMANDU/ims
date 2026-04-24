@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { Can, PermissionGate } from "@/features/permissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMemberSelectionStore,
@@ -294,258 +295,263 @@ export function MembersPage() {
   );
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <h1 className="text-3xl font-bold">Members</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your customer members for discounts
-        </p>
-      </div>
+    <PermissionGate perm="SETTINGS.MEMBERS.VIEW">
+      <div className="space-y-6 pb-24">
+        <div>
+          <h1 className="text-3xl font-bold">Members</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your customer members for discounts
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              aria-label="Search members by phone, name, or email"
-              placeholder="Search by phone, name, or email..."
-              value={search}
-              onChange={handleSearchChange}
-              className="pl-9 w-full sm:w-[300px]"
-            />
-          </div>
-          <Select
-            value={memberStatusFilter}
-            onValueChange={handleMemberStatusChange}
-          >
-            <SelectTrigger
-              className="h-9 w-[160px] shrink-0 gap-2 text-sm"
-              aria-label="Filter by member status"
-            >
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              {MEMBER_STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={`${sortBy}_${sortOrder}`}
-            onValueChange={handleSortChange}
-          >
-            <SelectTrigger
-              className="h-9 w-[200px] shrink-0 gap-2 text-sm"
-              aria-label="Sort members"
-            >
-              <ArrowUpDown
-                className="h-3.5 w-3.5 text-muted-foreground"
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 aria-hidden="true"
               />
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="createdAt_desc">
-                Date (newest first)
-              </SelectItem>
-              <SelectItem value="createdAt_asc">Date (oldest first)</SelectItem>
-              <SelectItem value="name_asc">Name (A–Z)</SelectItem>
-              <SelectItem value="name_desc">Name (Z–A)</SelectItem>
-              <SelectItem value="phone_asc">Phone (A–Z)</SelectItem>
-              <SelectItem value="phone_desc">Phone (Z–A)</SelectItem>
-              <SelectItem value="updatedAt_desc">
-                Updated (newest first)
-              </SelectItem>
-              <SelectItem value="updatedAt_asc">
-                Updated (oldest first)
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={clearAllFilters}
-            >
-              <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
-              Clear filters
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canManageMembers && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Download
-                  {selectedMemberIds.size > 0 && (
-                    <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-                      {selectedMemberIds.size}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => handleExport("excel")}
-                  disabled={membersLoading}
-                >
-                  <FileSpreadsheet
-                    className="h-4 w-4 mr-2"
-                    aria-hidden="true"
-                  />
-                  Download as Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleExport("csv")}
-                  disabled={membersLoading}
-                >
-                  <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Download as CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {canManageMembers && (
-            <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
-              <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
-                {isMobile ? (
-                  <Button variant="outline" asChild>
-                    <Link href={`${basePath}/members/bulk-upload`}>
-                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Bulk Upload
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => setBulkUploadDialog(true)}
-                  >
-                    <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Bulk Upload
-                  </Button>
-                )}
-              </FeatureGuard>
-            </EnvFeatureGuard>
-          )}
-          {canManageMembers &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/members/new`} className="gap-2">
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  Add Member
-                </Link>
-              </Button>
-            ) : (
-              <MemberForm
-                open={formOpen}
-                onOpenChange={handleFormClose}
-                member={editingMember}
-                onSubmit={handleSubmitMember}
-                isLoading={isFormLoading}
+              <Input
+                type="search"
+                aria-label="Search members by phone, name, or email"
+                placeholder="Search by phone, name, or email..."
+                value={search}
+                onChange={handleSearchChange}
+                className="pl-9 w-full sm:w-[300px]"
               />
-            ))}
-        </div>
-      </div>
-
-      <MemberTable
-        members={members}
-        isLoading={membersLoading}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSort={handleColumnSort}
-        onView={handleView}
-        onEdit={handleEdit}
-        // Selection props
-        selectedMembers={selectedMemberIds}
-        onSelectionChange={setSelectedMemberIds}
-        hasActiveFilters={hasActiveFilters}
-        onClearFilters={clearAllFilters}
-      />
-
-      {/* Pagination */}
-      {membersPagination && (
-        <DataTablePagination
-          pagination={membersPagination}
-          onPageChange={setPage}
-          onPageSizeChange={handlePageSizeChange}
-          isLoading={membersLoading}
-        />
-      )}
-
-      {/* Member Detail Dialog */}
-      <MemberDetail
-        open={!!selectedMemberId}
-        onOpenChange={(open) => !open && setSelectedMemberId(null)}
-        member={selectedMember || null}
-        isLoading={memberLoading}
-      />
-
-      <MemberBulkUploadDialog
-        open={bulkUploadDialog}
-        onOpenChange={setBulkUploadDialog}
-      />
-
-      {/* Sticky bulk action bar when items selected */}
-      {selectedMemberIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-            <span className="text-sm font-medium">
-              {selectedMemberIds.size} item
-              {selectedMemberIds.size !== 1 ? "s" : ""} selected
-            </span>
-            <div className="flex items-center gap-2">
-              {canManageMembers && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm">
-                      <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleExport("excel")}
-                      disabled={membersLoading}
-                    >
-                      <FileSpreadsheet
-                        className="h-4 w-4 mr-2"
-                        aria-hidden="true"
-                      />
-                      Download as Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleExport("csv")}
-                      disabled={membersLoading}
-                    >
-                      <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Download as CSV
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+            </div>
+            <Select
+              value={memberStatusFilter}
+              onValueChange={handleMemberStatusChange}
+            >
+              <SelectTrigger
+                className="h-9 w-[160px] shrink-0 gap-2 text-sm"
+                aria-label="Filter by member status"
+              >
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                {MEMBER_STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={`${sortBy}_${sortOrder}`}
+              onValueChange={handleSortChange}
+            >
+              <SelectTrigger
+                className="h-9 w-[200px] shrink-0 gap-2 text-sm"
+                aria-label="Sort members"
+              >
+                <ArrowUpDown
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt_desc">
+                  Date (newest first)
+                </SelectItem>
+                <SelectItem value="createdAt_asc">
+                  Date (oldest first)
+                </SelectItem>
+                <SelectItem value="name_asc">Name (A–Z)</SelectItem>
+                <SelectItem value="name_desc">Name (Z–A)</SelectItem>
+                <SelectItem value="phone_asc">Phone (A–Z)</SelectItem>
+                <SelectItem value="phone_desc">Phone (Z–A)</SelectItem>
+                <SelectItem value="updatedAt_desc">
+                  Updated (newest first)
+                </SelectItem>
+                <SelectItem value="updatedAt_asc">
+                  Updated (oldest first)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
               <Button
                 variant="ghost"
-                size="icon"
-                onClick={clearSelection}
-                className="shrink-0"
-                aria-label="Clear selection"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={clearAllFilters}
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <X className="h-3.5 w-3.5 mr-2" aria-hidden="true" />
+                Clear filters
               </Button>
-            </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Can perm="SETTINGS.MEMBERS.EXPORT" fallback={null}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Download
+                    {selectedMemberIds.size > 0 && (
+                      <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                        {selectedMemberIds.size}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport("excel")}
+                    disabled={membersLoading}
+                  >
+                    <FileSpreadsheet
+                      className="h-4 w-4 mr-2"
+                      aria-hidden="true"
+                    />
+                    Download as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("csv")}
+                    disabled={membersLoading}
+                  >
+                    <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Download as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Can>
+            <Can perm="SETTINGS.MEMBERS.CREATE" fallback={null}>
+              <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
+                <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
+                  {isMobile ? (
+                    <Button variant="outline" asChild>
+                      <Link href={`${basePath}/members/bulk-upload`}>
+                        <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Bulk Upload
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => setBulkUploadDialog(true)}
+                    >
+                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Bulk Upload
+                    </Button>
+                  )}
+                </FeatureGuard>
+              </EnvFeatureGuard>
+            </Can>
+            <Can perm="SETTINGS.MEMBERS.CREATE" fallback={null}>
+              {isMobile ? (
+                <Button asChild>
+                  <Link href={`${basePath}/members/new`} className="gap-2">
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    Add Member
+                  </Link>
+                </Button>
+              ) : (
+                <MemberForm
+                  open={formOpen}
+                  onOpenChange={handleFormClose}
+                  member={editingMember}
+                  onSubmit={handleSubmitMember}
+                  isLoading={isFormLoading}
+                />
+              )}
+            </Can>
           </div>
         </div>
-      )}
-    </div>
+
+        <MemberTable
+          members={members}
+          isLoading={membersLoading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleColumnSort}
+          onView={handleView}
+          onEdit={handleEdit}
+          // Selection props
+          selectedMembers={selectedMemberIds}
+          onSelectionChange={setSelectedMemberIds}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearAllFilters}
+        />
+
+        {/* Pagination */}
+        {membersPagination && (
+          <DataTablePagination
+            pagination={membersPagination}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            isLoading={membersLoading}
+          />
+        )}
+
+        {/* Member Detail Dialog */}
+        <MemberDetail
+          open={!!selectedMemberId}
+          onOpenChange={(open) => !open && setSelectedMemberId(null)}
+          member={selectedMember || null}
+          isLoading={memberLoading}
+        />
+
+        <MemberBulkUploadDialog
+          open={bulkUploadDialog}
+          onOpenChange={setBulkUploadDialog}
+        />
+
+        {/* Sticky bulk action bar when items selected */}
+        {selectedMemberIds.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <span className="text-sm font-medium">
+                {selectedMemberIds.size} item
+                {selectedMemberIds.size !== 1 ? "s" : ""} selected
+              </span>
+              <div className="flex items-center gap-2">
+                {canManageMembers && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm">
+                        <Download className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExport("excel")}
+                        disabled={membersLoading}
+                      >
+                        <FileSpreadsheet
+                          className="h-4 w-4 mr-2"
+                          aria-hidden="true"
+                        />
+                        Download as Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport("csv")}
+                        disabled={membersLoading}
+                      >
+                        <FileText className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Download as CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearSelection}
+                  className="shrink-0"
+                  aria-label="Clear selection"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </PermissionGate>
   );
 }

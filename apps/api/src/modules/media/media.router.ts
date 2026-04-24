@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import mediaController from "./media.controller";
 
 const mediaRouter = Router();
 
-mediaRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 mediaRouter.use(enforceEnvFeature(EnvFeature.MEDIA_UPLOAD));
+mediaRouter.use(requirePermission("WEBSITE.MEDIA.VIEW", workspaceLocator()));
 
 /**
  * @swagger
@@ -59,6 +63,7 @@ mediaRouter.use(enforceEnvFeature(EnvFeature.MEDIA_UPLOAD));
  */
 mediaRouter.post(
   "/presign",
+  requirePermission("WEBSITE.MEDIA.CREATE", workspaceLocator()),
   asyncHandler(mediaController.presign.bind(mediaController)),
 );
 
@@ -124,6 +129,7 @@ mediaRouter.post(
  */
 mediaRouter.post(
   "/assets",
+  requirePermission("WEBSITE.MEDIA.CREATE", workspaceLocator()),
   asyncHandler(mediaController.register.bind(mediaController)),
 );
 mediaRouter.get(
@@ -183,12 +189,16 @@ mediaRouter.get(
  *       409:
  *         description: Another asset in the tenant already uses this display name
  */
+// NOTE: DELETE enforces WEBSITE.MEDIA.DELETE baseline; service layer additionally
+// asserts WEBSITE.MEDIA.DELETE_OTHERS when the asset belongs to another user.
 mediaRouter.delete(
   "/assets/:id",
+  requirePermission("WEBSITE.MEDIA.DELETE", paramLocator("MEDIA", "id")),
   asyncHandler(mediaController.remove.bind(mediaController)),
 );
 mediaRouter.patch(
   "/assets/:id",
+  requirePermission("WEBSITE.MEDIA.UPDATE", paramLocator("MEDIA", "id")),
   asyncHandler(mediaController.updateMediaAsset),
 );
 

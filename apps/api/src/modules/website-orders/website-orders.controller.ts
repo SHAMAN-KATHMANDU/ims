@@ -39,9 +39,9 @@ function handleAppError(res: Response, error: unknown): Response | null {
 class WebsiteOrdersController {
   listOrders = async (req: Request, res: Response) => {
     try {
-      const tenantId = getAuthContext(req).tenantId;
+      const { tenantId, userId } = getAuthContext(req);
       const query = ListWebsiteOrdersQuerySchema.parse(req.query);
-      const result = await service.listOrders(tenantId, query);
+      const result = await service.listOrders(tenantId, query, userId);
       return res.status(200).json({ message: "OK", ...result });
     } catch (error) {
       return (
@@ -140,9 +140,9 @@ class WebsiteOrdersController {
 
   deleteOrder = async (req: Request, res: Response) => {
     try {
-      const tenantId = getAuthContext(req).tenantId;
+      const { tenantId, userId } = getAuthContext(req);
       const id = getParam(req, "id");
-      await service.deleteOrder(tenantId, id);
+      await service.deleteOrder(tenantId, id, userId);
       return res.status(200).json({ message: "Order deleted" });
     } catch (error) {
       return (

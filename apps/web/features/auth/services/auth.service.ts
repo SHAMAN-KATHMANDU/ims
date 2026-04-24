@@ -4,10 +4,26 @@
  * Single source for auth API calls. All auth HTTP requests must go through this file.
  */
 
+import axios from "axios";
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
 import { fetchCurrentUser as fetchCurrentUserApi } from "@/lib/auth-api";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
+
+/**
+ * Error thrown by `changeMyPassword` that preserves the HTTP status code
+ * so callers can distinguish 401 (wrong current password), 429 (rate-limited),
+ * and 400 (validation) without parsing messages.
+ */
+export class ChangeMyPasswordError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ChangeMyPasswordError";
+  }
+}
 
 export interface LoginResponse {
   token: string;
@@ -79,6 +95,55 @@ export async function getOrgNameBySlug(slug: string): Promise<string | null> {
     return response.data?.name ?? null;
   } catch {
     return null;
+  }
+}
+
+// ─── Change my password (self-service) ────────────────────────────────────────
+
+export interface ChangeMyPasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangeMyPasswordResponse {
+  message: string;
+  user: {
+    id: string;
+    username: string;
+    tenantId: string;
+  };
+}
+
+/**
+ * Change the authenticated user's own password.
+ *
+ * Calls `POST /auth/me/password`. Backend enforces `currentPassword` min 1,
+ * `newPassword` min 8 max 128, rate-limits to 5 attempts per 15 minutes per
+ * user, and writes a SECURITY audit log on success.
+ *
+ * On failure, throws a `ChangeMyPasswordError` whose `.status` mirrors the
+ * HTTP status so the caller can map to field-level / toast messages.
+ */
+export async function changeMyPassword(
+  data: ChangeMyPasswordData,
+): Promise<ChangeMyPasswordResponse> {
+  try {
+    const response = await api.post<ChangeMyPasswordResponse>(
+      "/auth/me/password",
+      data,
+    );
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      const status = error.response.status;
+      const raw = error.response.data as { message?: unknown } | undefined;
+      const message =
+        typeof raw?.message === "string" && raw.message.trim() !== ""
+          ? raw.message.trim()
+          : `Request failed with status ${status}`;
+      throw new ChangeMyPasswordError(message, status);
+    }
+    handleApiError(error, "change password");
   }
 }
 

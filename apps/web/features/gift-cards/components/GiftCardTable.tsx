@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Ban } from "lucide-react";
+import { useCan } from "@/features/permissions";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export function GiftCardTable({
   hasActiveFilters,
   onClearFilters,
 }: GiftCardTableProps) {
+  const { allowed: canVoidGiftCard } = useCan("INVENTORY.GIFT_CARDS.VOID");
   const columns: DataTableColumn<GiftCard>[] = [
     {
       id: "code",
@@ -139,7 +141,7 @@ export function GiftCardTable({
       }}
       actions={(gc) => {
         const busy = pendingId === gc.id;
-        const canVoid = gc.status === "ACTIVE";
+        const canVoid = gc.status === "ACTIVE" && canVoidGiftCard;
         return (
           <Button
             type="button"

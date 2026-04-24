@@ -6,6 +6,7 @@ import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { PermissionGate } from "@/features/permissions";
 import { LoadingPage } from "@/components/layout/loading-page";
 
 const SalesRevenuePage = dynamic(
@@ -27,7 +28,9 @@ export default function ReportsAnalyticsSalesPage() {
           roles={["admin", "superAdmin"]}
           unauthorizedPath={WORKSPACE_ROOT}
         >
-          <SalesRevenuePage />
+          <PermissionGate perm="REPORTS.ANALYTICS.VIEW">
+            <SalesRevenuePage />
+          </PermissionGate>
         </AuthGuard>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>

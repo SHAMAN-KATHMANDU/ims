@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { Can, useCan } from "@/features/permissions";
 import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import {
   usePromosPaginated,
@@ -61,6 +62,8 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   const readOnly = readOnlyProp === true ? true : userRole === "user";
   const isMobile = useIsMobile();
   const promotionsEnabled = useEnvFeatureFlag(EnvFeature.PROMOTIONS);
+  const { allowed: canUpdatePromo } = useCan("INVENTORY.PROMOS.UPDATE");
+  const { allowed: canDeletePromo } = useCan("INVENTORY.PROMOS.DELETE");
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -225,24 +228,28 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
             {!readOnly &&
               promotionsEnabled &&
               (isMobile ? (
-                <Button asChild>
-                  <Link href={`${basePath}/promos/new`} className="gap-2">
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    New Promo
-                  </Link>
-                </Button>
+                <Can perm="INVENTORY.PROMOS.CREATE">
+                  <Button asChild>
+                    <Link href={`${basePath}/promos/new`} className="gap-2">
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      New Promo
+                    </Link>
+                  </Button>
+                </Can>
               ) : (
                 <>
-                  <Button
-                    className="gap-2"
-                    onClick={() => {
-                      resetForm();
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    New Promo
-                  </Button>
+                  <Can perm="INVENTORY.PROMOS.CREATE">
+                    <Button
+                      className="gap-2"
+                      onClick={() => {
+                        resetForm();
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      New Promo
+                    </Button>
+                  </Can>
                   <PromoForm
                     open={dialogOpen}
                     onOpenChange={(o) => {
@@ -374,25 +381,29 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                       <TableCell className="text-right">
                         {!readOnly && (
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(promo)}
-                              aria-label={`Edit promo ${promo.code}`}
-                            >
-                              <Edit className="h-4 w-4" aria-hidden="true" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(promo)}
-                              aria-label={`Delete promo ${promo.code}`}
-                            >
-                              <Trash2
-                                className="h-4 w-4 text-destructive"
-                                aria-hidden="true"
-                              />
-                            </Button>
+                            {canUpdatePromo && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(promo)}
+                                aria-label={`Edit promo ${promo.code}`}
+                              >
+                                <Edit className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            )}
+                            {canDeletePromo && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(promo)}
+                                aria-label={`Delete promo ${promo.code}`}
+                              >
+                                <Trash2
+                                  className="h-4 w-4 text-destructive"
+                                  aria-hidden="true"
+                                />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </TableCell>

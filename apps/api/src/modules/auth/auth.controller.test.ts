@@ -6,6 +6,8 @@ vi.mock("./auth.service", () => ({
   default: {
     login: vi.fn(),
     getMe: vi.fn(),
+    changePassword: vi.fn(),
+    createPasswordChangeAuditLog: vi.fn(),
   },
 }));
 
@@ -14,7 +16,12 @@ vi.mock("@/config/env", () => ({
 }));
 
 vi.mock("@/config/logger", () => ({
-  logger: { log: vi.fn(), error: vi.fn() },
+  logger: {
+    log: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+  },
 }));
 
 const mockSendControllerError = vi.fn();
@@ -292,6 +299,142 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Logout successful",
       });
+    });
+  });
+
+  describe("changePassword", () => {
+    it("returns 401 when user is not authenticated", async () => {
+      const req = { user: undefined, requestId: "req-1" } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "User not authenticated",
+      });
+      expect(mockService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when currentPassword is missing", async () => {
+      const req = {
+        user: { id: "user-1", tenantId: "tenant-1" },
+        body: { newPassword: "NewPassword123" },
+        requestId: "req-1",
+        get: vi.fn(),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when newPassword is less than 8 characters", async () => {
+      const req = {
+        user: { id: "user-1", tenantId: "tenant-1" },
+        body: { currentPassword: "OldPass123", newPassword: "short" },
+        requestId: "req-1",
+        get: vi.fn(),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("returns 401 when current password is incorrect", async () => {
+      mockService.changePassword.mockRejectedValue(
+        createError("Current password is incorrect", 401),
+      );
+      const req = {
+        user: { id: "user-1", tenantId: "tenant-1" },
+        body: {
+          currentPassword: "WrongPassword",
+          newPassword: "NewPassword123",
+        },
+        requestId: "req-1",
+        ip: "127.0.0.1",
+        socket: { remoteAddress: "127.0.0.1" },
+        get: vi.fn().mockReturnValue("Mozilla/5.0"),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Current password is incorrect",
+      });
+    });
+
+    it("returns 200 with success message on successful password change", async () => {
+      const updatedUser = {
+        id: "user-1",
+        username: "testuser",
+        tenantId: "tenant-1",
+      };
+      mockService.changePassword.mockResolvedValue(updatedUser);
+      mockService.createPasswordChangeAuditLog.mockResolvedValue(undefined);
+
+      const req = {
+        user: { id: "user-1", tenantId: "tenant-1" },
+        body: {
+          currentPassword: "OldPassword123",
+          newPassword: "NewPassword123",
+        },
+        requestId: "req-1",
+        ip: "127.0.0.1",
+        socket: { remoteAddress: "127.0.0.1" },
+        get: vi.fn().mockReturnValue("Mozilla/5.0"),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(mockService.changePassword).toHaveBeenCalledWith(
+        "user-1",
+        "OldPassword123",
+        "NewPassword123",
+      );
+      expect(mockService.createPasswordChangeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user-1",
+          tenantId: "tenant-1",
+        }),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Password changed successfully",
+        user: {
+          id: "user-1",
+          username: "testuser",
+          tenantId: "tenant-1",
+        },
+      });
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      mockService.changePassword.mockRejectedValue(new Error("DB down"));
+      const req = {
+        user: { id: "user-1", tenantId: "tenant-1" },
+        body: {
+          currentPassword: "OldPassword123",
+          newPassword: "NewPassword123",
+        },
+        requestId: "req-1",
+        ip: "127.0.0.1",
+        socket: { remoteAddress: "127.0.0.1" },
+        get: vi.fn(),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.changePassword(req, res);
+
+      expect(mockSendControllerError).toHaveBeenCalled();
     });
   });
 });

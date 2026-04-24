@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import { notFound } from "next/navigation";
+import { PermissionGate } from "@/features/permissions";
 import { BlogPostEditor, useBlogPost } from "@/features/tenant-blog";
 
 type Props = {
@@ -20,6 +21,11 @@ export default function EditBlogPostRoute({ params }: Props) {
   }
 
   return (
-    <BlogPostEditor post={post} backHref={`/${workspace}/settings/site/blog`} />
+    <PermissionGate perm="WEBSITE.BLOG.UPDATE">
+      <BlogPostEditor
+        post={post}
+        backHref={`/${workspace}/settings/site/blog`}
+      />
+    </PermissionGate>
   );
 }

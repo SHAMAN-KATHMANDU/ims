@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import analyticsController from "@/modules/analytics/analytics.controller";
@@ -56,7 +57,7 @@ analyticsRouter.use(enforcePlanFeature("analytics"));
  */
 analyticsRouter.get(
   "/overview",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   asyncHandler(analyticsController.getOverview),
 );
 
@@ -100,7 +101,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/sales-revenue",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getSalesRevenue),
 );
@@ -145,7 +146,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/inventory-ops",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getInventoryOps),
 );
@@ -190,7 +191,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/customers-promos",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getCustomersPromos),
 );
@@ -235,7 +236,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/discount",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getDiscountAnalytics),
 );
@@ -280,7 +281,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/payment-trends",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getPaymentTrends),
 );
@@ -325,7 +326,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/location-comparison",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getLocationComparison),
 );
@@ -370,7 +371,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/member-cohort",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getMemberCohort),
 );
@@ -415,7 +416,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/sales-extended",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getSalesExtended),
 );
@@ -460,7 +461,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/product-insights",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getProductInsights),
 );
@@ -505,7 +506,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/inventory-extended",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getInventoryExtended),
 );
@@ -550,7 +551,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/customer-insights",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getCustomerInsights),
 );
@@ -595,7 +596,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/trends",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getTrends),
 );
@@ -640,7 +641,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/financial",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.VIEW", workspaceLocator()),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getFinancial),
 );
@@ -694,7 +695,7 @@ analyticsRouter.get(
  */
 analyticsRouter.get(
   "/export",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.ANALYTICS.EXPORT", workspaceLocator()),
   asyncHandler(analyticsController.exportAnalytics),
 );
 

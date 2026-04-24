@@ -4,6 +4,7 @@ import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { PromoPage } from "@/features/promos";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { PermissionGate } from "@/features/permissions";
 
 export const metadata = { title: "Promo Codes" };
 
@@ -16,7 +17,9 @@ export default function Promos() {
           roles={["admin", "superAdmin"]}
           unauthorizedPath={WORKSPACE_ROOT}
         >
-          <PromoPage />
+          <PermissionGate perm="INVENTORY.PROMOS.VIEW">
+            <PromoPage />
+          </PermissionGate>
         </AuthGuard>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>

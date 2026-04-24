@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import { notFound } from "next/navigation";
+import { PermissionGate } from "@/features/permissions";
 import { TenantPageEditor, useTenantPage } from "@/features/tenant-pages";
 
 type Props = {
@@ -20,9 +21,11 @@ export default function EditTenantPageRoute({ params }: Props) {
   }
 
   return (
-    <TenantPageEditor
-      page={page}
-      backHref={`/${workspace}/settings/site/pages`}
-    />
+    <PermissionGate perm="WEBSITE.PAGES.UPDATE">
+      <TenantPageEditor
+        page={page}
+        backHref={`/${workspace}/settings/site/pages`}
+      />
+    </PermissionGate>
   );
 }

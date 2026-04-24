@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -8,9 +9,12 @@ import workflowController from "./workflow.controller";
 
 const workflowRouter = Router();
 
-workflowRouter.use(authorizeRoles("admin", "superAdmin"));
+workflowRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 workflowRouter.use(enforceEnvFeature(EnvFeature.CRM_WORKFLOWS));
 workflowRouter.use(enforcePlanFeature("salesPipeline"));
+
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -24,7 +28,11 @@ workflowRouter.use(enforcePlanFeature("salesPipeline"));
  *       200:
  *         description: Workflow template catalog
  */
-workflowRouter.get("/templates", asyncHandler(workflowController.getTemplates));
+workflowRouter.get(
+  "/templates",
+  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator),
+  asyncHandler(workflowController.getTemplates),
+);
 
 /**
  * @swagger
@@ -60,6 +68,7 @@ workflowRouter.get("/templates", asyncHandler(workflowController.getTemplates));
  */
 workflowRouter.post(
   "/templates/:templateKey/install",
+  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator),
   asyncHandler(workflowController.installTemplate),
 );
 
@@ -110,7 +119,11 @@ workflowRouter.post(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-workflowRouter.get("/", asyncHandler(workflowController.getAll));
+workflowRouter.get(
+  "/",
+  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator),
+  asyncHandler(workflowController.getAll),
+);
 
 /**
  * @swagger
@@ -151,7 +164,11 @@ workflowRouter.get("/", asyncHandler(workflowController.getAll));
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-workflowRouter.get("/:id", asyncHandler(workflowController.getById));
+workflowRouter.get(
+  "/:id",
+  requirePermission("CRM.WORKFLOWS.VIEW", idLocator),
+  asyncHandler(workflowController.getById),
+);
 
 /**
  * @swagger
@@ -178,7 +195,11 @@ workflowRouter.get("/:id", asyncHandler(workflowController.getById));
  *       400:
  *         description: Validation error
  */
-workflowRouter.get("/:id/runs", asyncHandler(workflowController.getRuns));
+workflowRouter.get(
+  "/:id/runs",
+  requirePermission("CRM.WORKFLOWS.VIEW", idLocator),
+  asyncHandler(workflowController.getRuns),
+);
 
 /**
  * @swagger
@@ -214,7 +235,11 @@ workflowRouter.get("/:id/runs", asyncHandler(workflowController.getRuns));
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-workflowRouter.post("/", asyncHandler(workflowController.create));
+workflowRouter.post(
+  "/",
+  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator),
+  asyncHandler(workflowController.create),
+);
 
 /**
  * @swagger
@@ -259,7 +284,11 @@ workflowRouter.post("/", asyncHandler(workflowController.create));
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-workflowRouter.put("/:id", asyncHandler(workflowController.update));
+workflowRouter.put(
+  "/:id",
+  requirePermission("CRM.WORKFLOWS.UPDATE", idLocator),
+  asyncHandler(workflowController.update),
+);
 
 /**
  * @swagger
@@ -299,6 +328,10 @@ workflowRouter.put("/:id", asyncHandler(workflowController.update));
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-workflowRouter.delete("/:id", asyncHandler(workflowController.delete));
+workflowRouter.delete(
+  "/:id",
+  requirePermission("CRM.WORKFLOWS.DELETE", idLocator),
+  asyncHandler(workflowController.delete),
+);
 
 export default workflowRouter;

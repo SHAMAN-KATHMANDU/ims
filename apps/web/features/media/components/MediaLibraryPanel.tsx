@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Can } from "@/features/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -339,13 +340,15 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="file"
-            className="max-w-xs"
-            disabled={uploading || !mediaUploadEnabled}
-            onChange={onFile}
-            accept="image/*,application/pdf,.doc,.docx"
-          />
+          <Can perm="WEBSITE.MEDIA.CREATE">
+            <Input
+              type="file"
+              className="max-w-xs"
+              disabled={uploading || !mediaUploadEnabled}
+              onChange={onFile}
+              accept="image/*,application/pdf,.doc,.docx"
+            />
+          </Can>
           {uploading && (
             <Loader2
               className="h-4 w-4 animate-spin text-muted-foreground"
@@ -434,29 +437,36 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
                         <Link2 className="mr-2 h-4 w-4" aria-hidden="true" />
                         Copy link
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={!mediaUploadEnabled}
-                        onClick={() => openRename(a)}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                        Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={!mediaUploadEnabled || deletingId === a.id}
-                        onClick={() => promptDelete(a)}
-                      >
-                        {deletingId === a.id ? (
-                          <Loader2
-                            className="mr-2 h-4 w-4 animate-spin"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                        )}
-                        Delete
-                      </DropdownMenuItem>
+                      <Can perm="WEBSITE.MEDIA.UPDATE" fallback={null}>
+                        <DropdownMenuItem
+                          disabled={!mediaUploadEnabled}
+                          onClick={() => openRename(a)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                          Rename
+                        </DropdownMenuItem>
+                      </Can>
+                      <Can perm="WEBSITE.MEDIA.DELETE" fallback={null}>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={!mediaUploadEnabled || deletingId === a.id}
+                          onClick={() => promptDelete(a)}
+                        >
+                          {deletingId === a.id ? (
+                            <Loader2
+                              className="mr-2 h-4 w-4 animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Trash2
+                              className="mr-2 h-4 w-4"
+                              aria-hidden="true"
+                            />
+                          )}
+                          Delete
+                        </DropdownMenuItem>
+                      </Can>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import categoryController from "@/modules/categories/category.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -45,13 +49,13 @@ const categoryRouter = Router();
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - Admin or SuperAdmin role required
+ *         description: Forbidden - requires INVENTORY.CATEGORIES.CREATE
  *       409:
  *         description: Category with this name already exists
  */
 categoryRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.CREATE", workspaceLocator()),
   asyncHandler(categoryController.createCategory),
 );
 
@@ -87,11 +91,9 @@ categoryRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedCategoriesResponse'
  */
-categoryRouter.get(
-  "/",
-  authorizeRoles("admin", "user", "superAdmin"),
-  asyncHandler(categoryController.getAllCategories),
-);
+// List endpoint — no per-route middleware; service-layer filterVisible
+// will narrow the result set once Phase 3 wires it. See RBAC_CONTRACT §5.
+categoryRouter.get("/", asyncHandler(categoryController.getAllCategories));
 
 /**
  * @swagger
@@ -111,6 +113,8 @@ categoryRouter.get(
  *     responses:
  *       200:
  *         description: Category reactivated successfully
+ *       403:
+ *         description: Forbidden - requires INVENTORY.CATEGORIES.UPDATE
  *       404:
  *         description: Category not found
  *       400:
@@ -118,7 +122,7 @@ categoryRouter.get(
  */
 categoryRouter.post(
   "/:id/restore",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.UPDATE", paramLocator("CATEGORY")),
   asyncHandler(categoryController.restoreCategory),
 );
 
@@ -141,33 +145,35 @@ categoryRouter.post(
  *     responses:
  *       200:
  *         description: Category retrieved successfully
+ *       403:
+ *         description: Forbidden - requires INVENTORY.CATEGORIES.VIEW
  *       404:
  *         description: Category not found
  */
 categoryRouter.get(
   "/:id",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.VIEW", paramLocator("CATEGORY")),
   asyncHandler(categoryController.getCategoryById),
 );
 
 // Get distinct subcategories for a category
 categoryRouter.get(
   "/:id/subcategories",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.VIEW", paramLocator("CATEGORY")),
   asyncHandler(categoryController.getCategorySubcategories),
 );
 
 // Create subcategory for a category
 categoryRouter.post(
   "/:id/subcategories",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.UPDATE", paramLocator("CATEGORY")),
   asyncHandler(categoryController.createSubcategory),
 );
 
 // Delete subcategory for a category
 categoryRouter.delete(
   "/:id/subcategories",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.UPDATE", paramLocator("CATEGORY")),
   asyncHandler(categoryController.deleteSubcategory),
 );
 
@@ -201,6 +207,8 @@ categoryRouter.delete(
  *         description: Category updated successfully
  *       400:
  *         description: Bad request
+ *       403:
+ *         description: Forbidden - requires INVENTORY.CATEGORIES.UPDATE
  *       404:
  *         description: Category not found
  *       409:
@@ -208,7 +216,7 @@ categoryRouter.delete(
  */
 categoryRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.UPDATE", paramLocator("CATEGORY")),
   asyncHandler(categoryController.updateCategory),
 );
 
@@ -232,12 +240,14 @@ categoryRouter.put(
  *         description: Category deleted successfully
  *       400:
  *         description: Cannot delete category with existing products
+ *       403:
+ *         description: Forbidden - requires INVENTORY.CATEGORIES.DELETE
  *       404:
  *         description: Category not found
  */
 categoryRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.CATEGORIES.DELETE", paramLocator("CATEGORY")),
   asyncHandler(categoryController.deleteCategory),
 );
 

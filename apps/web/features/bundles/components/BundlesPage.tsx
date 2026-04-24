@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
+import { Can } from "@/features/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -126,12 +127,14 @@ export function BundlesPage() {
             Group products together with custom pricing for storefront promos.
           </p>
         </div>
-        <Button asChild className="gap-2">
-          <Link href={`/${workspace}/products/bundles/new`}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            New bundle
-          </Link>
-        </Button>
+        <Can perm="INVENTORY.BUNDLES.CREATE">
+          <Button asChild className="gap-2">
+            <Link href={`/${workspace}/products/bundles/new`}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New bundle
+            </Link>
+          </Button>
+        </Can>
       </div>
 
       {isError && (

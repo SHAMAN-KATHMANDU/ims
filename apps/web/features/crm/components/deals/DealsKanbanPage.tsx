@@ -33,6 +33,7 @@ import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
+import { PermissionGate } from "@/features/permissions";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -288,274 +289,283 @@ export function DealsKanbanPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-3xl font-bold">Deals</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage your sales pipeline and track deals through stages.
-        </p>
-      </div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Select value={pipelineId} onValueChange={setPipelineId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select pipeline" />
-              </SelectTrigger>
-              <SelectContent>
-                {pipelines.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                    {p.type && p.type !== "GENERAL"
-                      ? ` (${p.type.replace("_", " ")})`
-                      : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {currentPipeline?.type && currentPipeline.type !== "GENERAL" && (
-              <Badge variant="outline" className="text-xs shrink-0">
-                {currentPipeline.type.replace("_", " ")}
-              </Badge>
-            )}
+    <PermissionGate perm="CRM.DEALS.VIEW">
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-3xl font-bold">Deals</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage your sales pipeline and track deals through stages.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Select value={pipelineId} onValueChange={setPipelineId}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                      {p.type && p.type !== "GENERAL"
+                        ? ` (${p.type.replace("_", " ")})`
+                        : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currentPipeline?.type && currentPipeline.type !== "GENERAL" && (
+                <Badge variant="outline" className="text-xs shrink-0">
+                  {currentPipeline.type.replace("_", " ")}
+                </Badge>
+              )}
+              {currentPipeline && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      aria-label="Pipeline options"
+                    >
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => setEditPipelineOpen(true)}>
+                      <Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Edit pipeline
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setEditStagesOpen(true)}>
+                      <ListOrdered
+                        className="h-4 w-4 mr-2"
+                        aria-hidden="true"
+                      />
+                      Edit stages
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <AddPipelineDialog
+              open={addPipelineOpen}
+              onOpenChange={setAddPipelineOpen}
+              onSuccess={(id) => {
+                setPipelineId(id);
+                setAddPipelineOpen(false);
+              }}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <LayoutDashboard
+                    className="h-4 w-4 mr-1.5"
+                    aria-hidden="true"
+                  />
+                  New pipeline
+                </Button>
+              }
+            />
+            <Button onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+              New Deal
+            </Button>
             {currentPipeline && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="shrink-0"
-                    aria-label="Pipeline options"
-                  >
-                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => setEditPipelineOpen(true)}>
-                    <Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Edit pipeline
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setEditStagesOpen(true)}>
-                    <ListOrdered className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Edit stages
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <>
+                <EditPipelineDialog
+                  pipeline={currentPipeline}
+                  open={editPipelineOpen}
+                  onOpenChange={setEditPipelineOpen}
+                  onSuccess={() => {
+                    qc.invalidateQueries({
+                      queryKey: [...dealKeys.all, "kanban"],
+                    });
+                    setEditPipelineOpen(false);
+                  }}
+                />
+                <EditPipelineStagesDialog
+                  pipeline={currentPipeline}
+                  open={editStagesOpen}
+                  onOpenChange={setEditStagesOpen}
+                  onSuccess={() => {
+                    qc.invalidateQueries({
+                      queryKey: [...dealKeys.all, "kanban"],
+                    });
+                    setEditStagesOpen(false);
+                  }}
+                />
+              </>
             )}
           </div>
-          <AddPipelineDialog
-            open={addPipelineOpen}
-            onOpenChange={setAddPipelineOpen}
-            onSuccess={(id) => {
-              setPipelineId(id);
-              setAddPipelineOpen(false);
-            }}
-            trigger={
-              <Button variant="outline" size="sm">
-                <LayoutDashboard
-                  className="h-4 w-4 mr-1.5"
-                  aria-hidden="true"
-                />
-                New pipeline
-              </Button>
-            }
-          />
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-            New Deal
-          </Button>
-          {currentPipeline && (
-            <>
-              <EditPipelineDialog
-                pipeline={currentPipeline}
-                open={editPipelineOpen}
-                onOpenChange={setEditPipelineOpen}
-                onSuccess={() => {
-                  qc.invalidateQueries({
-                    queryKey: [...dealKeys.all, "kanban"],
-                  });
-                  setEditPipelineOpen(false);
-                }}
-              />
-              <EditPipelineStagesDialog
-                pipeline={currentPipeline}
-                open={editStagesOpen}
-                onOpenChange={setEditStagesOpen}
-                onSuccess={() => {
-                  qc.invalidateQueries({
-                    queryKey: [...dealKeys.all, "kanban"],
-                  });
-                  setEditStagesOpen(false);
-                }}
-              />
-            </>
+        </div>
+
+        {/* ── Mobile list view ─────────────────────────────────────────── */}
+        <div className="sm:hidden space-y-4">
+          {stages.map(
+            (col) =>
+              col.deals.length > 0 && (
+                <div key={col.stage}>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                    {col.stage}
+                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-normal">
+                      {col.deals.length}
+                    </span>
+                  </h3>
+                  <div className="space-y-2">
+                    {col.deals.map((deal) => (
+                      <button
+                        type="button"
+                        key={deal.id}
+                        className="w-full text-left rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
+                        onClick={() =>
+                          router.push(`${basePath}/crm/deals/${deal.id}`)
+                        }
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-medium">
+                            {deal.name}
+                          </span>
+                          <span className="text-sm font-semibold text-primary shrink-0">
+                            {formatCurrency(Number(deal.value))}
+                          </span>
+                        </div>
+                        {(deal.contact || deal.expectedCloseDate) && (
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                            {deal.contact && (
+                              <span>
+                                {deal.contact.firstName}{" "}
+                                {deal.contact.lastName || ""}
+                              </span>
+                            )}
+                            {deal.expectedCloseDate && (
+                              <span>
+                                Closes{" "}
+                                {new Date(
+                                  deal.expectedCloseDate,
+                                ).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ),
+          )}
+          {stages.every((col) => col.deals.length === 0) && (
+            <div className="rounded-md border py-8 text-center text-muted-foreground">
+              No deals yet. Create one to get started.
+            </div>
           )}
         </div>
-      </div>
 
-      {/* ── Mobile list view ─────────────────────────────────────────── */}
-      <div className="sm:hidden space-y-4">
-        {stages.map(
-          (col) =>
-            col.deals.length > 0 && (
-              <div key={col.stage}>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-                  {col.stage}
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-normal">
-                    {col.deals.length}
-                  </span>
-                </h3>
-                <div className="space-y-2">
-                  {col.deals.map((deal) => (
-                    <button
-                      type="button"
-                      key={deal.id}
-                      className="w-full text-left rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
-                      onClick={() =>
-                        router.push(`${basePath}/crm/deals/${deal.id}`)
-                      }
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-medium">{deal.name}</span>
-                        <span className="text-sm font-semibold text-primary shrink-0">
-                          {formatCurrency(Number(deal.value))}
-                        </span>
-                      </div>
-                      {(deal.contact || deal.expectedCloseDate) && (
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                          {deal.contact && (
-                            <span>
-                              {deal.contact.firstName}{" "}
-                              {deal.contact.lastName || ""}
-                            </span>
-                          )}
-                          {deal.expectedCloseDate && (
-                            <span>
-                              Closes{" "}
-                              {new Date(
-                                deal.expectedCloseDate,
-                              ).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ),
-        )}
-        {stages.every((col) => col.deals.length === 0) && (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No deals yet. Create one to get started.
-          </div>
-        )}
-      </div>
-
-      {/* ── Desktop kanban ───────────────────────────────────────────── */}
-      <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
-        <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
-          {stages.map((col) => (
-            <DroppableStageColumn
-              key={col.stage}
-              stage={col.stage}
-              count={col.deals.length}
-              pipelineType={currentPipeline?.type}
-            >
-              {col.deals.map((deal) => (
-                <DraggableDealCard
-                  key={deal.id}
-                  deal={deal}
-                  basePath={basePath}
-                  stages={stages.map((s) => s.stage)}
-                  onStageChange={handleStageChange}
-                  onDelete={(id) => deleteDealMutation.mutate(id)}
-                  isDeleting={deleteDealMutation.isPending}
-                  onView={openView}
-                  onEdit={openEdit}
-                />
-              ))}
-            </DroppableStageColumn>
-          ))}
-        </div>
-      </DndContext>
-
-      <ResponsiveDrawer
-        open={drawerMode !== null}
-        onOpenChange={(o) => !o && closeDrawer()}
-        title={
-          drawerMode === "new"
-            ? "New Deal"
-            : drawerMode === "edit"
-              ? "Edit Deal"
-              : "Deal Details"
-        }
-        size="2xl"
-        bodyPadding={false}
-      >
-        {drawerMode === "view" && selectedDealId && (
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openEdit(selectedDealId)}
+        {/* ── Desktop kanban ───────────────────────────────────────────── */}
+        <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
+          <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+            {stages.map((col) => (
+              <DroppableStageColumn
+                key={col.stage}
+                stage={col.stage}
+                count={col.deals.length}
+                pipelineType={currentPipeline?.type}
               >
-                Edit Deal
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <DealDetail
-                dealId={selectedDealId}
-                basePath={basePath}
-                onEdit={() => openEdit(selectedDealId)}
-              />
-            </div>
+                {col.deals.map((deal) => (
+                  <DraggableDealCard
+                    key={deal.id}
+                    deal={deal}
+                    basePath={basePath}
+                    stages={stages.map((s) => s.stage)}
+                    onStageChange={handleStageChange}
+                    onDelete={(id) => deleteDealMutation.mutate(id)}
+                    isDeleting={deleteDealMutation.isPending}
+                    onView={openView}
+                    onEdit={openEdit}
+                  />
+                ))}
+              </DroppableStageColumn>
+            ))}
           </div>
-        )}
-        {drawerMode === "new" && (
-          <DealForm
-            mode="create"
-            initialPipelineId={pipelineId || currentPipeline?.id}
-            onSubmit={handleCreateDeal}
-            onCancel={closeDrawer}
-            isLoading={createDealMutation.isPending}
-          />
-        )}
-        {drawerMode === "edit" && selectedDealId && selectedDealData?.deal && (
-          <DealForm
-            mode="edit"
-            deal={selectedDealData.deal}
-            basePath={basePath}
-            defaultValues={{
-              name: selectedDealData.deal.name,
-              value: Number(selectedDealData.deal.value),
-              pipelineId: selectedDealData.deal.pipelineId,
-              stage: selectedDealData.deal.stage,
-              expectedCloseDate: selectedDealData.deal.expectedCloseDate
-                ? new Date(selectedDealData.deal.expectedCloseDate)
-                    .toISOString()
-                    .slice(0, 10)
-                : "",
-              status: selectedDealData.deal.status,
-              contactId: selectedDealData.deal.contactId ?? undefined,
-              companyId: selectedDealData.deal.companyId ?? undefined,
-              assignedToId: selectedDealData.deal.assignedToId ?? "",
-              editReason: selectedDealData.deal.editReason ?? null,
-              stageNames:
-                (
-                  selectedDealData.deal.pipeline as
-                    | { stages?: Array<{ name: string }> }
-                    | undefined
-                )?.stages?.map((s) => s.name) ?? [],
-            }}
-            onSubmit={handleUpdateDeal}
-            onCancel={() => setDrawerMode("view")}
-            isLoading={updateDealMutation.isPending}
-          />
-        )}
-      </ResponsiveDrawer>
-    </div>
+        </DndContext>
+
+        <ResponsiveDrawer
+          open={drawerMode !== null}
+          onOpenChange={(o) => !o && closeDrawer()}
+          title={
+            drawerMode === "new"
+              ? "New Deal"
+              : drawerMode === "edit"
+                ? "Edit Deal"
+                : "Deal Details"
+          }
+          size="2xl"
+          bodyPadding={false}
+        >
+          {drawerMode === "view" && selectedDealId && (
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEdit(selectedDealId)}
+                >
+                  Edit Deal
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <DealDetail
+                  dealId={selectedDealId}
+                  basePath={basePath}
+                  onEdit={() => openEdit(selectedDealId)}
+                />
+              </div>
+            </div>
+          )}
+          {drawerMode === "new" && (
+            <DealForm
+              mode="create"
+              initialPipelineId={pipelineId || currentPipeline?.id}
+              onSubmit={handleCreateDeal}
+              onCancel={closeDrawer}
+              isLoading={createDealMutation.isPending}
+            />
+          )}
+          {drawerMode === "edit" &&
+            selectedDealId &&
+            selectedDealData?.deal && (
+              <DealForm
+                mode="edit"
+                deal={selectedDealData.deal}
+                basePath={basePath}
+                defaultValues={{
+                  name: selectedDealData.deal.name,
+                  value: Number(selectedDealData.deal.value),
+                  pipelineId: selectedDealData.deal.pipelineId,
+                  stage: selectedDealData.deal.stage,
+                  expectedCloseDate: selectedDealData.deal.expectedCloseDate
+                    ? new Date(selectedDealData.deal.expectedCloseDate)
+                        .toISOString()
+                        .slice(0, 10)
+                    : "",
+                  status: selectedDealData.deal.status,
+                  contactId: selectedDealData.deal.contactId ?? undefined,
+                  companyId: selectedDealData.deal.companyId ?? undefined,
+                  assignedToId: selectedDealData.deal.assignedToId ?? "",
+                  editReason: selectedDealData.deal.editReason ?? null,
+                  stageNames:
+                    (
+                      selectedDealData.deal.pipeline as
+                        | { stages?: Array<{ name: string }> }
+                        | undefined
+                    )?.stages?.map((s) => s.name) ?? [],
+                }}
+                onSubmit={handleUpdateDeal}
+                onCancel={() => setDrawerMode("view")}
+                isLoading={updateDealMutation.isPending}
+              />
+            )}
+        </ResponsiveDrawer>
+      </div>
+    </PermissionGate>
   );
 }
 

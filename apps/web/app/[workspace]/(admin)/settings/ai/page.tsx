@@ -1,5 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
+import { PermissionGate } from "@/features/permissions";
 import { AiSettingsPage } from "@/features/ai-settings";
 
 export const metadata = { title: "AI Settings" };
@@ -10,7 +11,9 @@ export default function Page() {
       roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
-      <AiSettingsPage />
+      <PermissionGate perm="SETTINGS.AI.VIEW">
+        <AiSettingsPage />
+      </PermissionGate>
     </AuthGuard>
   );
 }

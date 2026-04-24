@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import saleController from "@/modules/sales/sale.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -91,7 +95,7 @@ const saleRouter = Router();
  */
 saleRouter.post(
   "/",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.CREATE", workspaceLocator()),
   asyncHandler(saleController.createSale),
 );
 
@@ -156,7 +160,7 @@ saleRouter.post(
  */
 saleRouter.post(
   "/preview",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.CREATE", workspaceLocator()),
   asyncHandler(saleController.previewSale),
 );
 
@@ -217,7 +221,7 @@ saleRouter.post(
  */
 saleRouter.get(
   "/",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getAllSales),
 );
 
@@ -244,7 +248,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/me/since-last-login",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getSalesSinceLastLogin),
 );
 
@@ -296,7 +300,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/me",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getMySales),
 );
 
@@ -330,7 +334,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/summary",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getSalesSummary),
 );
 
@@ -359,7 +363,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/by-location",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getSalesByLocation),
 );
 
@@ -387,7 +391,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/daily",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", workspaceLocator()),
   asyncHandler(saleController.getDailySales),
 );
 
@@ -429,7 +433,7 @@ saleRouter.get(
  */
 saleRouter.post(
   "/:id/payments",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.CREATE", paramLocator("SALE")),
   asyncHandler(saleController.addPayment),
 );
 
@@ -461,7 +465,7 @@ saleRouter.post(
  */
 saleRouter.get(
   "/:id/receipt",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", paramLocator("SALE")),
   asyncHandler(saleController.getReceiptPdf),
 );
 
@@ -488,7 +492,7 @@ saleRouter.get(
  */
 saleRouter.get(
   "/:id",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.VIEW", paramLocator("SALE")),
   asyncHandler(saleController.getSaleById),
 );
 
@@ -524,7 +528,7 @@ saleRouter.get(
  */
 saleRouter.delete(
   "/:id",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.DELETE", paramLocator("SALE")),
   asyncHandler(saleController.deleteSale),
 );
 
@@ -576,7 +580,7 @@ saleRouter.delete(
  */
 saleRouter.post(
   "/:id/edit",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SALES.SALES.EDIT_AFTER_FINALIZE", paramLocator("SALE")),
   asyncHandler(saleController.editSale),
 );
 

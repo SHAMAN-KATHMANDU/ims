@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Can, PermissionGate } from "@/features/permissions";
 import {
   useContactsPaginated,
   useContact,
@@ -312,397 +313,407 @@ export function ContactsPage() {
   const drawerOpen = drawerMode !== null;
 
   return (
-    <PageShell className="space-y-4">
-      <PageHeader
-        title="Contacts"
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setImportOpen(true)}
-            >
-              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
-              Import
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" aria-hidden="true" />
-              Export
-            </Button>
-            <Button onClick={openNew}>
-              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-              Add Contact
-            </Button>
-          </>
-        }
-      />
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search
-            className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
-            aria-hidden="true"
-          />
-          <Input
-            placeholder="Search contacts…"
-            value={search}
-            onChange={handleSearchChange}
-            className="pl-9 pr-10"
-            aria-busy={isFetching && !isLoading}
-          />
-          {isFetching && !isLoading ? (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <Spinner className="size-4" />
-            </span>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="shrink-0 gap-2 sm:self-stretch"
-          onClick={() => setFiltersOpen(true)}
-        >
-          <SlidersHorizontal className="size-4" aria-hidden="true" />
-          Filters
-          {activeFilterCount > 0 ? (
-            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
-              {activeFilterCount}
-            </Badge>
-          ) : null}
-        </Button>
-      </div>
-
-      {(activeFilterCount > 0 || debouncedSearch.trim()) && (
-        <div className="flex flex-wrap items-center gap-2">
-          {debouncedSearch.trim() ? (
-            <Badge variant="outline" className="gap-1 pr-1 font-normal">
-              <span className="text-muted-foreground">Search:</span>
-              {debouncedSearch.trim()}
-              <button
-                type="button"
-                className="rounded-sm p-0.5 hover:bg-muted"
-                aria-label="Clear search"
-                onClick={() => {
-                  setSearch("");
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </Badge>
-          ) : null}
-          {selectedCompanyLabel ? (
-            <Badge variant="outline" className="gap-1 pr-1 font-normal">
-              Company: {selectedCompanyLabel}
-              <button
-                type="button"
-                className="rounded-sm p-0.5 hover:bg-muted"
-                aria-label="Remove company filter"
-                onClick={() => {
-                  setCompanyId("");
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </Badge>
-          ) : null}
-          {selectedTagLabel ? (
-            <Badge variant="outline" className="gap-1 pr-1 font-normal">
-              Tag: {selectedTagLabel}
-              <button
-                type="button"
-                className="rounded-sm p-0.5 hover:bg-muted"
-                aria-label="Remove tag filter"
-                onClick={() => {
-                  setTagId("");
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </Badge>
-          ) : null}
-          {pipelinesEnabled && sourceFilter !== "all" ? (
-            <Badge variant="outline" className="gap-1 pr-1 font-normal">
-              Source: {sourceFilter}
-              <button
-                type="button"
-                className="rounded-sm p-0.5 hover:bg-muted"
-                aria-label="Remove source filter"
-                onClick={() => {
-                  setSourceFilter("all");
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </Badge>
-          ) : null}
-          {pipelinesEnabled && journeyTypeFilter !== "all" ? (
-            <Badge variant="outline" className="gap-1 pr-1 font-normal">
-              Journey: {journeyTypeFilter}
-              <button
-                type="button"
-                className="rounded-sm p-0.5 hover:bg-muted"
-                aria-label="Remove journey filter"
-                onClick={() => {
-                  setJourneyTypeFilter("all");
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            </Badge>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 text-muted-foreground"
-            onClick={clearContactFilters}
-          >
-            Clear all
-          </Button>
-        </div>
-      )}
-
-      <ResponsiveDrawer
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        title="Filters"
-        description="Narrow the contact list. Changes apply immediately."
-        size="md"
-      >
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Company</p>
-            <CompanyCombobox
-              companies={companies}
-              value={companyId}
-              onValueChange={(v) => {
-                setCompanyId(v);
-                setPage(DEFAULT_PAGE);
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Tag</p>
-            <TagCombobox
-              tags={tags}
-              value={tagId}
-              onValueChange={(v) => {
-                setTagId(v);
-                setPage(DEFAULT_PAGE);
-              }}
-            />
-          </div>
-          {pipelinesEnabled ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Source</p>
-              <Select
-                value={sourceFilter}
-                onValueChange={(v) => {
-                  setSourceFilter(v);
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sources</SelectItem>
-                  {sources.map((s) => (
-                    <SelectItem key={s.id} value={s.name}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-          {pipelinesEnabled ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Journey type</p>
-              <Select
-                value={journeyTypeFilter}
-                onValueChange={(v) => {
-                  setJourneyTypeFilter(v);
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Journey type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All journey types</SelectItem>
-                  {journeyTypes.map((jt) => (
-                    <SelectItem key={jt.id} value={jt.name}>
-                      {jt.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-          <Button
-            type="button"
-            className="w-full"
-            onClick={() => setFiltersOpen(false)}
-          >
-            Done
-          </Button>
-        </div>
-      </ResponsiveDrawer>
-
-      <ContactTable
-        contacts={contacts}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        basePath={basePath}
-        dealsEnabled={dealsEnabled}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSort={(nextSortBy, nextSortOrder) => {
-          setSortBy(nextSortBy);
-          setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
-          setPage(DEFAULT_PAGE);
-        }}
-        onView={openView}
-        onEdit={openEdit}
-        onDelete={(id) => openDeleteDialog(id)}
-        emptyVariant={contactEmptyVariant}
-        onClearFilters={clearContactFilters}
-      />
-
-      {pagination && (
-        <DataTablePagination
-          pagination={pagination}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => {
-            setPageSize(s);
-            setPage(DEFAULT_PAGE);
-          }}
+    <PermissionGate perm="CRM.CONTACTS.VIEW">
+      <PageShell className="space-y-4">
+        <PageHeader
+          title="Contacts"
+          actions={
+            <>
+              <Can perm="CRM.CONTACTS.IMPORT">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Import
+                </Button>
+              </Can>
+              <Can perm="CRM.CONTACTS.EXPORT">
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Export
+                </Button>
+              </Can>
+              <Can perm="CRM.CONTACTS.CREATE">
+                <Button onClick={openNew}>
+                  <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Add Contact
+                </Button>
+              </Can>
+            </>
+          }
         />
-      )}
 
-      <ResponsiveDrawer
-        open={drawerOpen}
-        onOpenChange={(o) => !o && closeDrawer()}
-        title={drawerTitle}
-        size="2xl"
-        bodyPadding={false}
-      >
-        {drawerMode === "view" && selectedId && (
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openEdit(selectedId)}
-              >
-                Edit Contact
-              </Button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <ContactDetail
-                contactId={selectedId}
-                contact={contactData?.contact}
-                basePath={basePath}
-                onClose={closeDrawer}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Search contacts…"
+              value={search}
+              onChange={handleSearchChange}
+              className="pl-9 pr-10"
+              aria-busy={isFetching && !isLoading}
+            />
+            {isFetching && !isLoading ? (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Spinner className="size-4" />
+              </span>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 gap-2 sm:self-stretch"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Filters
+            {activeFilterCount > 0 ? (
+              <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
+                {activeFilterCount}
+              </Badge>
+            ) : null}
+          </Button>
+        </div>
+
+        {(activeFilterCount > 0 || debouncedSearch.trim()) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {debouncedSearch.trim() ? (
+              <Badge variant="outline" className="gap-1 pr-1 font-normal">
+                <span className="text-muted-foreground">Search:</span>
+                {debouncedSearch.trim()}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
+            {selectedCompanyLabel ? (
+              <Badge variant="outline" className="gap-1 pr-1 font-normal">
+                Company: {selectedCompanyLabel}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label="Remove company filter"
+                  onClick={() => {
+                    setCompanyId("");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
+            {selectedTagLabel ? (
+              <Badge variant="outline" className="gap-1 pr-1 font-normal">
+                Tag: {selectedTagLabel}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label="Remove tag filter"
+                  onClick={() => {
+                    setTagId("");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
+            {pipelinesEnabled && sourceFilter !== "all" ? (
+              <Badge variant="outline" className="gap-1 pr-1 font-normal">
+                Source: {sourceFilter}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label="Remove source filter"
+                  onClick={() => {
+                    setSourceFilter("all");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
+            {pipelinesEnabled && journeyTypeFilter !== "all" ? (
+              <Badge variant="outline" className="gap-1 pr-1 font-normal">
+                Journey: {journeyTypeFilter}
+                <button
+                  type="button"
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label="Remove journey filter"
+                  onClick={() => {
+                    setJourneyTypeFilter("all");
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </Badge>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-muted-foreground"
+              onClick={clearContactFilters}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
+
+        <ResponsiveDrawer
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Filters"
+          description="Narrow the contact list. Changes apply immediately."
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Company</p>
+              <CompanyCombobox
+                companies={companies}
+                value={companyId}
+                onValueChange={(v) => {
+                  setCompanyId(v);
+                  setPage(DEFAULT_PAGE);
+                }}
               />
             </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Tag</p>
+              <TagCombobox
+                tags={tags}
+                value={tagId}
+                onValueChange={(v) => {
+                  setTagId(v);
+                  setPage(DEFAULT_PAGE);
+                }}
+              />
+            </div>
+            {pipelinesEnabled ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Source</p>
+                <Select
+                  value={sourceFilter}
+                  onValueChange={(v) => {
+                    setSourceFilter(v);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All sources</SelectItem>
+                    {sources.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            {pipelinesEnabled ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Journey type</p>
+                <Select
+                  value={journeyTypeFilter}
+                  onValueChange={(v) => {
+                    setJourneyTypeFilter(v);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Journey type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All journey types</SelectItem>
+                    {journeyTypes.map((jt) => (
+                      <SelectItem key={jt.id} value={jt.name}>
+                        {jt.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => setFiltersOpen(false)}
+            >
+              Done
+            </Button>
           </div>
-        )}
-        {drawerMode === "new" && (
-          <ContactForm
-            onSubmit={handleCreateContact}
-            onCancel={closeDrawer}
-            isLoading={createMutation.isPending}
+        </ResponsiveDrawer>
+
+        <ContactTable
+          contacts={contacts}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          basePath={basePath}
+          dealsEnabled={dealsEnabled}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={(nextSortBy, nextSortOrder) => {
+            setSortBy(nextSortBy);
+            setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
+            setPage(DEFAULT_PAGE);
+          }}
+          onView={openView}
+          onEdit={openEdit}
+          onDelete={(id) => openDeleteDialog(id)}
+          emptyVariant={contactEmptyVariant}
+          onClearFilters={clearContactFilters}
+        />
+
+        {pagination && (
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(DEFAULT_PAGE);
+            }}
           />
         )}
-        {drawerMode === "edit" && selectedId && (
-          <ContactForm
-            defaultValues={
-              contactData?.contact
-                ? {
-                    firstName: contactData.contact.firstName,
-                    lastName: contactData.contact.lastName ?? undefined,
-                    email: contactData.contact.email ?? undefined,
-                    phone: contactData.contact.phone ?? undefined,
-                    companyId: contactData.contact.companyId ?? undefined,
-                    source: contactData.contact.source ?? undefined,
-                    tagIds:
-                      contactData.contact.tagLinks?.map((tl) => tl.tag.id) ??
-                      [],
-                  }
-                : undefined
-            }
-            onSubmit={handleUpdateContact}
-            onCancel={() => setDrawerMode("view")}
-            isLoading={updateMutation.isPending}
-          />
-        )}
-      </ResponsiveDrawer>
 
-      <ContactImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onSuccess={handleImportSuccess}
-        mutation={importMutation}
-      />
-
-      <AlertDialog
-        open={!!deleteId}
-        onOpenChange={(o) => !o && closeDeleteDialog()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleteConfirmStep === 1
-                ? "Delete this contact?"
-                : "Confirm deletion"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteConfirmStep === 1 ? (
-                <>
-                  Are you sure you want to delete{" "}
-                  <strong>{contactDisplayName || "this contact"}</strong>? This
-                  will affect {deleteImpactSummary}. Incomplete tasks will be
-                  marked as done.
-                </>
-              ) : (
-                <>
-                  Type <strong>{contactDisplayName}</strong> below to confirm
-                  deletion.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteConfirmStep === 2 && (
-            <Input
-              placeholder="Contact name"
-              value={deleteConfirmName}
-              onChange={(e) => setDeleteConfirmName(e.target.value)}
-              className="mt-2"
-              autoFocus
+        <ResponsiveDrawer
+          open={drawerOpen}
+          onOpenChange={(o) => !o && closeDrawer()}
+          title={drawerTitle}
+          size="2xl"
+          bodyPadding={false}
+        >
+          {drawerMode === "view" && selectedId && (
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
+                <Can perm="CRM.CONTACTS.UPDATE">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEdit(selectedId)}
+                  >
+                    Edit Contact
+                  </Button>
+                </Can>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <ContactDetail
+                  contactId={selectedId}
+                  contact={contactData?.contact}
+                  basePath={basePath}
+                  onClose={closeDrawer}
+                />
+              </div>
+            </div>
+          )}
+          {drawerMode === "new" && (
+            <ContactForm
+              onSubmit={handleCreateContact}
+              onCancel={closeDrawer}
+              isLoading={createMutation.isPending}
             />
           )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={
-                deleteMutation.isPending ||
-                (deleteConfirmStep === 2 && !canConfirmDelete)
+          {drawerMode === "edit" && selectedId && (
+            <ContactForm
+              defaultValues={
+                contactData?.contact
+                  ? {
+                      firstName: contactData.contact.firstName,
+                      lastName: contactData.contact.lastName ?? undefined,
+                      email: contactData.contact.email ?? undefined,
+                      phone: contactData.contact.phone ?? undefined,
+                      companyId: contactData.contact.companyId ?? undefined,
+                      source: contactData.contact.source ?? undefined,
+                      tagIds:
+                        contactData.contact.tagLinks?.map((tl) => tl.tag.id) ??
+                        [],
+                    }
+                  : undefined
               }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteConfirmStep === 1 ? "Continue" : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </PageShell>
+              onSubmit={handleUpdateContact}
+              onCancel={() => setDrawerMode("view")}
+              isLoading={updateMutation.isPending}
+            />
+          )}
+        </ResponsiveDrawer>
+
+        <ContactImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onSuccess={handleImportSuccess}
+          mutation={importMutation}
+        />
+
+        <AlertDialog
+          open={!!deleteId}
+          onOpenChange={(o) => !o && closeDeleteDialog()}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deleteConfirmStep === 1
+                  ? "Delete this contact?"
+                  : "Confirm deletion"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteConfirmStep === 1 ? (
+                  <>
+                    Are you sure you want to delete{" "}
+                    <strong>{contactDisplayName || "this contact"}</strong>?
+                    This will affect {deleteImpactSummary}. Incomplete tasks
+                    will be marked as done.
+                  </>
+                ) : (
+                  <>
+                    Type <strong>{contactDisplayName}</strong> below to confirm
+                    deletion.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteConfirmStep === 2 && (
+              <Input
+                placeholder="Contact name"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                className="mt-2"
+                autoFocus
+              />
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                disabled={
+                  deleteMutation.isPending ||
+                  (deleteConfirmStep === 2 && !canConfirmDelete)
+                }
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteConfirmStep === 1 ? "Continue" : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </PageShell>
+    </PermissionGate>
   );
 }
