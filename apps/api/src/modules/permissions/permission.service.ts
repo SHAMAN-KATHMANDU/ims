@@ -21,10 +21,18 @@ import {
   BITSET_BYTES,
   toWire,
 } from "@/shared/permissions/bitset";
-import { ADMINISTRATOR_BIT } from "@repo/shared/src/permissions/catalog";
+import {
+  ADMINISTRATOR_BIT,
+  PERMISSION_BY_KEY,
+} from "@repo/shared/src/permissions/catalog";
 import { permissionRepository } from "./permission.repository";
 import { permissionCache } from "./permission.cache";
 import { createError } from "@/middlewares/errorHandler";
+import {
+  resolveResourceId as locatorResolveResourceId,
+  resolveWorkspaceResourceId as locatorResolveWorkspaceResourceId,
+} from "@/shared/permissions/resourceLocator";
+import type { ResourceType } from "@/shared/permissions/module-map";
 
 export class PermissionService {
   /**
@@ -132,12 +140,16 @@ export class PermissionService {
       userId,
       resourceId,
     );
-    // Check if ADMINISTRATOR bit is set or the specific permission
+    // ADMINISTRATOR short-circuit — bypasses every permission check
     if (hasBit(perms, ADMINISTRATOR_BIT)) return true;
 
-    // TODO: import PERMISSION_BY_KEY and check the actual bit
-    // For now, return a placeholder
-    return false;
+    const def = PERMISSION_BY_KEY.get(permissionKey);
+    if (!def) {
+      // Unknown key means the caller referenced a permission that isn't in
+      // the catalog. Fail-closed — this is a bug in the caller, not the user.
+      return false;
+    }
+    return hasBit(perms, def.bit);
   }
 
   /**
@@ -162,21 +174,55 @@ export class PermissionService {
   /**
    * Filter a list of resource IDs to only those the user can VIEW.
    * Used by list endpoints.
+   *
+   * @param permissionKey - the VIEW permission key to check against each
+   *   resource (e.g., "INVENTORY.PRODUCTS.VIEW"). Passing a specific key
+   *   avoids ambiguity when a list contains mixed resource types.
    */
   async filterVisible(
     tenantId: string,
     userId: string,
     resourceIds: string[],
+    permissionKey: string,
   ): Promise<Set<string>> {
     const visible = new Set<string>();
+    if (resourceIds.length === 0) return visible;
 
-    // TODO: Batch resolve and check VIEW permission for each
-    // For now, return all (placeholder)
-    for (const id of resourceIds) {
-      visible.add(id);
-    }
+    // Check each resource. The per-resource cache means repeat queries are
+    // cheap; the first page hit warms the cache for siblings.
+    await Promise.all(
+      resourceIds.map(async (resourceId) => {
+        const allowed = await this.can(
+          tenantId,
+          userId,
+          resourceId,
+          permissionKey,
+        );
+        if (allowed) visible.add(resourceId);
+      }),
+    );
 
     return visible;
+  }
+
+  /**
+   * Look up the Resource row id for an entity, or fall back to the tenant's
+   * WORKSPACE Resource when `externalId` is null. Thin wrapper around the
+   * locator so callers outside Express middleware can share the same path.
+   */
+  async resolveResourceId(
+    tenantId: string,
+    type: ResourceType,
+    externalId: string | null,
+  ): Promise<string> {
+    return locatorResolveResourceId(tenantId, type, externalId);
+  }
+
+  /**
+   * Idempotent WORKSPACE Resource lookup for a tenant.
+   */
+  async resolveWorkspaceResourceId(tenantId: string): Promise<string> {
+    return locatorResolveWorkspaceResourceId(tenantId);
   }
 
   /**

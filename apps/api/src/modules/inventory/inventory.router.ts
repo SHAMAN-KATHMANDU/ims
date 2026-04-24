@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import inventoryController from "@/modules/inventory/inventory.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -17,9 +21,10 @@ const inventoryRouter = Router();
  *       200:
  *         description: Inventory summary retrieved successfully
  */
+// Summary aggregates across products/locations — scope to workspace VIEW.
 inventoryRouter.get(
   "/summary",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.VIEW", workspaceLocator()),
   asyncHandler(inventoryController.getInventorySummary),
 );
 
@@ -62,7 +67,10 @@ inventoryRouter.get(
  */
 inventoryRouter.get(
   "/location/:locationId",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission(
+    "INVENTORY.LOCATIONS.VIEW",
+    paramLocator("LOCATION", "locationId"),
+  ),
   asyncHandler(inventoryController.getLocationInventory),
 );
 
@@ -89,7 +97,10 @@ inventoryRouter.get(
  */
 inventoryRouter.get(
   "/product/:productId",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission(
+    "INVENTORY.PRODUCTS.VIEW",
+    paramLocator("PRODUCT", "productId"),
+  ),
   asyncHandler(inventoryController.getProductStock),
 );
 
@@ -132,9 +143,12 @@ inventoryRouter.get(
  *       404:
  *         description: Location or variation not found
  */
+// Adjust crosses (location × variation); workspace-scoped ADJUST_STOCK.
+// The controller can fail-closed on the specific location/product if a
+// finer-grained overwrite is configured via permissionService.assert.
 inventoryRouter.put(
   "/adjust",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.ADJUST_STOCK", workspaceLocator()),
   asyncHandler(inventoryController.adjustInventory),
 );
 
@@ -176,7 +190,7 @@ inventoryRouter.put(
  */
 inventoryRouter.put(
   "/set",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PRODUCTS.ADJUST_STOCK", workspaceLocator()),
   asyncHandler(inventoryController.setInventory),
 );
 

@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import locationController from "@/modules/locations/location.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -43,7 +47,7 @@ const locationRouter = Router();
  */
 locationRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.CREATE", workspaceLocator()),
   enforcePlanLimits("locations"),
   asyncHandler(locationController.createLocation),
 );
@@ -90,11 +94,8 @@ locationRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedLocationsResponse'
  */
-locationRouter.get(
-  "/",
-  authorizeRoles("admin", "user", "superAdmin"),
-  asyncHandler(locationController.getAllLocations),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+locationRouter.get("/", asyncHandler(locationController.getAllLocations));
 
 /**
  * @swagger
@@ -119,7 +120,7 @@ locationRouter.get(
  */
 locationRouter.get(
   "/:id",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.VIEW", paramLocator("LOCATION")),
   asyncHandler(locationController.getLocationById),
 );
 
@@ -168,7 +169,7 @@ locationRouter.get(
  */
 locationRouter.get(
   "/:id/inventory",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.VIEW", paramLocator("LOCATION")),
   asyncHandler(locationController.getLocationInventory),
 );
 
@@ -197,7 +198,7 @@ locationRouter.get(
  */
 locationRouter.post(
   "/:id/restore",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.UPDATE", paramLocator("LOCATION")),
   asyncHandler(locationController.restoreLocation),
 );
 
@@ -239,7 +240,7 @@ locationRouter.post(
  */
 locationRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.UPDATE", paramLocator("LOCATION")),
   asyncHandler(locationController.updateLocation),
 );
 
@@ -268,7 +269,7 @@ locationRouter.put(
  */
 locationRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.LOCATIONS.DELETE", paramLocator("LOCATION")),
   asyncHandler(locationController.deleteLocation),
 );
 

@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import vendorController from "@/modules/vendors/vendor.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -44,7 +48,7 @@ const vendorRouter = Router();
  */
 vendorRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.VENDORS.CREATE", workspaceLocator()),
   asyncHandler(vendorController.createVendor),
 );
 
@@ -74,11 +78,9 @@ vendorRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedVendorsResponse'
  */
-vendorRouter.get(
-  "/",
-  authorizeRoles("admin", "user", "superAdmin"),
-  asyncHandler(vendorController.getAllVendors),
-);
+// List endpoint — no per-route middleware; service-layer filterVisible will
+// narrow the result set once Phase 3 wires it. See RBAC_CONTRACT §5.
+vendorRouter.get("/", asyncHandler(vendorController.getAllVendors));
 
 /**
  * @swagger
@@ -116,7 +118,7 @@ vendorRouter.get(
  */
 vendorRouter.get(
   "/:id/products",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.VENDORS.VIEW", paramLocator("VENDOR")),
   asyncHandler(vendorController.getVendorProducts),
 );
 
@@ -143,7 +145,7 @@ vendorRouter.get(
  */
 vendorRouter.get(
   "/:id",
-  authorizeRoles("admin", "user", "superAdmin"),
+  requirePermission("INVENTORY.VENDORS.VIEW", paramLocator("VENDOR")),
   asyncHandler(vendorController.getVendorById),
 );
 
@@ -188,7 +190,7 @@ vendorRouter.get(
  */
 vendorRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.VENDORS.UPDATE", paramLocator("VENDOR")),
   asyncHandler(vendorController.updateVendor),
 );
 
@@ -217,7 +219,7 @@ vendorRouter.put(
  */
 vendorRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.VENDORS.DELETE", paramLocator("VENDOR")),
   asyncHandler(vendorController.deleteVendor),
 );
 

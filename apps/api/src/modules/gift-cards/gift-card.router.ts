@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import giftCardController from "./gift-card.controller";
@@ -14,7 +18,7 @@ const giftCardRouter = Router();
  *     tags: [GiftCards]
  *     security: [{ bearerAuth: [] }]
  *   post:
- *     summary: Create gift card
+ *     summary: Create (issue) gift card
  *     tags: [GiftCards]
  *     security: [{ bearerAuth: [] }]
  * /gift-cards/{id}:
@@ -25,24 +29,22 @@ const giftCardRouter = Router();
  *     summary: Update gift card (status / expiresAt / balance adjust)
  *     tags: [GiftCards]
  */
-giftCardRouter.get(
-  "/",
-  authorizeRoles("user", "admin", "superAdmin"),
-  asyncHandler(giftCardController.getAllGiftCards),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+giftCardRouter.get("/", asyncHandler(giftCardController.getAllGiftCards));
+// Creating a gift card = issuing it → ISSUE permission
 giftCardRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.GIFT_CARDS.ISSUE", workspaceLocator()),
   asyncHandler(giftCardController.createGiftCard),
 );
 giftCardRouter.get(
   "/:id",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("INVENTORY.GIFT_CARDS.VIEW", paramLocator("GIFT_CARD")),
   asyncHandler(giftCardController.getGiftCardById),
 );
 giftCardRouter.patch(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.GIFT_CARDS.UPDATE", paramLocator("GIFT_CARD")),
   asyncHandler(giftCardController.updateGiftCard),
 );
 

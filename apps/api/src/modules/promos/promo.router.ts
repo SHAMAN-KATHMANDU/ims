@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import promoController from "@/modules/promos/promo.controller";
@@ -70,7 +74,7 @@ promoRouter.use(enforceEnvFeature(EnvFeature.PROMOTIONS));
  */
 promoRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PROMOS.CREATE", workspaceLocator()),
   enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.createPromo),
 );
@@ -105,11 +109,8 @@ promoRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/PaginatedPromosResponse'
  */
-promoRouter.get(
-  "/",
-  authorizeRoles("user", "admin", "superAdmin"),
-  asyncHandler(promoController.getAllPromos),
-);
+// List — service-layer filterVisible (Phase 3 follow-up). See RBAC_CONTRACT §5.
+promoRouter.get("/", asyncHandler(promoController.getAllPromos));
 
 /**
  * @swagger
@@ -130,9 +131,10 @@ promoRouter.get(
  *       404:
  *         description: Promo code not found
  */
+// Lookup-by-code — used during sale flow; scope to workspace VIEW
 promoRouter.get(
   "/by-code/:code",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("INVENTORY.PROMOS.VIEW", workspaceLocator()),
   asyncHandler(promoController.getPromoByCode),
 );
 
@@ -159,7 +161,7 @@ promoRouter.get(
  */
 promoRouter.get(
   "/:id",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("INVENTORY.PROMOS.VIEW", paramLocator("PROMO")),
   asyncHandler(promoController.getPromoById),
 );
 
@@ -224,7 +226,7 @@ promoRouter.get(
  */
 promoRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PROMOS.UPDATE", paramLocator("PROMO")),
   enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.updatePromo),
 );
@@ -250,9 +252,11 @@ promoRouter.put(
  *       404:
  *         description: Promo code not found
  */
+// Soft-deactivate a promo maps closer to END than DELETE; keep permission
+// aligned with the semantic so future UI actions (`End promo`) use one key.
 promoRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("INVENTORY.PROMOS.END", paramLocator("PROMO")),
   enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.deletePromo),
 );

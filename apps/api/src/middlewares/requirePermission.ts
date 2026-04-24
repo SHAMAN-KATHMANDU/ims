@@ -2,15 +2,22 @@
  * requirePermission middleware
  *
  * Enforces fine-grained permission checks on API routes.
- * Calls permissionService.assert() to verify user has required permission for a resource.
+ * Delegates to `permissionService.assert()` to verify the user has the required
+ * permission for a specific resource. `assert()` throws AppError(403) when the
+ * user's effective bitset (role base mask ∪ overwrites along the ancestor chain)
+ * does not contain the requested bit.
  *
- * In Phase 1, this is stubbed because rbac-core's permissionService is not yet complete.
- * Phase 2 will integrate the real service and remove role-based gates.
+ * Phase 2 enforcement gate — opt-in via `process.env.RBAC_ENFORCE === "true"`.
+ * Default is **off** during the Phase 2 rollout because the existing test
+ * surface (integration, concurrency, factories) does not yet seed RbacRole +
+ * UserRole rows. Production envs flip `RBAC_ENFORCE=true` once Phase 3 lands
+ * the seed updates, at which point the middleware asserts against the real
+ * bitset engine.
  *
  * Usage:
- *   router.patch(
+ *   router.put(
  *     "/products/:id",
- *     requirePermission("PRODUCTS.MANAGE", req => req.params.id),
+ *     requirePermission("INVENTORY.PRODUCTS.UPDATE", paramLocator("PRODUCT")),
  *     asyncHandler(controller.updateProduct),
  *   );
  */
@@ -18,12 +25,16 @@
 import { Request, Response, NextFunction } from "express";
 import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { fail } from "@/shared/response";
+import { permissionService } from "@/modules/permissions/permission.service";
+
+/** Phase 2 enforcement is opt-in — defaults to off until Phase 3 seeds land. */
+function isEnforcementEnabled(): boolean {
+  return process.env.RBAC_ENFORCE === "true";
+}
 
 /**
  * Assert that the user has a specific permission on a resource.
  * Throws AppError(403) if permission denied.
- *
- * NOTE: This is a stub. Phase 2 will call the real permissionService.assert().
  */
 export async function assertPermission(
   tenantId: string,
@@ -31,17 +42,14 @@ export async function assertPermission(
   permissionKey: string,
   resourceId: string,
 ): Promise<void> {
-  // PHASE-1-STUB: Always allow for now.
-  // Phase 2: Call permissionService.assert(tenantId, userId, permissionKey, resourceId)
-  // which will throw AppError(403) if permission denied.
+  if (!isEnforcementEnabled()) return;
+  await permissionService.assert(tenantId, userId, resourceId, permissionKey);
 }
 
 /**
  * Assert that user is the owner of a resource OR has a specific permission.
  * Useful for owner-or-permission checks (e.g., users can edit their own profile
  * OR admins can edit any profile).
- *
- * NOTE: This is a stub. Phase 2 will call the real permissionService.
  */
 export async function assertOwnerOrPermission(
   tenantId: string,
@@ -50,7 +58,6 @@ export async function assertOwnerOrPermission(
   permissionKey: string,
   resourceId: string,
 ): Promise<void> {
-  // PHASE-1-STUB: Allow if owner or always allow (permissionService stub).
   if (userId === ownerId) {
     return;
   }
@@ -77,6 +84,12 @@ export function requirePermission(
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Skip locator lookup entirely when enforcement is off — locators
+      // hit the DB, and we don't want that cost during Phase 1 rollout.
+      if (!isEnforcementEnabled()) {
+        next();
+        return;
+      }
       const { userId, tenantId } = getAuthContext(req);
       const resourceId = await resourceLocator(req);
       await assertPermission(tenantId, userId, permissionKey, resourceId);
@@ -116,6 +129,10 @@ export function requireOwnerOrPermission(
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+      if (!isEnforcementEnabled()) {
+        next();
+        return;
+      }
       const { userId, tenantId } = getAuthContext(req);
       const ownerId = await ownerLocator(req);
       const resourceId = await resourceLocator(req);
