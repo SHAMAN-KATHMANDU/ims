@@ -16,7 +16,7 @@ import {
   PERMISSIONS,
   PERMISSION_BY_KEY,
   ADMINISTRATOR_BIT,
-} from "@repo/shared/src/permissions/catalog";
+} from "@repo/shared";
 import { EMPTY_BITSET, setBit } from "@/shared/permissions/bitset";
 
 /**

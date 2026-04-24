@@ -12,10 +12,7 @@ import {
   hasPermission,
   applyImplies,
 } from "./bitset";
-import {
-  PERMISSION_BY_KEY,
-  ADMINISTRATOR_BIT,
-} from "@repo/shared/src/permissions/catalog";
+import { PERMISSION_BY_KEY, ADMINISTRATOR_BIT } from "@repo/shared";
 
 describe("bitset helpers", () => {
   describe("EMPTY_BITSET", () => {

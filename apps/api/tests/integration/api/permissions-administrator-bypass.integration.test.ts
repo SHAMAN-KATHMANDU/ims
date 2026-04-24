@@ -21,10 +21,7 @@ import {
   setBit,
   BITSET_BYTES,
 } from "@/shared/permissions/bitset";
-import {
-  ADMINISTRATOR_BIT,
-  PERMISSION_BY_KEY,
-} from "@repo/shared/src/permissions/catalog";
+import { ADMINISTRATOR_BIT, PERMISSION_BY_KEY } from "@repo/shared";
 
 vi.mock("@/modules/permissions/permission.repository");
 vi.mock("@/modules/permissions/permission.cache");
