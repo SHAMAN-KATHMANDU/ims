@@ -1,5 +1,6 @@
 "use client";
 
+import { useCan } from "@/features/permissions";
 import { format } from "date-fns";
 import {
   MoreHorizontal,
@@ -55,6 +56,8 @@ export function LocationTable({
   hasActiveFilters,
   onClearFilters,
 }: LocationTableProps) {
+  const { allowed: canUpdateLocation } = useCan("INVENTORY.LOCATIONS.UPDATE");
+  const { allowed: canDeleteLocation } = useCan("INVENTORY.LOCATIONS.DELETE");
   const columns: DataTableColumn<Location>[] = [
     {
       id: "name",
@@ -217,34 +220,39 @@ export function LocationTable({
                   <DropdownMenuContent align="end">
                     {canManage ? (
                       <>
-                        <DropdownMenuItem onClick={() => onEdit(location)}>
-                          <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                          Edit
-                        </DropdownMenuItem>
-                        {location.isActive ? (
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => onDelete(location)}
-                          >
-                            <Trash2
+                        {canUpdateLocation && (
+                          <DropdownMenuItem onClick={() => onEdit(location)}>
+                            <Pencil
                               className="mr-2 h-4 w-4"
                               aria-hidden="true"
                             />
-                            Deactivate
+                            Edit
                           </DropdownMenuItem>
-                        ) : (
-                          onRestore && (
-                            <DropdownMenuItem
-                              onClick={() => onRestore(location)}
-                            >
-                              <RotateCcw
-                                className="mr-2 h-4 w-4"
-                                aria-hidden="true"
-                              />
-                              Reactivate
-                            </DropdownMenuItem>
-                          )
                         )}
+                        {location.isActive
+                          ? canDeleteLocation && (
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => onDelete(location)}
+                              >
+                                <Trash2
+                                  className="mr-2 h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                                Deactivate
+                              </DropdownMenuItem>
+                            )
+                          : onRestore && (
+                              <DropdownMenuItem
+                                onClick={() => onRestore(location)}
+                              >
+                                <RotateCcw
+                                  className="mr-2 h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                                Reactivate
+                              </DropdownMenuItem>
+                            )}
                       </>
                     ) : (
                       <>
@@ -322,26 +330,31 @@ export function LocationTable({
           <DropdownMenuContent align="end">
             {canManage ? (
               <>
-                <DropdownMenuItem onClick={() => onEdit(location)}>
-                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                  Edit
-                </DropdownMenuItem>
-                {location.isActive ? (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => onDelete(location)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Deactivate
+                {canUpdateLocation && (
+                  <DropdownMenuItem onClick={() => onEdit(location)}>
+                    <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Edit
                   </DropdownMenuItem>
-                ) : (
-                  onRestore && (
-                    <DropdownMenuItem onClick={() => onRestore(location)}>
-                      <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
-                      Reactivate
-                    </DropdownMenuItem>
-                  )
                 )}
+                {location.isActive
+                  ? canDeleteLocation && (
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => onDelete(location)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                        Deactivate
+                      </DropdownMenuItem>
+                    )
+                  : onRestore && (
+                      <DropdownMenuItem onClick={() => onRestore(location)}>
+                        <RotateCcw
+                          className="mr-2 h-4 w-4"
+                          aria-hidden="true"
+                        />
+                        Reactivate
+                      </DropdownMenuItem>
+                    )}
               </>
             ) : (
               <>

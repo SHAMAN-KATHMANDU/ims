@@ -528,15 +528,17 @@ export function LeadsPage() {
                   className="flex gap-1 pt-1"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs flex-1"
-                    disabled={lead.status === "CONVERTED"}
-                    onClick={() => handleConvert(lead)}
-                  >
-                    Convert
-                  </Button>
+                  <Can perm="CRM.LEADS.CONVERT">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs flex-1"
+                      disabled={lead.status === "CONVERTED"}
+                      onClick={() => handleConvert(lead)}
+                    >
+                      Convert
+                    </Button>
+                  </Can>
                   <Button
                     variant="outline"
                     size="sm"
@@ -654,14 +656,16 @@ export function LeadsPage() {
                       >
                         View
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={lead.status === "CONVERTED"}
-                        onClick={() => handleConvert(lead)}
-                      >
-                        Convert
-                      </Button>
+                      <Can perm="CRM.LEADS.CONVERT">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={lead.status === "CONVERTED"}
+                          onClick={() => handleConvert(lead)}
+                        >
+                          Convert
+                        </Button>
+                      </Can>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -723,12 +727,14 @@ export function LeadsPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={leadData.lead.status === "CONVERTED"}
-                    onClick={() => handleConvert(leadData.lead)}
-                  >
-                    Convert to Contact + Deal
-                  </Button>
+                  <Can perm="CRM.LEADS.CONVERT">
+                    <Button
+                      disabled={leadData.lead.status === "CONVERTED"}
+                      onClick={() => handleConvert(leadData.lead)}
+                    >
+                      Convert to Contact + Deal
+                    </Button>
+                  </Can>
                   <Link href={`${basePath}/crm/leads/${selectedId}/edit`}>
                     <Button variant="outline">Edit</Button>
                   </Link>

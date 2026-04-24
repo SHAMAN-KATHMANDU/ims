@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Can } from "@/features/permissions";
 import {
   Tooltip,
   TooltipContent,
@@ -334,57 +335,61 @@ export function ProductDetailSheet({
                                   <TableCell className="text-right">
                                     <div className="flex items-center justify-end gap-1">
                                       {onEdit && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                onClick={() =>
-                                                  onEdit(sheetProduct)
-                                                }
-                                                aria-label={`Edit ${sheetProduct.name}`}
-                                              >
-                                                <Edit2
-                                                  className="h-4 w-4"
-                                                  aria-hidden="true"
-                                                />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Edit product
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
+                                        <Can perm="INVENTORY.PRODUCTS.UPDATE">
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8"
+                                                  onClick={() =>
+                                                    onEdit(sheetProduct)
+                                                  }
+                                                  aria-label={`Edit ${sheetProduct.name}`}
+                                                >
+                                                  <Edit2
+                                                    className="h-4 w-4"
+                                                    aria-hidden="true"
+                                                  />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Edit product
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        </Can>
                                       )}
                                       {onDeleteVariation && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                                onClick={() =>
-                                                  onDeleteVariation(
-                                                    sheetProduct,
-                                                    variation.id,
-                                                  )
-                                                }
-                                                aria-label={`Delete variation ${getVariationAttributeDisplay(variation) || variation.id}`}
-                                              >
-                                                <Trash2
-                                                  className="h-4 w-4"
-                                                  aria-hidden="true"
-                                                />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Delete variation
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
+                                        <Can perm="INVENTORY.PRODUCTS.DELETE">
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                                  onClick={() =>
+                                                    onDeleteVariation(
+                                                      sheetProduct,
+                                                      variation.id,
+                                                    )
+                                                  }
+                                                  aria-label={`Delete variation ${getVariationAttributeDisplay(variation) || variation.id}`}
+                                                >
+                                                  <Trash2
+                                                    className="h-4 w-4"
+                                                    aria-hidden="true"
+                                                  />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Delete variation
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        </Can>
                                       )}
                                     </div>
                                   </TableCell>
