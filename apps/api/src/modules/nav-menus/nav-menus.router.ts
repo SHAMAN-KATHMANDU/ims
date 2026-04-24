@@ -1,20 +1,21 @@
 /**
  * Nav Menus Router — tenant-scoped editable navigation.
  * Mounted under /nav-menus; inherits auth + tenant resolution.
- * Role: admin or superAdmin.
+ * Permissions: WEBSITE.NAV_MENUS.*
  */
 
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import controller from "./nav-menus.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
-router.use(authorizeRoles("admin", "superAdmin"));
+router.use(requirePermission("WEBSITE.NAV_MENUS.VIEW", workspaceLocator()));
 
 /**
  * @swagger
@@ -36,7 +37,11 @@ router.get("/", asyncHandler(controller.list));
  *     security:
  *       - bearerAuth: []
  */
-router.put("/", asyncHandler(controller.upsert));
+router.put(
+  "/",
+  requirePermission("WEBSITE.NAV_MENUS.UPDATE", workspaceLocator()),
+  asyncHandler(controller.upsert),
+);
 
 /**
  * @swagger
@@ -58,6 +63,10 @@ router.get("/:slot", asyncHandler(controller.getBySlot));
  *     security:
  *       - bearerAuth: []
  */
-router.delete("/:slot", asyncHandler(controller.remove));
+router.delete(
+  "/:slot",
+  requirePermission("WEBSITE.NAV_MENUS.DELETE", workspaceLocator()),
+  asyncHandler(controller.remove),
+);
 
 export default router;

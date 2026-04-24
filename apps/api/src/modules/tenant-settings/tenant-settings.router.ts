@@ -1,11 +1,14 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import tenantSettingsController from "./tenant-settings.controller";
 
 const tenantSettingsRouter = Router();
 
-tenantSettingsRouter.use(authorizeRoles("admin", "superAdmin"));
+tenantSettingsRouter.use(
+  requirePermission("SETTINGS.TENANT.VIEW", workspaceLocator()),
+);
 
 /**
  * @swagger
@@ -31,31 +34,10 @@ tenantSettingsRouter.get(
  *     tags: [TenantSettings]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [paymentMethods]
- *             properties:
- *               paymentMethods:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   type: object
- *                   required: [id, code, label, enabled, order]
- *                   properties:
- *                     id: { type: string }
- *                     code: { type: string }
- *                     label: { type: string }
- *                     enabled: { type: boolean }
- *                     order: { type: integer }
- *     responses:
- *       200: { description: Payment methods updated }
  */
 tenantSettingsRouter.put(
   "/payment-methods",
+  requirePermission("SETTINGS.TENANT.UPDATE_BRANDING", workspaceLocator()),
   asyncHandler(tenantSettingsController.upsertPaymentMethods),
 );
 

@@ -1,20 +1,23 @@
 /**
  * Blog Router — tenant-scoped blog management.
  * Mounted under /blog; inherits auth + tenant resolution from the main chain.
- * Role: admin or superAdmin.
+ * Permissions: WEBSITE.BLOG.* — scoped per post (or workspace for listing).
  */
 
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import controller from "./blog.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
-router.use(authorizeRoles("admin", "superAdmin"));
 
 // ==================== POSTS ====================
 
@@ -27,7 +30,11 @@ router.use(authorizeRoles("admin", "superAdmin"));
  *     security:
  *       - bearerAuth: []
  */
-router.get("/posts", asyncHandler(controller.listPosts));
+router.get(
+  "/posts",
+  requirePermission("WEBSITE.BLOG.VIEW", workspaceLocator()),
+  asyncHandler(controller.listPosts),
+);
 
 /**
  * @swagger
@@ -38,7 +45,11 @@ router.get("/posts", asyncHandler(controller.listPosts));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/posts", asyncHandler(controller.createPost));
+router.post(
+  "/posts",
+  requirePermission("WEBSITE.BLOG.CREATE", workspaceLocator()),
+  asyncHandler(controller.createPost),
+);
 
 /**
  * @swagger
@@ -49,7 +60,11 @@ router.post("/posts", asyncHandler(controller.createPost));
  *     security:
  *       - bearerAuth: []
  */
-router.get("/posts/:id", asyncHandler(controller.getPost));
+router.get(
+  "/posts/:id",
+  requirePermission("WEBSITE.BLOG.VIEW", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.getPost),
+);
 
 /**
  * @swagger
@@ -60,7 +75,11 @@ router.get("/posts/:id", asyncHandler(controller.getPost));
  *     security:
  *       - bearerAuth: []
  */
-router.patch("/posts/:id", asyncHandler(controller.updatePost));
+router.patch(
+  "/posts/:id",
+  requirePermission("WEBSITE.BLOG.UPDATE", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.updatePost),
+);
 
 /**
  * @swagger
@@ -71,7 +90,11 @@ router.patch("/posts/:id", asyncHandler(controller.updatePost));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/posts/:id/publish", asyncHandler(controller.publishPost));
+router.post(
+  "/posts/:id/publish",
+  requirePermission("WEBSITE.BLOG.PUBLISH", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.publishPost),
+);
 
 /**
  * @swagger
@@ -82,7 +105,11 @@ router.post("/posts/:id/publish", asyncHandler(controller.publishPost));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/posts/:id/unpublish", asyncHandler(controller.unpublishPost));
+router.post(
+  "/posts/:id/unpublish",
+  requirePermission("WEBSITE.BLOG.PUBLISH", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.unpublishPost),
+);
 
 /**
  * @swagger
@@ -93,7 +120,11 @@ router.post("/posts/:id/unpublish", asyncHandler(controller.unpublishPost));
  *     security:
  *       - bearerAuth: []
  */
-router.delete("/posts/:id", asyncHandler(controller.deletePost));
+router.delete(
+  "/posts/:id",
+  requirePermission("WEBSITE.BLOG.DELETE", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.deletePost),
+);
 
 // ==================== CATEGORIES ====================
 
@@ -106,7 +137,11 @@ router.delete("/posts/:id", asyncHandler(controller.deletePost));
  *     security:
  *       - bearerAuth: []
  */
-router.get("/categories", asyncHandler(controller.listCategories));
+router.get(
+  "/categories",
+  requirePermission("WEBSITE.BLOG.VIEW", workspaceLocator()),
+  asyncHandler(controller.listCategories),
+);
 
 /**
  * @swagger
@@ -117,7 +152,11 @@ router.get("/categories", asyncHandler(controller.listCategories));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/categories", asyncHandler(controller.createCategory));
+router.post(
+  "/categories",
+  requirePermission("WEBSITE.BLOG.CREATE", workspaceLocator()),
+  asyncHandler(controller.createCategory),
+);
 
 /**
  * @swagger
@@ -128,7 +167,11 @@ router.post("/categories", asyncHandler(controller.createCategory));
  *     security:
  *       - bearerAuth: []
  */
-router.patch("/categories/:id", asyncHandler(controller.updateCategory));
+router.patch(
+  "/categories/:id",
+  requirePermission("WEBSITE.BLOG.UPDATE", workspaceLocator()),
+  asyncHandler(controller.updateCategory),
+);
 
 /**
  * @swagger
@@ -139,6 +182,10 @@ router.patch("/categories/:id", asyncHandler(controller.updateCategory));
  *     security:
  *       - bearerAuth: []
  */
-router.delete("/categories/:id", asyncHandler(controller.deleteCategory));
+router.delete(
+  "/categories/:id",
+  requirePermission("WEBSITE.BLOG.DELETE", workspaceLocator()),
+  asyncHandler(controller.deleteCategory),
+);
 
 export default router;

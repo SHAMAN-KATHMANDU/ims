@@ -1,5 +1,9 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import memberController from "@/modules/members/member.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -45,7 +49,7 @@ const memberRouter = Router();
  */
 memberRouter.post(
   "/",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.CREATE", workspaceLocator()),
   enforcePlanLimits("members"),
   asyncHandler(memberController.createMember),
 );
@@ -92,7 +96,7 @@ memberRouter.post(
  */
 memberRouter.get(
   "/",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", workspaceLocator()),
   asyncHandler(memberController.getAllMembers),
 );
 
@@ -116,7 +120,7 @@ memberRouter.get(
  */
 memberRouter.get(
   "/check/:phone",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", workspaceLocator()),
   asyncHandler(memberController.checkMember),
 );
 
@@ -142,7 +146,7 @@ memberRouter.get(
  */
 memberRouter.get(
   "/phone/:phone",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", workspaceLocator()),
   asyncHandler(memberController.getMemberByPhone),
 );
 
@@ -169,7 +173,7 @@ memberRouter.get(
  */
 memberRouter.get(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", paramLocator("MEMBER", "id")),
   asyncHandler(memberController.getMemberById),
 );
 
@@ -212,13 +216,13 @@ memberRouter.get(
  */
 memberRouter.put(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.UPDATE", paramLocator("MEMBER", "id")),
   asyncHandler(memberController.updateMember),
 );
 
 memberRouter.post(
   "/bulk-upload",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.CREATE", workspaceLocator()),
   uploadSingle,
   asyncHandler(memberController.bulkUploadMembers),
 );
@@ -238,7 +242,7 @@ memberRouter.post(
  */
 memberRouter.get(
   "/download/template",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", workspaceLocator()),
   asyncHandler(memberController.downloadBulkUploadTemplate),
 );
 
@@ -266,7 +270,7 @@ memberRouter.get(
  */
 memberRouter.get(
   "/download/export",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.MEMBERS.VIEW", workspaceLocator()),
   asyncHandler(memberController.downloadMembers),
 );
 

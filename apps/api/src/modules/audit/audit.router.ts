@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import auditController from "@/modules/audit/audit.controller";
@@ -12,48 +13,18 @@ const auditRouter = Router();
  * @swagger
  * /audit-logs:
  *   get:
- *     summary: Get audit logs (superAdmin only)
+ *     summary: Get audit logs
  *     tags: [Audit]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *         description: Page number (1-based)
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10, maximum: 100 }
- *         description: Items per page
- *       - in: query
- *         name: userId
- *         schema: { type: string, format: uuid }
- *         description: Filter by user ID
- *       - in: query
- *         name: action
- *         schema: { type: string }
- *         description: Filter by action (e.g. LOGIN)
- *       - in: query
- *         name: from
- *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
- *         description: Filter from date (YYYY-MM-DD)
- *       - in: query
- *         name: to
- *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
- *         description: Filter to date (YYYY-MM-DD)
  *     responses:
- *       200:
- *         description: Audit logs retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedAuditResponse'
+ *       200: { description: Audit logs retrieved successfully }
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  */
 auditRouter.get(
   "/",
-  authorizeRoles("superAdmin"),
+  requirePermission("SETTINGS.AUDIT.VIEW", workspaceLocator()),
   enforceEnvFeature(EnvFeature.AUDIT_LOGS),
   enforcePlanFeature("auditLogs"),
   asyncHandler(auditController.getAuditLogs),

@@ -1,43 +1,24 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import trashController from "./trash.controller";
 
 const trashRouter = Router();
 
-/** Platform trash — platformAdmin only. No tenant trash. */
-trashRouter.use(authorizeRoles("platformAdmin"));
+trashRouter.use(requirePermission("SETTINGS.TRASH.VIEW", workspaceLocator()));
 
 /**
  * @swagger
  * /platform/trash:
  *   get:
- *     summary: List soft-deleted items (platform admin only)
+ *     summary: List soft-deleted items
  *     tags: [Trash]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *       - in: query
- *         name: entityType
- *         schema: { type: string }
- *         description: "Filter by entity type. Valid values: product, category, subcategory, vendor, member, location, promocode, company, contact, lead, deal, task, activity, pipeline"
- *       - in: query
- *         name: tenantId
- *         schema: { type: string, format: uuid }
- *         description: "Filter by tenant"
- *     responses:
- *       200:
- *         description: Trash items list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedTrashResponse'
  */
 trashRouter.get("/", asyncHandler(trashController.listTrash));
 
@@ -49,21 +30,10 @@ trashRouter.get("/", asyncHandler(trashController.listTrash));
  *     tags: [Trash]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: entityType
- *         required: true
- *         schema: { type: string }
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200: { description: Item restored }
- *       404: { description: Not found }
  */
 trashRouter.post(
   "/:entityType/:id/restore",
+  requirePermission("SETTINGS.TRASH.RESTORE", paramLocator("TRASH_ITEM", "id")),
   asyncHandler(trashController.restoreItem),
 );
 
@@ -71,25 +41,14 @@ trashRouter.post(
  * @swagger
  * /platform/trash/{entityType}/{id}:
  *   delete:
- *     summary: Permanently delete item from trash
+ *     summary: Permanently delete item from trash (dangerous)
  *     tags: [Trash]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: entityType
- *         required: true
- *         schema: { type: string }
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200: { description: Item permanently deleted }
- *       404: { description: Not found }
  */
 trashRouter.delete(
   "/:entityType/:id",
+  requirePermission("SETTINGS.TRASH.PURGE", paramLocator("TRASH_ITEM", "id")),
   asyncHandler(trashController.permanentlyDeleteItem),
 );
 

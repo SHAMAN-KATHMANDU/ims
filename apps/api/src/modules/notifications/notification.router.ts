@@ -1,13 +1,16 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import notificationController from "./notification.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const notificationRouter = Router();
 
-notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 notificationRouter.use(enforcePlanFeature("salesPipeline"));
+notificationRouter.use(
+  requirePermission("SETTINGS.NOTIFICATIONS.VIEW", workspaceLocator()),
+);
 
 /**
  * @swagger

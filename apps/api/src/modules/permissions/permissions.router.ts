@@ -4,11 +4,16 @@
  * Routes for role management, role member assignment, permission overwrites, and effective permissions.
  * All routes require authentication via verifyToken + resolveTenant middleware.
  *
- * PHASE-2-SWAP: Replace authorizeRoles() gates with requirePermission() middleware once Phase 1 is complete.
+ * Phase 2: All write gates use SETTINGS.ROLES.MANAGE; reads are open to any
+ * authenticated user in the tenant (they need them to render permission UIs).
  */
 
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import PermissionsController from "./permissions.controller";
 
@@ -121,7 +126,7 @@ const permissionsRouter = Router();
  */
 permissionsRouter.post(
   "/roles",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.MANAGE", workspaceLocator()),
   asyncHandler(permissionsController.createRole),
 );
 
@@ -262,7 +267,7 @@ permissionsRouter.get(
  */
 permissionsRouter.patch(
   "/roles/:roleId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.MANAGE", workspaceLocator()),
   asyncHandler(permissionsController.updateRole),
 );
 
@@ -294,7 +299,7 @@ permissionsRouter.patch(
  */
 permissionsRouter.delete(
   "/roles/:roleId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.MANAGE", workspaceLocator()),
   asyncHandler(permissionsController.deleteRole),
 );
 
@@ -342,7 +347,7 @@ permissionsRouter.delete(
  */
 permissionsRouter.post(
   "/roles/:roleId/members",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.ASSIGN", paramLocator("ROLE", "roleId")),
   asyncHandler(permissionsController.assignUserToRole),
 );
 
@@ -379,7 +384,7 @@ permissionsRouter.post(
  */
 permissionsRouter.delete(
   "/roles/:roleId/members/:userId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.ASSIGN", paramLocator("ROLE", "roleId")),
   asyncHandler(permissionsController.unassignUserFromRole),
 );
 
@@ -491,7 +496,7 @@ permissionsRouter.get(
  */
 permissionsRouter.put(
   "/resources/:resourceId/overwrites",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.MANAGE", workspaceLocator()),
   asyncHandler(permissionsController.upsertPermissionOverwrite),
 );
 
@@ -528,7 +533,7 @@ permissionsRouter.put(
  */
 permissionsRouter.delete(
   "/resources/:resourceId/overwrites/:overwriteId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.ROLES.MANAGE", workspaceLocator()),
   asyncHandler(permissionsController.deletePermissionOverwrite),
 );
 

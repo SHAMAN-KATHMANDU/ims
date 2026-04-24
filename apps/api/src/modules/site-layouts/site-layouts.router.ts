@@ -1,20 +1,30 @@
 /**
  * Site Layouts Router — tenant-scoped block layouts.
  * Mounted under /site-layouts; inherits auth + tenant resolution.
- * Role: admin or superAdmin.
+ * Permissions: WEBSITE.SITE.* — VIEW/UPDATE/DEPLOY for publish.
  */
 
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import controller from "./site-layouts.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
-router.use(authorizeRoles("admin", "superAdmin"));
+router.use(requirePermission("WEBSITE.SITE.VIEW", workspaceLocator()));
+
+const requireUpdate = requirePermission(
+  "WEBSITE.SITE.UPDATE",
+  workspaceLocator(),
+);
+const requireDeploy = requirePermission(
+  "WEBSITE.SITE.DEPLOY",
+  workspaceLocator(),
+);
 
 /**
  * @swagger
@@ -36,7 +46,7 @@ router.get("/", asyncHandler(controller.list));
  *     security:
  *       - bearerAuth: []
  */
-router.put("/", asyncHandler(controller.upsert));
+router.put("/", requireUpdate, asyncHandler(controller.upsert));
 
 /**
  * @swagger
@@ -58,7 +68,7 @@ router.get("/:scope", asyncHandler(controller.get));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/:scope/publish", asyncHandler(controller.publish));
+router.post("/:scope/publish", requireDeploy, asyncHandler(controller.publish));
 
 /**
  * @swagger
@@ -86,6 +96,7 @@ router.get("/:scope/preview-url", asyncHandler(controller.getPreviewUrl));
  */
 router.post(
   "/:scope/reset-from-template",
+  requireUpdate,
   asyncHandler(controller.resetFromTemplate),
 );
 
@@ -98,6 +109,6 @@ router.post(
  *     security:
  *       - bearerAuth: []
  */
-router.delete("/:scope", asyncHandler(controller.remove));
+router.delete("/:scope", requireUpdate, asyncHandler(controller.remove));
 
 export default router;

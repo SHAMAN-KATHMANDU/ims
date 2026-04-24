@@ -1,20 +1,23 @@
 /**
  * Pages Router — tenant-scoped custom pages (About, FAQ, Shipping, ...).
  * Mounted under /pages; inherits auth + tenant resolution.
- * Role: admin or superAdmin.
+ * Permissions: WEBSITE.PAGES.* — per-page for mutations, workspace for list.
  */
 
 import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
-import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import controller from "./pages.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
-router.use(authorizeRoles("admin", "superAdmin"));
 
 /**
  * @swagger
@@ -25,7 +28,11 @@ router.use(authorizeRoles("admin", "superAdmin"));
  *     security:
  *       - bearerAuth: []
  */
-router.get("/", asyncHandler(controller.listPages));
+router.get(
+  "/",
+  requirePermission("WEBSITE.PAGES.VIEW", workspaceLocator()),
+  asyncHandler(controller.listPages),
+);
 
 /**
  * @swagger
@@ -36,7 +43,11 @@ router.get("/", asyncHandler(controller.listPages));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/", asyncHandler(controller.createPage));
+router.post(
+  "/",
+  requirePermission("WEBSITE.PAGES.CREATE", workspaceLocator()),
+  asyncHandler(controller.createPage),
+);
 
 /**
  * @swagger
@@ -47,7 +58,11 @@ router.post("/", asyncHandler(controller.createPage));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/reorder", asyncHandler(controller.reorderPages));
+router.post(
+  "/reorder",
+  requirePermission("WEBSITE.PAGES.UPDATE", workspaceLocator()),
+  asyncHandler(controller.reorderPages),
+);
 
 /**
  * @swagger
@@ -63,7 +78,11 @@ router.post("/reorder", asyncHandler(controller.reorderPages));
  *       404: { description: Page not found }
  *       503: { description: No preview target available (no verified domain and no TENANT_SITE_PUBLIC_URL) }
  */
-router.get("/:id/preview-url", asyncHandler(controller.getPreviewUrl));
+router.get(
+  "/:id/preview-url",
+  requirePermission("WEBSITE.PAGES.VIEW", paramLocator("PAGE", "id")),
+  asyncHandler(controller.getPreviewUrl),
+);
 
 /**
  * @swagger
@@ -74,7 +93,11 @@ router.get("/:id/preview-url", asyncHandler(controller.getPreviewUrl));
  *     security:
  *       - bearerAuth: []
  */
-router.get("/:id", asyncHandler(controller.getPage));
+router.get(
+  "/:id",
+  requirePermission("WEBSITE.PAGES.VIEW", paramLocator("PAGE", "id")),
+  asyncHandler(controller.getPage),
+);
 
 /**
  * @swagger
@@ -85,7 +108,11 @@ router.get("/:id", asyncHandler(controller.getPage));
  *     security:
  *       - bearerAuth: []
  */
-router.patch("/:id", asyncHandler(controller.updatePage));
+router.patch(
+  "/:id",
+  requirePermission("WEBSITE.PAGES.UPDATE", paramLocator("PAGE", "id")),
+  asyncHandler(controller.updatePage),
+);
 
 /**
  * @swagger
@@ -96,7 +123,11 @@ router.patch("/:id", asyncHandler(controller.updatePage));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/:id/publish", asyncHandler(controller.publishPage));
+router.post(
+  "/:id/publish",
+  requirePermission("WEBSITE.PAGES.PUBLISH", paramLocator("PAGE", "id")),
+  asyncHandler(controller.publishPage),
+);
 
 /**
  * @swagger
@@ -107,7 +138,11 @@ router.post("/:id/publish", asyncHandler(controller.publishPage));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/:id/unpublish", asyncHandler(controller.unpublishPage));
+router.post(
+  "/:id/unpublish",
+  requirePermission("WEBSITE.PAGES.PUBLISH", paramLocator("PAGE", "id")),
+  asyncHandler(controller.unpublishPage),
+);
 
 /**
  * @swagger
@@ -118,7 +153,11 @@ router.post("/:id/unpublish", asyncHandler(controller.unpublishPage));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/:id/convert-to-blocks", asyncHandler(controller.convertToBlocks));
+router.post(
+  "/:id/convert-to-blocks",
+  requirePermission("WEBSITE.PAGES.UPDATE", paramLocator("PAGE", "id")),
+  asyncHandler(controller.convertToBlocks),
+);
 
 /**
  * @swagger
@@ -129,7 +168,11 @@ router.post("/:id/convert-to-blocks", asyncHandler(controller.convertToBlocks));
  *     security:
  *       - bearerAuth: []
  */
-router.post("/:id/duplicate", asyncHandler(controller.duplicatePage));
+router.post(
+  "/:id/duplicate",
+  requirePermission("WEBSITE.PAGES.CREATE", paramLocator("PAGE", "id")),
+  asyncHandler(controller.duplicatePage),
+);
 
 /**
  * @swagger
@@ -140,6 +183,10 @@ router.post("/:id/duplicate", asyncHandler(controller.duplicatePage));
  *     security:
  *       - bearerAuth: []
  */
-router.delete("/:id", asyncHandler(controller.deletePage));
+router.delete(
+  "/:id",
+  requirePermission("WEBSITE.PAGES.DELETE", paramLocator("PAGE", "id")),
+  asyncHandler(controller.deletePage),
+);
 
 export default router;

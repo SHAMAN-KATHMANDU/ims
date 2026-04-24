@@ -1,5 +1,6 @@
 import { Router } from "express";
-import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
+import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import dashboardController from "./dashboard.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -20,7 +21,7 @@ const dashboardRouter = Router();
  */
 dashboardRouter.get(
   "/user-summary",
-  authorizeRoles("user", "admin", "superAdmin"),
+  requirePermission("REPORTS.DASHBOARDS.VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getUserSummary),
 );
 
@@ -40,7 +41,7 @@ dashboardRouter.get(
  */
 dashboardRouter.get(
   "/admin-summary",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("REPORTS.DASHBOARDS.VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getAdminSummary),
 );
 
@@ -60,7 +61,7 @@ dashboardRouter.get(
  */
 dashboardRouter.get(
   "/superadmin-summary",
-  authorizeRoles("superAdmin"),
+  requirePermission("REPORTS.DASHBOARDS.VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getSuperAdminSummary),
 );
 
@@ -80,7 +81,7 @@ dashboardRouter.get(
  */
 dashboardRouter.get(
   "/usage",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("SETTINGS.TENANT.VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getTenantUsage),
 );
 
