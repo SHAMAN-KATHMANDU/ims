@@ -88,42 +88,10 @@ export interface NavSection {
 export type NavItemWithHref = NavItem & { href: string };
 
 export const dashboardNavSections: NavSection[] = [
-  {
-    title: "PLATFORM",
-    items: [
-      { path: "", label: "Dashboard", icon: Home, roles: ["platformAdmin"] },
-      {
-        path: "platform/tenants",
-        label: "Tenants",
-        icon: ShieldCheck,
-        roles: ["platformAdmin"],
-      },
-      {
-        path: "platform/plan-limits",
-        label: "Plan limits",
-        icon: SlidersHorizontal,
-        roles: ["platformAdmin"],
-      },
-      {
-        path: "platform/trash",
-        label: "Trash",
-        icon: Trash2,
-        roles: ["platformAdmin"],
-      },
-      {
-        path: "settings/error-reports",
-        label: "Error Reports",
-        icon: Bug,
-        roles: ["platformAdmin"],
-      },
-      {
-        path: "platform/password-resets",
-        label: "Password Resets",
-        icon: KeyRound,
-        roles: ["platformAdmin"],
-      },
-    ],
-  },
+  // PLATFORM section removed: platformAdmin users now live in the dedicated
+  // `(platform)` console at /[workspace]/platform/* with its own thin shell
+  // (see apps/web/components/layout/platform-shell.tsx). PlatformAdminRedirect
+  // pushes them out of this dashboard before any tenant-scoped hook fires.
   {
     title: "MAIN",
     items: [
