@@ -76,6 +76,18 @@ const MODEL_RESOURCE_MAPPING: Record<string, ModelResourceMapping> = {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
+  WebsiteOrder: {
+    resourceType: "WEBSITE_ORDER",
+    parentLocator: async (entity: any, tenantId: string) => {
+      return getOrCreateWorkspaceResource(tenantId);
+    },
+  },
+  AbandonedCart: {
+    resourceType: "ABANDONED_CART",
+    parentLocator: async (entity: any, tenantId: string) => {
+      return getOrCreateWorkspaceResource(tenantId);
+    },
+  },
   Deal: {
     resourceType: "DEAL",
     parentLocator: async (entity: any, tenantId: string) => {

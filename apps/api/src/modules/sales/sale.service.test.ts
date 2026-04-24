@@ -5,9 +5,12 @@ import {
   getSaleById,
   addPayment,
   deleteSale,
+  editSale,
+  getAllSales,
   calculateSaleItems,
   SaleCalculationError,
 } from "./sale.service";
+import { permissionService } from "@/modules/permissions/permission.service";
 
 const mockPublishDomainEvent = vi.fn();
 const mockSyncLowStockSignal = vi.fn();
@@ -82,6 +85,21 @@ vi.mock("@/modules/automation/automation.service", () => ({
     publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
     syncLowStockSignal: (...args: unknown[]) => mockSyncLowStockSignal(...args),
   },
+}));
+vi.mock("@/modules/permissions/permission.service", () => ({
+  permissionService: {
+    assert: vi.fn(),
+    can: vi.fn().mockResolvedValue(true),
+    filterVisible: vi.fn((_t, _u, ids: string[]) => new Set(ids)),
+  },
+}));
+vi.mock("@/shared/permissions/resourceLocator", () => ({
+  // Map externalId → a stable Resource.id shape so the filterVisible mock
+  // can still key by the same id the service resolves.
+  resolveResourceId: vi.fn(
+    async (_t: string, _type: string, id: string) => `res-${id}`,
+  ),
+  resolveWorkspaceResourceId: vi.fn(async (t: string) => `ws-${t}`),
 }));
 
 const ctx = { tenantId: "t1", userId: "u1" };
@@ -952,6 +970,259 @@ describe("SaleService", () => {
           entityId: "sale-1",
         }),
       );
+    });
+  });
+
+  // ── RBAC Phase 2 permission enforcement ────────────────────────────────
+  describe("permission enforcement", () => {
+    const mockAssert = permissionService.assert as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    const mockCan = permissionService.can as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    const mockFilterVisible =
+      permissionService.filterVisible as unknown as ReturnType<typeof vi.fn>;
+
+    describe("deleteSale", () => {
+      it("asserts SALES.SALES.DELETE and proceeds when allowed", async () => {
+        mockAssert.mockResolvedValue(undefined);
+        mockFindSaleById.mockResolvedValue({
+          id: "sale-1",
+          saleCode: "S-001",
+          tenantId: "t1",
+          locationId: "loc1",
+          memberId: null,
+          contactId: null,
+          total: 100,
+          items: [],
+        });
+        mockSoftDeleteSale.mockResolvedValue({ success: true });
+
+        await deleteSale("sale-1", "u1");
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-sale-1",
+          "SALES.SALES.DELETE",
+        );
+      });
+
+      it("bubbles up the 403 when SALES.SALES.DELETE is denied", async () => {
+        mockFindSaleById.mockResolvedValue({
+          id: "sale-1",
+          tenantId: "t1",
+          locationId: "loc1",
+          memberId: null,
+          contactId: null,
+          total: 0,
+          items: [],
+        });
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(deleteSale("sale-1", "u1")).rejects.toMatchObject({
+          statusCode: 403,
+        });
+        expect(mockSoftDeleteSale).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("editSale", () => {
+      it("asserts SALES.SALES.EDIT_AFTER_FINALIZE before editing", async () => {
+        mockAssert.mockResolvedValue(undefined);
+        mockFindSaleById.mockResolvedValue({
+          id: "sale-1",
+          saleCode: "S-001",
+          tenantId: "t1",
+          locationId: "loc1",
+          type: "GENERAL",
+          isLatest: true,
+          isCreditSale: false,
+          memberId: null,
+          contactId: null,
+          revisionNo: 1,
+          deletedAt: null,
+          createdById: "u1",
+          notes: null,
+          items: [],
+        });
+        mockFindLocationById.mockResolvedValue({
+          id: "loc1",
+          isActive: true,
+          type: "SHOWROOM",
+        });
+        // Short-circuit the calculation path — permission assert should
+        // run before calculateSaleItems fetches variations.
+        mockFindVariationWithDiscounts.mockResolvedValue(null);
+
+        await expect(
+          editSale("sale-1", "u1", {
+            items: [{ variationId: "v1", quantity: 1 }],
+          }),
+        ).rejects.toBeDefined();
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-sale-1",
+          "SALES.SALES.EDIT_AFTER_FINALIZE",
+        );
+      });
+
+      it("rejects with 403 when EDIT_AFTER_FINALIZE is denied", async () => {
+        mockFindSaleById.mockResolvedValue({
+          id: "sale-1",
+          tenantId: "t1",
+          locationId: "loc1",
+          type: "GENERAL",
+          isLatest: true,
+          isCreditSale: false,
+          memberId: null,
+          contactId: null,
+          revisionNo: 1,
+          deletedAt: null,
+          createdById: "u1",
+          notes: null,
+          items: [],
+        });
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(
+          editSale("sale-1", "u1", {
+            items: [{ variationId: "v1", quantity: 1 }],
+          }),
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(mockFindLocationById).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("getAllSales", () => {
+      beforeEach(() => {
+        mockCan.mockReset();
+        mockFilterVisible.mockReset();
+      });
+
+      it("forces createdById=userId when only VIEW_OWN_ONLY is granted", async () => {
+        // First can() call (VIEW) → false; second call (VIEW_OWN_ONLY) → true.
+        mockCan.mockImplementation(
+          async (_t: string, _u: string, _r: string, key: string) =>
+            key === "SALES.SALES.VIEW_OWN_ONLY",
+        );
+        mockFilterVisible.mockImplementation(
+          async (_t: string, _u: string, ids: string[]) => new Set(ids),
+        );
+        const countSalesByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).countSalesByFilter;
+        const findSalesPaginatedByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).findSalesPaginatedByFilter;
+        (
+          countSalesByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(0);
+        (
+          findSalesPaginatedByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue([]);
+
+        await getAllSales({
+          page: 1,
+          limit: 10,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          tenantId: "t1",
+          userId: "u1",
+        });
+
+        // Both the count and paginated query should receive createdById=u1
+        expect(countSalesByFilter).toHaveBeenCalledWith(
+          expect.objectContaining({ createdById: "u1" }),
+        );
+        expect(findSalesPaginatedByFilter).toHaveBeenCalledWith(
+          expect.objectContaining({ createdById: "u1" }),
+          expect.any(Object),
+        );
+      });
+
+      it("does not force createdById when full VIEW is granted", async () => {
+        mockCan.mockResolvedValue(true);
+        mockFilterVisible.mockImplementation(
+          async (_t: string, _u: string, ids: string[]) => new Set(ids),
+        );
+        const countSalesByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).countSalesByFilter;
+        const findSalesPaginatedByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).findSalesPaginatedByFilter;
+        (
+          countSalesByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(0);
+        (
+          findSalesPaginatedByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue([]);
+
+        await getAllSales({
+          page: 1,
+          limit: 10,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          tenantId: "t1",
+          userId: "u1",
+          createdById: "someone-else",
+        });
+
+        expect(findSalesPaginatedByFilter).toHaveBeenCalledWith(
+          expect.objectContaining({ createdById: "someone-else" }),
+          expect.any(Object),
+        );
+      });
+
+      it("drops rows the permission service marks as not visible", async () => {
+        mockCan.mockResolvedValue(true);
+        const visible: Array<{ id: string }> = [
+          { id: "sale-a" },
+          { id: "sale-b" },
+          { id: "sale-c" },
+        ];
+        mockFilterVisible.mockImplementation(
+          async (_t: string, _u: string, ids: string[]) =>
+            new Set(ids.filter((id) => id !== "res-sale-b")),
+        );
+        const countSalesByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).countSalesByFilter;
+        const findSalesPaginatedByFilter = vi.mocked(
+          await import("./sale.repository"),
+        ).findSalesPaginatedByFilter;
+        (
+          countSalesByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(3);
+        (
+          findSalesPaginatedByFilter as unknown as ReturnType<typeof vi.fn>
+        ).mockResolvedValue(visible);
+
+        const result = await getAllSales({
+          page: 1,
+          limit: 10,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          tenantId: "t1",
+          userId: "u1",
+        });
+
+        expect(result.sales.map((s) => s.id)).toEqual(["sale-a", "sale-c"]);
+        expect(mockFilterVisible).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          ["res-sale-a", "res-sale-b", "res-sale-c"],
+          "SALES.SALES.VIEW",
+        );
+      });
     });
   });
 });

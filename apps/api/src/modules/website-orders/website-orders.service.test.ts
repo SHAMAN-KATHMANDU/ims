@@ -10,10 +10,24 @@ vi.mock("@/config/prisma", () => ({
     },
   },
 }));
+vi.mock("@/modules/permissions/permission.service", () => ({
+  permissionService: {
+    assert: vi.fn(),
+    can: vi.fn().mockResolvedValue(true),
+    filterVisible: vi.fn((_t, _u, ids: string[]) => new Set(ids)),
+  },
+}));
+vi.mock("@/shared/permissions/resourceLocator", () => ({
+  resolveResourceId: vi.fn(
+    async (_t: string, _type: string, id: string) => `res-${id}`,
+  ),
+  resolveWorkspaceResourceId: vi.fn(async (t: string) => `ws-${t}`),
+}));
 
 import { WebsiteOrdersService } from "./website-orders.service";
 import * as saleService from "@/modules/sales/sale.service";
 import prismaMock from "@/config/prisma";
+import { permissionService } from "@/modules/permissions/permission.service";
 import type defaultRepo from "./website-orders.repository";
 import type sitesRepo from "@/modules/sites/sites.repository";
 
@@ -570,6 +584,189 @@ describe("WebsiteOrdersService", () => {
         .calls[0];
       expect(data.orderCode).toBe(`WO-${new Date().getFullYear()}-0006`);
       expect(data.subtotal.toString()).toBe("2500");
+    });
+  });
+
+  // ── RBAC Phase 2 permission enforcement ────────────────────────────────
+  describe("permission enforcement", () => {
+    const mockAssert = permissionService.assert as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    const mockFilterVisible =
+      permissionService.filterVisible as unknown as ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      mockAssert.mockReset();
+      mockAssert.mockResolvedValue(undefined);
+    });
+
+    describe("verifyOrder", () => {
+      it("asserts SALES.WEBSITE_ORDERS.VERIFY and proceeds when allowed", async () => {
+        (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "PENDING_VERIFICATION" }),
+        );
+        (mockRepo.updateOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "VERIFIED" }),
+        );
+
+        await service.verifyOrder("t1", "o1", "u1");
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-o1",
+          "SALES.WEBSITE_ORDERS.VERIFY",
+        );
+      });
+
+      it("rejects with 403 when VERIFY is denied (no repo side-effects)", async () => {
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(
+          service.verifyOrder("t1", "o1", "u1"),
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(mockRepo.updateOrder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("rejectOrder", () => {
+      it("asserts SALES.WEBSITE_ORDERS.REJECT and proceeds when allowed", async () => {
+        (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "PENDING_VERIFICATION" }),
+        );
+        (mockRepo.updateOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "REJECTED" }),
+        );
+
+        await service.rejectOrder("t1", "o1", "u1", { reason: "spam" });
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-o1",
+          "SALES.WEBSITE_ORDERS.REJECT",
+        );
+      });
+
+      it("rejects with 403 when REJECT is denied", async () => {
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(
+          service.rejectOrder("t1", "o1", "u1", { reason: "spam" }),
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(mockRepo.updateOrder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("convertToSale", () => {
+      it("asserts SALES.WEBSITE_ORDERS.CONVERT before converting", async () => {
+        (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "VERIFIED" }),
+        );
+        (saleService.createSale as ReturnType<typeof vi.fn>).mockResolvedValue({
+          id: "sale-1",
+        });
+        (mockRepo.updateOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "CONVERTED_TO_SALE" }),
+        );
+        (
+          (
+            prismaMock as unknown as {
+              product: { findFirst: ReturnType<typeof vi.fn> };
+            }
+          ).product.findFirst as ReturnType<typeof vi.fn>
+        ).mockResolvedValue({
+          id: "prod-1",
+          variations: [{ id: "v1" }],
+        });
+
+        await service.convertToSale("t1", "o1", "u1", {
+          locationId: "loc1",
+        });
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-o1",
+          "SALES.WEBSITE_ORDERS.CONVERT",
+        );
+      });
+
+      it("rejects with 403 when CONVERT is denied", async () => {
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(
+          service.convertToSale("t1", "o1", "u1", { locationId: "loc1" }),
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(saleService.createSale).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("deleteOrder", () => {
+      it("asserts SALES.WEBSITE_ORDERS.REJECT on delete when userId is passed", async () => {
+        (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
+          order({ status: "PENDING_VERIFICATION" }),
+        );
+        (mockRepo.deleteOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+          undefined,
+        );
+
+        await service.deleteOrder("t1", "o1", "u1");
+
+        expect(mockAssert).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          "res-o1",
+          "SALES.WEBSITE_ORDERS.REJECT",
+        );
+      });
+
+      it("rejects with 403 when delete is denied", async () => {
+        mockAssert.mockRejectedValueOnce(
+          Object.assign(new Error("forbidden"), { statusCode: 403 }),
+        );
+
+        await expect(
+          service.deleteOrder("t1", "o1", "u1"),
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(mockRepo.deleteOrder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("listOrders", () => {
+      it("filters out orders the user cannot see", async () => {
+        (mockRepo.listOrders as ReturnType<typeof vi.fn>).mockResolvedValue([
+          [order({ id: "o1" }), order({ id: "o2" }), order({ id: "o3" })],
+          3,
+        ]);
+        mockFilterVisible.mockImplementation(
+          async (_t: string, _u: string, ids: string[]) =>
+            new Set(ids.filter((id) => id !== "res-o2")),
+        );
+
+        const result = await service.listOrders(
+          "t1",
+          { page: 1, limit: 20 },
+          "u1",
+        );
+
+        expect(result.orders.map((o) => o.id)).toEqual(["o1", "o3"]);
+        expect(mockFilterVisible).toHaveBeenCalledWith(
+          "t1",
+          "u1",
+          ["res-o1", "res-o2", "res-o3"],
+          "SALES.WEBSITE_ORDERS.VIEW",
+        );
+      });
     });
   });
 });
