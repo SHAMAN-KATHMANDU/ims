@@ -47,6 +47,21 @@ export class PermissionService {
       return cached;
     }
 
+    // 1a. Legacy admin shortcut — `platformAdmin` and `superAdmin` are the
+    // tenant-default admin roles. They keep ADMINISTRATOR bypass regardless
+    // of whether the new RbacRole rows have been seeded. This is permanent
+    // (not just a migration helper): the legacy enum remains the source of
+    // truth for who is an admin in a tenant.
+    const legacyRole = await permissionRepository.getLegacyUserRole(
+      tenantId,
+      userId,
+    );
+    if (legacyRole === "platformAdmin" || legacyRole === "superAdmin") {
+      const adminMask = setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT);
+      await permissionCache.set(tenantId, userId, resourceId, adminMask);
+      return adminMask;
+    }
+
     // 2. Load user roles (priority desc)
     const userRoles = await permissionRepository.getUserRoles(tenantId, userId);
 

@@ -257,10 +257,10 @@ describe("Permissions Schemas", () => {
       expect(result.success).toBe(false);
     });
 
-    it("rejects missing resourceId", () => {
+    it("accepts missing resourceId — controller resolves workspace fallback", () => {
       const data = {};
       const result = GetEffectivePermissionsQuerySchema.safeParse(data);
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
   });
 

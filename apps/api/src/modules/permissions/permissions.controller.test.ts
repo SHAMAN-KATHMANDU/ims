@@ -61,6 +61,9 @@ const mockService = {
   deletePermissionOverwrite: vi.fn(),
   getEffectivePermissions: vi.fn(),
   bulkResolvePermissions: vi.fn(),
+  resolveWorkspaceResourceId: vi
+    .fn()
+    .mockResolvedValue("11111111-1111-1111-1111-111111111111"),
 };
 
 describe("PermissionsController", () => {
@@ -421,13 +424,22 @@ describe("PermissionsController", () => {
       });
     });
 
-    it("returns 400 when resourceId is missing", async () => {
-      const req = makeReq({ query: {} }); // Missing resourceId
+    it("falls back to the workspace Resource when resourceId is missing", async () => {
+      const workspaceId = "11111111-1111-1111-1111-111111111111";
+      mockService.resolveWorkspaceResourceId.mockResolvedValue(workspaceId);
+      mockService.getEffectivePermissions.mockResolvedValue("AQAAAAAAAAAA");
+
+      const req = makeReq({ query: {} });
       const res = mockRes() as Response;
 
       await controller.getEffectivePermissions(req, res);
 
-      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.resolveWorkspaceResourceId).toHaveBeenCalledWith("t1");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: { resourceId: workspaceId, permissions: "AQAAAAAAAAAA" },
+      });
     });
   });
 

@@ -20,8 +20,9 @@ import { PERMISSION_BY_KEY, ADMINISTRATOR_BIT } from "@repo/shared";
 import { getEffectivePermissions } from "../services/permissions.service";
 import { fromBase64, hasBit } from "../lib/bitset";
 
-/** Workspace sentinel: API treats missing resourceId as workspace-scope. */
-const WORKSPACE_SENTINEL = "workspace";
+/** Cache key for the workspace-scope mask (API resolves the workspace
+ * Resource server-side when no resourceId is sent). */
+const WORKSPACE_KEY = "workspace";
 
 export const myPermissionKeys = {
   all: ["my-permissions"] as const,
@@ -30,11 +31,14 @@ export const myPermissionKeys = {
 };
 
 export function useMyPermissions(resourceId?: string) {
-  const scope = resourceId ?? WORKSPACE_SENTINEL;
+  const cacheKey = resourceId ?? WORKSPACE_KEY;
   return useQuery({
-    queryKey: myPermissionKeys.byResource(scope),
+    queryKey: myPermissionKeys.byResource(cacheKey),
     queryFn: async () => {
-      const res = await getEffectivePermissions(scope);
+      // Pass undefined to omit the param entirely — API resolves the tenant's
+      // WORKSPACE Resource itself. Sending the literal "workspace" would fail
+      // the UUID validation on the backend Zod schema.
+      const res = await getEffectivePermissions(resourceId);
       return fromBase64(res.permissions);
     },
     // Server state: stale briefly but retained indefinitely. Invalidated via

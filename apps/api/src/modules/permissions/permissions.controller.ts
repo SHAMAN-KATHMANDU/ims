@@ -67,6 +67,7 @@ interface IPermissionService {
     userId: string,
     resourceIds: string[],
   ): Promise<Record<string, string>>;
+  resolveWorkspaceResourceId(tenantId: string): Promise<string>;
 }
 
 class PermissionsController {
@@ -338,12 +339,18 @@ class PermissionsController {
     try {
       const { userId, tenantId } = getAuthContext(req);
       const query = GetEffectivePermissionsQuerySchema.parse(req.query);
+      // When the caller omits resourceId, fall back to the tenant's WORKSPACE
+      // Resource so the bootstrap fetch from the frontend (no resource yet)
+      // works without sending a magic string.
+      const resourceId =
+        query.resourceId ??
+        (await this.service.resolveWorkspaceResourceId(tenantId));
       const permissions = await this.service.getEffectivePermissions(
         tenantId,
         userId,
-        query.resourceId,
+        resourceId,
       );
-      return ok(res, { resourceId: query.resourceId, permissions });
+      return ok(res, { resourceId, permissions });
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return fail(res, error.errors[0]?.message ?? "Validation error", 400);

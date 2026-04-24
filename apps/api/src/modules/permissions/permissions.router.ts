@@ -17,8 +17,16 @@ import {
 import { asyncHandler } from "@/middlewares/errorHandler";
 import PermissionsController from "./permissions.controller";
 
+import { permissionService } from "./permission.service";
+import { toWire } from "@/shared/permissions/bitset";
+
 /**
- * Stub service — replaced with real implementation from rbac-core
+ * Service shim — the resolution methods delegate to the real
+ * `permissionService` so `/me/effective` and `/me/bulk-resolve` return real
+ * bitsets (not hardcoded "AA==" stubs). Role/overwrite CRUD methods remain
+ * stubbed; they're owned by future RBAC admin work and aren't on this hotfix's
+ * critical path. Buffer→base64 conversion happens here because the controller
+ * interface speaks strings on the wire.
  */
 const stubService = {
   createRole: async (tenantId: string, data: any) => ({ id: "stub", ...data }),
@@ -57,12 +65,28 @@ const stubService = {
     tenantId: string,
     userId: string,
     resourceId: string,
-  ) => "AA==",
+  ): Promise<string> => {
+    const buf = await permissionService.getEffectivePermissions(
+      tenantId,
+      userId,
+      resourceId,
+    );
+    return toWire(buf);
+  },
   bulkResolvePermissions: async (
     tenantId: string,
     userId: string,
     resourceIds: string[],
-  ) => ({}),
+  ): Promise<Record<string, string>> => {
+    const map = await permissionService.bulkResolve(
+      tenantId,
+      userId,
+      resourceIds,
+    );
+    return Object.fromEntries(map.entries());
+  },
+  resolveWorkspaceResourceId: (tenantId: string): Promise<string> =>
+    permissionService.resolveWorkspaceResourceId(tenantId),
 };
 
 const permissionsController = new PermissionsController(stubService);

@@ -186,14 +186,17 @@ export interface EffectivePermissionsResponse {
 }
 
 export async function getEffectivePermissions(
-  resourceId: string,
+  resourceId?: string,
 ): Promise<EffectivePermissionsResponse> {
   try {
     const { data } = await api.get<{
       success: true;
       data: EffectivePermissionsResponse;
     }>(`/permissions/me/effective`, {
-      params: { resourceId },
+      // Omit resourceId entirely when undefined; backend resolves the tenant's
+      // WORKSPACE Resource. Sending the literal "workspace" would fail UUID
+      // validation on the backend Zod schema.
+      params: resourceId ? { resourceId } : {},
     });
     return data.data;
   } catch (error) {
