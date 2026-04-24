@@ -20,7 +20,7 @@ import { PermissionService } from "@/modules/permissions/permission.service";
 import { permissionRepository } from "@/modules/permissions/permission.repository";
 import { permissionCache } from "@/modules/permissions/permission.cache";
 import { EMPTY_BITSET, setBit } from "@/shared/permissions/bitset";
-import { PERMISSION_BY_KEY } from "@repo/shared/src/permissions/catalog";
+import { PERMISSION_BY_KEY } from "@repo/shared";
 
 vi.mock("@/modules/permissions/permission.repository");
 vi.mock("@/modules/permissions/permission.cache");

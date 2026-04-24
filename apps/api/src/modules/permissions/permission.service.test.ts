@@ -3,10 +3,7 @@ import { PermissionService } from "./permission.service";
 import { permissionRepository } from "./permission.repository";
 import { permissionCache } from "./permission.cache";
 import { EMPTY_BITSET, setBit } from "@/shared/permissions/bitset";
-import {
-  ADMINISTRATOR_BIT,
-  PERMISSION_BY_KEY,
-} from "@repo/shared/src/permissions/catalog";
+import { ADMINISTRATOR_BIT, PERMISSION_BY_KEY } from "@repo/shared";
 
 vi.mock("./permission.repository");
 vi.mock("./permission.cache");

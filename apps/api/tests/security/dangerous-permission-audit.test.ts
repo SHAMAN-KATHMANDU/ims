@@ -26,7 +26,7 @@ import {
   ADMINISTRATOR_BIT,
   PERMISSION_BY_KEY,
   PERMISSIONS,
-} from "@repo/shared/src/permissions/catalog";
+} from "@repo/shared";
 
 vi.mock("@/modules/permissions/permission.repository");
 vi.mock("@/modules/permissions/permission.cache");
