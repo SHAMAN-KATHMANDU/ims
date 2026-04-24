@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import {
   enforcePlanLimits,
   enforcePlanFeature,
@@ -13,6 +14,9 @@ const contactRouter = Router();
 contactRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 contactRouter.use(enforcePlanFeature("salesPipeline"));
 
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
+
 /**
  * @swagger
  * /contacts/tags:
@@ -24,7 +28,11 @@ contactRouter.use(enforcePlanFeature("salesPipeline"));
  *     responses:
  *       200: { description: Tags list }
  */
-contactRouter.get("/tags", asyncHandler(contactController.getTags));
+contactRouter.get(
+  "/tags",
+  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator),
+  asyncHandler(contactController.getTags),
+);
 
 /**
  * @swagger
@@ -34,33 +42,24 @@ contactRouter.get("/tags", asyncHandler(contactController.getTags));
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name]
- *             properties:
- *               name: { type: string }
  *     responses:
  *       201: { description: Tag created }
  */
 contactRouter.post(
   "/tags",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
   asyncHandler(contactController.createTag),
 );
 
 contactRouter.patch(
   "/tags/:tagId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
   asyncHandler(contactController.updateTag),
 );
 
 contactRouter.delete(
   "/tags/:tagId",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
   asyncHandler(contactController.deleteTag),
 );
 
@@ -72,22 +71,12 @@ contactRouter.delete(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               email: { type: string }
- *               phone: { type: string }
- *               companyId: { type: string, format: uuid }
  *     responses:
  *       201: { description: Contact created }
  */
 contactRouter.post(
   "/",
+  requirePermission("CRM.CONTACTS.CREATE", workspaceLocator),
   enforcePlanLimits("customers"),
   asyncHandler(contactController.create),
 );
@@ -100,25 +89,14 @@ contactRouter.post(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *       - in: query
- *         name: search
- *         schema: { type: string }
  *     responses:
- *       200:
- *         description: Contacts list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedContactsResponse'
+ *       200: { description: Contacts list }
  */
-contactRouter.get("/", asyncHandler(contactController.getAll));
+contactRouter.get(
+  "/",
+  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator),
+  asyncHandler(contactController.getAll),
+);
 
 /**
  * @swagger
@@ -131,7 +109,11 @@ contactRouter.get("/", asyncHandler(contactController.getAll));
  *     responses:
  *       200: { description: CSV file }
  */
-contactRouter.get("/export", asyncHandler(contactController.exportCsv));
+contactRouter.get(
+  "/export",
+  requirePermission("CRM.CONTACTS.EXPORT", workspaceLocator),
+  asyncHandler(contactController.exportCsv),
+);
 
 /**
  * @swagger
@@ -141,19 +123,12 @@ contactRouter.get("/export", asyncHandler(contactController.exportCsv));
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file: { type: string, format: binary }
  *     responses:
  *       200: { description: Import result }
  */
 contactRouter.post(
   "/import",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.CONTACTS.IMPORT", workspaceLocator),
   uploadSingle,
   asyncHandler(contactController.importCsv),
 );
@@ -166,16 +141,15 @@ contactRouter.post(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Contact details }
  *       404: { description: Not found }
  */
-contactRouter.get("/:id", asyncHandler(contactController.getById));
+contactRouter.get(
+  "/:id",
+  requirePermission("CRM.CONTACTS.VIEW", idLocator),
+  asyncHandler(contactController.getById),
+);
 
 /**
  * @swagger
@@ -185,24 +159,14 @@ contactRouter.get("/:id", asyncHandler(contactController.getById));
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               email: { type: string }
- *               phone: { type: string }
  *     responses:
  *       200: { description: Contact updated }
  */
-contactRouter.put("/:id", asyncHandler(contactController.update));
+contactRouter.put(
+  "/:id",
+  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
+  asyncHandler(contactController.update),
+);
 
 /**
  * @swagger
@@ -212,17 +176,12 @@ contactRouter.put("/:id", asyncHandler(contactController.update));
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Contact deleted }
  */
 contactRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.CONTACTS.DELETE", idLocator),
   asyncHandler(contactController.delete),
 );
 
@@ -234,24 +193,14 @@ contactRouter.delete(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [content]
- *             properties:
- *               content: { type: string }
  *     responses:
  *       201: { description: Note added }
  */
-contactRouter.post("/:id/notes", asyncHandler(contactController.addNote));
+contactRouter.post(
+  "/:id/notes",
+  requirePermission("CRM.CONTACT_NOTES.CREATE", idLocator),
+  asyncHandler(contactController.addNote),
+);
 
 /**
  * @swagger
@@ -261,20 +210,12 @@ contactRouter.post("/:id/notes", asyncHandler(contactController.addNote));
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *       - in: path
- *         name: noteId
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Note deleted }
  */
 contactRouter.delete(
   "/:id/notes/:noteId",
+  requirePermission("CRM.CONTACT_NOTES.DELETE", (req) => req.params.noteId),
   asyncHandler(contactController.deleteNote),
 );
 
@@ -286,23 +227,12 @@ contactRouter.delete(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file: { type: string, format: binary }
  *     responses:
  *       201: { description: Attachment added }
  */
 contactRouter.post(
   "/:id/attachments",
+  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
   asyncHandler(contactController.addAttachment),
 );
 
@@ -314,20 +244,12 @@ contactRouter.post(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *       - in: path
- *         name: attachmentId
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Attachment deleted }
  */
 contactRouter.delete(
   "/:id/attachments/:attachmentId",
+  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
   asyncHandler(contactController.deleteAttachment),
 );
 
@@ -339,26 +261,12 @@ contactRouter.delete(
  *     tags: [Contacts]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               type: { type: string }
- *               content: { type: string }
- *               date: { type: string, format: date-time }
  *     responses:
  *       201: { description: Communication added }
  */
 contactRouter.post(
   "/:id/communications",
+  requirePermission("CRM.CONTACT_COMMUNICATIONS.CREATE", idLocator),
   asyncHandler(contactController.addCommunication),
 );
 

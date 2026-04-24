@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import activityController from "./activity.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,6 +10,11 @@ const activityRouter = Router();
 activityRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 activityRouter.use(enforcePlanFeature("salesPipeline"));
 
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
+const contactLocator = (req: Request): string => req.params.contactId;
+const dealLocator = (req: Request): string => req.params.dealId;
+
 /**
  * @swagger
  * /activities:
@@ -17,22 +23,14 @@ activityRouter.use(enforcePlanFeature("salesPipeline"));
  *     tags: [Activities]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [type, subject]
- *             properties:
- *               type: { type: string }
- *               subject: { type: string }
- *               dealId: { type: string, format: uuid }
- *               contactId: { type: string, format: uuid }
  *     responses:
  *       201: { description: Activity created }
  */
-activityRouter.post("/", asyncHandler(activityController.create));
+activityRouter.post(
+  "/",
+  requirePermission("CRM.ACTIVITIES.CREATE", workspaceLocator),
+  asyncHandler(activityController.create),
+);
 
 /**
  * @swagger
@@ -42,21 +40,12 @@ activityRouter.post("/", asyncHandler(activityController.create));
  *     tags: [Activities]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: contactId
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Activities list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedActivitiesResponse'
+ *       200: { description: Activities list }
  */
 activityRouter.get(
   "/contact/:contactId",
+  requirePermission("CRM.ACTIVITIES.VIEW", contactLocator),
   asyncHandler(activityController.getByContact),
 );
 
@@ -68,20 +57,14 @@ activityRouter.get(
  *     tags: [Activities]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: dealId
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
- *       200:
- *         description: Activities list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedActivitiesResponse'
+ *       200: { description: Activities list }
  */
-activityRouter.get("/deal/:dealId", asyncHandler(activityController.getByDeal));
+activityRouter.get(
+  "/deal/:dealId",
+  requirePermission("CRM.ACTIVITIES.VIEW", dealLocator),
+  asyncHandler(activityController.getByDeal),
+);
 
 /**
  * @swagger
@@ -91,16 +74,15 @@ activityRouter.get("/deal/:dealId", asyncHandler(activityController.getByDeal));
  *     tags: [Activities]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Activity details }
  *       404: { description: Not found }
  */
-activityRouter.get("/:id", asyncHandler(activityController.getById));
+activityRouter.get(
+  "/:id",
+  requirePermission("CRM.ACTIVITIES.VIEW", idLocator),
+  asyncHandler(activityController.getById),
+);
 
 /**
  * @swagger
@@ -110,14 +92,13 @@ activityRouter.get("/:id", asyncHandler(activityController.getById));
  *     tags: [Activities]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Activity deleted }
  */
-activityRouter.delete("/:id", asyncHandler(activityController.delete));
+activityRouter.delete(
+  "/:id",
+  requirePermission("CRM.ACTIVITIES.DELETE", idLocator),
+  asyncHandler(activityController.delete),
+);
 
 export default activityRouter;

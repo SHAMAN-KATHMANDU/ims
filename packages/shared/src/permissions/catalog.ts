@@ -1495,6 +1495,49 @@ const CRM_REMARKETING = [
   },
 ] as const;
 
+const CRM_CONTACT_COMMUNICATIONS = [
+  {
+    key: "CRM.CONTACT_COMMUNICATIONS.VIEW",
+    bit: 237,
+    module: "CRM" as const,
+    submodule: "Contact Communications",
+    action: "VIEW",
+    label: "View contact communications",
+    description: "See logged communications on contact records.",
+  },
+  {
+    key: "CRM.CONTACT_COMMUNICATIONS.CREATE",
+    bit: 238,
+    module: "CRM" as const,
+    submodule: "Contact Communications",
+    action: "CREATE",
+    label: "Log communications",
+    implies: ["CRM.CONTACT_COMMUNICATIONS.VIEW"],
+    description: "Record a communication (email/call/meeting) on a contact.",
+  },
+  {
+    key: "CRM.CONTACT_COMMUNICATIONS.UPDATE",
+    bit: 239,
+    module: "CRM" as const,
+    submodule: "Contact Communications",
+    action: "UPDATE",
+    label: "Edit communications",
+    implies: ["CRM.CONTACT_COMMUNICATIONS.VIEW"],
+    description: "Modify a logged communication.",
+  },
+  {
+    key: "CRM.CONTACT_COMMUNICATIONS.DELETE",
+    bit: 240,
+    module: "CRM" as const,
+    submodule: "Contact Communications",
+    action: "DELETE",
+    label: "Delete communications",
+    dangerous: true,
+    implies: ["CRM.CONTACT_COMMUNICATIONS.VIEW"],
+    description: "Remove a logged communication.",
+  },
+] as const;
+
 const CRM_CONTACT_NOTES = [
   {
     key: "CRM.CONTACT_NOTES.VIEW",
@@ -2599,6 +2642,7 @@ export const PERMISSIONS = [
   ...CRM_AUTOMATIONS,
   ...CRM_REMARKETING,
   ...CRM_CONTACT_NOTES,
+  ...CRM_CONTACT_COMMUNICATIONS,
   ...WEBSITE_BLOG,
   ...WEBSITE_PAGES,
   ...WEBSITE_SITE,

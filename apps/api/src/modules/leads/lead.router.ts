@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { requirePermission } from "@/middlewares/requirePermission";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import leadController from "./lead.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,6 +10,9 @@ const leadRouter = Router();
 leadRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 leadRouter.use(enforcePlanFeature("salesPipeline"));
 
+const workspaceLocator = (): string => "WORKSPACE";
+const idLocator = (req: Request): string => req.params.id;
+
 /**
  * @swagger
  * /leads:
@@ -17,22 +21,14 @@ leadRouter.use(enforcePlanFeature("salesPipeline"));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name]
- *             properties:
- *               name: { type: string }
- *               email: { type: string }
- *               phone: { type: string }
- *               sourceId: { type: string, format: uuid }
  *     responses:
  *       201: { description: Lead created }
  */
-leadRouter.post("/", asyncHandler(leadController.create));
+leadRouter.post(
+  "/",
+  requirePermission("CRM.LEADS.CREATE", workspaceLocator),
+  asyncHandler(leadController.create),
+);
 
 /**
  * @swagger
@@ -42,31 +38,14 @@ leadRouter.post("/", asyncHandler(leadController.create));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
- *       - in: query
- *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: sortBy
- *         schema: { type: string }
- *       - in: query
- *         name: sortOrder
- *         schema: { type: string, enum: [asc, desc] }
  *     responses:
- *       200:
- *         description: Leads list
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/PaginatedLeadsResponse'
+ *       200: { description: Leads list }
  */
-leadRouter.get("/", asyncHandler(leadController.getAll));
+leadRouter.get(
+  "/",
+  requirePermission("CRM.LEADS.VIEW", workspaceLocator),
+  asyncHandler(leadController.getAll),
+);
 
 /**
  * @swagger
@@ -76,16 +55,15 @@ leadRouter.get("/", asyncHandler(leadController.getAll));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Lead details }
  *       404: { description: Not found }
  */
-leadRouter.get("/:id", asyncHandler(leadController.getById));
+leadRouter.get(
+  "/:id",
+  requirePermission("CRM.LEADS.VIEW", idLocator),
+  asyncHandler(leadController.getById),
+);
 
 /**
  * @swagger
@@ -95,24 +73,14 @@ leadRouter.get("/:id", asyncHandler(leadController.getById));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               email: { type: string }
- *               phone: { type: string }
  *     responses:
  *       200: { description: Lead updated }
  */
-leadRouter.put("/:id", asyncHandler(leadController.update));
+leadRouter.put(
+  "/:id",
+  requirePermission("CRM.LEADS.UPDATE", idLocator),
+  asyncHandler(leadController.update),
+);
 
 /**
  * @swagger
@@ -122,17 +90,12 @@ leadRouter.put("/:id", asyncHandler(leadController.update));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Lead deleted }
  */
 leadRouter.delete(
   "/:id",
-  authorizeRoles("admin", "superAdmin"),
+  requirePermission("CRM.LEADS.DELETE", idLocator),
   asyncHandler(leadController.delete),
 );
 
@@ -144,23 +107,14 @@ leadRouter.delete(
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               pipelineId: { type: string, format: uuid }
- *               stageId: { type: string, format: uuid }
  *     responses:
  *       200: { description: Lead converted }
  */
-leadRouter.post("/:id/convert", asyncHandler(leadController.convert));
+leadRouter.post(
+  "/:id/convert",
+  requirePermission("CRM.LEADS.CONVERT", idLocator),
+  asyncHandler(leadController.convert),
+);
 
 /**
  * @swagger
@@ -170,23 +124,13 @@ leadRouter.post("/:id/convert", asyncHandler(leadController.convert));
  *     tags: [Leads]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userId]
- *             properties:
- *               userId: { type: string, format: uuid }
  *     responses:
  *       200: { description: Lead assigned }
  */
-leadRouter.post("/:id/assign", asyncHandler(leadController.assign));
+leadRouter.post(
+  "/:id/assign",
+  requirePermission("CRM.LEADS.ASSIGN", idLocator),
+  asyncHandler(leadController.assign),
+);
 
 export default leadRouter;
