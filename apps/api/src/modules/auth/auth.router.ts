@@ -1,5 +1,5 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -12,8 +12,10 @@ const changePasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 attempts
   keyGenerator: (req: any) => {
-    // Rate limit by user ID (authenticated)
-    return req.user?.id ?? req.ip ?? "unknown";
+    // Rate limit by user ID when authenticated; fall back to IP via the
+    // express-rate-limit helper that handles IPv6 normalization (required
+    // by the lib's runtime validator — bare req.ip throws ERR_ERL_KEY_GEN_IPV6).
+    return req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown");
   },
   standardHeaders: false, // Don't send rate limit headers
   skip: (req: any) => !req.user, // Skip if not authenticated

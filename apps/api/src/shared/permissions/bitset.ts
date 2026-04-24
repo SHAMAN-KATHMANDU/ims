@@ -7,7 +7,7 @@ import {
   PERMISSION_BY_KEY,
   PERMISSION_BY_BIT,
   ADMINISTRATOR_BIT,
-} from "@repo/shared/src/permissions/catalog";
+} from "@repo/shared";
 
 export const BITSET_BYTES = 64; // 512 bits, append-only growth headroom
 export const EMPTY_BITSET = (): Buffer => Buffer.alloc(BITSET_BYTES, 0);
