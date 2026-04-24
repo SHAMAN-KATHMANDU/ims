@@ -6,6 +6,7 @@ import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { PermissionGate } from "@/features/permissions";
 import { LoadingPage } from "@/components/layout/loading-page";
 
 const InventoryOpsPage = dynamic(
@@ -27,7 +28,9 @@ export default function ReportsAnalyticsInventory() {
           roles={["admin", "superAdmin"]}
           unauthorizedPath={WORKSPACE_ROOT}
         >
-          <InventoryOpsPage />
+          <PermissionGate perm="REPORTS.ANALYTICS.VIEW">
+            <InventoryOpsPage />
+          </PermissionGate>
         </AuthGuard>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>

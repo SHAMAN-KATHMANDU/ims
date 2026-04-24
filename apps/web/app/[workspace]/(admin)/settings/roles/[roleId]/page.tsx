@@ -1,5 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
+import { PermissionGate } from "@/features/permissions";
 import { RoleEditor } from "@/features/settings/role-management";
 
 export const metadata = { title: "Edit role" };
@@ -18,7 +19,9 @@ export default async function Page({
       roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
-      <RoleEditor roleId={id} />
+      <PermissionGate perm="SETTINGS.ROLES.VIEW">
+        <RoleEditor roleId={id} />
+      </PermissionGate>
     </AuthGuard>
   );
 }

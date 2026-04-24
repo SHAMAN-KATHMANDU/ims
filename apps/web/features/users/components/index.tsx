@@ -50,6 +50,7 @@ import {
   selectSetUsers,
 } from "../store/user-selection-store";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { Can, useCan } from "@/features/permissions";
 import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -121,6 +122,9 @@ export function UsersPage() {
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
   const isMobile = useIsMobile();
+  const { allowed: canCreate } = useCan("SETTINGS.USERS.CREATE");
+  const { allowed: canResetPassword } = useCan("SETTINGS.USERS.RESET_PASSWORD");
+  const { allowed: canDelete } = useCan("SETTINGS.USERS.DELETE");
 
   const onSubmit = async (data: UserFormValues) => {
     try {
@@ -255,40 +259,41 @@ export function UsersPage() {
           <div>
             <h2 className="text-xl font-semibold">All Users</h2>
           </div>
-          {isMobile ? (
-            atUserLimit ? (
-              <Button disabled className="gap-2">
-                <Plus className="h-4 w-4" aria-hidden="true" /> Add User
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link href={`${basePath}/users/new`} className="gap-2">
+          {canCreate &&
+            (isMobile ? (
+              atUserLimit ? (
+                <Button disabled className="gap-2">
                   <Plus className="h-4 w-4" aria-hidden="true" /> Add User
-                </Link>
-              </Button>
-            )
-          ) : (
-            <>
-              <Button
-                onClick={() => {
-                  setEditingUser(null);
-                  setUserDialog(true);
-                }}
-                className="gap-2"
-                disabled={atUserLimit}
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" /> Add User
-              </Button>
-              <UserForm
-                open={userDialog}
-                onOpenChange={handleDialogClose}
-                editingUser={editingUser}
-                onSubmit={onSubmit}
-                onReset={() => setEditingUser(null)}
-                renderTrigger={false}
-              />
-            </>
-          )}
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link href={`${basePath}/users/new`} className="gap-2">
+                    <Plus className="h-4 w-4" aria-hidden="true" /> Add User
+                  </Link>
+                </Button>
+              )
+            ) : (
+              <>
+                <Button
+                  onClick={() => {
+                    setEditingUser(null);
+                    setUserDialog(true);
+                  }}
+                  className="gap-2"
+                  disabled={atUserLimit}
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" /> Add User
+                </Button>
+                <UserForm
+                  open={userDialog}
+                  onOpenChange={handleDialogClose}
+                  editingUser={editingUser}
+                  onSubmit={onSubmit}
+                  onReset={() => setEditingUser(null)}
+                  renderTrigger={false}
+                />
+              </>
+            ))}
         </div>
 
         <Card>
@@ -396,23 +401,27 @@ export function UsersPage() {
                 {selectedUserIds.size !== 1 ? "s" : ""} selected
               </span>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setBulkChangePasswordOpen(true)}
-                  disabled={bulkChangePasswordMutation.isPending}
-                >
-                  <KeyRound className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Change password
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDeleteClick}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Delete
-                </Button>
+                {canResetPassword && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setBulkChangePasswordOpen(true)}
+                    disabled={bulkChangePasswordMutation.isPending}
+                  >
+                    <KeyRound className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Change password
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDeleteClick}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Delete
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

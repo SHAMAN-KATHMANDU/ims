@@ -6,6 +6,7 @@ import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { PermissionGate } from "@/features/permissions";
 import { LoadingPage } from "@/components/layout/loading-page";
 
 const TrendsPage = dynamic(
@@ -27,7 +28,9 @@ export default function ReportsAnalyticsTrendsPage() {
           roles={["admin", "superAdmin"]}
           unauthorizedPath={WORKSPACE_ROOT}
         >
-          <TrendsPage />
+          <PermissionGate perm="REPORTS.ANALYTICS.VIEW">
+            <TrendsPage />
+          </PermissionGate>
         </AuthGuard>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>

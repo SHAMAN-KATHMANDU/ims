@@ -340,7 +340,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Can perm="WEBSITE.MEDIA.UPLOAD">
+          <Can perm="WEBSITE.MEDIA.CREATE">
             <Input
               type="file"
               className="max-w-xs"

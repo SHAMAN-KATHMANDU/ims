@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowDown, ArrowUp, Link2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
+import { useCan } from "@/features/permissions";
 import {
   defaultHeaderNavConfig,
   NavConfigSchema,
@@ -74,6 +75,8 @@ function move<T>(arr: T[], from: number, to: number): T[] {
 
 export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
   const { toast } = useToast();
+  const { allowed: canUpdate } = useCan("WEBSITE.NAV_MENUS.UPDATE");
+  const isDisabled = disabled || !canUpdate;
   const menusQuery = useNavMenus();
   const upsert = useUpsertNavMenu();
 
@@ -190,7 +193,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
               <Select
                 value={config.layout}
                 onValueChange={(v) => update({ layout: v as NavHeaderLayout })}
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -218,7 +221,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                 onValueChange={(v) =>
                   update({ behavior: v as NavHeaderBehavior })
                 }
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -256,7 +259,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                 size="sm"
                 variant="outline"
                 onClick={() => addItem("link")}
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 + Link
               </Button>
@@ -264,7 +267,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                 size="sm"
                 variant="outline"
                 onClick={() => addItem("cta")}
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 + CTA
               </Button>
@@ -272,7 +275,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                 size="sm"
                 variant="outline"
                 onClick={() => addItem("pages-auto")}
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 + Pages
               </Button>
@@ -316,7 +319,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         variant="ghost"
                         className="h-8 w-8"
                         onClick={() => moveItem(idx, -1)}
-                        disabled={disabled || idx === 0}
+                        disabled={isDisabled || idx === 0}
                         aria-label="Move up"
                       >
                         <ArrowUp className="h-4 w-4" aria-hidden="true" />
@@ -326,7 +329,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         variant="ghost"
                         className="h-8 w-8"
                         onClick={() => moveItem(idx, 1)}
-                        disabled={disabled || idx === config.items.length - 1}
+                        disabled={isDisabled || idx === config.items.length - 1}
                         aria-label="Move down"
                       >
                         <ArrowDown className="h-4 w-4" aria-hidden="true" />
@@ -336,7 +339,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         variant="ghost"
                         className="h-8 w-8"
                         onClick={() => removeItem(idx)}
-                        disabled={disabled}
+                        disabled={isDisabled}
                         aria-label="Delete item"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -347,7 +350,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                         <ItemInspector
                           item={item}
                           onChange={(next) => updateItem(idx, next)}
-                          disabled={disabled}
+                          disabled={isDisabled}
                         />
                       </div>
                     )}
@@ -379,19 +382,19 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
               label="Show cart badge"
               checked={config.showCart}
               onCheckedChange={(v) => update({ showCart: v })}
-              disabled={disabled}
+              disabled={isDisabled}
             />
             <ToggleRow
               label="Show search"
               checked={config.showSearch}
               onCheckedChange={(v) => update({ showSearch: v })}
-              disabled={disabled}
+              disabled={isDisabled}
             />
             <ToggleRow
               label="Show account"
               checked={config.showAccount}
               onCheckedChange={(v) => update({ showAccount: v })}
-              disabled={disabled}
+              disabled={isDisabled}
             />
           </div>
         </CardContent>
@@ -419,7 +422,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
                     },
                   })
                 }
-                disabled={disabled}
+                disabled={isDisabled}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -437,7 +440,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
               onCheckedChange={(v) =>
                 update({ mobile: { ...config.mobile, showSearch: v } })
               }
-              disabled={disabled}
+              disabled={isDisabled}
             />
           </div>
         </CardContent>
@@ -450,7 +453,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
           variant="ghost"
           size="sm"
           onClick={handleReset}
-          disabled={disabled}
+          disabled={isDisabled}
         >
           Reset to default
         </Button>
@@ -463,7 +466,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={disabled || !dirty || upsert.isPending}
+            disabled={isDisabled || !dirty || upsert.isPending}
           >
             {upsert.isPending ? "Saving…" : "Save header"}
           </Button>

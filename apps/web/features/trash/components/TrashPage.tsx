@@ -43,6 +43,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Trash2, RotateCcw, Search, X } from "lucide-react";
+import { useCan } from "@/features/permissions";
 import { format } from "date-fns";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { useTenants } from "@/features/tenants";
@@ -100,6 +101,8 @@ export function TrashPage() {
 
   const restoreMutation = useRestoreTrashItem();
   const permanentlyDeleteMutation = usePermanentlyDeleteTrashItem();
+  const { allowed: canRestore } = useCan("SETTINGS.TRASH.RESTORE");
+  const { allowed: canPurge } = useCan("SETTINGS.TRASH.PURGE");
 
   const handleRestore = async (item: {
     entityType: string;
@@ -326,36 +329,40 @@ export function TrashPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRestore(item)}
-                            disabled={restoreMutation.isPending}
-                          >
-                            <RotateCcw
-                              className="h-4 w-4 mr-1"
-                              aria-hidden="true"
-                            />
-                            Restore
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setPermanentlyDeleteTarget({
-                                entityType: item.entityType,
-                                id: item.id,
-                                name: item.name,
-                              })
-                            }
-                            disabled={permanentlyDeleteMutation.isPending}
-                          >
-                            <Trash2
-                              className="h-4 w-4 mr-1"
-                              aria-hidden="true"
-                            />
-                            Delete
-                          </Button>
+                          {canRestore && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRestore(item)}
+                              disabled={restoreMutation.isPending}
+                            >
+                              <RotateCcw
+                                className="h-4 w-4 mr-1"
+                                aria-hidden="true"
+                              />
+                              Restore
+                            </Button>
+                          )}
+                          {canPurge && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() =>
+                                setPermanentlyDeleteTarget({
+                                  entityType: item.entityType,
+                                  id: item.id,
+                                  name: item.name,
+                                })
+                              }
+                              disabled={permanentlyDeleteMutation.isPending}
+                            >
+                              <Trash2
+                                className="h-4 w-4 mr-1"
+                                aria-hidden="true"
+                              />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
