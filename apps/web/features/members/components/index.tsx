@@ -455,7 +455,8 @@ export function MembersPage() {
                 onSubmit={handleSubmitMember}
                 isLoading={isFormLoading}
               />
-            ))}
+            )}
+          </Can>
         </div>
       </div>
 
