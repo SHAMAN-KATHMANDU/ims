@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Can, PermissionGate } from "@/features/permissions";
 import {
   useTasksPaginated,
   useCompleteTask,
@@ -220,554 +221,566 @@ export function TasksPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold">Tasks</h1>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-          New Task
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            placeholder="Search tasks..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(DEFAULT_PAGE);
-            }}
-            className="pl-9"
-          />
+    <PermissionGate perm="CRM.TASKS.VIEW">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold">Tasks</h1>
+          <Can perm="CRM.TASKS.CREATE">
+            <Button onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+              New Task
+            </Button>
+          </Can>
         </div>
-        <div className="flex gap-2 items-center">
-          <Tabs
-            value={taskTab}
-            onValueChange={(v) => {
-              setTaskTab(v as TaskFilterTab);
-              setPage(DEFAULT_PAGE);
-            }}
-          >
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
-              <TabsTrigger value="complete">Complete</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button
-            variant={dueToday ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setDueToday(!dueToday);
-              setPage(DEFAULT_PAGE);
-            }}
-          >
-            Due Today
-          </Button>
-          <Button
-            variant={orphanedOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setOrphanedOnly(!orphanedOnly);
-              setPage(DEFAULT_PAGE);
-            }}
-            title="Tasks with no contact (orphaned)"
-          >
-            <AlertCircle className="h-4 w-4 mr-1" aria-hidden="true" />
-            Orphaned
-          </Button>
-          <Select
-            value={assignedToFilter}
-            onValueChange={(v) => {
-              setAssignedToFilter(v);
-              setPage(DEFAULT_PAGE);
-            }}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Assigned to" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All users</SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.username}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      {selectedTaskIds.size > 0 && (
-        <div className="flex items-center gap-2 py-2 px-3 rounded-md border bg-muted/50">
-          <span className="text-sm">
-            {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? "s" : ""}{" "}
-            selected
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              const ids = [...selectedTaskIds];
-              if (ids.length > 0) {
-                bulkCompleteMutation.mutate(ids, {
-                  onSuccess: () => {
-                    toast({ title: "Tasks completed" });
-                    clearSelection();
-                  },
-                  onError: () =>
-                    toast({
-                      title: "Failed to complete",
-                      variant: "destructive",
-                    }),
-                });
-              }
-            }}
-            disabled={bulkCompleteMutation.isPending}
-          >
-            <Check className="h-4 w-4 mr-1" aria-hidden="true" />
-            Complete
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => {
-              const ids = [...selectedTaskIds];
-              bulkDeleteMutation.mutate(
-                { ids },
-                {
-                  onSuccess: () => {
-                    toast({ title: "Tasks deleted" });
-                    clearSelection();
-                  },
-                  onError: () =>
-                    toast({ title: "Delete failed", variant: "destructive" }),
-                },
-              );
-            }}
-            disabled={bulkDeleteMutation.isPending}
-          >
-            <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
-            Delete
-          </Button>
-          <Button size="sm" variant="ghost" onClick={clearSelection}>
-            Clear
-          </Button>
-        </div>
-      )}
-
-      {/* ── Mobile card list ─────────────────────────────────────────── */}
-      <div className="sm:hidden space-y-2">
-        {isLoading ? (
-          [1, 2, 3].map((i) => (
-            <div key={i} className="rounded-lg border p-3 space-y-2">
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-3 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-          ))
-        ) : tasks.length === 0 ? (
-          <div className="rounded-md border py-8 px-4 text-center">
-            {tasksEmptyNoResults ? (
-              <div className="space-y-3">
-                <p className="text-muted-foreground text-sm">
-                  No tasks match your search or filters.
-                </p>
-                <Button variant="outline" size="sm" onClick={clearTasksFilters}>
-                  Clear filters
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-1 text-muted-foreground">
-                <p className="font-medium text-foreground">No tasks yet</p>
-                <p className="text-sm">
-                  Create a task to start tracking follow-ups.
-                </p>
-              </div>
-            )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Search tasks..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(DEFAULT_PAGE);
+              }}
+              className="pl-9"
+            />
           </div>
-        ) : (
-          tasks.map((task) => (
-            <div
-              key={task.id}
-              className="rounded-lg border bg-card p-3 space-y-2"
+          <div className="flex gap-2 items-center">
+            <Tabs
+              value={taskTab}
+              onValueChange={(v) => {
+                setTaskTab(v as TaskFilterTab);
+                setPage(DEFAULT_PAGE);
+              }}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <Checkbox
-                    checked={isSelected(task.id)}
-                    onCheckedChange={() => toggleTask(task.id)}
-                  />
-                  <span
-                    className={`text-sm font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}
-                  >
-                    {task.title}
-                  </span>
-                </div>
-                <Badge
-                  variant={task.completed ? "secondary" : "outline"}
-                  className="text-xs shrink-0"
-                >
-                  {task.completed ? "Done" : "Todo"}
-                </Badge>
-              </div>
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
+                <TabsTrigger value="complete">Complete</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button
+              variant={dueToday ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setDueToday(!dueToday);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              Due Today
+            </Button>
+            <Button
+              variant={orphanedOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setOrphanedOnly(!orphanedOnly);
+                setPage(DEFAULT_PAGE);
+              }}
+              title="Tasks with no contact (orphaned)"
+            >
+              <AlertCircle className="h-4 w-4 mr-1" aria-hidden="true" />
+              Orphaned
+            </Button>
+            <Select
+              value={assignedToFilter}
+              onValueChange={(v) => {
+                setAssignedToFilter(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Assigned to" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All users</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {task.dueDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" aria-hidden="true" />
-                    {new Date(task.dueDate).toLocaleDateString()}
-                  </span>
-                )}
-                {task.assignedTo && (
-                  <span className="flex items-center gap-1">
-                    <UserIcon className="h-3 w-3" aria-hidden="true" />
-                    {task.assignedTo.username}
-                  </span>
-                )}
-                {!task.contact && (
-                  <span className="flex items-center gap-1 text-amber-600">
-                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                    Orphaned
-                  </span>
-                )}
-                {task.contact && (
-                  <Link href={`${basePath}/crm/contacts/${task.contact.id}`}>
-                    <span className="text-primary hover:underline">
-                      {task.contact.firstName} {task.contact.lastName || ""}
-                    </span>
-                  </Link>
-                )}
-                {dealsEnabled && task.deal && (
-                  <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
-                    <span className="text-primary hover:underline">
-                      {task.deal.name}
-                    </span>
-                  </Link>
-                )}
-              </div>
+        {selectedTaskIds.size > 0 && (
+          <div className="flex items-center gap-2 py-2 px-3 rounded-md border bg-muted/50">
+            <span className="text-sm">
+              {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? "s" : ""}{" "}
+              selected
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const ids = [...selectedTaskIds];
+                if (ids.length > 0) {
+                  bulkCompleteMutation.mutate(ids, {
+                    onSuccess: () => {
+                      toast({ title: "Tasks completed" });
+                      clearSelection();
+                    },
+                    onError: () =>
+                      toast({
+                        title: "Failed to complete",
+                        variant: "destructive",
+                      }),
+                  });
+                }
+              }}
+              disabled={bulkCompleteMutation.isPending}
+            >
+              <Check className="h-4 w-4 mr-1" aria-hidden="true" />
+              Complete
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                const ids = [...selectedTaskIds];
+                bulkDeleteMutation.mutate(
+                  { ids },
+                  {
+                    onSuccess: () => {
+                      toast({ title: "Tasks deleted" });
+                      clearSelection();
+                    },
+                    onError: () =>
+                      toast({ title: "Delete failed", variant: "destructive" }),
+                  },
+                );
+              }}
+              disabled={bulkDeleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-1" aria-hidden="true" />
+              Delete
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              Clear
+            </Button>
+          </div>
+        )}
 
-              <div className="flex gap-1 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs flex-1"
-                  onClick={() => openEdit(task.id)}
-                >
-                  <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
-                  Edit
-                </Button>
-                {!task.completed && (
+        {/* ── Mobile card list ─────────────────────────────────────────── */}
+        <div className="sm:hidden space-y-2">
+          {isLoading ? (
+            [1, 2, 3].map((i) => (
+              <div key={i} className="rounded-lg border p-3 space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            ))
+          ) : tasks.length === 0 ? (
+            <div className="rounded-md border py-8 px-4 text-center">
+              {tasksEmptyNoResults ? (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground text-sm">
+                    No tasks match your search or filters.
+                  </p>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs flex-1"
-                    onClick={() => {
-                      completeMutation.mutate(task.id, {
-                        onSuccess: () => toast({ title: "Task completed" }),
-                      });
-                    }}
+                    onClick={clearTasksFilters}
                   >
-                    <Check className="h-3 w-3 mr-1" aria-hidden="true" />
-                    Done
+                    Clear filters
                   </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs text-destructive hover:text-destructive"
-                  onClick={() => setDeleteTaskId(task.id)}
-                  aria-label={`Delete ${task.title}`}
-                >
-                  <Trash2 className="h-3 w-3" aria-hidden="true" />
-                </Button>
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-1 text-muted-foreground">
+                  <p className="font-medium text-foreground">No tasks yet</p>
+                  <p className="text-sm">
+                    Create a task to start tracking follow-ups.
+                  </p>
+                </div>
+              )}
             </div>
-          ))
-        )}
-      </div>
-
-      {/* ── Desktop table ────────────────────────────────────────────── */}
-      <div className="hidden sm:block overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={
-                    tasks.length > 0 && tasks.every((t) => isSelected(t.id))
-                  }
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      tasks.forEach((t) => addTask(t.id));
-                    } else {
-                      tasks.forEach((t) => removeTask(t.id));
-                    }
-                  }}
-                />
-              </TableHead>
-              <SortableTableHead
-                sortKey="title"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={(nextSortBy, nextSortOrder) => {
-                  setSortBy(nextSortBy);
-                  setSortOrder(nextSortOrder);
-                  setPage(DEFAULT_PAGE);
-                }}
+          ) : (
+            tasks.map((task) => (
+              <div
+                key={task.id}
+                className="rounded-lg border bg-card p-3 space-y-2"
               >
-                Title
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="dueDate"
-                currentSortBy={sortBy}
-                currentSortOrder={sortOrder}
-                onSort={(nextSortBy, nextSortOrder) => {
-                  setSortBy(nextSortBy);
-                  setSortOrder(nextSortOrder);
-                  setPage(DEFAULT_PAGE);
-                }}
-              >
-                Due Date
-              </SortableTableHead>
-              <TableHead>Assigned To</TableHead>
-              <TableHead>Contact</TableHead>
-              {dealsEnabled && <TableHead>Deal</TableHead>}
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [1, 2, 3, 4].map((i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-4" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  {dealsEnabled && (
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                  )}
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-8 w-16 ml-auto" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : tasks.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={dealsEnabled ? 8 : 7}
-                  className="text-center py-8 px-4"
-                >
-                  {tasksEmptyNoResults ? (
-                    <div className="space-y-3">
-                      <p className="text-muted-foreground text-sm">
-                        No tasks match your search or filters.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearTasksFilters}
-                      >
-                        Clear filters
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-1 text-muted-foreground">
-                      <p className="font-medium text-foreground">
-                        No tasks yet
-                      </p>
-                      <p className="text-sm">
-                        Create a task to start tracking follow-ups.
-                      </p>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ) : (
-              tasks.map((task) => (
-                <TableRow key={task.id}>
-                  <TableCell>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     <Checkbox
                       checked={isSelected(task.id)}
                       onCheckedChange={() => toggleTask(task.id)}
                     />
-                  </TableCell>
-                  <TableCell className="font-medium">{task.title}</TableCell>
-                  <TableCell>
-                    {task.dueDate
-                      ? new Date(task.dueDate).toLocaleDateString()
-                      : "—"}
-                  </TableCell>
-                  <TableCell>{task.assignedTo?.username ?? "—"}</TableCell>
-                  <TableCell>
-                    {!task.contact ? (
-                      <span className="flex items-center gap-1 text-amber-600">
-                        <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                        Orphaned
+                    <span
+                      className={`text-sm font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}
+                    >
+                      {task.title}
+                    </span>
+                  </div>
+                  <Badge
+                    variant={task.completed ? "secondary" : "outline"}
+                    className="text-xs shrink-0"
+                  >
+                    {task.completed ? "Done" : "Todo"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {task.dueDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" aria-hidden="true" />
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {task.assignedTo && (
+                    <span className="flex items-center gap-1">
+                      <UserIcon className="h-3 w-3" aria-hidden="true" />
+                      {task.assignedTo.username}
+                    </span>
+                  )}
+                  {!task.contact && (
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                      Orphaned
+                    </span>
+                  )}
+                  {task.contact && (
+                    <Link href={`${basePath}/crm/contacts/${task.contact.id}`}>
+                      <span className="text-primary hover:underline">
+                        {task.contact.firstName} {task.contact.lastName || ""}
                       </span>
+                    </Link>
+                  )}
+                  {dealsEnabled && task.deal && (
+                    <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                      <span className="text-primary hover:underline">
+                        {task.deal.name}
+                      </span>
+                    </Link>
+                  )}
+                </div>
+
+                <div className="flex gap-1 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex-1"
+                    onClick={() => openEdit(task.id)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
+                    Edit
+                  </Button>
+                  {!task.completed && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs flex-1"
+                      onClick={() => {
+                        completeMutation.mutate(task.id, {
+                          onSuccess: () => toast({ title: "Task completed" }),
+                        });
+                      }}
+                    >
+                      <Check className="h-3 w-3 mr-1" aria-hidden="true" />
+                      Done
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs text-destructive hover:text-destructive"
+                    onClick={() => setDeleteTaskId(task.id)}
+                    aria-label={`Delete ${task.title}`}
+                  >
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Desktop table ────────────────────────────────────────────── */}
+        <div className="hidden sm:block overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={
+                      tasks.length > 0 && tasks.every((t) => isSelected(t.id))
+                    }
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        tasks.forEach((t) => addTask(t.id));
+                      } else {
+                        tasks.forEach((t) => removeTask(t.id));
+                      }
+                    }}
+                  />
+                </TableHead>
+                <SortableTableHead
+                  sortKey="title"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={(nextSortBy, nextSortOrder) => {
+                    setSortBy(nextSortBy);
+                    setSortOrder(nextSortOrder);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  Title
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="dueDate"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={(nextSortBy, nextSortOrder) => {
+                    setSortBy(nextSortBy);
+                    setSortOrder(nextSortOrder);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                >
+                  Due Date
+                </SortableTableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Contact</TableHead>
+                {dealsEnabled && <TableHead>Deal</TableHead>}
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                [1, 2, 3, 4].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    {dealsEnabled && (
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-16 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : tasks.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={dealsEnabled ? 8 : 7}
+                    className="text-center py-8 px-4"
+                  >
+                    {tasksEmptyNoResults ? (
+                      <div className="space-y-3">
+                        <p className="text-muted-foreground text-sm">
+                          No tasks match your search or filters.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearTasksFilters}
+                        >
+                          Clear filters
+                        </Button>
+                      </div>
                     ) : (
-                      <Link
-                        href={`${basePath}/crm/contacts/${task.contact.id}`}
-                      >
-                        <span className="text-primary hover:underline">
-                          {task.contact.firstName} {task.contact.lastName || ""}
-                        </span>
-                      </Link>
+                      <div className="space-y-1 text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          No tasks yet
+                        </p>
+                        <p className="text-sm">
+                          Create a task to start tracking follow-ups.
+                        </p>
+                      </div>
                     )}
                   </TableCell>
-                  {dealsEnabled && (
+                </TableRow>
+              ) : (
+                tasks.map((task) => (
+                  <TableRow key={task.id}>
                     <TableCell>
-                      {task.deal ? (
-                        <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                      <Checkbox
+                        checked={isSelected(task.id)}
+                        onCheckedChange={() => toggleTask(task.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{task.title}</TableCell>
+                    <TableCell>
+                      {task.dueDate
+                        ? new Date(task.dueDate).toLocaleDateString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{task.assignedTo?.username ?? "—"}</TableCell>
+                    <TableCell>
+                      {!task.contact ? (
+                        <span className="flex items-center gap-1 text-amber-600">
+                          <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                          Orphaned
+                        </span>
+                      ) : (
+                        <Link
+                          href={`${basePath}/crm/contacts/${task.contact.id}`}
+                        >
                           <span className="text-primary hover:underline">
-                            {task.deal.name}
+                            {task.contact.firstName}{" "}
+                            {task.contact.lastName || ""}
                           </span>
                         </Link>
-                      ) : (
-                        "—"
                       )}
                     </TableCell>
-                  )}
-                  <TableCell>
-                    {task.completed ? (
-                      <span className="text-muted-foreground">Done</span>
-                    ) : (
-                      "Todo"
+                    {dealsEnabled && (
+                      <TableCell>
+                        {task.deal ? (
+                          <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                            <span className="text-primary hover:underline">
+                              {task.deal.name}
+                            </span>
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(task.id)}
-                      >
-                        <Pencil className="h-4 w-4 mr-1" aria-hidden="true" />
-                        Edit
-                      </Button>
-                      {!task.completed && (
+                    <TableCell>
+                      {task.completed ? (
+                        <span className="text-muted-foreground">Done</span>
+                      ) : (
+                        "Todo"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            completeMutation.mutate(task.id, {
-                              onSuccess: () =>
-                                toast({ title: "Task completed" }),
-                            });
-                          }}
+                          onClick={() => openEdit(task.id)}
                         >
-                          <Check className="h-4 w-4 mr-1" aria-hidden="true" />
-                          Complete
+                          <Pencil className="h-4 w-4 mr-1" aria-hidden="true" />
+                          Edit
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => setDeleteTaskId(task.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                        {!task.completed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              completeMutation.mutate(task.id, {
+                                onSuccess: () =>
+                                  toast({ title: "Task completed" }),
+                              });
+                            }}
+                          >
+                            <Check
+                              className="h-4 w-4 mr-1"
+                              aria-hidden="true"
+                            />
+                            Complete
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => setDeleteTaskId(task.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      {pagination && (
-        <DataTablePagination
-          pagination={pagination}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => {
-            setPageSize(s);
-            setPage(DEFAULT_PAGE);
-          }}
-        />
-      )}
-
-      <ResponsiveDrawer
-        open={drawerMode !== null}
-        onOpenChange={(o) => !o && closeDrawer()}
-        title={drawerMode === "new" ? "New Task" : "Edit Task"}
-        bodyPadding={false}
-      >
-        {drawerMode === "new" && (
-          <TaskForm
-            mode="create"
-            onSubmit={handleCreateTask}
-            onCancel={closeDrawer}
-            isLoading={createMutation.isPending}
-          />
-        )}
-        {drawerMode === "edit" && selectedId && selectedTaskData?.task && (
-          <TaskForm
-            mode="edit"
-            defaultValues={{
-              title: selectedTaskData.task.title,
-              dueDate: selectedTaskData.task.dueDate
-                ? new Date(selectedTaskData.task.dueDate)
-                    .toISOString()
-                    .slice(0, 10)
-                : "",
-              contactId: selectedTaskData.task.contactId ?? undefined,
-              dealId: selectedTaskData.task.dealId ?? undefined,
-              assignedToId: selectedTaskData.task.assignedToId ?? undefined,
+        {pagination && (
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(DEFAULT_PAGE);
             }}
-            onSubmit={handleUpdateTask}
-            onCancel={closeDrawer}
-            isLoading={updateMutation.isPending}
           />
         )}
-      </ResponsiveDrawer>
 
-      <AlertDialog
-        open={!!deleteTaskId}
-        onOpenChange={(o) => !o && setDeleteTaskId(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this task?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteTask}
-              disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <ResponsiveDrawer
+          open={drawerMode !== null}
+          onOpenChange={(o) => !o && closeDrawer()}
+          title={drawerMode === "new" ? "New Task" : "Edit Task"}
+          bodyPadding={false}
+        >
+          {drawerMode === "new" && (
+            <TaskForm
+              mode="create"
+              onSubmit={handleCreateTask}
+              onCancel={closeDrawer}
+              isLoading={createMutation.isPending}
+            />
+          )}
+          {drawerMode === "edit" && selectedId && selectedTaskData?.task && (
+            <TaskForm
+              mode="edit"
+              defaultValues={{
+                title: selectedTaskData.task.title,
+                dueDate: selectedTaskData.task.dueDate
+                  ? new Date(selectedTaskData.task.dueDate)
+                      .toISOString()
+                      .slice(0, 10)
+                  : "",
+                contactId: selectedTaskData.task.contactId ?? undefined,
+                dealId: selectedTaskData.task.dealId ?? undefined,
+                assignedToId: selectedTaskData.task.assignedToId ?? undefined,
+              }}
+              onSubmit={handleUpdateTask}
+              onCancel={closeDrawer}
+              isLoading={updateMutation.isPending}
+            />
+          )}
+        </ResponsiveDrawer>
+
+        <AlertDialog
+          open={!!deleteTaskId}
+          onOpenChange={(o) => !o && setDeleteTaskId(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDeleteTask}
+                disabled={deleteMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </PermissionGate>
   );
 }

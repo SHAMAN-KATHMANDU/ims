@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { Can } from "@/features/permissions";
 import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import {
   usePromosPaginated,
@@ -225,24 +226,28 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
             {!readOnly &&
               promotionsEnabled &&
               (isMobile ? (
-                <Button asChild>
-                  <Link href={`${basePath}/promos/new`} className="gap-2">
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    New Promo
-                  </Link>
-                </Button>
+                <Can perm="INVENTORY.PROMOS.CREATE">
+                  <Button asChild>
+                    <Link href={`${basePath}/promos/new`} className="gap-2">
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      New Promo
+                    </Link>
+                  </Button>
+                </Can>
               ) : (
                 <>
-                  <Button
-                    className="gap-2"
-                    onClick={() => {
-                      resetForm();
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    New Promo
-                  </Button>
+                  <Can perm="INVENTORY.PROMOS.CREATE">
+                    <Button
+                      className="gap-2"
+                      onClick={() => {
+                        resetForm();
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      New Promo
+                    </Button>
+                  </Can>
                   <PromoForm
                     open={dialogOpen}
                     onOpenChange={(o) => {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
+import { Can } from "@/features/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -116,12 +117,14 @@ export function GiftCardsPage() {
             redemptions immediately.
           </p>
         </div>
-        <Button asChild className="gap-2">
-          <Link href={`/${workspace}/gift-cards/new`}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Issue gift card
-          </Link>
-        </Button>
+        <Can perm="INVENTORY.GIFT_CARDS.ISSUE">
+          <Button asChild className="gap-2">
+            <Link href={`/${workspace}/gift-cards/new`}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Issue gift card
+            </Link>
+          </Button>
+        </Can>
       </div>
 
       {isError && (

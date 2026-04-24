@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tags, Layers } from "lucide-react";
 import { CategoriesPage, AttributeTypesPage } from "@/features/products";
+import { PermissionGate } from "@/features/permissions";
 
 const CATEGORIES_TAB = "categories";
 const ATTRIBUTE_TYPES_TAB = "attribute-types";
@@ -47,10 +48,14 @@ export default function CatalogSettingsPage() {
         </TabsList>
 
         <TabsContent value={CATEGORIES_TAB} className="mt-0">
-          <CategoriesPage />
+          <PermissionGate perm="INVENTORY.CATEGORIES.VIEW">
+            <CategoriesPage />
+          </PermissionGate>
         </TabsContent>
         <TabsContent value={ATTRIBUTE_TYPES_TAB} className="mt-0">
-          <AttributeTypesPage />
+          <PermissionGate perm="INVENTORY.ATTRIBUTE_TYPES.VIEW">
+            <AttributeTypesPage />
+          </PermissionGate>
         </TabsContent>
       </Tabs>
     </div>

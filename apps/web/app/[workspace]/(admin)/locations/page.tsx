@@ -1,6 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { LocationsPage } from "@/features/locations";
+import { PermissionGate } from "@/features/permissions";
 
 export const metadata = { title: "Locations" };
 
@@ -11,7 +12,9 @@ export default function Locations() {
       roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
-      <LocationsPage />
+      <PermissionGate perm="INVENTORY.LOCATIONS.VIEW">
+        <LocationsPage />
+      </PermissionGate>
     </AuthGuard>
   );
 }

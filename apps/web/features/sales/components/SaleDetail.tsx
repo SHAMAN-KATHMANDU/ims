@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Can } from "@/features/permissions";
 import {
   Select,
   SelectContent,
@@ -221,28 +222,32 @@ export function SaleDetail({
                 <FileDown className="h-4 w-4" aria-hidden="true" />
                 {receiptLoading ? "..." : "PDF"}
               </Button>
-              {sale.isLatest !== false && !isViewingOriginal && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditDialogOpen(true)}
-                  className="gap-1.5 print:hidden"
-                >
-                  <Pencil className="h-4 w-4" aria-hidden="true" />
-                  Edit
-                </Button>
-              )}
-              {!isViewingOriginal && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  Delete
-                </Button>
-              )}
+              <Can perm="SALES.SALES.EDIT_AFTER_FINALIZE">
+                {sale.isLatest !== false && !isViewingOriginal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditDialogOpen(true)}
+                    className="gap-1.5 print:hidden"
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    Edit
+                  </Button>
+                )}
+              </Can>
+              <Can perm="SALES.SALES.DELETE">
+                {!isViewingOriginal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    Delete
+                  </Button>
+                )}
+              </Can>
             </div>
           )}
         </DialogHeader>

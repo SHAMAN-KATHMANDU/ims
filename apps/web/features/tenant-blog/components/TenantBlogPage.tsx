@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Can, PermissionGate } from "@/features/permissions";
 import { useBlogPosts } from "../hooks/use-tenant-blog";
 import type { BlogPostStatus } from "../services/tenant-blog.service";
 import { BlogPostListRow } from "./BlogPostListRow";
@@ -98,125 +99,131 @@ export function TenantBlogPage({
   const pageCount = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Blog</h1>
-          <p className="text-sm text-muted-foreground">
-            Write and publish posts on your tenant-site.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
-            <FolderTree className="mr-2 h-4 w-4" aria-hidden="true" />
-            Categories
-          </Button>
-          <Button asChild>
-            <Link href={newHref}>
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              New post
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              placeholder="Search by title…"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="max-w-xs"
-            />
-            <Select
-              value={status}
-              onValueChange={(v) => {
-                setStatus(v as BlogPostStatus | "ALL");
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All statuses</SelectItem>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="PUBLISHED">Published</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {postsQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading posts…</p>
-          )}
-          {!postsQuery.isLoading && posts.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No posts yet. Click <strong>New post</strong> to write your first
-              one.
+    <PermissionGate perm="WEBSITE.BLOG.VIEW">
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Blog</h1>
+            <p className="text-sm text-muted-foreground">
+              Write and publish posts on your tenant-site.
             </p>
-          )}
-          {posts.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Published</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {posts.map((p) => (
-                  <BlogPostListRow
-                    key={p.id}
-                    post={p}
-                    editHref={`${editHrefBase}/${p.id}`}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Can perm="WEBSITE.BLOG.UPDATE">
+              <Button variant="outline" onClick={() => setCategoriesOpen(true)}>
+                <FolderTree className="mr-2 h-4 w-4" aria-hidden="true" />
+                Categories
+              </Button>
+            </Can>
+            <Can perm="WEBSITE.BLOG.CREATE">
+              <Button asChild>
+                <Link href={newHref}>
+                  <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+                  New post
+                </Link>
+              </Button>
+            </Can>
+          </div>
+        </div>
 
-          {pageCount > 1 && (
-            <div className="mt-4 flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Page {page} of {pageCount} ({total} total)
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                  disabled={page >= pageCount}
-                >
-                  Next
-                </Button>
-              </div>
+        <Card>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Search by title…"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="max-w-xs"
+              />
+              <Select
+                value={status}
+                onValueChange={(v) => {
+                  setStatus(v as BlogPostStatus | "ALL");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="PUBLISHED">Published</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {postsQuery.isLoading && (
+              <p className="text-sm text-muted-foreground">Loading posts…</p>
+            )}
+            {!postsQuery.isLoading && posts.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No posts yet. Click <strong>New post</strong> to write your
+                first one.
+              </p>
+            )}
+            {posts.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Published</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {posts.map((p) => (
+                    <BlogPostListRow
+                      key={p.id}
+                      post={p}
+                      editHref={`${editHrefBase}/${p.id}`}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            )}
 
-      <BlogCategoryManager
-        open={categoriesOpen}
-        onOpenChange={setCategoriesOpen}
-      />
-    </div>
+            {pageCount > 1 && (
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Page {page} of {pageCount} ({total} total)
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    disabled={page >= pageCount}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <BlogCategoryManager
+          open={categoriesOpen}
+          onOpenChange={setCategoriesOpen}
+        />
+      </div>
+    </PermissionGate>
   );
 }

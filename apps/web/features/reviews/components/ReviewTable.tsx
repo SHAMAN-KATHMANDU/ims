@@ -5,6 +5,7 @@ import { Check, Star, Trash2, X } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/features/permissions";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 import type { Review, ReviewStatus } from "../hooks/use-reviews";
@@ -128,37 +129,43 @@ export function ReviewTable({
         const busy = pendingId === r.id;
         return (
           <div className="inline-flex gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy || r.status === "APPROVED"}
-              onClick={() => onApprove(r)}
-              aria-label="Approve review"
-            >
-              <Check className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy || r.status === "REJECTED"}
-              onClick={() => onReject(r)}
-              aria-label="Reject review"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              onClick={() => onDelete(r)}
-              aria-label="Delete review"
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
-            </Button>
+            <Can perm="WEBSITE.REVIEWS.APPROVE" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy || r.status === "APPROVED"}
+                onClick={() => onApprove(r)}
+                aria-label="Approve review"
+              >
+                <Check className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Can>
+            <Can perm="WEBSITE.REVIEWS.REJECT" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy || r.status === "REJECTED"}
+                onClick={() => onReject(r)}
+                aria-label="Reject review"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Can>
+            <Can perm="WEBSITE.REVIEWS.DELETE" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => onDelete(r)}
+                aria-label="Delete review"
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </Can>
           </div>
         );
       }}

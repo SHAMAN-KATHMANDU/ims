@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Can, PermissionGate } from "@/features/permissions";
 import { useToast } from "@/hooks/useToast";
 import {
   useTenantPages,

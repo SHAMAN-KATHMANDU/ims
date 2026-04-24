@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Can } from "@/features/permissions";
 import { useToast } from "@/hooks/useToast";
 import type { BlogPostListItem } from "../services/tenant-blog.service";
 import { useDeleteBlogPost } from "../hooks/use-tenant-blog";
@@ -86,15 +87,17 @@ export function BlogPostListRow({
           {formatDate(post.publishedAt)}
         </TableCell>
         <TableCell className="text-right">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            disabled={deleteMutation.isPending}
-            aria-label={`Delete ${post.title}`}
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-          </Button>
+          <Can perm="WEBSITE.BLOG.DELETE">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              aria-label={`Delete ${post.title}`}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </Can>
         </TableCell>
       </TableRow>
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

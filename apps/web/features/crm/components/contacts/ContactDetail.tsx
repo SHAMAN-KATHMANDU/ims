@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { Can } from "@/features/permissions";
 import type {
   ContactDetail as ContactDetailType,
   ContactTag,
@@ -1132,31 +1133,35 @@ export function ContactDetail({
 
             {/* ── NOTES ────────────────────────────────────────────────── */}
             <TabsContent value="notes" className="mt-0 p-6 space-y-4">
-              <form
-                onSubmit={handleAddNote}
-                className="rounded-lg border bg-card"
-              >
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">Add Note</h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <Textarea
-                    placeholder="Write a note..."
-                    value={noteContent}
-                    onChange={(e) => setNoteContent(e.target.value)}
-                    rows={3}
-                    className="text-sm resize-none"
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!noteContent.trim() || addNoteMutation.isPending}
-                    className="w-full"
-                  >
-                    {addNoteMutation.isPending ? "Adding..." : "Add Note"}
-                  </Button>
-                </div>
-              </form>
+              <Can perm="CRM.CONTACT_NOTES.CREATE">
+                <form
+                  onSubmit={handleAddNote}
+                  className="rounded-lg border bg-card"
+                >
+                  <div className="px-4 py-3 border-b">
+                    <h3 className="text-sm font-semibold">Add Note</h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <Textarea
+                      placeholder="Write a note..."
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      rows={3}
+                      className="text-sm resize-none"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={
+                        !noteContent.trim() || addNoteMutation.isPending
+                      }
+                      className="w-full"
+                    >
+                      {addNoteMutation.isPending ? "Adding..." : "Add Note"}
+                    </Button>
+                  </div>
+                </form>
+              </Can>
 
               {contact.notes && contact.notes.length > 0 ? (
                 <div className="space-y-2">

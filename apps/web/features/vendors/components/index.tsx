@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { Can } from "@/features/permissions";
 import {
   useVendorsPaginated,
   useCreateVendor,
@@ -394,19 +395,21 @@ export function VendorPage() {
         title="Vendors"
         description="Manage product vendors and their contact information."
         actions={
-          isMobile ? (
-            <Button asChild>
-              <Link href={`${basePath}/vendors/new`} className="gap-2">
-                <Plus className="h-4 w-4" aria-hidden="true" />
+          <Can perm="INVENTORY.VENDORS.CREATE">
+            {isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/vendors/new`} className="gap-2">
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  New Vendor
+                </Link>
+              </Button>
+            ) : (
+              <Button onClick={handleOpenCreate}>
+                <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                 New Vendor
-              </Link>
-            </Button>
-          ) : (
-            <Button onClick={handleOpenCreate}>
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              New Vendor
-            </Button>
-          )
+              </Button>
+            )}
+          </Can>
         }
       />
 
@@ -716,25 +719,29 @@ export function VendorPage() {
                           >
                             <Eye className="h-4 w-4" aria-hidden="true" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenEdit(vendor)}
-                            aria-label={`Edit ${vendor.name}`}
-                          >
-                            <Edit className="h-4 w-4" aria-hidden="true" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(vendor)}
-                            aria-label={`Delete ${vendor.name}`}
-                          >
-                            <Trash2
-                              className="h-4 w-4 text-destructive"
-                              aria-hidden="true"
-                            />
-                          </Button>
+                          <Can perm="INVENTORY.VENDORS.UPDATE">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(vendor)}
+                              aria-label={`Edit ${vendor.name}`}
+                            >
+                              <Edit className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </Can>
+                          <Can perm="INVENTORY.VENDORS.DELETE">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(vendor)}
+                              aria-label={`Delete ${vendor.name}`}
+                            >
+                              <Trash2
+                                className="h-4 w-4 text-destructive"
+                                aria-hidden="true"
+                              />
+                            </Button>
+                          </Can>
                         </div>
                       </TableCell>
                     </TableRow>

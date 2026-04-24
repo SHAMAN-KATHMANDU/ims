@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { Can, PermissionGate } from "@/features/permissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMemberSelectionStore,
@@ -294,13 +295,14 @@ export function MembersPage() {
   );
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <h1 className="text-3xl font-bold">Members</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your customer members for discounts
-        </p>
-      </div>
+    <PermissionGate perm="SETTINGS.MEMBERS.VIEW">
+      <div className="space-y-6 pb-24">
+        <div>
+          <h1 className="text-3xl font-bold">Members</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your customer members for discounts
+          </p>
+        </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -381,7 +383,7 @@ export function MembersPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {canManageMembers && (
+          <Can perm="SETTINGS.MEMBERS.EXPORT" fallback={null}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -414,8 +416,8 @@ export function MembersPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-          {canManageMembers && (
+          </Can>
+          <Can perm="SETTINGS.MEMBERS.CREATE" fallback={null}>
             <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
               <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
                 {isMobile ? (
@@ -436,9 +438,9 @@ export function MembersPage() {
                 )}
               </FeatureGuard>
             </EnvFeatureGuard>
-          )}
-          {canManageMembers &&
-            (isMobile ? (
+          </Can>
+          <Can perm="SETTINGS.MEMBERS.CREATE" fallback={null}>
+            {isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/members/new`} className="gap-2">
                   <Plus className="h-4 w-4" aria-hidden="true" />

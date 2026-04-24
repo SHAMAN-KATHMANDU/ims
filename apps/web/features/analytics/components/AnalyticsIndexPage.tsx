@@ -22,6 +22,7 @@ import {
   Banknote,
   Handshake,
 } from "lucide-react";
+import { PermissionGate } from "@/features/permissions";
 import { PageHeader } from "@/components/layout/page-header";
 
 export function AnalyticsIndexPage() {
@@ -78,42 +79,44 @@ export function AnalyticsIndexPage() {
   );
 
   return (
-    <div
-      className="reports-container min-w-0 w-full max-w-full space-y-8"
-      data-reports
-    >
-      <PageHeader
-        title="Analytics"
-        description="Choose a report to view detailed analytics and metrics. Key numbers are at a glance; drill into each area for trends and breakdowns."
-      />
-
-      <section
-        aria-label="Report categories"
-        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    <PermissionGate perm="REPORTS.ANALYTICS.VIEW">
+      <div
+        className="reports-container min-w-0 w-full max-w-full space-y-8"
+        data-reports
       >
-        {reports.map((r) => {
-          const Icon = r.icon;
-          return (
-            <Link key={r.path} href={r.path} className="block min-w-0 group">
-              <Card className="min-w-0 h-full border border-border/80 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md group-hover:bg-muted/30">
-                <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3 pt-5 px-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <CardTitle className="text-base font-semibold leading-tight">
-                    {r.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-5 pb-5 pt-0">
-                  <CardDescription className="text-sm leading-relaxed">
-                    {r.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </section>
-    </div>
+        <PageHeader
+          title="Analytics"
+          description="Choose a report to view detailed analytics and metrics. Key numbers are at a glance; drill into each area for trends and breakdowns."
+        />
+
+        <section
+          aria-label="Report categories"
+          className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {reports.map((r) => {
+            const Icon = r.icon;
+            return (
+              <Link key={r.path} href={r.path} className="block min-w-0 group">
+                <Card className="min-w-0 h-full border border-border/80 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md group-hover:bg-muted/30">
+                  <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3 pt-5 px-5">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="text-base font-semibold leading-tight">
+                      {r.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-5 pb-5 pt-0">
+                    <CardDescription className="text-sm leading-relaxed">
+                      {r.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </section>
+      </div>
+    </PermissionGate>
   );
 }

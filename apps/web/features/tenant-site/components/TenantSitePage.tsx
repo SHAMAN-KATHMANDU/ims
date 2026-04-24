@@ -49,6 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Can, PermissionGate } from "@/features/permissions";
 import { useToast } from "@/hooks/useToast";
 import {
   useSiteConfig,
@@ -181,148 +182,162 @@ export function TenantSitePage() {
   // ---- Main ---------------------------------------------------------------
 
   return (
-    <div className="space-y-6">
-      <PageHeading />
+    <PermissionGate perm="WEBSITE.SITE.VIEW">
+      <div className="space-y-6">
+        <PageHeading />
 
-      {/* Status + primary actions */}
-      <Card>
-        <CardHeader className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Globe className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="leading-tight">
-                  {config.isPublished ? "Your site is live" : "Draft mode"}
-                </CardTitle>
-                <Badge variant={config.isPublished ? "default" : "secondary"}>
-                  {config.isPublished ? "Published" : "Draft"}
-                </Badge>
-                {config.template && (
-                  <Badge variant="outline" className="font-normal">
-                    {config.template.name}
-                  </Badge>
-                )}
+        {/* Status + primary actions */}
+        <Card>
+          <CardHeader className="flex flex-col gap-4 pb-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Globe className="h-5 w-5" aria-hidden="true" />
               </div>
-              <CardDescription className="mt-1.5">
-                {config.isPublished
-                  ? "Changes you save will go live within a few seconds."
-                  : canPublish
-                    ? "Ready to publish -- review your settings and hit Publish when ready."
-                    : "Pick a template in the Branding tab before publishing."}
-              </CardDescription>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="leading-tight">
+                    {config.isPublished ? "Your site is live" : "Draft mode"}
+                  </CardTitle>
+                  <Badge variant={config.isPublished ? "default" : "secondary"}>
+                    {config.isPublished ? "Published" : "Draft"}
+                  </Badge>
+                  {config.template && (
+                    <Badge variant="outline" className="font-normal">
+                      {config.template.name}
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription className="mt-1.5">
+                  {config.isPublished
+                    ? "Changes you save will go live within a few seconds."
+                    : canPublish
+                      ? "Ready to publish -- review your settings and hit Publish when ready."
+                      : "Pick a template in the Branding tab before publishing."}
+                </CardDescription>
+              </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Can perm="WEBSITE.SITE.UPDATE">
+                <Button asChild>
+                  <a
+                    href={`/${workspaceSlug}/site-editor`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Sparkles className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                    Open design editor
+                    <ExternalLink
+                      className="ml-1.5 h-3 w-3"
+                      aria-hidden="true"
+                    />
+                  </a>
+                </Button>
+              </Can>
+              <Can perm="WEBSITE.SITE.DEPLOY">
+                {config.isPublished ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleUnpublish}
+                    disabled={unpublishMutation.isPending}
+                  >
+                    <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                    {unpublishMutation.isPending
+                      ? "Unpublishing..."
+                      : "Unpublish"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={handlePublish}
+                    disabled={!canPublish || publishMutation.isPending}
+                  >
+                    <CheckCircle2
+                      className="mr-1.5 h-4 w-4"
+                      aria-hidden="true"
+                    />
+                    {publishMutation.isPending ? "Publishing..." : "Publish"}
+                  </Button>
+                )}
+              </Can>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabValue)}
+          className="gap-4"
+        >
+          <div className="overflow-x-auto">
+            <TabsList className="h-auto">
+              {TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild>
-              <a
-                href={`/${workspaceSlug}/site-editor`}
-                target="_blank"
-                rel="noopener noreferrer"
+
+          <TabsContent value="overview">
+            <SiteOverviewTab
+              config={config}
+              onGoToTab={(tab) => setActiveTab(tab as TabValue)}
+            />
+          </TabsContent>
+
+          <TabsContent value="branding" className="space-y-6">
+            <SiteTemplatePicker activeTemplateId={config.templateId} />
+            <SiteBrandingForm branding={config.branding} />
+          </TabsContent>
+
+          <TabsContent value="theme">
+            <ThemeTokensForm themeTokens={config.themeTokens} />
+          </TabsContent>
+
+          <TabsContent value="navigation">
+            <NavMenuPanel />
+          </TabsContent>
+
+          <TabsContent value="contact">
+            <SiteContactForm contact={config.contact} />
+          </TabsContent>
+
+          <TabsContent value="seo">
+            <SiteSeoForm seo={config.seo} />
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6">
+            <LegacySectionsNotice />
+            <SiteSectionsPanel features={config.features} />
+          </TabsContent>
+        </Tabs>
+
+        <AlertDialog
+          open={unpublishDialogOpen}
+          onOpenChange={setUnpublishDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unpublish your site?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Visitors will see a &quot;site unavailable&quot; page until you
+                republish.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmUnpublish}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                <Sparkles className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                Open design editor
-                <ExternalLink className="ml-1.5 h-3 w-3" aria-hidden="true" />
-              </a>
-            </Button>
-            {config.isPublished ? (
-              <Button
-                variant="outline"
-                onClick={handleUnpublish}
-                disabled={unpublishMutation.isPending}
-              >
-                <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                {unpublishMutation.isPending ? "Unpublishing..." : "Unpublish"}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={handlePublish}
-                disabled={!canPublish || publishMutation.isPending}
-              >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                {publishMutation.isPending ? "Publishing..." : "Publish"}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as TabValue)}
-        className="gap-4"
-      >
-        <div className="overflow-x-auto">
-          <TabsList className="h-auto">
-            {TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-
-        <TabsContent value="overview">
-          <SiteOverviewTab
-            config={config}
-            onGoToTab={(tab) => setActiveTab(tab as TabValue)}
-          />
-        </TabsContent>
-
-        <TabsContent value="branding" className="space-y-6">
-          <SiteTemplatePicker activeTemplateId={config.templateId} />
-          <SiteBrandingForm branding={config.branding} />
-        </TabsContent>
-
-        <TabsContent value="theme">
-          <ThemeTokensForm themeTokens={config.themeTokens} />
-        </TabsContent>
-
-        <TabsContent value="navigation">
-          <NavMenuPanel />
-        </TabsContent>
-
-        <TabsContent value="contact">
-          <SiteContactForm contact={config.contact} />
-        </TabsContent>
-
-        <TabsContent value="seo">
-          <SiteSeoForm seo={config.seo} />
-        </TabsContent>
-
-        <TabsContent value="advanced" className="space-y-6">
-          <LegacySectionsNotice />
-          <SiteSectionsPanel features={config.features} />
-        </TabsContent>
-      </Tabs>
-
-      <AlertDialog
-        open={unpublishDialogOpen}
-        onOpenChange={setUnpublishDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unpublish your site?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Visitors will see a &quot;site unavailable&quot; page until you
-              republish.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmUnpublish}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Unpublish
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+                Unpublish
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </PermissionGate>
   );
 }
 
