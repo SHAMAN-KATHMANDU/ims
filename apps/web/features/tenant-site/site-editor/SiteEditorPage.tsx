@@ -578,6 +578,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
                         onInlineEdit={handleInlineEdit}
                         onReorder={handleReorder}
                         onInsertAt={handleInsertAt}
+                        blocks={blocks}
                       />
                     )}
                   </div>

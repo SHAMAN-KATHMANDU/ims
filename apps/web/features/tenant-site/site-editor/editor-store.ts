@@ -28,6 +28,14 @@ export interface EditorSnapshot {
   blocks: BlockNode[];
 }
 
+/** Serialisable bounding rect (mirrors DOMRect.toJSON() shape). */
+export interface BlockRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface EditorState {
   past: EditorSnapshot[];
   present: EditorSnapshot;
@@ -37,6 +45,14 @@ interface EditorState {
   /** Clean state matches the last loaded/saved tree; dirty means edits pending. */
   dirty: boolean;
 
+  // ---- hover / selection rect (populated by EditorBridge for cross-origin overlays) ----
+  /** Block currently under the cursor (cross-origin postMessage path). */
+  hoveredBlockId: string | null;
+  /** Bounding rect of hovered block in iframe-document coordinates. */
+  hoveredBlockRect: BlockRect | null;
+  /** Bounding rect of the selected block in iframe-document coordinates. */
+  selectedBlockRect: BlockRect | null;
+
   // ---- lifecycle ----
   /** Replace the whole tree — used after initial load or after a publish. */
   load: (blocks: BlockNode[]) => void;
@@ -45,6 +61,9 @@ interface EditorState {
 
   // ---- selection ----
   setSelected: (id: string | null) => void;
+  setHoveredBlockId: (id: string | null) => void;
+  setHoveredBlockRect: (rect: BlockRect | null) => void;
+  setSelectedBlockRect: (rect: BlockRect | null) => void;
 
   // ---- tree mutations ----
   addBlock: (block: BlockNode, atIndex?: number) => void;
@@ -115,6 +134,9 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     future: [],
     selectedId: null,
     dirty: false,
+    hoveredBlockId: null,
+    hoveredBlockRect: null,
+    selectedBlockRect: null,
 
     load: (blocks) =>
       set({
@@ -128,6 +150,9 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     markClean: () => set({ dirty: false }),
 
     setSelected: (id) => set({ selectedId: id }),
+    setHoveredBlockId: (id) => set({ hoveredBlockId: id }),
+    setHoveredBlockRect: (rect) => set({ hoveredBlockRect: rect }),
+    setSelectedBlockRect: (rect) => set({ selectedBlockRect: rect }),
 
     addBlock: (block, atIndex) => {
       const { present } = get();
@@ -300,3 +325,13 @@ export const selectCanUndo = (s: EditorState) => s.canUndo;
 export const selectCanRedo = (s: EditorState) => s.canRedo;
 export const selectCanUndoResult = (s: EditorState) => s.canUndo();
 export const selectCanRedoResult = (s: EditorState) => s.canRedo();
+
+// Hover / selection rect selectors (for CanvasOverlay cross-origin path)
+export const selectHoveredBlockId = (s: EditorState) => s.hoveredBlockId;
+export const selectHoveredBlockRect = (s: EditorState) => s.hoveredBlockRect;
+export const selectSelectedBlockRect = (s: EditorState) => s.selectedBlockRect;
+export const selectSetHoveredBlockId = (s: EditorState) => s.setHoveredBlockId;
+export const selectSetHoveredBlockRect = (s: EditorState) =>
+  s.setHoveredBlockRect;
+export const selectSetSelectedBlockRect = (s: EditorState) =>
+  s.setSelectedBlockRect;

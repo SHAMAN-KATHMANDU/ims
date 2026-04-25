@@ -14,6 +14,8 @@
 
 import type { Metadata } from "next";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
+import { EditorPreviewShell } from "@/components/blocks/EditorPreviewShell";
+import { EditorBridge } from "@/components/editor-bridge";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
@@ -43,6 +45,8 @@ type Props = {
     productId?: string | string[];
     pageId?: string | string[];
     grid?: string | string[];
+    /** Injected by PreviewFrame — activates EditorBridge + EditorPreviewShell. */
+    _editor?: string | string[];
   }>;
 };
 
@@ -160,6 +164,8 @@ export default async function SitePreviewRoute({
   const productId = readString(sp.productId);
   const showGrid =
     sp.grid === "1" || (Array.isArray(sp.grid) && sp.grid[0] === "1");
+  const isEditorMode =
+    sp._editor === "1" || (Array.isArray(sp._editor) && sp._editor[0] === "1");
 
   if (!token) {
     return <ErrorShell message="Missing preview token in URL." />;
@@ -205,6 +211,12 @@ export default async function SitePreviewRoute({
     <>
       {showGrid && <GridOverlay />}
       <PreviewBanner scope={scope} />
+      {/*
+       * EditorBridge: only when loaded from the site editor.
+       * Attaches click/hover listeners and posts block-selection events to
+       * the parent window — enables cross-origin click-to-select.
+       */}
+      {isEditorMode && <EditorBridge />}
       <SiteHeader
         site={site}
         host={dataContext.host}
@@ -213,7 +225,19 @@ export default async function SitePreviewRoute({
       />
       <main>
         {blocks.length > 0 ? (
-          <BlockRenderer nodes={blocks} dataContext={dataContext} />
+          isEditorMode ? (
+            /*
+             * EditorPreviewShell: client-side shell that listens for
+             * `editor:block-tree` postMessages from PreviewFrame and
+             * re-renders blocks in real time (Bug #3 fix — ~150 ms latency).
+             */
+            <EditorPreviewShell
+              initialBlocks={blocks}
+              dataContext={dataContext}
+            />
+          ) : (
+            <BlockRenderer nodes={blocks} dataContext={dataContext} />
+          )
         ) : (
           <EmptyState scope={scope} />
         )}
