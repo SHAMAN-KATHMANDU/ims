@@ -33,6 +33,7 @@ interface IPermissionService {
   getRoleById(tenantId: string, roleId: string): Promise<any>;
   updateRole(tenantId: string, roleId: string, data: any): Promise<any>;
   deleteRole(tenantId: string, roleId: string): Promise<void>;
+  listRoleMembers(tenantId: string, roleId: string): Promise<any[]>;
   assignUserToRole(
     tenantId: string,
     roleId: string,
@@ -192,6 +193,28 @@ class PermissionsController {
   };
 
   // ============ Role Member Management ============
+
+  /**
+   * GET /roles/:roleId/members
+   * List users assigned to a role in the tenant.
+   */
+  listRoleMembers = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const { roleId } = req.params;
+      const members = await this.service.listRoleMembers(tenantId, roleId);
+      return ok(res, { members });
+    } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return fail(
+          res,
+          (error as AppError).message,
+          (error as AppError).statusCode,
+        );
+      }
+      return sendControllerError(req, res, error, "listRoleMembers");
+    }
+  };
 
   /**
    * POST /roles/:roleId/members

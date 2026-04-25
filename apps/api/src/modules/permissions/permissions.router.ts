@@ -33,6 +33,7 @@ const realService = {
   getRoleById: roleService.getRoleById,
   updateRole: roleService.updateRole,
   deleteRole: roleService.deleteRole,
+  listRoleMembers: roleService.listRoleMembers,
   assignUserToRole: roleService.assignUserToRole,
   unassignUserFromRole: roleService.unassignUserFromRole,
   listPermissionOverwrites: roleService.listPermissionOverwrites,
@@ -305,6 +306,37 @@ permissionsRouter.delete(
 );
 
 // ============ Role Member Management ============
+
+/**
+ * @swagger
+ * /roles/{roleId}/members:
+ *   get:
+ *     summary: List members of a role
+ *     description: Returns users assigned to the role in the current tenant.
+ *     tags: [Permissions - Members]
+ *     operationId: listRoleMembers
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: roleId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: List of members
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Role not found
+ */
+permissionsRouter.get(
+  "/roles/:roleId/members",
+  requirePermission("SETTINGS.ROLES.VIEW", workspaceLocator()),
+  asyncHandler(permissionsController.listRoleMembers),
+);
 
 /**
  * @swagger

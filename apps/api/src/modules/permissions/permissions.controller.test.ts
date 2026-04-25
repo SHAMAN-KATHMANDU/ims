@@ -54,6 +54,7 @@ const mockService = {
   getRoleById: vi.fn(),
   updateRole: vi.fn(),
   deleteRole: vi.fn(),
+  listRoleMembers: vi.fn().mockResolvedValue([]),
   assignUserToRole: vi.fn(),
   unassignUserFromRole: vi.fn(),
   listPermissionOverwrites: vi.fn(),

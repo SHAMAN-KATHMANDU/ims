@@ -215,6 +215,37 @@ export const roleService = {
   },
 
   // ── Role members ────────────────────────────────────────────────────────
+  listRoleMembers: async (
+    tenantId: string,
+    roleId: string,
+  ): Promise<
+    Array<{
+      userId: string;
+      username: string;
+      role: string;
+      assignedAt: string;
+    }>
+  > => {
+    const role = await prisma.rbacRole.findFirst({
+      where: { id: roleId, tenantId },
+      select: { id: true, name: true },
+    });
+    if (!role || isHiddenRoleName(role.name)) {
+      throw createError("Role not found", 404);
+    }
+    const rows = await prisma.userRole.findMany({
+      where: { roleId, tenantId },
+      include: { user: { select: { id: true, username: true, role: true } } },
+      orderBy: { assignedAt: "desc" },
+    });
+    return rows.map((r) => ({
+      userId: r.user.id,
+      username: r.user.username,
+      role: r.user.role,
+      assignedAt: r.assignedAt.toISOString(),
+    }));
+  },
+
   assignUserToRole: async (
     tenantId: string,
     roleId: string,
