@@ -36,7 +36,7 @@ import {
   GitBranch,
   LayoutGrid,
   BrainCircuit,
-  PenSquare,
+  Globe,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
 import {
@@ -286,6 +286,11 @@ export const dashboardNavSections: NavSection[] = [
         envFeature: EnvFeature.DISCOUNTS,
         permModule: "INVENTORY" as const,
       },
+    ],
+  },
+  {
+    title: "MARKETING",
+    items: [
       {
         path: "promos",
         label: "Promotions",
@@ -294,6 +299,19 @@ export const dashboardNavSections: NavSection[] = [
         envFeature: EnvFeature.PROMOTIONS,
         feature: Feature.PROMO_MANAGEMENT,
         permModule: "INVENTORY" as const,
+      },
+      {
+        // Website / tenant-site editor — opens in a new tab so the editor
+        // (Webflow-style block builder) gets its own full-screen surface.
+        // Routes live at /[workspace]/site-editor (lean (editor) shell).
+        path: "site-editor",
+        label: "Website",
+        icon: Globe,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        openInNewTab: true,
+        permModule: "WEBSITE" as const,
       },
     ],
   },
@@ -373,16 +391,6 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.SETTINGS,
         permModule: "SETTINGS" as const,
-      },
-      {
-        path: "site-editor",
-        label: "Website Designer",
-        icon: PenSquare,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.TENANT_WEBSITES,
-        tenantFeature: "websiteEnabled",
-        openInNewTab: true,
-        permModule: "WEBSITE" as const,
       },
     ],
   },

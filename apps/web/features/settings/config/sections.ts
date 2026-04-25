@@ -115,17 +115,10 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     envFeature: EnvFeature.CRM_WORKFLOWS,
     feature: Feature.SALES_PIPELINE,
   },
-  // Website / tenant site editor — requires TENANT_WEBSITES env flag.
-  // Sub-pages (blog, pages, design …) are handled by SiteTabsNav within site/layout.tsx.
-  {
-    id: "site",
-    label: "Website",
-    description: "Pages, blog, design and navigation",
-    path: "settings/site",
-    group: "workspace",
-    roles: ["admin", "superAdmin"],
-    envFeature: EnvFeature.TENANT_WEBSITES,
-  },
+  // Website moved out of Settings into the top-level MARKETING sidebar
+  // section (apps/web/constants/dashboard-nav.tsx) — it now opens as its
+  // own page (the site-editor) rather than nesting inside settings.
+  // /settings/site/* routes still resolve for direct links / bookmarks.
 
   // ── Platform group (superAdmin / platformAdmin only) ───────────────────────
   // User logs — superAdmin only; requires AUDIT_LOGS env flag AND AUDIT_LOGS plan feature.
