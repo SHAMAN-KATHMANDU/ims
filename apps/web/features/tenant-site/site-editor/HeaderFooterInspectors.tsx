@@ -28,7 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useEditorStore, selectUpdateBlockProps } from "./editor-store";
+import {
+  useEditorStore,
+  selectUpdateBlockProps,
+  selectBlocks,
+} from "./editor-store";
 import type {
   NavBarProps,
   FooterColumnsProps,
@@ -1089,4 +1093,102 @@ export function CustomInspectorPanel({ block }: { block: BlockNode }) {
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Pseudo-inspectors — shown when the Header / Footer pseudo-row is selected
+// in BlockTreePanel. They scan the block tree for header/footer-related blocks
+// and render each one's custom inspector stacked in sequence.
+// ---------------------------------------------------------------------------
+
+const HEADER_BLOCK_KINDS = new Set([
+  "utility-bar",
+  "nav-bar",
+  "logo-mark",
+] as const);
+
+const FOOTER_BLOCK_KINDS = new Set([
+  "footer-columns",
+  "social-links",
+  "payment-icons",
+  "copyright-bar",
+] as const);
+
+function PseudoInspectorEmpty({
+  label,
+  hint,
+}: {
+  label: string;
+  hint: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 p-6 text-center">
+      <div className="text-[13px] font-medium text-foreground/80">{label}</div>
+      <div className="text-[11.5px] text-muted-foreground/70 max-w-[220px]">
+        {hint}
+      </div>
+    </div>
+  );
+}
+
+export function HeaderPseudoInspector() {
+  const blocks = useEditorStore(selectBlocks);
+  const headerBlocks = blocks.filter((b) =>
+    HEADER_BLOCK_KINDS.has(
+      b.kind as typeof HEADER_BLOCK_KINDS extends Set<infer T> ? T : never,
+    ),
+  );
+
+  if (headerBlocks.length === 0) {
+    return (
+      <PseudoInspectorEmpty
+        label="No header blocks"
+        hint='Add a "Nav bar", "Utility bar", or "Logo mark" block to configure the site header.'
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4">
+      {headerBlocks.map((block) => (
+        <div key={block.id} className="space-y-3">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 pb-1 border-b border-stone-100">
+            {block.kind}
+          </div>
+          <CustomInspectorPanel block={block} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function FooterPseudoInspector() {
+  const blocks = useEditorStore(selectBlocks);
+  const footerBlocks = blocks.filter((b) =>
+    FOOTER_BLOCK_KINDS.has(
+      b.kind as typeof FOOTER_BLOCK_KINDS extends Set<infer T> ? T : never,
+    ),
+  );
+
+  if (footerBlocks.length === 0) {
+    return (
+      <PseudoInspectorEmpty
+        label="No footer blocks"
+        hint='Add a "Footer columns", "Social links", "Payment icons", or "Copyright bar" block to configure the site footer.'
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4">
+      {footerBlocks.map((block) => (
+        <div key={block.id} className="space-y-3">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 pb-1 border-b border-stone-100">
+            {block.kind}
+          </div>
+          <CustomInspectorPanel block={block} />
+        </div>
+      ))}
+    </div>
+  );
 }

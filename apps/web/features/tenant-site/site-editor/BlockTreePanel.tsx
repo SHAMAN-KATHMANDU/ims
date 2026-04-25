@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Copy,
   GripVertical,
+  LayoutTemplate,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -92,6 +93,14 @@ export function BlockTreePanel({ onOpenPalette, onContextMenu }: Props) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {/* ── Header pseudo-row (always pinned at top, non-draggable) ── */}
+        <PseudoBlockRow
+          pseudoId="header"
+          label="Header"
+          selectedId={selectedId}
+          onSelect={setSelected}
+        />
+
         {blocks.length === 0 ? (
           <div className="p-6 text-center text-xs text-muted-foreground">
             No blocks yet. Click <strong>Add</strong> to insert your first one.
@@ -123,10 +132,79 @@ export function BlockTreePanel({ onOpenPalette, onContextMenu }: Props) {
             </SortableContext>
           </DndContext>
         )}
+
+        {/* ── Footer pseudo-row (always pinned at bottom, non-draggable) ── */}
+        <PseudoBlockRow
+          pseudoId="footer"
+          label="Footer"
+          selectedId={selectedId}
+          onSelect={setSelected}
+        />
       </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// PseudoBlockRow — non-draggable, non-deletable pinned rows for Header/Footer
+// ---------------------------------------------------------------------------
+
+function PseudoBlockRow({
+  pseudoId,
+  label,
+  selectedId,
+  onSelect,
+}: {
+  pseudoId: "header" | "footer";
+  label: string;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const selected = selectedId === pseudoId;
+  return (
+    <div className="px-2 py-0.5">
+      <div
+        className={`flex items-center gap-1 rounded-md border px-2 py-1 cursor-pointer ${
+          selected
+            ? "border-primary bg-primary/5"
+            : "border-transparent hover:border-border"
+        }`}
+      >
+        {/* Static indent placeholder to match tree-node layout */}
+        <span className="w-5 shrink-0" />
+        {/* No drag handle — pseudo-rows are non-draggable */}
+        <span className="flex h-6 w-4 shrink-0 items-center justify-center text-muted-foreground/30">
+          <LayoutTemplate className="h-3 w-3" aria-hidden="true" />
+        </span>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- PseudoBlockRow click selects header/footer; keyboard navigation via button below */}
+        <button
+          type="button"
+          onClick={() => onSelect(pseudoId)}
+          className="min-w-0 flex-1 text-left"
+          aria-pressed={selected}
+          aria-label={`Select ${label} configuration`}
+        >
+          <div className="flex items-center gap-1">
+            <span className="truncate text-xs font-medium">{label}</span>
+            <span className="shrink-0 text-[9px] text-muted-foreground/60 italic">
+              global
+            </span>
+          </div>
+          <div className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">
+            {pseudoId}
+          </div>
+        </button>
+        {/* Spacer to align with the copy + delete icons on real rows */}
+        <span className="w-6 shrink-0" />
+        <span className="w-6 shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TreeNode — a single sortable block row with collapse + children
+// ---------------------------------------------------------------------------
 
 function TreeNode({
   block,
