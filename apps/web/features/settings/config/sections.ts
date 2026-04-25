@@ -68,7 +68,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "users",
     label: "Users",
     description: "Invite, edit and manage workspace members",
-    path: "users",
+    path: "settings/users",
     group: "workspace",
     roles: ["admin", "superAdmin"],
     envFeature: EnvFeature.USERS_MANAGEMENT,

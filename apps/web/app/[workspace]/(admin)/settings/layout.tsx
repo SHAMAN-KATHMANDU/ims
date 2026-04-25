@@ -37,19 +37,29 @@ const enabledEnvFlagsSet =
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
- * A section is "active" when the current pathname exactly matches its href,
- * OR when the pathname is a descendant (e.g. /settings/site/blog is under /settings/site).
+ * Compute the single best-matching active href for the current pathname:
+ * the longest section href that is either an exact match or a strict prefix
+ * (with a `/` boundary). This avoids parent + child both lighting up at
+ * once — e.g. on /settings/crm/workflows only the CRM workflows item is
+ * active, not the CRM Settings item.
  *
- * The root "general" section (path === "settings") is matched exactly only, to
- * prevent it from becoming active for every settings sub-route.
+ * The root "general" section (href = /workspace/settings) is special-cased
+ * to exact match only, so it doesn't claim every /settings/* descendant.
  */
-function isSectionActive(
-  href: string,
-  sectionId: string,
+function pickActiveHref(
+  hrefs: Array<{ id: string; href: string }>,
   pathname: string,
-): boolean {
-  if (sectionId === "general") return pathname === href;
-  return pathname === href || pathname.startsWith(href + "/");
+): string | null {
+  let best: { id: string; href: string } | null = null;
+  for (const item of hrefs) {
+    const exact = pathname === item.href;
+    const isGeneral = item.id === "general";
+    const matches =
+      exact || (!isGeneral && pathname.startsWith(item.href + "/"));
+    if (!matches) continue;
+    if (!best || item.href.length > best.href.length) best = item;
+  }
+  return best?.href ?? null;
 }
 
 // ── Layout component ───────────────────────────────────────────────────────────
@@ -108,6 +118,21 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
     return map;
   }, [visibleSections]);
 
+  // Compute the single best-matching active href across every visible
+  // section so parent + child don't both light up (e.g. settings/crm vs
+  // settings/crm/workflows). Reused via lookup below.
+  const activeHref = useMemo(
+    () =>
+      pickActiveHref(
+        visibleSections.map((s) => ({
+          id: s.id,
+          href: `/${workspace}/${s.path}`,
+        })),
+        pathname,
+      ),
+    [visibleSections, workspace, pathname],
+  );
+
   return (
     <div className="flex gap-8">
       {/* ── Left nav rail ───────────────────────────────────────────────── */}
@@ -124,7 +149,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
               <ul role="list" className="space-y-0.5">
                 {items.map((section) => {
                   const href = `/${workspace}/${section.path}`;
-                  const active = isSectionActive(href, section.id, pathname);
+                  const active = href === activeHref;
 
                   return (
                     <li key={section.id}>
