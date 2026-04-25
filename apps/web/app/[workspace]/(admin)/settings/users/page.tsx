@@ -1,0 +1,25 @@
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { PermissionGate } from "@/features/permissions";
+import { UsersPage } from "@/features/users";
+
+export const metadata = { title: "Users" };
+
+/**
+ * /settings/users — workspace user management.
+ * Surfaced inside the SettingsShell so it shares the settings sub-nav.
+ * Existing /users route under (superadmin) still works for direct links;
+ * the settings nav points at this canonical location.
+ */
+export default function SettingsUsersPage() {
+  return (
+    <AuthGuard
+      roles={["admin", "superAdmin"]}
+      unauthorizedPath={WORKSPACE_ROOT}
+    >
+      <PermissionGate perm="SETTINGS.USERS.VIEW">
+        <UsersPage />
+      </PermissionGate>
+    </AuthGuard>
+  );
+}

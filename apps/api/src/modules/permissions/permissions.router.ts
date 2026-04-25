@@ -18,52 +18,26 @@ import { asyncHandler } from "@/middlewares/errorHandler";
 import PermissionsController from "./permissions.controller";
 
 import { permissionService } from "./permission.service";
+import { roleService } from "./role.service";
 import { toWire } from "@/shared/permissions/bitset";
 
 /**
- * Service shim — the resolution methods delegate to the real
- * `permissionService` so `/me/effective` and `/me/bulk-resolve` return real
- * bitsets (not hardcoded "AA==" stubs). Role/overwrite CRUD methods remain
- * stubbed; they're owned by future RBAC admin work and aren't on this hotfix's
- * critical path. Buffer→base64 conversion happens here because the controller
- * interface speaks strings on the wire.
+ * Service composed of the real `roleService` (Prisma-backed CRUD for roles
+ * and overwrites) plus thin Buffer→base64 wrappers around the resolution
+ * methods on `permissionService`. The controller interface speaks strings
+ * on the wire, so the wrappers handle that conversion here.
  */
-const stubService = {
-  createRole: async (_tenantId: string, data: any) => ({ id: "stub", ...data }),
-  listRoles: async (_tenantId: string, _params: any) => ({
-    roles: [],
-    pagination: {},
-  }),
-  getRoleById: async (_tenantId: string, roleId: string) => ({ id: roleId }),
-  updateRole: async (_tenantId: string, roleId: string, data: any) => ({
-    id: roleId,
-    ...data,
-  }),
-  deleteRole: async (_tenantId: string, _roleId: string) => {},
-  assignUserToRole: async (
-    _tenantId: string,
-    roleId: string,
-    userId: string,
-  ) => ({ userId, roleId }),
-  unassignUserFromRole: async (
-    _tenantId: string,
-    _roleId: string,
-    _userId: string,
-  ) => {},
-  listPermissionOverwrites: async (
-    _tenantId: string,
-    _resourceId: string,
-  ) => [],
-  upsertPermissionOverwrite: async (
-    _tenantId: string,
-    _resourceId: string,
-    data: any,
-  ) => ({ id: "stub", ...data }),
-  deletePermissionOverwrite: async (
-    _tenantId: string,
-    _resourceId: string,
-    _overwriteId: string,
-  ) => {},
+const realService = {
+  createRole: roleService.createRole,
+  listRoles: roleService.listRoles,
+  getRoleById: roleService.getRoleById,
+  updateRole: roleService.updateRole,
+  deleteRole: roleService.deleteRole,
+  assignUserToRole: roleService.assignUserToRole,
+  unassignUserFromRole: roleService.unassignUserFromRole,
+  listPermissionOverwrites: roleService.listPermissionOverwrites,
+  upsertPermissionOverwrite: roleService.upsertPermissionOverwrite,
+  deletePermissionOverwrite: roleService.deletePermissionOverwrite,
   getEffectivePermissions: async (
     tenantId: string,
     userId: string,
@@ -92,7 +66,7 @@ const stubService = {
     permissionService.resolveWorkspaceResourceId(tenantId),
 };
 
-const permissionsController = new PermissionsController(stubService);
+const permissionsController = new PermissionsController(realService);
 const permissionsRouter = Router();
 
 // ============ Role Management ============
