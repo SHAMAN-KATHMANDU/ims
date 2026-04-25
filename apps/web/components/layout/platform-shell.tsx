@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
-import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useAuth } from "@/features/auth";
 
 /**
  * Lean platform-admin shell. Deliberately separate from `DashboardLayout` so
