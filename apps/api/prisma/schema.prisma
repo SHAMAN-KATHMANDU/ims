@@ -125,6 +125,10 @@ model Tenant {
   resources           Resource[]
   permissionOverwrites PermissionOverwrite[]
 
+  // Single-source-of-truth identity (logo, contact, address, tax IDs).
+  // Website renderer + receipts + invoices all read from here.
+  businessProfile     TenantBusinessProfile?
+
   @@map("tenants")
 }
 
@@ -2871,4 +2875,59 @@ model PermissionOverwrite {
   @@index([tenantId, userId])
   // Partial unique indexes enforced in raw SQL migration (XOR constraint: roleId OR userId)
   @@map("permission_overwrites")
+}
+
+// ============================================
+// TENANT BUSINESS PROFILE
+// ============================================
+// Single source of truth for business identity (logo, contact, address,
+// tax IDs). Receipts, invoices, sale exports and the website renderer
+// all pull from here. Per-website visual overrides (theme tokens) live
+// on SiteConfig — but identity NEVER does.
+model TenantBusinessProfile {
+  id                  String    @id @default(uuid())
+  tenantId            String    @unique @map("tenant_id")
+
+  // Identity
+  legalName           String?   @map("legal_name") @db.VarChar(255)
+  displayName         String?   @map("display_name") @db.VarChar(255)
+  tagline             String?   @db.VarChar(255)
+  logoUrl             String?   @map("logo_url")
+  faviconUrl          String?   @map("favicon_url")
+
+  // Contact
+  email               String?
+  phone               String?   @db.VarChar(40)
+  alternatePhone      String?   @map("alternate_phone") @db.VarChar(40)
+  websiteUrl          String?   @map("website_url")
+
+  // Address (single primary; secondary inventory locations live in Location)
+  addressLine1        String?   @map("address_line_1")
+  addressLine2        String?   @map("address_line_2")
+  city                String?   @db.VarChar(120)
+  state               String?   @db.VarChar(120)
+  postalCode          String?   @map("postal_code") @db.VarChar(20)
+  country             String?   @db.VarChar(2) // ISO 3166-1 alpha-2
+  mapUrl              String?   @map("map_url")
+
+  // Tax / regulatory (NP-first; nullable so non-NP tenants ignore)
+  panNumber           String?   @map("pan_number") @db.VarChar(20)
+  vatNumber           String?   @map("vat_number") @db.VarChar(20)
+  registrationNumber  String?   @map("registration_number") @db.VarChar(40)
+  taxId               String?   @map("tax_id") @db.VarChar(40)
+
+  // Localization defaults
+  defaultCurrency     String    @default("NPR") @map("default_currency") @db.VarChar(8)
+  timezone            String?   @db.VarChar(64)
+
+  // Socials — JSON keeps the door open without migrations
+  // Shape: { facebook?, instagram?, x?, tiktok?, linkedin?, youtube? }
+  socials             Json?
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt      @map("updated_at")
+
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_business_profiles")
 }
