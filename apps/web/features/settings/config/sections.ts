@@ -52,6 +52,27 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "workspace",
     roles: ["admin", "superAdmin"],
   },
+  // Roles & permissions — scoped-RBAC role editor + member assignment.
+  // Page enforces SETTINGS.ROLES.MANAGE via PermissionGate.
+  {
+    id: "roles",
+    label: "Roles & permissions",
+    description: "Custom roles, permission grants and overwrites",
+    path: "settings/roles",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+  },
+  // Users — workspace user management. Lives at /[workspace]/users today;
+  // surfaced from the settings nav so admins find it under one Settings.
+  {
+    id: "users",
+    label: "Users",
+    description: "Invite, edit and manage workspace members",
+    path: "users",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+    envFeature: EnvFeature.USERS_MANAGEMENT,
+  },
   // AI — no env/plan gate; AuthGuard(admin|superAdmin) on the page.
   {
     id: "ai",
@@ -94,17 +115,10 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     envFeature: EnvFeature.CRM_WORKFLOWS,
     feature: Feature.SALES_PIPELINE,
   },
-  // Website / tenant site editor — requires TENANT_WEBSITES env flag.
-  // Sub-pages (blog, pages, design …) are handled by SiteTabsNav within site/layout.tsx.
-  {
-    id: "site",
-    label: "Website",
-    description: "Pages, blog, design and navigation",
-    path: "settings/site",
-    group: "workspace",
-    roles: ["admin", "superAdmin"],
-    envFeature: EnvFeature.TENANT_WEBSITES,
-  },
+  // Website moved out of Settings into the top-level MARKETING sidebar
+  // section (apps/web/constants/dashboard-nav.tsx) — it now opens as its
+  // own page (the site-editor) rather than nesting inside settings.
+  // /settings/site/* routes still resolve for direct links / bookmarks.
 
   // ── Platform group (superAdmin / platformAdmin only) ───────────────────────
   // User logs — superAdmin only; requires AUDIT_LOGS env flag AND AUDIT_LOGS plan feature.
