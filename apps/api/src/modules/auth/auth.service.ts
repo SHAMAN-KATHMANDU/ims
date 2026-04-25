@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "@/config/env";
 import { createError } from "@/middlewares/errorHandler";
 import authRepository, { AuthRepository } from "./auth.repository";
-import type { LoginDto, ForgotPasswordDto } from "./auth.schema";
+import type { ForgotPasswordDto } from "./auth.schema";
 
 export interface LoginParams {
   username: string;

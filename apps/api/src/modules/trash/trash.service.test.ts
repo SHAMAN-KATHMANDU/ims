@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TrashService } from "./trash.service";
-import type { TrashEntityConfig, TrashItem } from "./trash.repository";
+import type { TrashItem } from "./trash.repository";
 
 const mockFindTrashed = vi.fn();
 const mockRestore = vi.fn();
@@ -87,7 +87,6 @@ describe("TrashService", () => {
 
   describe("restore", () => {
     it("returns type when restore succeeds", async () => {
-      const config = { type: "Product" } as TrashEntityConfig;
       mockRestore.mockResolvedValue(true);
 
       const result = await trashService.restore("product", "p1");

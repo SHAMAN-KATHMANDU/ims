@@ -4,12 +4,7 @@
  */
 
 import { basePrisma } from "@/config/prisma";
-import type {
-  SiteConfig,
-  Tenant,
-  TenantDomain,
-  TenantDomainApp,
-} from "@prisma/client";
+import type { SiteConfig, Tenant, TenantDomain } from "@prisma/client";
 
 export type DomainWithContext = TenantDomain & {
   tenant: Tenant;

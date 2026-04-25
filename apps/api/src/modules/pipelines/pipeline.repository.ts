@@ -164,7 +164,7 @@ export class PipelineRepository {
   async seedFrameworkPipelines(tenantId: string) {
     const makeStages = (
       names: string[],
-      probabilities: number[],
+      _probabilities: number[],
     ): Array<{
       id: string;
       name: string;

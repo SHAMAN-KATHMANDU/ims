@@ -192,7 +192,6 @@ const EnvSchema = z
       appEnvRaw &&
       !APP_ENV_VALUES.includes(appEnvRaw as (typeof APP_ENV_VALUES)[number])
     ) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[env] APP_ENV="${appEnvRaw}" is not a recognized value. ` +
           `Valid values: ${APP_ENV_VALUES.join(", ")}. Resolved to "${appEnv}".`,

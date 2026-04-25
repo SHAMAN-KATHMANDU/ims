@@ -71,11 +71,11 @@ export class DashboardService {
 
     const data: DashboardUserSummary = {
       mySalesToday: raw.todayStats._count ?? 0,
-      myRevenueToday: Number(raw.todayStats._sum?.total) ?? 0,
+      myRevenueToday: Number(raw.todayStats._sum?.total ?? 0),
       myCreditOutstanding: creditOutstanding,
       sinceLastLogin: {
         salesCount: raw.sinceLoginStats._count ?? 0,
-        revenue: Number(raw.sinceLoginStats._sum?.total) ?? 0,
+        revenue: Number(raw.sinceLoginStats._sum?.total ?? 0),
       },
       pendingCreditCount: pendingCreditSales.length,
       pendingCreditSales,
@@ -140,12 +140,12 @@ export class DashboardService {
     const locationSnapshot = raw.locationRevenue.map((r) => ({
       locationId: r.locationId,
       locationName: locationNameMap[r.locationId] ?? r.locationId,
-      revenue: Number(r._sum?.total) ?? 0,
+      revenue: Number(r._sum?.total ?? 0),
     }));
 
     const data: DashboardAdminSummary = {
-      todayRevenue: Number(raw.todayRevenueAgg._sum?.total) ?? 0,
-      netRevenue: Number(raw.todayRevenueAgg._sum?.total) ?? 0,
+      todayRevenue: Number(raw.todayRevenueAgg._sum?.total ?? 0),
+      netRevenue: Number(raw.todayRevenueAgg._sum?.total ?? 0),
       creditOutstanding,
       inventoryValue,
       alerts: {
@@ -208,7 +208,7 @@ export class DashboardService {
         createdAt: log.createdAt.toISOString(),
       })),
       riskIndicators: {
-        highDiscountUsage: Number(raw.discountAgg._sum?.discount) ?? 0,
+        highDiscountUsage: Number(raw.discountAgg._sum?.discount ?? 0),
         creditOutstandingDelta,
       },
       dataIntegrity: {

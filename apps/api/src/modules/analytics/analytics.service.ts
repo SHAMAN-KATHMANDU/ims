@@ -10,7 +10,6 @@ import {
 } from "./analytics.filters";
 import analyticsRepository from "./analytics.repository";
 
-type SaleWhereInput = Prisma.SaleWhereInput;
 type LocationInventoryWhereInput = Prisma.LocationInventoryWhereInput;
 
 function saleWhereWithTenant<T extends Record<string, unknown>>(
@@ -42,7 +41,7 @@ function monthDifference(from: string, to: string): number {
 }
 
 export class AnalyticsService {
-  async getOverview(tenantId: string | null) {
+  async getOverview(_tenantId: string | null) {
     const data = await analyticsRepository.getOverviewData();
     const usersByRole = [
       {
@@ -1590,7 +1589,7 @@ export class AnalyticsService {
         .map(([cohortMonth, sets]) => ({
           cohortMonth,
           size: sets[0]?.size ?? 0,
-          retention: sets.map((s, i) =>
+          retention: sets.map((s) =>
             sets[0].size > 0 ? +((s.size / sets[0].size) * 100).toFixed(0) : 0,
           ),
         }));

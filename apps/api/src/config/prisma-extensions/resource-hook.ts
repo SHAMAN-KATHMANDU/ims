@@ -167,7 +167,7 @@ const MODEL_RESOURCE_MAPPING: Record<string, ModelResourceMapping> = {
  * - depth = 0
  */
 async function getOrCreateWorkspaceResource(
-  tenantId: string,
+  _tenantId: string,
 ): Promise<{ parentId: string; parentPath: string; parentDepth: number }> {
   // This will be filled in by the extension that wraps this function.
   // For now, return a placeholder.
@@ -245,7 +245,7 @@ export const resourceAutoCreateExtension = Prisma.defineExtension((client) => {
           return result;
         },
 
-        async createMany({ model, args, query }) {
+        async createMany({ model: _model, args, query }) {
           // createMany doesn't return individual entities, so we skip the Resource hook
           // (bulk creation of Resources is a separate concern handled by migrations)
           return query(args);

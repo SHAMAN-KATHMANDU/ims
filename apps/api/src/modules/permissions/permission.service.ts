@@ -14,11 +14,9 @@ import {
   EMPTY_BITSET,
   hasBit,
   setBit,
-  clearBit,
   orBitset,
   andNotBitset,
   applyImplies,
-  BITSET_BYTES,
   toWire,
 } from "@/shared/permissions/bitset";
 import { ADMINISTRATOR_BIT, PERMISSION_BY_KEY } from "@repo/shared";

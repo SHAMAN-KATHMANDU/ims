@@ -1,4 +1,4 @@
-import type { ConversationStatus, MessageContentType } from "@prisma/client";
+import type { MessageContentType } from "@prisma/client";
 import { env } from "@/config/env";
 import { createError, type AppError } from "@/middlewares/errorHandler";
 import { getIO } from "@/config/socket.config";

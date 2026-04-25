@@ -89,13 +89,12 @@ export async function processSaleBulkRows(
     saleGroups.get(groupKey)!.rows.push(row);
   });
 
-  const [allLocations, allUsers, allProducts, allVariations] =
-    await Promise.all([
-      findLocationsShowrooms(tenantId),
-      findAllUsersForBulk(tenantId),
-      findProductsByTenant(tenantId),
-      findVariationsByTenant(tenantId),
-    ]);
+  const [allLocations, allUsers, , allVariations] = await Promise.all([
+    findLocationsShowrooms(tenantId),
+    findAllUsersForBulk(tenantId),
+    findProductsByTenant(tenantId),
+    findVariationsByTenant(tenantId),
+  ]);
 
   const locationMap = new Map(
     allLocations.map((loc) => [loc.name.toLowerCase(), loc.id]),
@@ -115,10 +114,6 @@ export async function processSaleBulkRows(
       variationsByProductIms.set(code, list);
     }
   }
-  const productMapByName = new Map(
-    allProducts.map((p) => [p.name.toLowerCase(), p]),
-  );
-
   for (const [, group] of saleGroups.entries()) {
     try {
       if (group.rows.length === 0) continue;
@@ -216,7 +211,6 @@ export async function processSaleBulkRows(
 
       for (const itemRow of group.rows) {
         const imsCodeLower = itemRow.productImsCode.toLowerCase();
-        const nameLower = itemRow.productName.toLowerCase();
 
         const variationList = variationsByProductIms.get(imsCodeLower);
         let variation: (typeof allVariations)[number] | undefined;

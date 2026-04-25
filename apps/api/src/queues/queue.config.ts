@@ -1,6 +1,5 @@
 import { Queue } from "bullmq";
 import { env } from "@/config/env";
-import { redis } from "@/config/redis";
 
 /**
  * Shared Redis connection config for all BullMQ queues/workers.

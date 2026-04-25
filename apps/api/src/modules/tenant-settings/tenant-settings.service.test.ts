@@ -12,7 +12,6 @@ const mockRepo = {
   updateTenantSettings: vi.fn(),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const service = new TenantSettingsService(mockRepo as any);
 
 describe("TenantSettingsService", () => {

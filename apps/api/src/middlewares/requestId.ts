@@ -10,6 +10,8 @@ import { randomUUID } from "crypto";
  * Extend Express Request type to include requestId
  */
 declare global {
+  // Express's own type augmentation point is a TS namespace; required to extend Request.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       requestId?: string;
