@@ -25,7 +25,6 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 
 import attributeTypeController from "./attribute-type.controller";
 import * as attributeTypeServiceModule from "./attribute-type.service";
-import { sendControllerError } from "@/utils/controllerError";
 
 const mockService = attributeTypeServiceModule.default as unknown as Record<
   string,

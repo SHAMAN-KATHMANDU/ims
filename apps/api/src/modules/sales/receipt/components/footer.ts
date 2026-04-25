@@ -2,7 +2,6 @@
  * Footer with timestamp, processed by, system name, page number.
  */
 import type PDFDocument from "pdfkit";
-import { SPACE } from "../spacing";
 import { TYPE } from "../typography";
 import { getFontRegular, getFontBold } from "../typography";
 import { COLORS } from "../constants";

@@ -1,56 +1,48 @@
 import { z } from "zod";
+// Imports used inside this file (action-config map + parsers).
 import {
   CRM_WORKFLOW_TEMPLATES,
   WORKFLOW_TRIGGER_VALUES,
   WORKFLOW_ACTION_VALUES,
-  TaskDealLinkSchema,
-  type TaskDealLink,
   CreateTaskConfigSchema,
-  type CreateTaskConfig,
   SendNotificationConfigSchema,
-  type SendNotificationConfig,
   MoveStageConfigSchema,
-  type MoveStageConfig,
-  UPDATE_FIELD_ALLOWED,
   UpdateFieldConfigSchema,
-  type UpdateFieldConfig,
   CreateActivityConfigSchema,
-  type CreateActivityConfig,
   CreateDealConfigSchema,
-  type CreateDealConfig,
-  UPDATE_CONTACT_FIELD_ALLOWED,
   UpdateContactFieldConfigSchema,
-  type UpdateContactFieldConfig,
   ApplyTagConfigSchema,
-  type ApplyTagConfig,
   RemoveTagConfigSchema,
-  type RemoveTagConfig,
   parseWorkflowActionConfig,
 } from "@repo/shared";
 
+// Direct re-exports — never bound locally to avoid eslint no-unused-vars
+// false-positives on items only consumed by downstream importers.
 export {
   TaskDealLinkSchema,
-  type TaskDealLink,
   CreateTaskConfigSchema,
-  type CreateTaskConfig,
   SendNotificationConfigSchema,
-  type SendNotificationConfig,
   MoveStageConfigSchema,
-  type MoveStageConfig,
   UPDATE_FIELD_ALLOWED,
   UpdateFieldConfigSchema,
-  type UpdateFieldConfig,
   CreateActivityConfigSchema,
-  type CreateActivityConfig,
   CreateDealConfigSchema,
-  type CreateDealConfig,
   UPDATE_CONTACT_FIELD_ALLOWED,
   UpdateContactFieldConfigSchema,
-  type UpdateContactFieldConfig,
   ApplyTagConfigSchema,
-  type ApplyTagConfig,
   RemoveTagConfigSchema,
-  type RemoveTagConfig,
+} from "@repo/shared";
+export type {
+  TaskDealLink,
+  CreateTaskConfig,
+  SendNotificationConfig,
+  MoveStageConfig,
+  UpdateFieldConfig,
+  CreateActivityConfig,
+  CreateDealConfig,
+  UpdateContactFieldConfig,
+  ApplyTagConfig,
+  RemoveTagConfig,
 } from "@repo/shared";
 
 export const WORKFLOW_TRIGGERS = WORKFLOW_TRIGGER_VALUES;
@@ -59,6 +51,9 @@ export const WORKFLOW_ACTIONS = WORKFLOW_ACTION_VALUES;
 export const WorkflowTriggerSchema = z.enum(WORKFLOW_TRIGGER_VALUES);
 export const WorkflowActionSchema = z.enum(WORKFLOW_ACTION_VALUES);
 
+// Value is referenced only via `typeof ActionConfigByAction` below — the rule
+// misreads type-only usage as the binding being unused.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ActionConfigByAction = {
   CREATE_TASK: CreateTaskConfigSchema,
   SEND_NOTIFICATION: SendNotificationConfigSchema,

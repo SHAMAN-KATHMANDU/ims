@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AuditService } from "./audit.service";
-import type { AuditRepository } from "./audit.repository";
 
 const mockCount = vi.fn();
 const mockFindMany = vi.fn();

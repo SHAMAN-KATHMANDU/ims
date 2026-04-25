@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  CreateDealSchema,
-  UpdateDealSchema,
-  UpdateDealStageSchema,
-} from "./deal.schema";
+import { CreateDealSchema, UpdateDealStageSchema } from "./deal.schema";
 
 describe("CreateDealSchema", () => {
   it("accepts valid name with defaults", () => {

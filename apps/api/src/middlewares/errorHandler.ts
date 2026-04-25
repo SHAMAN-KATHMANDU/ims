@@ -32,7 +32,9 @@ export const errorHandler = (
   err: AppError | Error,
   req: Request,
   res: Response,
-  next: NextFunction,
+  // eslint requires `next` in the signature for Express to recognize this as
+  // an error handler (4-arity), even when we don't call it.
+  _next: NextFunction,
 ) => {
   // Get request ID if available (from requestId middleware)
   const requestId = (req as any).requestId || "unknown";

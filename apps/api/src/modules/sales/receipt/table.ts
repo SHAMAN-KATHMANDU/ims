@@ -6,7 +6,6 @@ import { SPACE } from "./spacing";
 import { TYPE } from "./typography";
 import { COLORS, DIVIDER_LINE_WIDTH } from "./constants";
 import { getFontRegular, getFontBold } from "./typography";
-import { ensureSpace } from "./pagination";
 import type { ReceiptContext } from "./types";
 
 type Doc = InstanceType<typeof PDFDocument>;

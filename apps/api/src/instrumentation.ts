@@ -4,6 +4,10 @@
  * No-op when OTEL_EXPORTER_OTLP_ENDPOINT is not set.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports --
+ * Lazy require()s so the OpenTelemetry packages are only resolved when the
+ * env var is set. ESM `import` would force eager load + bloat cold-start.
+ */
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT?.trim();
 if (endpoint) {
   const { NodeSDK } = require("@opentelemetry/sdk-node");

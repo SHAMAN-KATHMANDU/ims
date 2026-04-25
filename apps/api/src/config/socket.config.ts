@@ -41,7 +41,7 @@ export function setupSocketIO(httpServer: any): SocketServer {
       const decoded = jwt.verify(token, env.jwtSecret) as Record<string, any>;
       socket.data.user = decoded;
       next();
-    } catch (err) {
+    } catch {
       return next(new Error("Authentication error: invalid token"));
     }
   });

@@ -57,7 +57,7 @@ app.get("/metrics", async (req, res) => {
   try {
     const metrics = await getMetrics();
     res.send(metrics);
-  } catch (err) {
+  } catch {
     res.status(500).send("# Error collecting metrics");
   }
 });
@@ -75,7 +75,7 @@ app.get("/health", async (req, res) => {
       database: dbStatus,
       version: getVersion(),
     });
-  } catch (error) {
+  } catch {
     // Database connection failed
     res.status(503).json({
       status: "unhealthy",

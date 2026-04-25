@@ -25,7 +25,11 @@
         "E2E_TEST_USERNAME",
         "E2E_TEST_PASSWORD",
         "E2E_MEMBER_USERNAME",
-        "E2E_MEMBER_PASSWORD"
+        "E2E_MEMBER_PASSWORD",
+        "APP_VERSION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_SERVICE_NAME",
+        "RBAC_ENFORCE"
       ]
     },
     "test": {

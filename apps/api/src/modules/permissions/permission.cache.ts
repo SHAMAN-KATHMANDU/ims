@@ -4,9 +4,7 @@
  */
 
 import { getRedis } from "@/config/redis";
-import { toWire, fromWire } from "@/shared/permissions/bitset";
 
-const PERMISSION_CACHE_VERSION = 1;
 const PERMISSION_USER_TTL = 3600; // 1 hour
 const PERMISSION_TENANT_VERSION_TTL = 604800; // 7 days
 
@@ -27,17 +25,6 @@ function userPermKey(
  */
 function tenantVersionKey(tenantId: string): string {
   return `perm:tenant:version:${tenantId}`;
-}
-
-/**
- * Generate cache key for workspace-level permissions (no resourceId).
- */
-function workspacePermKey(
-  tenantId: string,
-  userId: string,
-  version: number,
-): string {
-  return `perm:u:v${version}:${tenantId}:${userId}:workspace`;
 }
 
 export class PermissionCache {

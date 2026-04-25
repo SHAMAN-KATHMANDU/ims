@@ -50,7 +50,6 @@ function row(overrides: Partial<CollectionRow> = {}): CollectionRow {
 
 const enabledConfig = { websiteEnabled: true };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const service = new CollectionsService(mockRepo as any);
 const findConfig = sitesRepo.findConfig as unknown as ReturnType<typeof vi.fn>;
 

@@ -29,37 +29,40 @@ import { toWire } from "@/shared/permissions/bitset";
  * interface speaks strings on the wire.
  */
 const stubService = {
-  createRole: async (tenantId: string, data: any) => ({ id: "stub", ...data }),
-  listRoles: async (tenantId: string, params: any) => ({
+  createRole: async (_tenantId: string, data: any) => ({ id: "stub", ...data }),
+  listRoles: async (_tenantId: string, _params: any) => ({
     roles: [],
     pagination: {},
   }),
-  getRoleById: async (tenantId: string, roleId: string) => ({ id: roleId }),
-  updateRole: async (tenantId: string, roleId: string, data: any) => ({
+  getRoleById: async (_tenantId: string, roleId: string) => ({ id: roleId }),
+  updateRole: async (_tenantId: string, roleId: string, data: any) => ({
     id: roleId,
     ...data,
   }),
-  deleteRole: async (tenantId: string, roleId: string) => {},
+  deleteRole: async (_tenantId: string, _roleId: string) => {},
   assignUserToRole: async (
-    tenantId: string,
+    _tenantId: string,
     roleId: string,
     userId: string,
   ) => ({ userId, roleId }),
   unassignUserFromRole: async (
-    tenantId: string,
-    roleId: string,
-    userId: string,
+    _tenantId: string,
+    _roleId: string,
+    _userId: string,
   ) => {},
-  listPermissionOverwrites: async (tenantId: string, resourceId: string) => [],
+  listPermissionOverwrites: async (
+    _tenantId: string,
+    _resourceId: string,
+  ) => [],
   upsertPermissionOverwrite: async (
-    tenantId: string,
-    resourceId: string,
+    _tenantId: string,
+    _resourceId: string,
     data: any,
   ) => ({ id: "stub", ...data }),
   deletePermissionOverwrite: async (
-    tenantId: string,
-    resourceId: string,
-    overwriteId: string,
+    _tenantId: string,
+    _resourceId: string,
+    _overwriteId: string,
   ) => {},
   getEffectivePermissions: async (
     tenantId: string,

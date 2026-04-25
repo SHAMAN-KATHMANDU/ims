@@ -22,6 +22,9 @@ export interface UpdateMemberRepoData {
   isActive?: boolean;
 }
 
+// Tuple referenced via `typeof MEMBER_STATUS_VALUES[number]` only — eslint
+// misreads type-only usage as the value being unused.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MEMBER_STATUS_VALUES = ["ACTIVE", "INACTIVE", "PROSPECT", "VIP"] as const;
 export type MemberStatusFilter = (typeof MEMBER_STATUS_VALUES)[number];
 
