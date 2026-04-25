@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ export function PromoForm({
   renderTrigger = true,
 }: PromoFormProps) {
   const [productSearch, setProductSearch] = useState("");
+  const debouncedSearch = useDebounce(productSearch, 300);
   const [sectionTab, setSectionTab] = useState<"details" | "scope">("details");
 
   const form = useForm<PromoFormInput>({
@@ -81,9 +83,11 @@ export function PromoForm({
 
   const { data: productsResult } = useProductsPaginated({
     page: 1,
-    limit: 500,
+    limit: 100,
+    search: debouncedSearch,
   });
   const allProducts = productsResult?.data ?? [];
+  const productsTotalItems = productsResult?.pagination?.totalItems ?? 0;
   const { data: categories = [] } = useCategories();
 
   const categoryIds = form.watch("categoryIds") ?? [];
@@ -107,6 +111,8 @@ export function PromoForm({
   }, [allProducts, categoryIdsKey]);
 
   const filteredProducts = useMemo(() => {
+    // The API already handles text search via debouncedSearch.
+    // Local filtering only applies category/subcategory narrowing.
     let products = allProducts ?? [];
     if (categoryIds.length > 0) {
       products = products.filter((p) => categoryIds.includes(p.categoryId));
@@ -116,18 +122,10 @@ export function PromoForm({
         (p) => p.subCategory && subCategories.includes(p.subCategory),
       );
     }
-    if (productSearch.trim()) {
-      const term = productSearch.toLowerCase();
-      products = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          (p as { imsCode?: string }).imsCode?.toLowerCase().includes(term),
-      );
-    }
     return products;
     // categoryIdsKey/subCategoriesKey used instead of raw arrays to avoid unstable deps (form.watch returns new refs each render)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allProducts, categoryIdsKey, subCategoriesKey, productSearch]);
+  }, [allProducts, categoryIdsKey, subCategoriesKey]);
 
   useEffect(() => {
     if (open && editingPromo) {
@@ -501,13 +499,22 @@ export function PromoForm({
                 )}
               />
               {!applyToAll && (
-                <Input
-                  id="promo-product-search"
-                  placeholder="Search products by name or code..."
-                  className="w-full sm:max-w-xs"
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  aria-label="Search products"
-                />
+                <div className="flex flex-col gap-1 w-full sm:max-w-xs">
+                  <Input
+                    id="promo-product-search"
+                    placeholder="Search products by name or code..."
+                    className="w-full"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    aria-label="Search products"
+                  />
+                  {productsTotalItems > 100 && (
+                    <p className="text-xs text-muted-foreground">
+                      Showing 100 of {productsTotalItems} — refine your search
+                      to see more
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

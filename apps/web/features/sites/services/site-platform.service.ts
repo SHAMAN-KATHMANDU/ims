@@ -172,6 +172,76 @@ export async function verifyTenantDomain(
 }
 
 // ============================================
+// Tenant-self Domains API (/tenants/me/domains)
+// No tenantId argument — backend infers from JWT.
+// ============================================
+
+export async function getMyDomains(
+  appType?: TenantDomainApp,
+): Promise<TenantDomain[]> {
+  try {
+    const response = await api.get<{ domains: TenantDomain[] }>(
+      "/tenants/me/domains",
+      { params: appType ? { appType } : undefined },
+    );
+    return response.data.domains ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch my domains");
+  }
+}
+
+export async function createMyDomain(
+  data: CreateTenantDomainData,
+): Promise<TenantDomain> {
+  if (!data.hostname?.trim()) throw new Error("Hostname is required");
+  try {
+    const response = await api.post<{ domain: TenantDomain }>(
+      "/tenants/me/domains",
+      data,
+    );
+    return response.data.domain;
+  } catch (error) {
+    handleApiError(error, "create my domain");
+  }
+}
+
+export async function deleteMyDomain(domainId: string): Promise<void> {
+  if (!domainId?.trim()) throw new Error("Domain ID is required");
+  try {
+    await api.delete(`/tenants/me/domains/${domainId}`);
+  } catch (error) {
+    handleApiError(error, `delete my domain "${domainId}"`);
+  }
+}
+
+export async function getMyDomainVerificationInstructions(
+  domainId: string,
+): Promise<DomainVerificationInstructions> {
+  if (!domainId?.trim()) throw new Error("Domain ID is required");
+  try {
+    const response = await api.get<DomainVerificationInstructions>(
+      `/tenants/me/domains/${domainId}/verification`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error, `fetch verification for my domain "${domainId}"`);
+  }
+}
+
+export async function verifyMyDomain(domainId: string): Promise<TenantDomain> {
+  if (!domainId?.trim()) throw new Error("Domain ID is required");
+  try {
+    const response = await api.post<{ domain: TenantDomain }>(
+      `/tenants/me/domains/${domainId}/verification`,
+      {},
+    );
+    return response.data.domain;
+  } catch (error) {
+    handleApiError(error, `verify my domain "${domainId}"`);
+  }
+}
+
+// ============================================
 // Template catalog (platform-admin)
 // ============================================
 

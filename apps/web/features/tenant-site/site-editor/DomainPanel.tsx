@@ -7,16 +7,16 @@ import { useToast } from "@/hooks/useToast";
 import { AddDomainDialog } from "../../sites/components/AddDomainDialog";
 import { VerifyDomainDialog } from "../../sites/components/VerifyDomainDialog";
 import {
-  useTenantDomains,
-  useDeleteTenantDomain,
+  useMyDomains,
+  useDeleteMyDomain,
   type TenantDomain,
-} from "../../sites/hooks/use-tenant-domains";
+} from "../../sites/hooks/use-my-domains";
 
-export function DomainPanel({ tenantId }: { tenantId: string | null }) {
+export function DomainPanel() {
   const [addOpen, setAddOpen] = useState(false);
   const [verifyTarget, setVerifyTarget] = useState<TenantDomain | null>(null);
-  const domainsQuery = useTenantDomains(tenantId);
-  const deleteDomain = useDeleteTenantDomain();
+  const domainsQuery = useMyDomains();
+  const deleteDomain = useDeleteMyDomain();
   const { toast } = useToast();
 
   const handleDelete = (domain: TenantDomain) => {
@@ -123,13 +123,8 @@ export function DomainPanel({ tenantId }: { tenantId: string | null }) {
           Add domain
         </button>
       </div>
-      {tenantId && (
-        <AddDomainDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          tenantId={tenantId}
-        />
-      )}
+      {/* No tenantId — uses the tenant-self API (/tenants/me/domains) */}
+      <AddDomainDialog open={addOpen} onOpenChange={setAddOpen} />
       <VerifyDomainDialog
         open={!!verifyTarget}
         onOpenChange={(o) => !o && setVerifyTarget(null)}
