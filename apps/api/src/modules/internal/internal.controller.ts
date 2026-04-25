@@ -8,11 +8,42 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
+import { basePrisma } from "@/config/prisma";
 import service from "./internal.service";
 import {
   DomainAllowedQuerySchema,
   ResolveHostQuerySchema,
 } from "./internal.schema";
+
+/**
+ * Publicly readable fields for the business profile DTO.
+ * Tax / regulatory fields are excluded (PAN, VAT, taxId, registrationNumber).
+ */
+type PublicBusinessProfileDto = {
+  id: string;
+  tenantId: string;
+  legalName: string | null;
+  displayName: string | null;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  email: string | null;
+  phone: string | null;
+  alternatePhone: string | null;
+  websiteUrl: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  mapUrl: string | null;
+  defaultCurrency: string;
+  timezone: string | null;
+  socials: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 function handleZodError(res: Response, error: unknown): Response | null {
   if (error instanceof ZodError) {
@@ -52,6 +83,42 @@ class InternalController {
         handleZodError(res, error) ??
         sendControllerError(req, res, error, "Domain allowed check error")
       );
+    }
+  };
+
+  /**
+   * Public endpoint — no auth required.
+   * Returns the business profile for a tenant (by slug) with sensitive
+   * tax fields removed (PAN, VAT, taxId, registrationNumber).
+   */
+  getPublicBusinessProfile = async (req: Request, res: Response) => {
+    try {
+      const { slug } = req.params as { slug: string };
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { slug },
+        include: { businessProfile: true },
+      });
+      if (!tenant) {
+        return res
+          .status(404)
+          .json({ error: "not_found", message: "Tenant not found" });
+      }
+      const raw = tenant.businessProfile;
+      let profile: PublicBusinessProfileDto | null = null;
+      if (raw) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const {
+          panNumber: _pan,
+          vatNumber: _vat,
+          taxId: _taxId,
+          registrationNumber: _reg,
+          ...safeFields
+        } = raw;
+        profile = safeFields;
+      }
+      return res.status(200).json({ profile });
+    } catch (error) {
+      return sendControllerError(req, res, error, "getPublicBusinessProfile");
     }
   };
 

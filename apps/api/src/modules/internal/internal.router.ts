@@ -18,6 +18,42 @@ import controller from "./internal.controller";
 
 const router = Router();
 
+/**
+ * @swagger
+ * /internal/tenants/{slug}/business-profile:
+ *   get:
+ *     summary: Get public business profile for a tenant (no auth)
+ *     description: |
+ *       Returns the tenant's business profile with sensitive tax fields
+ *       (panNumber, vatNumber, taxId, registrationNumber) omitted.
+ *       Used by the tenant-site renderer and receipt generator.
+ *     tags: [Internal]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema: { type: string }
+ *         description: Tenant URL slug
+ *     responses:
+ *       200:
+ *         description: Business profile (null profile if none set yet)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 profile:
+ *                   oneOf:
+ *                     - type: "null"
+ *                     - $ref: '#/components/schemas/PublicBusinessProfile'
+ *       404:
+ *         description: Tenant not found
+ */
+router.get(
+  "/tenants/:slug/business-profile",
+  asyncHandler(controller.getPublicBusinessProfile),
+);
+
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
 router.use(requireInternalToken);
 
