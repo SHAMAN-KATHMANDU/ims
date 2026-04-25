@@ -52,6 +52,27 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "workspace",
     roles: ["admin", "superAdmin"],
   },
+  // Roles & permissions — scoped-RBAC role editor + member assignment.
+  // Page enforces SETTINGS.ROLES.MANAGE via PermissionGate.
+  {
+    id: "roles",
+    label: "Roles & permissions",
+    description: "Custom roles, permission grants and overwrites",
+    path: "settings/roles",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+  },
+  // Users — workspace user management. Lives at /[workspace]/users today;
+  // surfaced from the settings nav so admins find it under one Settings.
+  {
+    id: "users",
+    label: "Users",
+    description: "Invite, edit and manage workspace members",
+    path: "users",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+    envFeature: EnvFeature.USERS_MANAGEMENT,
+  },
   // AI — no env/plan gate; AuthGuard(admin|superAdmin) on the page.
   {
     id: "ai",

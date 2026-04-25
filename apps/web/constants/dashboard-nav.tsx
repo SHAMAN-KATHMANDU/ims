@@ -359,79 +359,19 @@ export const dashboardNavSections: NavSection[] = [
   {
     title: "SETTINGS",
     items: [
+      // Single Settings entry — every workspace settings sub-area (CRM,
+      // Automations, AI, Roles & permissions, Users, User logs, Password
+      // resets, Website) lives under the in-page sub-nav rendered by
+      // apps/web/app/[workspace]/(admin)/settings/layout.tsx, driven by
+      // SETTINGS_SECTIONS in apps/web/features/settings/config/sections.ts.
+      // Removing the per-area sidebar links keeps the dashboard sidebar
+      // tight and routes admins through one Settings hub.
       {
         path: "settings",
         label: "Settings",
         icon: UserCog,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.SETTINGS,
-        permModule: "SETTINGS" as const,
-      },
-      {
-        path: "settings/crm",
-        label: "CRM Settings",
-        icon: SlidersHorizontal,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.CRM_SETTINGS,
-        feature: Feature.SALES_PIPELINE,
-        permModule: "SETTINGS" as const,
-      },
-      {
-        path: "settings/automations",
-        label: "Automations overview",
-        icon: LayoutGrid,
-        roles: ["admin", "superAdmin"],
-        envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
-        // No permModule: automation is not directly RBAC-gated in phase 3
-      },
-      {
-        path: "settings/automation",
-        label: "Event automations",
-        icon: Zap,
-        roles: ["admin", "superAdmin"],
-        envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
-        // No permModule: automation is not directly RBAC-gated in phase 3
-      },
-      {
-        path: "settings/crm/workflows",
-        label: "Deal pipeline rules",
-        icon: GitBranch,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.CRM_WORKFLOWS,
-        feature: Feature.SALES_PIPELINE,
-        permModule: "CRM" as const,
-      },
-      {
-        path: "settings/ai",
-        label: "AI Settings",
-        icon: BrainCircuit,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.MESSAGING,
-        permModule: "SETTINGS" as const,
-      },
-      {
-        path: "users",
-        label: "Users",
-        icon: Users,
-        roles: ["superAdmin"],
-        envFeature: EnvFeature.USERS_MANAGEMENT,
-        permModule: "SETTINGS" as const,
-      },
-      {
-        path: "settings/logs",
-        label: "User Logs",
-        icon: FileText,
-        roles: ["superAdmin"],
-        envFeature: EnvFeature.AUDIT_LOGS,
-        feature: Feature.AUDIT_LOGS,
-        permModule: "SETTINGS" as const,
-      },
-      {
-        path: "settings/password-reset",
-        label: "Password Reset Requests",
-        icon: KeyRound,
-        roles: ["superAdmin"],
-        envFeature: EnvFeature.PASSWORD_RESETS,
         permModule: "SETTINGS" as const,
       },
       {
