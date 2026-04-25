@@ -78,6 +78,7 @@ import giftCardRouter, {
 } from "@/modules/gift-cards/gift-card.router";
 import permissionsRouter from "@/modules/permissions/permissions.router";
 import tenantRouter from "@/modules/tenants/tenant.router";
+import businessProfileRouter from "@/modules/business-profile/business-profile.router";
 
 const router = Router();
 
@@ -162,6 +163,7 @@ router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
 router.use("/tenant-settings", tenantSettingsRouter);
+router.use("/tenants", businessProfileRouter);
 router.use("/sites", sitesRouter);
 router.use("/blog", blogRouter);
 router.use("/pages", pagesRouter);

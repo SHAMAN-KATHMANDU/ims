@@ -52,6 +52,17 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "workspace",
     roles: ["admin", "superAdmin"],
   },
+  // Business profile — logo, contact, address, PAN/VAT, defaults, socials.
+  // Page enforces SETTINGS.TENANT.VIEW via PermissionGate.
+  {
+    id: "business-profile",
+    label: "Business profile",
+    description:
+      "Logo, contact, address, PAN/VAT — used on receipts, invoices, and the website",
+    path: "settings/business-profile",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+  },
   // Roles & permissions — scoped-RBAC role editor + member assignment.
   // Page enforces SETTINGS.ROLES.MANAGE via PermissionGate.
   {
