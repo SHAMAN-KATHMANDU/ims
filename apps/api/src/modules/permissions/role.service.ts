@@ -15,6 +15,16 @@ import { createError } from "@/middlewares/errorHandler";
 import { fromWire, toWire } from "@/shared/permissions/bitset";
 import { permissionCache } from "./permission.cache";
 
+/**
+ * Platform Admin is an internal, locked, cross-tenant role. It must never
+ * appear in tenant-facing role lists and cannot be assigned, edited, or
+ * deleted via the management API. Hidden in every read; rejected in every
+ * write that targets it by name.
+ */
+const HIDDEN_ROLE_NAMES = ["Platform Admin"] as const;
+const isHiddenRoleName = (name: string): boolean =>
+  (HIDDEN_ROLE_NAMES as readonly string[]).includes(name);
+
 interface RoleDto {
   id: string;
   tenantId: string;
@@ -67,6 +77,9 @@ export const roleService = {
       color?: string;
     },
   ): Promise<RoleDto> => {
+    if (isHiddenRoleName(data.name)) {
+      throw createError("This role name is reserved", 409);
+    }
     const existing = await prisma.rbacRole.findUnique({
       where: { tenantId_name: { tenantId, name: data.name } },
       select: { id: true },
@@ -104,9 +117,14 @@ export const roleService = {
     const limit = Math.min(100, Math.max(1, params.limit ?? 50));
     const where = {
       tenantId,
-      ...(params.search
-        ? { name: { contains: params.search, mode: "insensitive" as const } }
-        : {}),
+      // Hidden roles (e.g. Platform Admin) are internal-only and never
+      // surface to tenant admins.
+      name: {
+        notIn: HIDDEN_ROLE_NAMES as unknown as string[],
+        ...(params.search
+          ? { contains: params.search, mode: "insensitive" as const }
+          : {}),
+      },
     };
     const [rows, total] = await Promise.all([
       prisma.rbacRole.findMany({
@@ -134,7 +152,9 @@ export const roleService = {
       where: { id: roleId, tenantId },
       include: { _count: { select: { users: true } } },
     });
-    if (!row) throw createError("Role not found", 404);
+    if (!row || isHiddenRoleName(row.name)) {
+      throw createError("Role not found", 404);
+    }
     return toRoleDto(row, row._count.users);
   },
 
@@ -151,7 +171,9 @@ export const roleService = {
     const existing = await prisma.rbacRole.findFirst({
       where: { id: roleId, tenantId },
     });
-    if (!existing) throw createError("Role not found", 404);
+    if (!existing || isHiddenRoleName(existing.name)) {
+      throw createError("Role not found", 404);
+    }
     if (existing.isSystem) {
       // System roles: only color/priority adjustable; permissions/name locked.
       if (data.name !== undefined || data.permissions !== undefined) {
@@ -160,6 +182,9 @@ export const roleService = {
           403,
         );
       }
+    }
+    if (data.name !== undefined && isHiddenRoleName(data.name)) {
+      throw createError("This role name is reserved", 409);
     }
     const row = await prisma.rbacRole.update({
       where: { id: roleId },
@@ -181,7 +206,9 @@ export const roleService = {
     const row = await prisma.rbacRole.findFirst({
       where: { id: roleId, tenantId },
     });
-    if (!row) throw createError("Role not found", 404);
+    if (!row || isHiddenRoleName(row.name)) {
+      throw createError("Role not found", 404);
+    }
     if (row.isSystem) throw createError("Cannot delete system role", 403);
     await prisma.rbacRole.delete({ where: { id: roleId } });
     await permissionCache.invalidateTenant(tenantId);
@@ -195,9 +222,11 @@ export const roleService = {
   ): Promise<{ userId: string; roleId: string; assignedAt: string }> => {
     const role = await prisma.rbacRole.findFirst({
       where: { id: roleId, tenantId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
-    if (!role) throw createError("Role not found", 404);
+    if (!role || isHiddenRoleName(role.name)) {
+      throw createError("Role not found", 404);
+    }
     const user = await prisma.user.findFirst({
       where: { id: userId, tenantId },
       select: { id: true },
@@ -223,9 +252,11 @@ export const roleService = {
   ): Promise<void> => {
     const role = await prisma.rbacRole.findFirst({
       where: { id: roleId, tenantId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
-    if (!role) throw createError("Role not found", 404);
+    if (!role || isHiddenRoleName(role.name)) {
+      throw createError("Role not found", 404);
+    }
     await prisma.userRole.deleteMany({ where: { userId, roleId, tenantId } });
     await permissionCache.invalidateUser(tenantId, userId);
   },
