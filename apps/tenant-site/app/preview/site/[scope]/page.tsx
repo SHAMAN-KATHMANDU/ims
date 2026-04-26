@@ -227,14 +227,15 @@ export default async function SitePreviewRoute({
         {blocks.length > 0 ? (
           isEditorMode ? (
             /*
-             * EditorPreviewShell: client-side shell that listens for
-             * `editor:block-tree` postMessages from PreviewFrame and
-             * re-renders blocks in real time (Bug #3 fix — ~150 ms latency).
+             * EditorPreviewShell: client-side wrapper that reloads the iframe
+             * on `editor:block-tree` postMessages from PreviewFrame. We render
+             * the server-only BlockRenderer as children (passed in from this
+             * server parent) so the block registry never enters the client
+             * bundle — keeping next-build happy with `next/headers` usage.
              */
-            <EditorPreviewShell
-              initialBlocks={blocks}
-              dataContext={dataContext}
-            />
+            <EditorPreviewShell>
+              <BlockRenderer nodes={blocks} dataContext={dataContext} />
+            </EditorPreviewShell>
           ) : (
             <BlockRenderer nodes={blocks} dataContext={dataContext} />
           )
