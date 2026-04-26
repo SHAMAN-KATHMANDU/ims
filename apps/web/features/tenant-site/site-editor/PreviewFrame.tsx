@@ -28,7 +28,6 @@ import {
   GripVertical,
   Plus,
 } from "lucide-react";
-import type { BlockNode } from "@repo/shared";
 import { CanvasOverlay } from "./CanvasOverlay";
 import {
   selectSetHoveredBlockId,
@@ -68,12 +67,6 @@ type Props = {
   onReorder?: (blockId: string, toIndex: number) => void;
   /** Called when a palette-dragged block is dropped on a canvas drop zone. */
   onInsertAt?: (kind: string, atIndex: number) => void;
-  /**
-   * Current editor block tree. When provided, PreviewFrame debounces changes
-   * (150 ms) and posts `{ type: 'editor:block-tree', tree }` to the iframe so
-   * EditorPreviewShell can re-render without a full reload (Bug #3 fix).
-   */
-  blocks?: BlockNode[];
 };
 
 type BlockRect = {
@@ -477,7 +470,6 @@ export function PreviewFrame({
   onInlineEdit,
   onReorder,
   onInsertAt,
-  blocks,
 }: Props) {
   const [showGrid, setShowGrid] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
