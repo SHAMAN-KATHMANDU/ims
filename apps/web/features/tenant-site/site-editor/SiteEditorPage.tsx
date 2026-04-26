@@ -212,7 +212,11 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   useEffect(() => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     if (!autosaveEnabled || !dirty) return;
-    autosaveTimerRef.current = setTimeout(() => autosaveRef.current(), 30_000);
+    // 600 ms — fast enough for the preview iframe to reload with fresh draft
+    // shortly after an inspector edit, slow enough to coalesce keystrokes
+    // during inline text editing. The iframe reload is driven by refreshKey
+    // bumps inside handleSaveDraftSilent.
+    autosaveTimerRef.current = setTimeout(() => autosaveRef.current(), 600);
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
@@ -287,7 +291,9 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
         markClean();
         setSavedAt(new Date());
         setRefreshKey((k) => k + 1);
-        toast({ title: "Autosaved" });
+        // No toast on autosave — at 600 ms cadence it would flood during
+        // inspector edits. The "Saved Xs ago" label in the header is the
+        // single visible signal.
       })
       .catch(() => {
         toast({ title: "Autosave failed", variant: "destructive" });

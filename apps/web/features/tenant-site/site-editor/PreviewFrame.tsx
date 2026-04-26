@@ -29,7 +29,6 @@ import {
   Plus,
 } from "lucide-react";
 import type { BlockNode } from "@repo/shared";
-import { useDebounce } from "@/hooks/useDebounce";
 import { CanvasOverlay } from "./CanvasOverlay";
 import {
   selectSetHoveredBlockId,
@@ -712,27 +711,14 @@ export function PreviewFrame({
     if (prev !== "relative") body.style.position = "relative";
   }, [iframeReady, isSameOrigin]);
 
-  // ── Live block-tree propagation (Bug #3) ────────────────────────────────
-  // Debounce the block tree at 150 ms. On every change, post the full tree
-  // to the iframe so EditorPreviewShell can re-render without a full reload.
-  // This covers prop-only changes (showPrice, columns, …) that don't trigger
-  // a save/refresh cycle. Same-origin: postMessage to contentWindow directly.
-  // Cross-origin: EditorBridge in the iframe handles the update.
-  const debouncedBlocks = useDebounce(blocks, 150);
-  const prevDebouncedRef = useRef(debouncedBlocks);
-  useEffect(() => {
-    if (debouncedBlocks === prevDebouncedRef.current) return;
-    prevDebouncedRef.current = debouncedBlocks;
-    if (!debouncedBlocks) return;
-    try {
-      iframeRef.current?.contentWindow?.postMessage(
-        { type: "editor:block-tree", tree: debouncedBlocks },
-        "*",
-      );
-    } catch {
-      // Cross-origin SecurityError — EditorBridge handles it on the other side.
-    }
-  }, [debouncedBlocks]);
+  // ── Live preview reload ─────────────────────────────────────────────────
+  // The iframe is remounted via `key={refreshKey}` whenever SiteEditorPage's
+  // autosave (600 ms debounce) saves the draft. That single mechanism handles
+  // both tree mutations and prop-only changes (showPrice, columns, …) — the
+  // freshly-mounted iframe re-fetches the saved draft from the API. We do
+  // NOT post the in-memory tree to the iframe directly: the public preview
+  // route reads the saved draft, so a postMessage with stale-on-server data
+  // would render incorrectly until the next save.
 
   // ── Cross-origin postMessage listener (EditorBridge → parent) ────────────
   // For same-origin iframes, click-to-select is handled via direct DOM
