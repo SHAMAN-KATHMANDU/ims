@@ -83,8 +83,11 @@ const SOCIAL_ORDER: SocialKey[] = [
 // ============================================================================
 
 export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
-  const name = brandingDisplayName(site.branding, host);
-  const logo = brandingLogoUrl(site.branding);
+  // Prefer TenantBusinessProfile identity; fall back to legacy branding JSON.
+  const bp = site.businessProfile;
+  const name =
+    bp?.displayName?.trim() || brandingDisplayName(site.branding, host);
+  const logo = bp?.logoUrl?.trim() || brandingLogoUrl(site.branding);
   if (logo) {
     return (
       <Link
@@ -1263,11 +1266,24 @@ export function ProductGrid({
 // ============================================================================
 
 export function ContactBlock({ site }: { site: PublicSite }) {
-  const contact = (site.contact ?? {}) as {
+  // Prefer TenantBusinessProfile contact fields; fall back to legacy JSON.
+  const bp = site.businessProfile;
+  const legacyContact = (site.contact ?? {}) as {
     email?: string;
     phone?: string;
     address?: string;
     mapUrl?: string;
+  };
+  const bpAddress = bp
+    ? [bp.addressLine1, bp.city, bp.state, bp.postalCode]
+        .filter(Boolean)
+        .join(", ") || null
+    : null;
+  const contact = {
+    email: bp?.email?.trim() || legacyContact.email,
+    phone: bp?.phone?.trim() || legacyContact.phone,
+    address: bpAddress || legacyContact.address,
+    mapUrl: legacyContact.mapUrl,
   };
   if (!contact.email && !contact.phone && !contact.address) return null;
 
@@ -1488,12 +1504,27 @@ export async function SiteFooter({
   host: string;
   navPages?: PublicNavPage[];
 }) {
-  const name = brandingDisplayName(site.branding, host);
-  const contact = (site.contact ?? {}) as {
+  // Prefer TenantBusinessProfile identity + contact; fall back to legacy JSON.
+  const bp = site.businessProfile;
+  const name =
+    bp?.displayName?.trim() || brandingDisplayName(site.branding, host);
+  const legacyContact = (site.contact ?? {}) as {
     email?: string;
     phone?: string;
     address?: string;
     socials?: Partial<Record<SocialKey, string>>;
+  };
+  // Build a resolved address string from structured fields when available.
+  const bpAddress = bp
+    ? [bp.addressLine1, bp.city, bp.state, bp.postalCode]
+        .filter(Boolean)
+        .join(", ") || null
+    : null;
+  const contact = {
+    email: bp?.email?.trim() || legacyContact.email,
+    phone: bp?.phone?.trim() || legacyContact.phone,
+    address: bpAddress || legacyContact.address,
+    socials: legacyContact.socials,
   };
   const socials = contact.socials ?? {};
 

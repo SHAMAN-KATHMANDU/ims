@@ -13,9 +13,11 @@ export type SaleWithIncludes = {
   isCreditSale?: boolean;
   promoCodesUsed?: string[] | unknown | null;
   tenant?: {
+    id?: string;
     name: string;
     settings?: unknown;
   } | null;
+  tenantId?: string;
   location?:
     | { id: string; name: string; address?: string | null }
     | { id: string; name: string };

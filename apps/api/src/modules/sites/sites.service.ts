@@ -33,6 +33,34 @@ import type { BlockNode, BlockTree } from "@repo/shared";
 type Repo = typeof defaultRepo;
 type Revalidate = (tenantId: string) => Promise<void>;
 
+/**
+ * Identity fields that live in TenantBusinessProfile, NOT in SiteConfig.branding.
+ * When applying a template we must never overwrite these with template defaults —
+ * the tenant's logo, name and contact details must survive a template switch.
+ */
+const BRANDING_IDENTITY_KEYS = [
+  "name",
+  "tagline",
+  "logoUrl",
+  "faviconUrl",
+] as const;
+
+/**
+ * Strip identity fields from a raw branding JSON object before it is written
+ * to SiteConfig. Handles null safely (returns null).
+ */
+function stripIdentityFromBranding(
+  raw: unknown,
+): Record<string, unknown> | null {
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  const result = { ...(raw as Record<string, unknown>) };
+  for (const key of BRANDING_IDENTITY_KEYS) {
+    delete result[key];
+  }
+  return result;
+}
+
 function assertEnabled(config: SiteConfigWithTemplate | null): asserts config {
   if (!config) {
     throw createError(
@@ -112,10 +140,16 @@ export class SitesService {
       template: { connect: { id: template.id } },
     };
     if (input.resetBranding) {
+      // Strip identity fields (name/tagline/logoUrl/faviconUrl) from the
+      // template's default branding before writing — those belong to
+      // TenantBusinessProfile and must survive a template switch.
+      const strippedBranding = stripIdentityFromBranding(
+        template.defaultBranding,
+      );
       data.branding =
-        template.defaultBranding === null
+        strippedBranding === null
           ? Prisma.JsonNull
-          : (template.defaultBranding as Prisma.InputJsonValue);
+          : (strippedBranding as Prisma.InputJsonValue);
       data.features =
         template.defaultSections === null
           ? Prisma.JsonNull

@@ -1,5 +1,5 @@
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getCategories, getNavPages } from "@/lib/api";
+import { getSiteWithProfile, getCategories, getNavPages } from "@/lib/api";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { CheckoutForm } from "@/components/cart/CheckoutForm";
 import { brandingDisplayName } from "@/lib/theme";
@@ -11,9 +11,16 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const ctx = await getTenantContext();
-    const site = await getSite(ctx.host, ctx.tenantId);
+    const site = await getSiteWithProfile(
+      ctx.host,
+      ctx.tenantId,
+      ctx.tenantSlug,
+    );
     if (!site) return { title: "Checkout" };
-    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    const bp = site.businessProfile;
+    const name =
+      bp?.displayName?.trim() ||
+      brandingDisplayName(site.branding ?? null, ctx.host);
     return {
       title: `Checkout · ${name}`,
       description: `Complete your order at ${name}.`,
@@ -27,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function CheckoutRoute() {
   const ctx = await getTenantContext();
   const [site, categories, navPages] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
   ]);

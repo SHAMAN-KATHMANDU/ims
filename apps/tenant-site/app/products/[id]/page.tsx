@@ -1,6 +1,6 @@
 import { getTenantContext } from "@/lib/tenant";
 import {
-  getSite,
+  getSiteWithProfile,
   getProduct,
   getProducts,
   getCategories,
@@ -28,7 +28,7 @@ export async function generateMetadata({
     const { id } = await params;
     const ctx = await getTenantContext();
     const [site, product] = await Promise.all([
-      getSite(ctx.host, ctx.tenantId),
+      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
       getProduct(ctx.host, ctx.tenantId, id),
     ]);
     if (!site || !product) return {};
@@ -43,7 +43,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const ctx = await getTenantContext();
 
   const [site, product, categories, navPages, layout] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getProduct(ctx.host, ctx.tenantId, id),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),

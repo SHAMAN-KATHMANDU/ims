@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
-  getSite,
+  getSiteWithProfile,
   getCategories,
   getNavPages,
   getTenantPageBySlug,
@@ -61,7 +61,7 @@ export default async function TenantCustomPage({ params }: Props) {
 
   const ctx = await getTenantContext();
   const [site, page, categories, navPages] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getTenantPageBySlug(ctx.host, ctx.tenantId, slug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),

@@ -1,6 +1,6 @@
 import { getTenantContext } from "@/lib/tenant";
 import {
-  getSite,
+  getSiteWithProfile,
   getProducts,
   getCategories,
   getFeaturedBlogPosts,
@@ -20,7 +20,11 @@ import type { Metadata } from "next";
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const ctx = await getTenantContext();
-    const site = await getSite(ctx.host, ctx.tenantId);
+    const site = await getSiteWithProfile(
+      ctx.host,
+      ctx.tenantId,
+      ctx.tenantSlug,
+    );
     if (!site) return {};
     return homeMetadata(site, ctx.host);
   } catch {
@@ -32,7 +36,7 @@ export default async function HomePage() {
   const ctx = await getTenantContext();
   const [site, productList, categories, featuredBlogPosts, navPages, layout] =
     await Promise.all([
-      getSite(ctx.host, ctx.tenantId),
+      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
       getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 50 }),
       getCategories(ctx.host, ctx.tenantId),
       getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),

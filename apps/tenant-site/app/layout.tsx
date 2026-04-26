@@ -7,7 +7,7 @@ export const viewport: Viewport = {
 };
 import { cookies, headers } from "next/headers";
 import { getTenantContext } from "@/lib/tenant";
-import { getSite } from "@/lib/api";
+import { getSiteWithProfile } from "@/lib/api";
 import {
   brandingToCssVars,
   brandingDisplayName,
@@ -34,15 +34,23 @@ export async function generateMetadata() {
   try {
     if (!(await hasTenantContext())) return { title: "Preview" };
     const ctx = await getTenantContext();
-    const site = await getSite(ctx.host, ctx.tenantId);
+    const site = await getSiteWithProfile(
+      ctx.host,
+      ctx.tenantId,
+      ctx.tenantSlug,
+    );
     const seo = (site?.seo ?? {}) as { title?: string; description?: string };
-    const name = brandingDisplayName(site?.branding ?? null, ctx.host);
+    // Prefer TenantBusinessProfile identity fields; fall back to legacy branding JSON.
+    const bp = site?.businessProfile;
+    const name =
+      bp?.displayName?.trim() ||
+      brandingDisplayName(site?.branding ?? null, ctx.host);
+    const faviconUrl =
+      bp?.faviconUrl?.trim() || brandingLogoUrl(site?.branding ?? null) || null;
     return {
       title: seo.title || name,
       description: seo.description,
-      icons: brandingLogoUrl(site?.branding ?? null)
-        ? { icon: brandingLogoUrl(site?.branding ?? null)! }
-        : undefined,
+      icons: faviconUrl ? { icon: faviconUrl } : undefined,
     };
   } catch {
     return { title: "Site" };
@@ -81,7 +89,7 @@ export default async function RootLayout({
   }
 
   const ctx = await getTenantContext();
-  const site = await getSite(ctx.host, ctx.tenantId);
+  const site = await getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug);
 
   // Prefer structured themeTokens (Phase 7+) over legacy branding JSON.
   // ThemeTokens are validated at parse time; if invalid we fall back to

@@ -51,11 +51,9 @@ export const SECTION_PADDING_VALUES = [
 export const RADIUS_VALUES = ["sharp", "soft", "rounded"] as const;
 
 export const BrandingFormSchema = z.object({
-  // Identity
-  name: z.string().trim().max(120).optional().or(z.literal("")),
-  tagline: z.string().trim().max(200).optional().or(z.literal("")),
-  logoUrl: optionalUrl,
-  faviconUrl: optionalUrl,
+  // NOTE: Identity fields (name/displayName, tagline, logoUrl, faviconUrl,
+  // contact email/phone/address, socials) have moved to TenantBusinessProfile.
+  // Edit them in Settings → Business profile, not here.
 
   // Colors — 9 tokens
   primaryColor: optionalHex,
@@ -158,10 +156,7 @@ export type SeoFormInput = z.infer<typeof SeoFormSchema>;
 // ============================================
 
 type StoredBranding = {
-  name?: string;
-  tagline?: string;
-  logoUrl?: string;
-  faviconUrl?: string;
+  // name / tagline / logoUrl / faviconUrl have moved to TenantBusinessProfile
   theme?: "light" | "dark";
   colors?: {
     primary?: string;
@@ -196,11 +191,6 @@ export function brandingFromJson(
   const t = j.typography ?? {};
   const s = j.spacing ?? {};
   return {
-    name: j.name ?? "",
-    tagline: j.tagline ?? "",
-    logoUrl: j.logoUrl ?? "",
-    faviconUrl: j.faviconUrl ?? "",
-
     primaryColor: c.primary ?? "",
     secondaryColor: c.secondary ?? "",
     accentColor: c.accent ?? "",
@@ -233,10 +223,7 @@ export function brandingToJson(
   form: BrandingFormInput,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (form.name) out.name = form.name;
-  if (form.tagline) out.tagline = form.tagline;
-  if (form.logoUrl) out.logoUrl = form.logoUrl;
-  if (form.faviconUrl) out.faviconUrl = form.faviconUrl;
+  // name / tagline / logoUrl / faviconUrl are stored in TenantBusinessProfile, not here
   if (form.theme) out.theme = form.theme;
 
   const colors: Record<string, string> = {};
