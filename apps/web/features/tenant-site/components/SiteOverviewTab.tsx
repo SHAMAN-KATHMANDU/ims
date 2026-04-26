@@ -242,51 +242,58 @@ function BrandPreviewCard({ config }: { config: SiteConfig }) {
           A quick snapshot of what visitors see on your site.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoUrl}
-                alt={name}
-                className="h-10 w-10 rounded-md border border-border object-cover"
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-sm font-semibold text-muted-foreground">
-                {name.slice(0, 1).toUpperCase()}
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logoUrl}
+              alt={name}
+              className="h-12 w-12 rounded-md border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-muted text-base font-semibold text-muted-foreground">
+              {name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="truncate text-base font-semibold">{name}</div>
+            {tagline && (
+              <div className="truncate text-xs text-muted-foreground">
+                {tagline}
               </div>
             )}
-            <div className="min-w-0">
-              <div className="truncate text-base font-semibold">{name}</div>
-              {tagline && (
-                <div className="truncate text-xs text-muted-foreground">
-                  {tagline}
-                </div>
-              )}
-            </div>
           </div>
-          {swatches.length > 0 ? (
-            <div className="flex items-center gap-3">
-              {swatches.map((s) => (
-                <div key={s.key} className="flex flex-col items-center gap-1">
-                  <div
-                    className="h-6 w-6 rounded-full border border-border shadow-sm"
-                    style={{ background: s.value }}
-                    title={`${s.label}: ${s.value}`}
-                  />
-                  <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              No custom colors yet
-            </span>
-          )}
         </div>
+        {swatches.length > 0 ? (
+          <div className="grid grid-cols-5 gap-2">
+            {swatches.map((s) => (
+              <div
+                key={s.key}
+                className="flex flex-col overflow-hidden rounded-md border border-border"
+                title={`${s.label}: ${s.value}`}
+              >
+                <div
+                  className="h-12 w-full"
+                  style={{ background: s.value }}
+                  aria-hidden="true"
+                />
+                <div className="space-y-0.5 bg-card px-2 py-1.5">
+                  <div className="truncate text-[10px] font-medium uppercase tracking-wide text-foreground">
+                    {s.label}
+                  </div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground">
+                    {s.value}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
+            No custom colors yet — set them in the website designer.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

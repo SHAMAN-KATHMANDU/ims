@@ -191,13 +191,15 @@ export default async function SitePreviewRoute({
       ? (result.draftLayout.blocks as BlockNode[])
       : [];
 
-  // Preview host is arbitrary (the iframe lives on the tenant-site URL).
-  // We use the request's host for tagging purposes only — cache tags are
-  // ignored here because the route is force-dynamic, so we pass the scope
-  // as the synthetic host + tenant id.
+  // Preview host is arbitrary (the iframe lives on the tenant-site URL) and
+  // is used as the *display fallback* for BrandMark when no
+  // BusinessProfile.displayName / SiteConfig.branding.name is set. Use a
+  // human-readable string so an empty brand reads "Your site" instead of
+  // leaking a "__preview__" sentinel into the rendered header. Tenant id is
+  // never rendered as text — kept as a sentinel for cache-tag scoping.
   const dataContext: BlockDataContext = {
     site,
-    host: "__preview__",
+    host: "Your site",
     tenantId: "__preview__",
     categories: result.categories,
     navPages: result.navPages,
