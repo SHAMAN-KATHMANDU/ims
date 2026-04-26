@@ -356,7 +356,7 @@ function BusinessProfilePageInner() {
       toast({ title: "Business profile saved" });
       // Reset dirty state to saved values.
       reset(profileToFormValues(result.profile));
-    } catch (err) {
+    } catch {
       // onError toast is handled by the mutation hook; catch here prevents
       // unhandled-rejection noise.
     }

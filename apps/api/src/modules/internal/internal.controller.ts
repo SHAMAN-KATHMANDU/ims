@@ -106,7 +106,6 @@ class InternalController {
       const raw = tenant.businessProfile;
       let profile: PublicBusinessProfileDto | null = null;
       if (raw) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const {
           panNumber: _pan,
           vatNumber: _vat,

@@ -176,7 +176,6 @@ function PseudoBlockRow({
         <span className="flex h-6 w-4 shrink-0 items-center justify-center text-muted-foreground/30">
           <LayoutTemplate className="h-3 w-3" aria-hidden="true" />
         </span>
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- PseudoBlockRow click selects header/footer; keyboard navigation via button below */}
         <button
           type="button"
           onClick={() => onSelect(pseudoId)}

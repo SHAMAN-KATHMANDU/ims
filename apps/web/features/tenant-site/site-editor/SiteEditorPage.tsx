@@ -170,7 +170,6 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
   const configQuery = useSiteConfig();
-  const tenantId = configQuery.data?.tenantId ?? null;
   const pagesQuery = useTenantPages({ limit: 100 });
   const customPages = useMemo(
     () => pagesQuery.data?.pages ?? [],
