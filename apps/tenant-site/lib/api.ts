@@ -105,6 +105,34 @@ export interface PublicSite {
   locales?: string[];
   /** ISO 4217 code (INR, NPR, USD, …) — drives price formatting. */
   currency?: string | null;
+  /**
+   * Business identity merged in by getSiteWithProfile(). Null for tenants
+   * without a TenantBusinessProfile row yet, in which case all components
+   * fall back to the legacy branding / contact JSON fields.
+   */
+  businessProfile?: PublicBusinessProfile | null;
+}
+
+/**
+ * Public business-profile DTO — mirrors the fields from TenantBusinessProfile
+ * that the tenant-site renderer needs for identity display (header logo, footer
+ * contact, document title, favicon).
+ *
+ * Populated by getSiteWithProfile(). Null until
+ * GET /api/v1/internal/tenants/:slug/business-profile is live (task #1 by
+ * bp-backend). Components must fall back to site.branding / site.contact when
+ * this is null.
+ */
+export interface PublicBusinessProfile {
+  displayName: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  phone: string | null;
+  email: string | null;
+  addressLine1: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
 }
 
 export interface PublicCategory {
@@ -921,4 +949,56 @@ export async function getBlogCategories(
     },
   );
   return resp?.categories ?? [];
+}
+
+// ============================================================================
+// Business Profile (identity layer — Phase B)
+// ============================================================================
+
+/**
+ * Fetch the tenant's business profile (displayName, logo, contact, address).
+ *
+ * STUB — returns null until bp-backend ships:
+ *   GET /api/v1/internal/tenants/:slug/business-profile  (task #1)
+ *
+ * Once live, replace the body with:
+ *
+ *   const resp = await publicFetch<{ businessProfile: PublicBusinessProfile }>(
+ *     `/internal/tenants/${encodeURIComponent(slug)}/business-profile`,
+ *     { host, tenantId, tags: [`tenant:${tenantId}:business-profile`], revalidate: 300 },
+ *   );
+ *   return resp?.businessProfile ?? null;
+ *
+ * TODO(bp-integration): unstub after bp-backend task #1 is merged.
+ */
+export async function getBusinessProfile(
+  _host: string,
+  _tenantId: string,
+  _slug: string,
+): Promise<PublicBusinessProfile | null> {
+  return null;
+}
+
+/**
+ * Fetch site config and business profile in parallel, returning a merged
+ * PublicSite with `businessProfile` populated.
+ *
+ * Every template component reads identity via `site.businessProfile` first and
+ * falls back to the legacy `site.branding` / `site.contact` JSON fields, so
+ * older tenants without a TenantBusinessProfile row keep working unchanged.
+ *
+ * Usage: replace `getSite(host, tenantId)` with
+ *   `getSiteWithProfile(host, tenantId, ctx.tenantSlug)` in page handlers.
+ */
+export async function getSiteWithProfile(
+  host: string,
+  tenantId: string,
+  slug: string,
+): Promise<PublicSite | null> {
+  const [site, businessProfile] = await Promise.all([
+    getSite(host, tenantId),
+    getBusinessProfile(host, tenantId, slug),
+  ]);
+  if (!site) return null;
+  return { ...site, businessProfile };
 }

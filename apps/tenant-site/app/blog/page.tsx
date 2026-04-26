@@ -3,7 +3,7 @@ import { getTenantContext } from "@/lib/tenant";
 import {
   getBlogPosts,
   getBlogCategories,
-  getSite,
+  getSiteWithProfile,
   getCategories,
   getNavPages,
   getSiteLayout,
@@ -36,7 +36,7 @@ export default async function BlogIndexPage({
     await Promise.all([
       getBlogPosts(ctx.host, ctx.tenantId, { page, limit }),
       getBlogCategories(ctx.host, ctx.tenantId),
-      getSite(ctx.host, ctx.tenantId),
+      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
       getCategories(ctx.host, ctx.tenantId),
       getNavPages(ctx.host, ctx.tenantId),
       getSiteLayout(ctx.host, ctx.tenantId, "blog-index").catch(() => null),

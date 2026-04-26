@@ -10,7 +10,11 @@
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getSite, getTenantPageBySlug, getSiteLayout } from "@/lib/api";
+import {
+  getSiteWithProfile,
+  getTenantPageBySlug,
+  getSiteLayout,
+} from "@/lib/api";
 import { getTenantContext } from "@/lib/tenant";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
@@ -40,7 +44,7 @@ export default async function LandingPage({ params }: Props) {
   const { slug } = await params;
   const ctx = await getTenantContext();
   const [site, page] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getTenantPageBySlug(ctx.host, ctx.tenantId, slug),
   ]);
 

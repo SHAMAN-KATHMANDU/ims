@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import {
-  getSite,
+  getSiteWithProfile,
   getCategories,
   getNavPages,
   getOffers,
@@ -21,14 +21,21 @@ import type { BlockNode } from "@repo/shared";
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const ctx = await getTenantContext();
-    const site = await getSite(ctx.host, ctx.tenantId);
+    const site = await getSiteWithProfile(
+      ctx.host,
+      ctx.tenantId,
+      ctx.tenantSlug,
+    );
     if (!site) {
       return {
         title: "Offers",
         description: "Products currently on discount.",
       };
     }
-    const name = brandingDisplayName(site.branding ?? null, ctx.host);
+    const bp = site.businessProfile;
+    const name =
+      bp?.displayName?.trim() ||
+      brandingDisplayName(site.branding ?? null, ctx.host);
     return {
       title: `Offers · ${name}`,
       description: `Products currently on discount at ${name}.`,
@@ -53,7 +60,7 @@ export default async function OffersPage({ searchParams }: PageProps) {
 
   const ctx = await getTenantContext();
   const [site, offersList, categories, navPages, layout] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getOffers(ctx.host, ctx.tenantId, { page, limit: 24 }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),

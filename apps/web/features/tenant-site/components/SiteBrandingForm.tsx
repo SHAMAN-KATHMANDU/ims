@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MediaPickerField } from "@/features/media";
+import { Info } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -224,60 +224,20 @@ export function SiteBrandingForm({
 
             {/* ---------- Identity ---------- */}
             <TabsContent value="identity" className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="brand-name">Display name</Label>
-                  <Input
-                    id="brand-name"
-                    placeholder="Acme Furniture"
-                    disabled={disabled}
-                    {...form.register("name")}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="brand-tagline">Tagline</Label>
-                  <Input
-                    id="brand-tagline"
-                    placeholder="Handcrafted since 1998"
-                    disabled={disabled}
-                    {...form.register("tagline")}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="brand-logo">Logo</Label>
-                <Controller
-                  control={form.control}
-                  name="logoUrl"
-                  render={({ field }) => (
-                    <MediaPickerField
-                      id="brand-logo"
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      disabled={disabled}
-                      helperText="PNG or SVG, ideally with a transparent background."
-                    />
-                  )}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="brand-favicon">Favicon</Label>
-                <Controller
-                  control={form.control}
-                  name="faviconUrl"
-                  render={({ field }) => (
-                    <MediaPickerField
-                      id="brand-favicon"
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      disabled={disabled}
-                      previewSize={32}
-                      helperText="Square image, 32×32 or 64×64 PNG recommended."
-                    />
-                  )}
-                />
+              {/* Info banner — identity fields now live in Business profile */}
+              <div className="flex gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <p>
+                  Business identity (logo, contact, address, tax IDs) is managed
+                  in{" "}
+                  <a
+                    href="../settings/business-profile"
+                    className="font-medium underline underline-offset-2"
+                  >
+                    Settings → Business profile
+                  </a>
+                  . Changes there appear on your site automatically.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -328,7 +288,7 @@ export function SiteBrandingForm({
                     color: (values.textColor as string) || undefined,
                   }}
                 >
-                  {values.name || "Preview: your brand name"}
+                  Your brand name
                 </div>
                 <p
                   style={{
@@ -337,8 +297,7 @@ export function SiteBrandingForm({
                     marginBottom: "0.75rem",
                   }}
                 >
-                  {values.tagline ||
-                    "This strip shows how your token picks will render."}
+                  This strip shows how your color token picks will render.
                 </p>
                 <span
                   className="inline-block rounded px-3 py-1.5 text-xs"

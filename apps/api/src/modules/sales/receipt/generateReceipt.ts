@@ -15,6 +15,7 @@ import { fmtDate } from "./utils";
 import { registerFonts } from "./typography";
 import type { ReceiptContext, SaleWithIncludes } from "./types";
 import { drawHeader } from "./components/header";
+import businessProfileRepository from "@/modules/business-profile/business-profile.repository";
 import { drawCustomer } from "./components/customer";
 import { drawItemsTable } from "./components/itemsTable";
 import { drawTotals } from "./components/totals";
@@ -63,6 +64,15 @@ function extractCustomerInfo(sale: SaleWithIncludes): {
 export async function generateReceiptPdf(
   sale: SaleWithIncludes,
 ): Promise<Buffer> {
+  // Pull the tenant's business profile up-front so the header can render
+  // legalName + address + phone + PAN/VAT instead of just `tenant.name`.
+  // Failure to load (e.g. profile row never created) falls back to nulls;
+  // the header has its own fallback to `sale.tenant?.name`.
+  const tenantId = sale.tenantId ?? sale.tenant?.id ?? null;
+  const businessProfile = tenantId
+    ? await businessProfileRepository.getByTenant(tenantId).catch(() => null)
+    : null;
+
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({
@@ -79,7 +89,11 @@ export async function generateReceiptPdf(
     const itemCount = sale.items?.length ?? 0;
     const ctx = createContext(itemCount);
 
-    const orgName = sale.tenant?.name ?? "—";
+    const orgName =
+      businessProfile?.displayName ??
+      businessProfile?.legalName ??
+      sale.tenant?.name ??
+      "—";
     const saleCode = sale.saleCode;
     const locationName =
       (sale.location && "name" in sale.location ? sale.location.name : null) ??
@@ -97,7 +111,15 @@ export async function generateReceiptPdf(
     const processedBy = sale.createdBy?.username ?? "—";
     const createdDate = fmtDate(sale.createdAt);
 
-    drawHeader(doc, orgName, saleCode, locationName, locationAddress, ctx);
+    drawHeader(
+      doc,
+      orgName,
+      saleCode,
+      locationName,
+      locationAddress,
+      ctx,
+      businessProfile,
+    );
     drawCustomer(doc, customerName, customerPhone, customerAddress, ctx);
     drawItemsTable(doc, sale, ctx);
     drawTotals(doc, sale, ctx);

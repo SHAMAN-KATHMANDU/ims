@@ -9,7 +9,12 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getCategories, getNavPages, getCollection } from "@/lib/api";
+import {
+  getSiteWithProfile,
+  getCategories,
+  getNavPages,
+  getCollection,
+} from "@/lib/api";
 import {
   SiteHeader,
   SiteFooter,
@@ -41,7 +46,7 @@ export default async function CollectionPage({ params }: PageProps) {
   const { slug } = await params;
   const ctx = await getTenantContext();
   const [site, categories, navPages, collectionRes] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
     getCollection(ctx.host, ctx.tenantId, slug, 48),

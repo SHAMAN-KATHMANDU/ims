@@ -1,6 +1,6 @@
 import { getTenantContext } from "@/lib/tenant";
 import {
-  getSite,
+  getSiteWithProfile,
   getProducts,
   getCategories,
   getNavPages,
@@ -25,7 +25,11 @@ interface PageProps {
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const ctx = await getTenantContext();
-    const site = await getSite(ctx.host, ctx.tenantId);
+    const site = await getSiteWithProfile(
+      ctx.host,
+      ctx.tenantId,
+      ctx.tenantSlug,
+    );
     if (!site) return { title: "Products" };
     const name = brandingDisplayName(site.branding ?? null, ctx.host);
     return {
@@ -88,7 +92,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
 
   const ctx = await getTenantContext();
   const [site, productList, categories, navPages, layout] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getProducts(ctx.host, ctx.tenantId, {
       page,
       limit: 24,

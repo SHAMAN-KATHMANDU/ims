@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import {
   getBlogPostBySlug,
-  getSite,
+  getSiteWithProfile,
   getCategories,
   getNavPages,
   getSiteLayout,
@@ -49,7 +49,7 @@ export default async function BlogPostPage({ params }: Props) {
 
   const [result, site, categories, navPages, layout] = await Promise.all([
     getBlogPostBySlug(ctx.host, ctx.tenantId, slug),
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
     getSiteLayout(ctx.host, ctx.tenantId, "blog-post").catch(() => null),

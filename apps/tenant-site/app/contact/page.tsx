@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
+import {
+  getSiteWithProfile,
+  getCategories,
+  getNavPages,
+  getSiteLayout,
+} from "@/lib/api";
 import { pickTemplate } from "@/components/templates/pickTemplate";
 import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
@@ -17,7 +22,7 @@ export const metadata: Metadata = {
 export default async function ContactPage() {
   const ctx = await getTenantContext();
   const [site, categories, navPages, layout] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
     getSiteLayout(ctx.host, ctx.tenantId, "contact").catch(() => null),
