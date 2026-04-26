@@ -1,46 +1,44 @@
 "use client";
 
 /**
- * EditorPreviewShell — client-side shell that enables live prop propagation
- * (Bug #3) in the site editor preview iframe.
+ * EditorPreviewShell — client-side shell for the site-editor preview iframe.
  *
- * The parent PreviewFrame posts `{ type: 'editor:block-tree', tree }` messages
- * (debounced ~150 ms) whenever the editor store's block tree changes. This
- * component listens for that message and re-renders the block tree immediately
- * — without a full iframe reload — so inspector toggles (showPrice, columns,
- * cardAspectRatio, …) are visible within ~150 ms of the user's action.
+ * The parent PreviewFrame posts `{ type: 'editor:block-tree' }` messages
+ * (debounced ~150 ms) whenever the editor store's block tree changes. We
+ * respond by reloading the iframe so the server re-renders the new tree.
+ *
+ * Why a reload instead of in-place setState: BlockRenderer is a Server
+ * Component (uses `next/headers` indirectly via lib/tenant). Pulling it
+ * into a client setState path drags the entire block registry — including
+ * blocks that reach into next/headers — into the client bundle, which fails
+ * the Next.js build ("This API is only available in Server Components").
  *
  * Used only when the preview page detects `?_editor=1` (the flag that
  * PreviewFrame appends to the iframe src). For regular public traffic the
  * preview page renders via the server-only BlockRenderer directly.
  *
- * The `dataContext` (products, categories, nav, site config) is fetched once
- * server-side and passed in as `initialDataContext`. Block components read it
- * via props, so no refetch is needed when the tree updates.
+ * The server parent renders the tree once and passes it as children; the
+ * shell adds the message listener around it.
  */
 
-import { useState, useEffect } from "react";
-import type { BlockNode } from "@repo/shared";
-import { BlockRenderer } from "./BlockRenderer";
-import type { BlockDataContext } from "./data-context";
+import { useEffect, type ReactNode } from "react";
 
 interface Props {
-  initialBlocks: BlockNode[];
-  dataContext: BlockDataContext;
+  children: ReactNode;
 }
 
-export function EditorPreviewShell({ initialBlocks, dataContext }: Props) {
-  const [blocks, setBlocks] = useState<BlockNode[]>(initialBlocks);
-
+export function EditorPreviewShell({ children }: Props) {
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === "editor:block-tree" && Array.isArray(e.data.tree)) {
-        setBlocks(e.data.tree as BlockNode[]);
+      if (e.data?.type === "editor:block-tree") {
+        // Trigger a server re-render with the latest tree. The parent editor
+        // saves the draft layout before posting; the iframe pulls it on reload.
+        window.location.reload();
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  return <BlockRenderer nodes={blocks} dataContext={dataContext} />;
+  return <>{children}</>;
 }
