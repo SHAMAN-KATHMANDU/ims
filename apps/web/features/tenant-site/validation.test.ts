@@ -12,28 +12,28 @@ import {
 } from "./validation";
 
 describe("BrandingFormSchema", () => {
-  it("accepts a full valid payload", () => {
+  // Identity fields (name/tagline/logoUrl/faviconUrl) moved to
+  // TenantBusinessProfile — they are no longer part of this schema.
+  it("accepts a full valid design-token payload", () => {
     const result = BrandingFormSchema.parse({
-      name: "Acme",
-      tagline: "Handcrafted",
-      logoUrl: "https://example.com/logo.png",
-      faviconUrl: "https://example.com/fav.ico",
       primaryColor: "#1E40AF",
       accentColor: "#F59E0B",
       theme: "light",
+      headingFont: "Playfair Display",
+      radius: "soft",
+      sectionPadding: "balanced",
     });
     expect(result.primaryColor).toBe("#1E40AF");
+    expect(result.theme).toBe("light");
   });
 
-  it("accepts empty strings for all optional fields", () => {
+  it("accepts empty strings for all optional color/font fields", () => {
     expect(() =>
       BrandingFormSchema.parse({
-        name: "",
-        tagline: "",
-        logoUrl: "",
-        faviconUrl: "",
         primaryColor: "",
         accentColor: "",
+        headingFont: "",
+        bodyFont: "",
       }),
     ).not.toThrow();
   });
@@ -41,22 +41,17 @@ describe("BrandingFormSchema", () => {
   it("rejects non-hex primaryColor", () => {
     expect(() => BrandingFormSchema.parse({ primaryColor: "blue" })).toThrow();
   });
-
-  it("rejects invalid logo URL", () => {
-    expect(() => BrandingFormSchema.parse({ logoUrl: "not a url" })).toThrow();
-  });
 });
 
 describe("branding serialization round-trip", () => {
   it("brandingFromJson handles null/missing fields", () => {
     const result = brandingFromJson(null);
-    expect(result.name).toBe("");
+    expect(result.primaryColor).toBe("");
     expect(result.theme).toBe("light");
   });
 
   it("brandingFromJson reads colors.primary/accent", () => {
     const result = brandingFromJson({
-      name: "Acme",
       colors: { primary: "#111", accent: "#222" },
       theme: "dark",
     });
@@ -67,16 +62,11 @@ describe("branding serialization round-trip", () => {
 
   it("brandingToJson strips empty strings and nests colors", () => {
     const result = brandingToJson({
-      name: "Acme",
-      tagline: "",
-      logoUrl: "",
-      faviconUrl: "",
       primaryColor: "#111",
       accentColor: "#222",
       theme: "dark",
     });
     expect(result).toEqual({
-      name: "Acme",
       theme: "dark",
       colors: { primary: "#111", accent: "#222" },
     });
@@ -84,10 +74,6 @@ describe("branding serialization round-trip", () => {
 
   it("brandingToJson omits colors entirely when neither is set", () => {
     const result = brandingToJson({
-      name: "Acme",
-      tagline: "",
-      logoUrl: "",
-      faviconUrl: "",
       primaryColor: "",
       accentColor: "",
       theme: "light",
@@ -303,10 +289,6 @@ describe("brandingFromJson / brandingToJson — C.5 round-trip", () => {
 
   it("brandingToJson omits empty typography/spacing objects", () => {
     const out = brandingToJson({
-      name: "Acme",
-      tagline: "",
-      logoUrl: undefined,
-      faviconUrl: undefined,
       primaryColor: "",
       secondaryColor: "",
       accentColor: "",

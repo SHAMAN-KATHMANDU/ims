@@ -114,25 +114,37 @@ export interface PublicSite {
 }
 
 /**
- * Public business-profile DTO — mirrors the fields from TenantBusinessProfile
- * that the tenant-site renderer needs for identity display (header logo, footer
- * contact, document title, favicon).
+ * Public business-profile DTO — mirrors PublicBusinessProfileDto from the API's
+ * internal controller (tax/regulatory fields stripped).
  *
- * Populated by getSiteWithProfile(). Null until
- * GET /api/v1/internal/tenants/:slug/business-profile is live (task #1 by
- * bp-backend). Components must fall back to site.branding / site.contact when
- * this is null.
+ * Populated by getSiteWithProfile() via GET /api/v1/internal/tenants/:slug/business-profile.
+ * Null for tenants without a TenantBusinessProfile row; components fall back to
+ * site.branding / site.contact in that case.
  */
 export interface PublicBusinessProfile {
+  id: string;
+  tenantId: string;
+  legalName: string | null;
   displayName: string | null;
+  tagline: string | null;
   logoUrl: string | null;
   faviconUrl: string | null;
-  phone: string | null;
   email: string | null;
+  phone: string | null;
+  alternatePhone: string | null;
+  websiteUrl: string | null;
   addressLine1: string | null;
+  addressLine2: string | null;
   city: string | null;
   state: string | null;
   postalCode: string | null;
+  country: string | null;
+  mapUrl: string | null;
+  defaultCurrency: string;
+  timezone: string | null;
+  socials: unknown;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PublicCategory {
@@ -958,25 +970,24 @@ export async function getBlogCategories(
 /**
  * Fetch the tenant's business profile (displayName, logo, contact, address).
  *
- * STUB — returns null until bp-backend ships:
- *   GET /api/v1/internal/tenants/:slug/business-profile  (task #1)
- *
- * Once live, replace the body with:
- *
- *   const resp = await publicFetch<{ businessProfile: PublicBusinessProfile }>(
- *     `/internal/tenants/${encodeURIComponent(slug)}/business-profile`,
- *     { host, tenantId, tags: [`tenant:${tenantId}:business-profile`], revalidate: 300 },
- *   );
- *   return resp?.businessProfile ?? null;
- *
- * TODO(bp-integration): unstub after bp-backend task #1 is merged.
+ * GET /api/v1/internal/tenants/:slug/business-profile
+ * Returns null for tenants without a TenantBusinessProfile row yet.
  */
 export async function getBusinessProfile(
-  _host: string,
-  _tenantId: string,
-  _slug: string,
+  host: string,
+  tenantId: string,
+  slug: string,
 ): Promise<PublicBusinessProfile | null> {
-  return null;
+  const resp = await publicFetch<{ profile: PublicBusinessProfile | null }>(
+    `/internal/tenants/${encodeURIComponent(slug)}/business-profile`,
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:business-profile`],
+      revalidate: 300,
+    },
+  );
+  return resp?.profile ?? null;
 }
 
 /**

@@ -23,13 +23,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import {
@@ -139,8 +141,9 @@ export function SiteTemplatePicker({
         <CardHeader>
           <CardTitle>Template</CardTitle>
           <CardDescription>
-            Pick the look for your storefront. Switching templates keeps your
-            branding unless you choose to reset.
+            Pick the look for your storefront. Switching templates resets your
+            page layout and theme. Your logo, contact details, and products are
+            never affected.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -317,45 +320,40 @@ export function SiteTemplatePicker({
         </CardContent>
       </Card>
 
-      <Dialog
+      <AlertDialog
         open={confirm !== null}
         onOpenChange={(v) => {
-          if (!v) setConfirm(null);
+          if (!v && !pickMutation.isPending) setConfirm(null);
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Switch to {confirm?.name}?</DialogTitle>
-            <DialogDescription>
-              Choose whether to keep your current branding customizations or
-              reset them to the {confirm?.name} defaults.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setConfirm(null)}
-              disabled={pickMutation.isPending}
-            >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Switch to {confirm?.name ?? "this template"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Your page layout and theme colors will be replaced with the{" "}
+              {confirm?.name ?? "template"} defaults. Your business identity
+              (logo, contact details, address, PAN/VAT) and all your products
+              stay exactly as they are.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pickMutation.isPending}>
               Cancel
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handlePick(false)}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handlePick(true);
+              }}
               disabled={pickMutation.isPending}
             >
-              Keep my branding
-            </Button>
-            <Button
-              onClick={() => handlePick(true)}
-              disabled={pickMutation.isPending}
-            >
-              {pickMutation.isPending ? "Applying…" : "Reset to defaults"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {pickMutation.isPending ? "Applying…" : "Apply template"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
