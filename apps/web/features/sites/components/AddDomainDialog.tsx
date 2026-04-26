@@ -24,9 +24,14 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/useToast";
 import { AddDomainFormSchema, type AddDomainFormInput } from "../validation";
 import { useCreateTenantDomain } from "../hooks/use-tenant-domains";
+import { useAddMyDomain } from "../hooks/use-my-domains";
 
 interface AddDomainDialogProps {
-  tenantId: string;
+  /**
+   * Platform-admin mode: pass the target tenantId to use the platform-admin API.
+   * Omit (or pass undefined) to use the tenant-self API (/tenants/me/domains).
+   */
+  tenantId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -37,7 +42,11 @@ export function AddDomainDialog({
   onOpenChange,
 }: AddDomainDialogProps) {
   const { toast } = useToast();
-  const createMutation = useCreateTenantDomain(tenantId);
+  // Both hooks are called unconditionally to satisfy React's rules of hooks.
+  // Only one is used based on whether a tenantId was provided.
+  const platformMutation = useCreateTenantDomain(tenantId ?? "");
+  const selfMutation = useAddMyDomain();
+  const createMutation = tenantId ? platformMutation : selfMutation;
 
   const form = useForm<AddDomainFormInput>({
     resolver: zodResolver(AddDomainFormSchema),

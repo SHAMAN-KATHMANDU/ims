@@ -445,7 +445,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
       case "contact":
         return cfg ? <ContactPanel config={cfg} /> : null;
       case "domain":
-        return <DomainPanel tenantId={tenantId} />;
+        return <DomainPanel />;
       case "blog":
         return (
           <BlogPanel
@@ -578,6 +578,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
                         onInlineEdit={handleInlineEdit}
                         onReorder={handleReorder}
                         onInsertAt={handleInsertAt}
+                        blocks={blocks}
                       />
                     )}
                   </div>

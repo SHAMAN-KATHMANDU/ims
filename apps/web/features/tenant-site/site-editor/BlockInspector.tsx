@@ -46,6 +46,7 @@ import {
   FileText,
   Palette,
   Settings2,
+  Info,
 } from "lucide-react";
 import {
   selectSelectedBlock,
@@ -63,9 +64,53 @@ import { CategoryPickerField } from "./CategoryPickerField";
 import {
   CUSTOM_INSPECTOR_KINDS,
   CustomInspectorPanel,
+  HeaderPseudoInspector,
+  FooterPseudoInspector,
 } from "./HeaderFooterInspectors";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { getFieldOverride } from "./inspector-overrides";
 
 type InspectorTab = "content" | "design" | "advanced";
+
+// ---------------------------------------------------------------------------
+// PseudoInspectorHeader — shared header bar for header/footer pseudo-panels
+// ---------------------------------------------------------------------------
+
+function PseudoInspectorHeader({
+  label,
+  description,
+  onClose,
+}: {
+  label: string;
+  description: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="border-b border-border px-3 py-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-semibold text-foreground leading-tight">
+            {label}
+          </div>
+          <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+            {description}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          title="Deselect (Esc)"
+          className="h-7 w-7 grid place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+        >
+          <X size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function BlockInspector() {
   const selected = useEditorStore(selectSelectedBlock);
@@ -73,6 +118,39 @@ export function BlockInspector() {
   const updateBlockProps = useEditorStore(selectUpdateBlockProps);
   const setSelected = useEditorStore(selectSetSelected);
   const [tab, setTab] = useState<InspectorTab>("content");
+
+  // ── Header / Footer pseudo-block selection ───────────────────────────────
+  // These are not real BlockNodes; they're sentinel IDs set by the
+  // Header/Footer pseudo-rows in BlockTreePanel.
+  if (selectedId === "header") {
+    return (
+      <div className="flex h-full flex-col">
+        <PseudoInspectorHeader
+          label="Header"
+          description="Configure global header blocks (nav bar, utility bar, logo)."
+          onClose={() => setSelected(null)}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <HeaderPseudoInspector />
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedId === "footer") {
+    return (
+      <div className="flex h-full flex-col">
+        <PseudoInspectorHeader
+          label="Footer"
+          description="Configure global footer blocks (columns, social, copyright)."
+          onClose={() => setSelected(null)}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <FooterPseudoInspector />
+        </div>
+      </div>
+    );
+  }
 
   if (!selected || !selectedId) {
     return (
@@ -1060,6 +1138,7 @@ function BlockForm({ block }: { block: BlockNode }) {
           onChange={(v) =>
             updateBlockProps(block.id, { [field.name]: v } as never)
           }
+          blockKind={block.kind}
         />
       ))}
     </div>
@@ -1221,12 +1300,44 @@ function FieldRenderer({
   field,
   value,
   onChange,
+  blockKind,
 }: {
   field: FieldDescriptor;
   value: unknown;
   onChange: (v: unknown) => void;
+  /** When provided, used to look up label/tooltip overrides. */
+  blockKind?: string;
 }) {
-  const labelText = humanize(field.name);
+  const override = blockKind
+    ? getFieldOverride(blockKind, field.name)
+    : undefined;
+  const labelText = override?.label ?? humanize(field.name);
+
+  /** Renders the label, optionally with a tooltip info icon. */
+  function FieldLabel() {
+    if (!override?.tooltip) {
+      return <Label>{labelText}</Label>;
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <Label>{labelText}</Label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              aria-label={`Help: ${labelText}`}
+            >
+              <Info size={11} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-[240px]">
+            {override.tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    );
+  }
 
   if (field.kind === "string") {
     if (field.name === "categoryId") {
@@ -1239,11 +1350,16 @@ function FieldRenderer({
     }
     return (
       <div className="space-y-1">
-        <Label>{labelText}</Label>
+        <FieldLabel />
         <Input
           value={(value as string | undefined) ?? ""}
           onChange={(e) => onChange(e.target.value)}
         />
+        {override?.helpText && (
+          <p className="text-[10px] text-muted-foreground">
+            {override.helpText}
+          </p>
+        )}
       </div>
     );
   }
@@ -1251,7 +1367,7 @@ function FieldRenderer({
     const isCode = field.name === "html" || field.name === "css";
     return (
       <div className="space-y-1">
-        <Label>{labelText}</Label>
+        <FieldLabel />
         <Textarea
           rows={isCode ? 10 : 5}
           value={(value as string | undefined) ?? ""}
@@ -1266,13 +1382,18 @@ function FieldRenderer({
               : "Scoped CSS — applied inside this block only."}
           </p>
         )}
+        {!isCode && override?.helpText && (
+          <p className="text-[10px] text-muted-foreground">
+            {override.helpText}
+          </p>
+        )}
       </div>
     );
   }
   if (field.kind === "number") {
     return (
       <div className="space-y-1">
-        <Label>{labelText}</Label>
+        <FieldLabel />
         <Input
           type="number"
           value={(value as number | undefined) ?? ""}
@@ -1281,14 +1402,44 @@ function FieldRenderer({
             onChange(v === "" ? undefined : Number(v));
           }}
         />
+        {override?.helpText && (
+          <p className="text-[10px] text-muted-foreground">
+            {override.helpText}
+          </p>
+        )}
       </div>
     );
   }
   if (field.kind === "boolean") {
     return (
       <div className="flex items-center justify-between rounded-md border border-border p-3">
-        <span className="text-sm">{labelText}</span>
-        <Switch checked={!!value} onCheckedChange={(v) => onChange(v)} />
+        <div>
+          <span className="text-sm">{labelText}</span>
+          {override?.helpText && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {override.helpText}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {override?.tooltip && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  aria-label={`Help: ${labelText}`}
+                >
+                  <Info size={11} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-[240px]">
+                {override.tooltip}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Switch checked={!!value} onCheckedChange={(v) => onChange(v)} />
+        </div>
       </div>
     );
   }
@@ -1301,7 +1452,7 @@ function FieldRenderer({
         : String(value);
     return (
       <div className="space-y-1">
-        <Label>{labelText}</Label>
+        <FieldLabel />
         <Select
           value={current}
           onValueChange={(v) => {
@@ -1320,6 +1471,11 @@ function FieldRenderer({
             ))}
           </SelectContent>
         </Select>
+        {override?.helpText && (
+          <p className="text-[10px] text-muted-foreground">
+            {override.helpText}
+          </p>
+        )}
       </div>
     );
   }
@@ -1335,7 +1491,7 @@ function FieldRenderer({
     const arr = (value as string[] | undefined) ?? [];
     return (
       <div className="space-y-1">
-        <Label>{labelText}</Label>
+        <FieldLabel />
         <Input
           value={arr.join(", ")}
           onChange={(e) =>
@@ -1348,6 +1504,11 @@ function FieldRenderer({
           }
           placeholder="comma-separated"
         />
+        {override?.helpText && (
+          <p className="text-[10px] text-muted-foreground">
+            {override.helpText}
+          </p>
+        )}
       </div>
     );
   }
@@ -1369,7 +1530,7 @@ function FieldRenderer({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>{labelText}</Label>
+          <FieldLabel />
           <Button size="sm" variant="outline" onClick={addItem}>
             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Add
@@ -1397,6 +1558,7 @@ function FieldRenderer({
                   field={sub}
                   value={item[sub.name]}
                   onChange={(v) => updateItem(idx, { [sub.name]: v })}
+                  // Sub-fields of array-of-objects don't carry block-kind context
                 />
               ))}
             </div>
@@ -1413,7 +1575,7 @@ function FieldRenderer({
   // raw fallback
   return (
     <div className="space-y-1">
-      <Label>{labelText}</Label>
+      <FieldLabel />
       <Textarea
         rows={4}
         value={JSON.stringify(value ?? "", null, 2)}

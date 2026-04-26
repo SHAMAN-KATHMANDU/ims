@@ -28,6 +28,15 @@ import {
   GripVertical,
   Plus,
 } from "lucide-react";
+import type { BlockNode } from "@repo/shared";
+import { useDebounce } from "@/hooks/useDebounce";
+import { CanvasOverlay } from "./CanvasOverlay";
+import {
+  selectSetHoveredBlockId,
+  selectSetHoveredBlockRect,
+  selectSetSelectedBlockRect,
+  useEditorStore,
+} from "./editor-store";
 
 type DeviceWidth = "desktop" | "tablet" | "mobile";
 
@@ -60,6 +69,12 @@ type Props = {
   onReorder?: (blockId: string, toIndex: number) => void;
   /** Called when a palette-dragged block is dropped on a canvas drop zone. */
   onInsertAt?: (kind: string, atIndex: number) => void;
+  /**
+   * Current editor block tree. When provided, PreviewFrame debounces changes
+   * (150 ms) and posts `{ type: 'editor:block-tree', tree }` to the iframe so
+   * EditorPreviewShell can re-render without a full reload (Bug #3 fix).
+   */
+  blocks?: BlockNode[];
 };
 
 type BlockRect = {
@@ -463,6 +478,7 @@ export function PreviewFrame({
   onInlineEdit,
   onReorder,
   onInsertAt,
+  blocks,
 }: Props) {
   const [showGrid, setShowGrid] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -472,10 +488,18 @@ export function PreviewFrame({
   // preview URL shares this origin.
   const [isSameOrigin, setIsSameOrigin] = useState<boolean | null>(null);
 
+  // ── Store actions for cross-origin rect state ───────────────────────────
+  const setHoveredBlockId = useEditorStore(selectSetHoveredBlockId);
+  const setHoveredBlockRect = useEditorStore(selectSetHoveredBlockRect);
+  const setSelectedBlockRect = useEditorStore(selectSetSelectedBlockRect);
+
   const src = useMemo(() => {
     if (!previewUrl) return null;
     const u = new URL(previewUrl);
     u.searchParams.set("_r", String(refreshKey));
+    // Signal to the tenant-site that it's loaded in the editor, so it
+    // mounts EditorBridge + EditorPreviewShell instead of the static renderer.
+    u.searchParams.set("_editor", "1");
     if (showGrid) u.searchParams.set("grid", "1");
     if (productId) u.searchParams.set("productId", productId);
     return u.toString();
@@ -688,6 +712,61 @@ export function PreviewFrame({
     if (prev !== "relative") body.style.position = "relative";
   }, [iframeReady, isSameOrigin]);
 
+  // ── Live block-tree propagation (Bug #3) ────────────────────────────────
+  // Debounce the block tree at 150 ms. On every change, post the full tree
+  // to the iframe so EditorPreviewShell can re-render without a full reload.
+  // This covers prop-only changes (showPrice, columns, …) that don't trigger
+  // a save/refresh cycle. Same-origin: postMessage to contentWindow directly.
+  // Cross-origin: EditorBridge in the iframe handles the update.
+  const debouncedBlocks = useDebounce(blocks, 150);
+  const prevDebouncedRef = useRef(debouncedBlocks);
+  useEffect(() => {
+    if (debouncedBlocks === prevDebouncedRef.current) return;
+    prevDebouncedRef.current = debouncedBlocks;
+    if (!debouncedBlocks) return;
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "editor:block-tree", tree: debouncedBlocks },
+        "*",
+      );
+    } catch {
+      // Cross-origin SecurityError — EditorBridge handles it on the other side.
+    }
+  }, [debouncedBlocks]);
+
+  // ── Cross-origin postMessage listener (EditorBridge → parent) ────────────
+  // For same-origin iframes, click-to-select is handled via direct DOM
+  // injection above. For cross-origin, EditorBridge posts events here.
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const frame = iframeRef.current;
+      if (!frame?.contentWindow) return;
+      // Only accept messages from our own iframe.
+      if (e.source !== frame.contentWindow) return;
+
+      const { type, blockId, rect } = (e.data ?? {}) as {
+        type?: string;
+        blockId?: string | null;
+        rect?: { x: number; y: number; width: number; height: number } | null;
+      };
+
+      if (type === "editor:select-block") {
+        onBlockSelect?.(blockId ?? null);
+        setSelectedBlockRect(rect ?? null);
+      } else if (type === "editor:hover-block") {
+        setHoveredBlockId(blockId ?? null);
+        setHoveredBlockRect(rect ?? null);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [
+    onBlockSelect,
+    setHoveredBlockId,
+    setHoveredBlockRect,
+    setSelectedBlockRect,
+  ]);
+
   const stableOnReorder = useCallback(
     (id: string, toIndex: number) => {
       onReorder?.(id, toIndex);
@@ -756,7 +835,7 @@ export function PreviewFrame({
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-muted/30 p-4">
         <div
-          className="mx-auto h-full overflow-hidden rounded-md border border-border bg-background shadow-sm transition-all"
+          className="relative mx-auto h-full overflow-hidden rounded-md border border-border bg-background shadow-sm transition-all"
           style={{ maxWidth: WIDTHS[device].width }}
         >
           {loading && (
@@ -799,6 +878,11 @@ export function PreviewFrame({
               />,
               overlayTarget,
             )}
+          {/* Cross-origin canvas overlay — shows hover/selected outlines when
+              the iframe is on a different origin and we can't portal into it.
+              isSameOrigin===true: the portaled BlockOverlay handles outlines.
+              isSameOrigin===false: CanvasOverlay renders parent-side outlines. */}
+          {isSameOrigin === false && <CanvasOverlay iframeRef={iframeRef} />}
         </div>
         {!loading && src && isSameOrigin === false && (
           <div className="mx-auto mt-2 max-w-2xl rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-center text-[11px] text-muted-foreground">

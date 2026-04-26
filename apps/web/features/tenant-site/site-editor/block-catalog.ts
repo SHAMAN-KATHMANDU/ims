@@ -240,6 +240,12 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
       showSort: true,
       columns: 4,
       categoryFilter: true,
+      // Explicit optional defaults so a freshly-added block renders the same
+      // in the preview as it does after the user toggles every inspector control.
+      showPrice: true,
+      showCategory: true,
+      showDiscount: true,
+      cardAspectRatio: "1/1",
     }),
   },
 
@@ -445,7 +451,7 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
       showSku: true,
       showCategory: true,
       showVariantPicker: true,
-      variantDisplay: "chips",
+      variantDisplay: "chips" as const,
     }),
   },
   {
