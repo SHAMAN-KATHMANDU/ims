@@ -13,6 +13,7 @@
  */
 
 import type { Metadata } from "next";
+import { cache } from "react";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { EditorPreviewShell } from "@/components/blocks/EditorPreviewShell";
 import { EditorBridge } from "@/components/editor-bridge";
@@ -25,14 +26,10 @@ import type {
   PublicProduct,
   PublicSite,
   PublicBlogPostListItem,
+  PublicBusinessProfile,
 } from "@/lib/api";
 
 const API = process.env.API_INTERNAL_URL ?? "http://localhost:4000/api/v1";
-
-export const metadata: Metadata = {
-  title: "Preview",
-  robots: { index: false, follow: false },
-};
 
 // Drafts must never be cached.
 export const dynamic = "force-dynamic";
@@ -65,6 +62,7 @@ interface SitePreviewApiResponse {
     features: unknown;
     seo: unknown;
     template: unknown;
+    businessProfile: PublicBusinessProfile | null;
   };
   categories: PublicCategory[];
   products: PublicProduct[];
@@ -80,33 +78,67 @@ function readString(raw: string | string[] | undefined): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
-async function fetchPreview(
-  scope: string,
-  token: string,
-  productId: string | null,
-): Promise<SitePreviewApiResponse | { error: string }> {
-  try {
-    const qs = new URLSearchParams({ token });
-    if (productId) qs.set("productId", productId);
-    const res = await fetch(
-      `${API}/public/preview/site/${encodeURIComponent(scope)}?${qs.toString()}`,
-      { cache: "no-store" },
-    );
-    if (!res.ok) {
-      let message = `Preview unavailable (HTTP ${res.status})`;
-      try {
-        const body = (await res.json()) as { message?: string };
-        if (body?.message) message = body.message;
-      } catch {
-        // ignore
+/**
+ * `cache()` dedupes the preview fetch within a single request so
+ * `generateMetadata` and the page body share one round-trip even though both
+ * read the same payload independently.
+ */
+const fetchPreview = cache(
+  async (
+    scope: string,
+    token: string,
+    productId: string | null,
+  ): Promise<SitePreviewApiResponse | { error: string }> => {
+    try {
+      const qs = new URLSearchParams({ token });
+      if (productId) qs.set("productId", productId);
+      const res = await fetch(
+        `${API}/public/preview/site/${encodeURIComponent(scope)}?${qs.toString()}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) {
+        let message = `Preview unavailable (HTTP ${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          // ignore
+        }
+        return { error: message };
       }
-      return { error: message };
+      return (await res.json()) as SitePreviewApiResponse;
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : "Network error",
+      };
     }
-    return (await res.json()) as SitePreviewApiResponse;
-  } catch (err) {
+  },
+);
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
+  const baseMeta: Metadata = {
+    title: "Preview",
+    robots: { index: false, follow: false },
+  };
+  try {
+    const { scope } = await params;
+    const sp = await searchParams;
+    const token = readString(sp.token);
+    const productId = readString(sp.productId);
+    if (!token) return baseMeta;
+    const result = await fetchPreview(scope, token, productId);
+    if ("error" in result) return baseMeta;
+    const bp = result.site.businessProfile;
     return {
-      error: err instanceof Error ? err.message : "Network error",
+      ...baseMeta,
+      title: bp?.displayName?.trim() || "Preview",
+      icons: bp?.faviconUrl?.trim() ? { icon: bp.faviconUrl } : undefined,
     };
+  } catch {
+    return baseMeta;
   }
 }
 
@@ -177,13 +209,16 @@ export default async function SitePreviewRoute({
   }
 
   // Build a PublicSite from the preview payload (the service returns a
-  // subset — the renderer's PublicSite shape matches).
+  // subset — the renderer's PublicSite shape matches). businessProfile is
+  // surfaced so SiteHeader/SiteFooter prefer it over the legacy branding /
+  // contact JSON, mirroring the published-site root layout.
   const site: PublicSite = {
     branding: result.site.branding as Record<string, unknown> | null,
     contact: result.site.contact as Record<string, unknown> | null,
     features: result.site.features as Record<string, unknown> | null,
     seo: result.site.seo as Record<string, unknown> | null,
     template: null,
+    businessProfile: result.site.businessProfile,
   };
 
   const blocks =

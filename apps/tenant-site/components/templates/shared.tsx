@@ -1283,7 +1283,7 @@ export function ContactBlock({ site }: { site: PublicSite }) {
     email: bp?.email?.trim() || legacyContact.email,
     phone: bp?.phone?.trim() || legacyContact.phone,
     address: bpAddress || legacyContact.address,
-    mapUrl: legacyContact.mapUrl,
+    mapUrl: bp?.mapUrl?.trim() || legacyContact.mapUrl,
   };
   if (!contact.email && !contact.phone && !contact.address) return null;
 
@@ -1508,6 +1508,7 @@ export async function SiteFooter({
   const bp = site.businessProfile;
   const name =
     bp?.displayName?.trim() || brandingDisplayName(site.branding, host);
+  const tagline = bp?.tagline?.trim() || brandingTagline(site.branding);
   const legacyContact = (site.contact ?? {}) as {
     email?: string;
     phone?: string;
@@ -1520,11 +1521,23 @@ export async function SiteFooter({
         .filter(Boolean)
         .join(", ") || null
     : null;
+  // Merge BP socials (canonical) over legacy contact socials so a BP entry
+  // wins per-key but legacy keys (whatsapp, youtube) still surface when BP
+  // hasn't populated them.
+  const bpSocials = (bp?.socials ?? null) as Partial<
+    Record<SocialKey, string>
+  > | null;
+  const mergedSocials: Partial<Record<SocialKey, string>> = {
+    ...(legacyContact.socials ?? {}),
+    ...Object.fromEntries(
+      Object.entries(bpSocials ?? {}).filter(([, v]) => Boolean(v)),
+    ),
+  };
   const contact = {
     email: bp?.email?.trim() || legacyContact.email,
     phone: bp?.phone?.trim() || legacyContact.phone,
     address: bpAddress || legacyContact.address,
-    socials: legacyContact.socials,
+    socials: mergedSocials,
   };
   const socials = contact.socials ?? {};
 
@@ -1573,7 +1586,7 @@ export async function SiteFooter({
           >
             {name}
           </div>
-          {brandingTagline(site.branding) && (
+          {tagline && (
             <p
               style={{
                 fontSize: "0.85rem",
@@ -1581,7 +1594,7 @@ export async function SiteFooter({
                 lineHeight: 1.5,
               }}
             >
-              {brandingTagline(site.branding)}
+              {tagline}
             </p>
           )}
           <SocialsRow socials={socials} />

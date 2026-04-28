@@ -16,7 +16,7 @@ import { SiteTemplatePicker } from "../components/SiteTemplatePicker";
 import { ThemeTokensForm } from "../components/ThemeTokensForm";
 import { NavMenuPanel } from "../components/NavMenuPanel";
 import { SiteSeoForm } from "../components/SiteSeoForm";
-import { SiteContactForm } from "../components/SiteContactForm";
+import { Info } from "lucide-react";
 import type { SiteConfig } from "../hooks/use-tenant-site";
 import type { PanelId } from "./types";
 
@@ -95,10 +95,22 @@ export function SEOPanel({ config }: { config: SiteConfig }) {
   );
 }
 
-export function ContactPanel({ config }: { config: SiteConfig }) {
+export function ContactPanel() {
   return (
-    <PanelShell title="Contact">
-      <SiteContactForm contact={config.contact} />
+    <PanelShell title="Contact" className="p-4">
+      <div className="flex gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <p>
+          Contact details (email, phone, address, socials) live on your{" "}
+          <a
+            href="../settings/business-profile"
+            className="font-medium underline underline-offset-2"
+          >
+            business profile
+          </a>
+          . Edits there appear on your site automatically.
+        </p>
+      </div>
     </PanelShell>
   );
 }

@@ -93,8 +93,7 @@ export function CanvasOverlay({ iframeRef }: Props) {
             position: "absolute",
             ...toFixed(selectedRect),
             outline: "2px solid oklch(0.62 0.08 150)",
-            outlineOffset: -2,
-            boxShadow: "0 0 0 4px oklch(0.62 0.08 150 / 0.12)",
+            outlineOffset: 0,
           }}
         />
       )}

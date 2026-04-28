@@ -87,8 +87,7 @@ const EDITOR_OVERLAY_CSS = `
   }
   [data-editor-selected="true"] {
     outline: 2px solid oklch(0.62 0.08 150) !important;
-    outline-offset: -2px !important;
-    box-shadow: 0 0 0 4px oklch(0.62 0.08 150 / 0.12);
+    outline-offset: 0 !important;
   }
   /* Disable all link navigation inside the editor preview */
   a { pointer-events: none; }

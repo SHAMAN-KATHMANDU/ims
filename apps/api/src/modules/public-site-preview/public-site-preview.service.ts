@@ -21,6 +21,36 @@ import publicPagesRepo from "@/modules/public-pages/public-pages.repository";
 import publicBlogRepo from "@/modules/public-blog/public-blog.repository";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import navMenusRepo from "@/modules/nav-menus/nav-menus.repository";
+import businessProfileRepo from "@/modules/business-profile/business-profile.repository";
+
+/**
+ * Publicly-safe business profile DTO surfaced to the editor preview iframe.
+ * Tax / regulatory fields (PAN, VAT, taxId, registrationNumber) are stripped
+ * since the preview is rendered with the same projection as the public site.
+ */
+export interface PublicBusinessProfile {
+  id: string;
+  tenantId: string;
+  legalName: string | null;
+  displayName: string | null;
+  tagline: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  email: string | null;
+  phone: string | null;
+  alternatePhone: string | null;
+  websiteUrl: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  mapUrl: string | null;
+  defaultCurrency: string;
+  timezone: string | null;
+  socials: unknown;
+}
 
 export interface SitePreviewResponse {
   scope: string;
@@ -36,6 +66,7 @@ export interface SitePreviewResponse {
     features: unknown;
     seo: unknown;
     template: unknown;
+    businessProfile: PublicBusinessProfile | null;
   };
   navMenus: {
     headerPrimary: unknown | null;
@@ -95,6 +126,7 @@ export class PublicSitePreviewService {
       productsResult,
       navPages,
       featured,
+      businessProfile,
     ] = await Promise.all([
       navMenusRepo.findBySlot(tenantId, "header-primary"),
       navMenusRepo.findBySlot(tenantId, "footer-1"),
@@ -103,9 +135,26 @@ export class PublicSitePreviewService {
       publicSiteRepo.listProducts(tenantId, { page: 1, limit: 24 }),
       publicPagesRepo.listPages(tenantId, { navOnly: true }),
       publicBlogRepo.listFeatured(tenantId, 3).catch(() => []),
+      businessProfileRepo.getByTenant(tenantId).catch(() => null),
     ]);
 
     const [products] = productsResult;
+
+    // Strip tax / regulatory fields before exposing to the iframe — same
+    // projection used for the public storefront.
+    let publicProfile: PublicBusinessProfile | null = null;
+    if (businessProfile) {
+      const {
+        panNumber: _pan,
+        vatNumber: _vat,
+        taxId: _taxId,
+        registrationNumber: _reg,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        ...safe
+      } = businessProfile;
+      publicProfile = safe;
+    }
 
     // PDP scope: fetch the active product (from query param) + related
     // products from the same category.
@@ -139,6 +188,7 @@ export class PublicSitePreviewService {
         features: config.features,
         seo: config.seo,
         template: null,
+        businessProfile: publicProfile,
       },
       navMenus: {
         headerPrimary: headerNav?.items ?? null,
