@@ -32,6 +32,7 @@ export function EditorBridge() {
 
     let rafId: number | null = null;
     let lastHoveredEl: HTMLElement | null = null;
+    let lastSelectedEl: HTMLElement | null = null;
 
     /** Posts a typed block event to the parent window. */
     function postBlock(
@@ -55,6 +56,7 @@ export function EditorBridge() {
       if (!el) return;
       e.preventDefault();
       e.stopPropagation();
+      lastSelectedEl = el;
       postBlock("editor:select-block", el);
     };
 
@@ -86,13 +88,20 @@ export function EditorBridge() {
       );
     };
 
-    /** On scroll/resize, repost hovered rect so parent overlay stays aligned. */
+    /**
+     * On scroll/resize, repost the hovered AND selected rects so the parent
+     * overlays stay aligned with their blocks. The selected rect is otherwise
+     * captured once at click time and would drift away on scroll.
+     */
     const onScrollOrResize = () => {
-      if (!lastHoveredEl) return;
-      const capturedEl = lastHoveredEl;
+      if (!lastHoveredEl && !lastSelectedEl) return;
+      const hoveredCapture = lastHoveredEl;
+      const selectedCapture = lastSelectedEl;
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        postBlock("editor:hover-block", capturedEl);
+        if (hoveredCapture) postBlock("editor:hover-block", hoveredCapture);
+        if (selectedCapture?.isConnected)
+          postBlock("editor:select-block", selectedCapture);
         rafId = null;
       });
     };

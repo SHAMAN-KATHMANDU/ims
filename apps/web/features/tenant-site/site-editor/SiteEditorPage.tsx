@@ -448,7 +448,7 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
       case "seo":
         return cfg ? <SEOPanel config={cfg} /> : null;
       case "contact":
-        return cfg ? <ContactPanel config={cfg} /> : null;
+        return <ContactPanel />;
       case "domain":
         return <DomainPanel />;
       case "blog":

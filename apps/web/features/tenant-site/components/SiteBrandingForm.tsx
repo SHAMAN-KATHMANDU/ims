@@ -224,7 +224,7 @@ export function SiteBrandingForm({
 
             {/* ---------- Identity ---------- */}
             <TabsContent value="identity" className="space-y-4">
-              {/* Info banner — identity fields now live in Business profile */}
+              {/* Info banner — identity fields live in Business profile */}
               <div className="flex gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 <p>

@@ -57,7 +57,6 @@ import {
   useUnpublishSite,
 } from "../hooks/use-tenant-site";
 import { SiteBrandingForm } from "./SiteBrandingForm";
-import { SiteContactForm } from "./SiteContactForm";
 import { SiteSeoForm } from "./SiteSeoForm";
 import { SiteSectionsPanel } from "./SiteSectionsPanel";
 import { SiteTemplatePicker } from "./SiteTemplatePicker";
@@ -93,7 +92,6 @@ const TABS = [
   { value: "branding", label: "Branding" },
   { value: "theme", label: "Theme" },
   { value: "navigation", label: "Navigation" },
-  { value: "contact", label: "Contact" },
   { value: "seo", label: "SEO" },
   { value: "advanced", label: "Advanced" },
 ] as const;
@@ -297,10 +295,6 @@ export function TenantSitePage() {
 
           <TabsContent value="navigation">
             <NavMenuPanel />
-          </TabsContent>
-
-          <TabsContent value="contact">
-            <SiteContactForm contact={config.contact} />
           </TabsContent>
 
           <TabsContent value="seo">
