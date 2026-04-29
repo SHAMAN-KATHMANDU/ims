@@ -129,6 +129,9 @@ model Tenant {
   // Website renderer + receipts + invoices all read from here.
   businessProfile     TenantBusinessProfile?
 
+  // URL redirect rules (301/302) evaluated by the tenant-site middleware.
+  tenantRedirects TenantRedirect[]
+
   @@map("tenants")
 }
 
@@ -393,6 +396,29 @@ model SiteLayout {
   @@unique([tenantId, scope, pageId])
   @@index([tenantId])
   @@map("site_layouts")
+}
+
+// ============================================
+// TENANT REDIRECTS (301 / 302 URL rules)
+// ============================================
+
+/// Per-tenant URL redirect rules evaluated by the tenant-site middleware.
+/// Exact-path matching only (no wildcards / regex).
+model TenantRedirect {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  fromPath   String   @map("from_path") @db.VarChar(500)
+  toPath     String   @map("to_path") @db.VarChar(500)
+  statusCode Int      @default(301) @map("status_code")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, fromPath])
+  @@index([tenantId, isActive])
+  @@map("tenant_redirects")
 }
 
 /// Curated product grouping. Each tenant seeds three defaults

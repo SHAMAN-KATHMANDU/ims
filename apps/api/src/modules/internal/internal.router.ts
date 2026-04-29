@@ -105,4 +105,22 @@ router.get("/domain-allowed", asyncHandler(controller.domainAllowed));
  */
 router.get("/resolve-host", asyncHandler(controller.resolveHost));
 
+/**
+ * @swagger
+ * /internal/redirects:
+ *   get:
+ *     summary: Fetch active redirect rules for a tenant
+ *     tags: [Internal]
+ *     parameters:
+ *       - in: query
+ *         name: tenantId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Active redirect rules }
+ *       400: { description: Invalid query }
+ *       401: { description: Missing/invalid X-Internal-Token }
+ */
+router.get("/redirects", asyncHandler(controller.getRedirects));
+
 export default router;

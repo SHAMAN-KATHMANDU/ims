@@ -12,6 +12,7 @@ import { asyncHandler } from "@/middlewares/errorHandler";
 import { requirePermission } from "@/middlewares/requirePermission";
 import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import controller from "./sites.controller";
+import redirectsRouter from "@/modules/redirects/redirects.router";
 
 const router = Router();
 
@@ -654,5 +655,77 @@ router.get("/seo", asyncHandler(controller.getSeo));
  *       403: { description: Website feature not enabled }
  */
 router.put("/seo", requireUpdate, asyncHandler(controller.updateSeo));
+
+/**
+ * @swagger
+ * /sites/analytics:
+ *   get:
+ *     summary: Get the site's analytics tracker IDs (GA4, GTM, Meta Pixel)
+ *     tags: [Sites / Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Analytics tracker configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 analytics:
+ *                   type: object
+ *                   properties:
+ *                     ga4MeasurementId: { type: string, example: "G-XXXXXXXXXX" }
+ *                     gtmContainerId: { type: string, example: "GTM-XXXXXX" }
+ *                     metaPixelId: { type: string, example: "123456789012" }
+ *                     consentMode: { type: string, enum: [basic, granted] }
+ *       403: { description: Website feature not enabled }
+ */
+router.get("/analytics", asyncHandler(controller.getAnalytics));
+
+/**
+ * @swagger
+ * /sites/analytics:
+ *   put:
+ *     summary: Update the site's analytics tracker IDs
+ *     tags: [Sites / Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ga4MeasurementId:
+ *                 type: string
+ *                 pattern: '^G-[A-Z0-9]+'
+ *                 example: "G-XXXXXXXXXX"
+ *               gtmContainerId:
+ *                 type: string
+ *                 pattern: '^GTM-[A-Z0-9]+'
+ *                 example: "GTM-XXXXXX"
+ *               metaPixelId:
+ *                 type: string
+ *                 pattern: '^[0-9]{6,20}$'
+ *                 example: "123456789012"
+ *               consentMode:
+ *                 type: string
+ *                 enum: [basic, granted]
+ *                 description: "basic = denied by default (GDPR-safe); granted = pre-granted"
+ *     responses:
+ *       200: { description: Analytics settings updated }
+ *       400: { description: Validation error (invalid tracker ID format) }
+ *       403: { description: Website feature not enabled }
+ */
+router.put(
+  "/analytics",
+  requireUpdate,
+  asyncHandler(controller.updateAnalytics),
+);
+
+// Redirect rules — sub-router handles its own WEBSITE.SITE.UPDATE gates.
+router.use("/redirects", redirectsRouter);
 
 export default router;
