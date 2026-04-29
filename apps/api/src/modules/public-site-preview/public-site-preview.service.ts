@@ -11,10 +11,15 @@
  * malformed tokens => 401. Unknown scopes => 400. If no draft exists we
  * fall back to the published `blocks`, so an editor opened before any
  * save still shows the current site state.
+ *
+ * Issue #429: additionally checks the token's nonce against the Redis
+ * allowlist so revoked tokens (editor closed, user signed out) are rejected
+ * even if the HMAC is valid and the token hasn't expired yet.
  */
 
 import { createError } from "@/middlewares/errorHandler";
 import { verifySitePreviewToken } from "@/modules/site-preview/preview-token";
+import { checkPreviewNonce } from "@/modules/site-preview/preview-nonce";
 import sitesRepo from "@/modules/sites/sites.repository";
 import publicSiteRepo from "@/modules/public-site/public-site.repository";
 import publicPagesRepo from "@/modules/public-pages/public-pages.repository";
@@ -81,18 +86,29 @@ export interface SitePreviewResponse {
   relatedProducts: unknown[];
 }
 
+const REVOKED_MSG =
+  "Preview link expired or revoked. Generate a new preview from the editor.";
+
 export class PublicSitePreviewService {
   async getPreview(
     token: string,
     scope: string,
     opts: { productId?: string },
   ): Promise<SitePreviewResponse> {
+    // 1. HMAC + expiry check (pure, synchronous)
     const payload = verifySitePreviewToken(token);
-    if (!payload) throw createError("Invalid or expired preview token", 401);
+    if (!payload) throw createError(REVOKED_MSG, 401);
 
+    // 2. Scope binding check
     if (payload.scope !== scope) {
       throw createError("Token scope does not match request", 401);
     }
+
+    // 3. Redis nonce check — token must still be in the allowlist.
+    //    Covers revoked tokens (editor closed / user signed out) and old tokens
+    //    that have been superseded by a refresh.
+    const nonceValid = await checkPreviewNonce(payload.tenantId, payload.nonce);
+    if (!nonceValid) throw createError(REVOKED_MSG, 401);
 
     const tenantId = payload.tenantId;
 

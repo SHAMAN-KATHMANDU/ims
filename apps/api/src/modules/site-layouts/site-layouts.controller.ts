@@ -157,6 +157,56 @@ class SiteLayoutsController {
       );
     }
   };
+
+  /**
+   * POST /site-layouts/preview/refresh
+   * Body: { token: string }
+   *
+   * Verifies the current preview token (HMAC + exp + Redis nonce) then issues a
+   * fresh token for the same (scope, pageId) and returns the updated preview URL.
+   * Called by the editor after each successful save to extend the 30-min window.
+   */
+  refreshPreviewToken = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const raw = req.body as { token?: unknown };
+      if (typeof raw.token !== "string" || raw.token.length === 0) {
+        return res.status(400).json({ message: "token is required" });
+      }
+      const result = await service.refreshPreviewToken(tenantId, raw.token);
+      return res.status(200).json({ message: "Token refreshed", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Refresh preview token error")
+      );
+    }
+  };
+
+  /**
+   * POST /site-layouts/preview/invalidate
+   * Body: { token: string }
+   *
+   * Revokes the Redis nonce for the given token, immediately preventing any
+   * further preview requests that carry it. Accepts expired tokens — the editor
+   * may call this on close even after a long session.
+   */
+  invalidatePreviewToken = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const raw = req.body as { token?: unknown };
+      if (typeof raw.token !== "string" || raw.token.length === 0) {
+        return res.status(400).json({ message: "token is required" });
+      }
+      await service.invalidatePreviewToken(tenantId, raw.token);
+      return res.status(200).json({ message: "Token invalidated" });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Invalidate preview token error")
+      );
+    }
+  };
 }
 
 export default new SiteLayoutsController();

@@ -34,6 +34,13 @@ export interface SiteTemplate {
   updatedAt: string;
 }
 
+export interface SiteAnalytics {
+  ga4MeasurementId?: string;
+  gtmContainerId?: string;
+  metaPixelId?: string;
+  consentMode?: "basic" | "granted";
+}
+
 export interface SiteConfig {
   id: string;
   tenantId: string;
@@ -44,6 +51,7 @@ export interface SiteConfig {
   features: Record<string, unknown> | null;
   seo: Record<string, unknown> | null;
   themeTokens: Record<string, unknown> | null;
+  analytics: SiteAnalytics | null;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
@@ -56,6 +64,7 @@ export interface UpdateSiteConfigData {
   features?: Record<string, unknown> | null;
   seo?: Record<string, unknown> | null;
   themeTokens?: Record<string, unknown> | null;
+  analytics?: SiteAnalytics | null;
 }
 
 // ============================================
@@ -133,5 +142,30 @@ export async function unpublishSite(): Promise<SiteConfig> {
     return response.data.siteConfig;
   } catch (error) {
     handleApiError(error, "unpublish site");
+  }
+}
+
+export async function getSiteAnalytics(): Promise<SiteAnalytics> {
+  try {
+    const response = await api.get<{ data: { analytics: SiteAnalytics } }>(
+      "/sites/analytics",
+    );
+    return response.data.data?.analytics ?? {};
+  } catch (error) {
+    handleApiError(error, "fetch site analytics");
+  }
+}
+
+export async function updateSiteAnalytics(
+  data: SiteAnalytics,
+): Promise<SiteAnalytics> {
+  try {
+    const response = await api.put<{ data: { analytics: SiteAnalytics } }>(
+      "/sites/analytics",
+      data,
+    );
+    return response.data.data?.analytics ?? {};
+  } catch (error) {
+    handleApiError(error, "update site analytics");
   }
 }

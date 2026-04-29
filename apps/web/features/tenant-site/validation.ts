@@ -325,3 +325,67 @@ export function seoToJson(form: SeoFormInput): Record<string, unknown> {
   if (form.ogImage) out.ogImage = form.ogImage;
   return out;
 }
+
+// ============================================
+// Analytics
+// ============================================
+
+/**
+ * Validation regexes for analytics tracker IDs.
+ * These must match the server-side AnalyticsSchema in sites.schema.ts.
+ */
+const GA4_REGEX = /^G-[A-Z0-9]+$/;
+const GTM_REGEX = /^GTM-[A-Z0-9]+$/;
+const PIXEL_REGEX = /^[0-9]{6,20}$/;
+
+export const AnalyticsFormSchema = z.object({
+  ga4MeasurementId: z
+    .string()
+    .trim()
+    .regex(GA4_REGEX, "Must be in G-XXXX format (e.g. G-XXXXXXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  gtmContainerId: z
+    .string()
+    .trim()
+    .regex(GTM_REGEX, "Must be in GTM-XXXX format (e.g. GTM-XXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  metaPixelId: z
+    .string()
+    .trim()
+    .regex(PIXEL_REGEX, "Must be a 6–20 digit number")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  consentMode: z.enum(["basic", "granted"]).optional().default("basic"),
+});
+
+export type AnalyticsFormInput = z.infer<typeof AnalyticsFormSchema>;
+
+type StoredAnalytics = {
+  ga4MeasurementId?: string;
+  gtmContainerId?: string;
+  metaPixelId?: string;
+  consentMode?: "basic" | "granted";
+};
+
+export function analyticsFromJson(
+  json: Record<string, unknown> | null | undefined,
+): AnalyticsFormInput {
+  const j = (json ?? {}) as StoredAnalytics;
+  return {
+    ga4MeasurementId: j.ga4MeasurementId ?? "",
+    gtmContainerId: j.gtmContainerId ?? "",
+    metaPixelId: j.metaPixelId ?? "",
+    consentMode: j.consentMode ?? "basic",
+  };
+}
+
+export function analyticsToJson(form: AnalyticsFormInput): StoredAnalytics {
+  const out: StoredAnalytics = {};
+  if (form.ga4MeasurementId) out.ga4MeasurementId = form.ga4MeasurementId;
+  if (form.gtmContainerId) out.gtmContainerId = form.gtmContainerId;
+  if (form.metaPixelId) out.metaPixelId = form.metaPixelId;
+  out.consentMode = form.consentMode ?? "basic";
+  return out;
+}

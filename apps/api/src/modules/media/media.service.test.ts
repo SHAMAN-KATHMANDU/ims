@@ -133,19 +133,49 @@ describe("MediaService", () => {
         id: "asset-1",
         tenantId,
         storageKey,
+        publicUrl: `https://test-bucket.s3.ap-south-1.amazonaws.com/${storageKey}`,
       }),
       countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(1),
       countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
-      deleteByIdForTenant: vi.fn(),
+      countSiteLayoutsReferencingAsset: vi.fn().mockResolvedValue(0),
+      softDeleteByIdForTenant: vi.fn(),
     };
     const svc = new MediaService(repo as unknown as MediaRepository);
     await expect(svc.deleteAsset(tenantId, "asset-1")).rejects.toMatchObject({
       statusCode: 409,
     });
-    expect(repo.deleteByIdForTenant).not.toHaveBeenCalled();
+    expect(repo.softDeleteByIdForTenant).not.toHaveBeenCalled();
   });
 
-  it("deleteAsset does not remove DB row when S3 delete fails", async () => {
+  it("deleteAsset throws 409 when asset is referenced by a SiteLayout block", async () => {
+    const tenantId = "123e4567-e89b-12d3-a456-426614174000";
+    const storageKey = `dev/tenants/${tenantId}/library/general/aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa.png`;
+    const publicUrl = `https://test-bucket.s3.ap-south-1.amazonaws.com/${storageKey}`;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue({
+        id: "asset-1",
+        tenantId,
+        storageKey,
+        publicUrl,
+      }),
+      countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(0),
+      countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
+      countSiteLayoutsReferencingAsset: vi.fn().mockResolvedValue(2),
+      softDeleteByIdForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(svc.deleteAsset(tenantId, "asset-1")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(repo.countSiteLayoutsReferencingAsset).toHaveBeenCalledWith(
+      tenantId,
+      storageKey,
+      publicUrl,
+    );
+    expect(repo.softDeleteByIdForTenant).not.toHaveBeenCalled();
+  });
+
+  it("deleteAsset soft-deletes when no references and never calls S3", async () => {
     const tenantId = "123e4567-e89b-12d3-a456-426614174000";
     const storageKey = `dev/tenants/${tenantId}/library/general/aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa.png`;
     const repo = {
@@ -153,18 +183,55 @@ describe("MediaService", () => {
         id: "asset-1",
         tenantId,
         storageKey,
+        publicUrl: `https://test-bucket.s3.ap-south-1.amazonaws.com/${storageKey}`,
       }),
       countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(0),
       countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
-      deleteByIdForTenant: vi.fn(),
+      countSiteLayoutsReferencingAsset: vi.fn().mockResolvedValue(0),
+      softDeleteByIdForTenant: vi.fn().mockResolvedValue(1),
     };
-    deleteMock.mockRejectedValue(new Error("S3 network"));
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await svc.deleteAsset(tenantId, "asset-1");
+    expect(repo.softDeleteByIdForTenant).toHaveBeenCalledWith(
+      "asset-1",
+      tenantId,
+    );
+    // Soft-delete must NOT touch S3 — the object stays for recovery.
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
 
+  it("deleteAsset throws 404 when soft-delete affects zero rows (race)", async () => {
+    const tenantId = "123e4567-e89b-12d3-a456-426614174000";
+    const storageKey = `dev/tenants/${tenantId}/library/general/aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa.png`;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue({
+        id: "asset-1",
+        tenantId,
+        storageKey,
+        publicUrl: `https://test-bucket.s3.ap-south-1.amazonaws.com/${storageKey}`,
+      }),
+      countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(0),
+      countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
+      countSiteLayoutsReferencingAsset: vi.fn().mockResolvedValue(0),
+      softDeleteByIdForTenant: vi.fn().mockResolvedValue(0),
+    };
     const svc = new MediaService(repo as unknown as MediaRepository);
     await expect(svc.deleteAsset(tenantId, "asset-1")).rejects.toMatchObject({
-      statusCode: 502,
+      statusCode: 404,
     });
-    expect(repo.deleteByIdForTenant).not.toHaveBeenCalled();
+  });
+
+  it("deleteAsset throws 404 when asset not found for tenant (cross-tenant guard)", async () => {
+    const tenantId = "123e4567-e89b-12d3-a456-426614174000";
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(null),
+      softDeleteByIdForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(svc.deleteAsset(tenantId, "asset-1")).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(repo.softDeleteByIdForTenant).not.toHaveBeenCalled();
   });
 
   it("registerAsset returns existing row when storageKey already registered", async () => {

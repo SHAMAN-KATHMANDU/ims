@@ -17,6 +17,8 @@ import {
 import { ThemeTokensSchema, type ThemeTokens } from "@repo/shared";
 import { themeTokensToCssVars } from "@/lib/theme-tokens";
 import { CartProvider } from "@/components/cart/CartProvider";
+import { renderAnalyticsScripts } from "@/lib/analytics";
+import type { PublicSiteAnalytics } from "@/lib/api";
 import "./globals.css";
 
 /**
@@ -113,6 +115,27 @@ export default async function RootLayout({
     theme = cookieTheme;
   }
 
+  // Determine whether analytics injection is suppressed.
+  // Preview pages (/preview/*) bypass the tenant middleware entirely and
+  // carry no x-tenant-id — hasTenantContext() would have returned false
+  // above, so we would never reach here for preview. Checking the pathname
+  // via the `x-invoke-path` header is therefore a belt-and-suspenders guard;
+  // the real gate is the hasTenantContext() early return at the top.
+  const headerStore = await headers();
+  const invokePath = headerStore.get("x-invoke-path") ?? "";
+  const isPreview = invokePath.startsWith("/preview");
+
+  // Derive noIndex from the site's seo.robots value.
+  const seoConfig = (site?.seo ?? {}) as { robots?: string };
+  const noIndex =
+    typeof seoConfig.robots === "string" &&
+    seoConfig.robots.toLowerCase().includes("noindex");
+
+  const { headScripts } = renderAnalyticsScripts(
+    site?.analytics as PublicSiteAnalytics | null,
+    { isPreview, noIndex },
+  );
+
   // Inline the design tokens on <html> (not <body>) so the ":focus-visible"
   // outline + anything using the tokens in the document root — including
   // the scroll area before <body> fills out — still sees them.
@@ -145,6 +168,10 @@ export default async function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* Analytics tracker scripts — injected only on published, indexable
+            sites. renderAnalyticsScripts returns null when isPreview or
+            noIndex is true, so this is always safe. */}
+        {headScripts}
       </head>
       <body>
         <a

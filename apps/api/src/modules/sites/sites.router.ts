@@ -655,4 +655,91 @@ router.get("/seo", asyncHandler(controller.getSeo));
  */
 router.put("/seo", requireUpdate, asyncHandler(controller.updateSeo));
 
+/**
+ * @swagger
+ * /sites/analytics:
+ *   get:
+ *     summary: Get the site's analytics tracker IDs (GA4, GTM, Meta Pixel)
+ *     description: >
+ *       Returns the stored analytics configuration. Tracker IDs are only
+ *       injected into the published tenant-site (never in /preview/* routes
+ *       and never when robots noindex is set).
+ *     tags: [Sites / Analytics]
+ *     operationId: getSiteAnalytics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Analytics settings object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     analytics:
+ *                       type: object
+ *                       properties:
+ *                         ga4MeasurementId:
+ *                           type: string
+ *                           example: G-XXXXXXXXXX
+ *                         gtmContainerId:
+ *                           type: string
+ *                           example: GTM-XXXXXX
+ *                         metaPixelId:
+ *                           type: string
+ *                           example: "123456789012"
+ *                         consentMode:
+ *                           type: string
+ *                           enum: [basic, granted]
+ *       403: { description: Website feature not enabled }
+ */
+router.get("/analytics", asyncHandler(controller.getAnalytics));
+
+/**
+ * @swagger
+ * /sites/analytics:
+ *   put:
+ *     summary: Update the site's analytics tracker IDs
+ *     description: >
+ *       Saves GA4, GTM, and/or Meta Pixel IDs. All fields are optional.
+ *       Pass an empty string to clear a saved ID. Tracker scripts are only
+ *       injected on PUBLISHED sites and never in /preview/* routes.
+ *     tags: [Sites / Analytics]
+ *     operationId: updateSiteAnalytics
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ga4MeasurementId:
+ *                 type: string
+ *                 pattern: '^G-[A-Z0-9]+$'
+ *                 example: G-XXXXXXXXXX
+ *               gtmContainerId:
+ *                 type: string
+ *                 pattern: '^GTM-[A-Z0-9]+$'
+ *                 example: GTM-XXXXXX
+ *               metaPixelId:
+ *                 type: string
+ *                 pattern: '^[0-9]{6,20}$'
+ *                 example: "123456789012"
+ *               consentMode:
+ *                 type: string
+ *                 enum: [basic, granted]
+ *                 default: basic
+ *     responses:
+ *       200: { description: Analytics settings updated }
+ *       400: { description: Validation error (invalid tracker ID format) }
+ *       403: { description: Website feature not enabled }
+ */
+router.put("/analytics", requireUpdate, asyncHandler(controller.updateAnalytics));
+
 export default router;

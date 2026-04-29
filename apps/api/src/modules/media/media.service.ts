@@ -9,7 +9,6 @@ import {
 } from "@/lib/s3/s3Key";
 import { isClientPublicUrlCompatible } from "@/lib/s3/publicUrl";
 import {
-  deleteS3Object,
   getS3ObjectFirstBytes,
   isS3CredentialsOrPermissionError,
   presignPutObject,
@@ -399,14 +398,32 @@ export class MediaService {
     return { items, nextCursor };
   }
 
+  /**
+   * Soft-delete a media asset.
+   *
+   * Refuses (409) if any **hard-required** referrer still points at the row:
+   *   - ContactAttachment (FK Restrict)
+   *   - Message           (FK Restrict)
+   *   - SiteLayout.blocks / draftBlocks (loose JSON reference — best-effort)
+   *
+   * The S3 object is **not** deleted: a soft-deleted asset can be restored
+   * later by clearing `deletedAt` and the public URL keeps resolving for any
+   * stale CDN caches still serving it. A separate sweeper job is responsible
+   * for purging the bucket once a tombstone ages past the retention window.
+   */
   async deleteAsset(tenantId: string, assetId: string): Promise<void> {
     const row = await this.repo.findByIdForTenant(assetId, tenantId);
     if (!row) {
       throw createError("Media asset not found", 404);
     }
-    const [contactRefs, messageRefs] = await Promise.all([
+    const [contactRefs, messageRefs, siteLayoutRefs] = await Promise.all([
       this.repo.countContactAttachmentsByMediaAssetId(assetId),
       this.repo.countMessagesByMediaAssetId(assetId),
+      this.repo.countSiteLayoutsReferencingAsset(
+        tenantId,
+        row.storageKey,
+        row.publicUrl,
+      ),
     ]);
     if (contactRefs > 0 || messageRefs > 0) {
       throw createError(
@@ -414,20 +431,23 @@ export class MediaService {
         409,
       );
     }
-    if (row.storageKey) {
-      if (!env.photosS3Configured) {
-        throw createError(
-          "Object storage is not configured; cannot delete stored object",
-          503,
-        );
-      }
-      try {
-        await deleteS3Object(row.storageKey);
-      } catch (e: unknown) {
-        mapS3Failure(e);
-      }
+    if (siteLayoutRefs > 0) {
+      throw createError(
+        "Media asset is still used in a published or draft page; remove it from the page first",
+        409,
+      );
     }
-    await this.repo.deleteByIdForTenant(assetId, tenantId);
+    const affected = await this.repo.softDeleteByIdForTenant(assetId, tenantId);
+    if (affected === 0) {
+      // Race: another request soft-deleted between our find and update.
+      throw createError("Media asset not found", 404);
+    }
+    logger.request("media asset soft-deleted", undefined, {
+      event: "media.delete.soft",
+      tenantId,
+      assetId,
+      storageKey: row.storageKey,
+    });
   }
 
   async updateAsset(

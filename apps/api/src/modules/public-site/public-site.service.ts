@@ -37,6 +37,7 @@ export class PublicSiteService {
     features: unknown;
     seo: unknown;
     themeTokens: unknown;
+    analytics: unknown;
     template: PublicSiteConfig["template"];
     locale: string;
     locales: string[];
@@ -51,6 +52,7 @@ export class PublicSiteService {
       features: config.features,
       seo: config.seo,
       themeTokens: config.themeTokens,
+      analytics: config.analytics,
       template: config.template,
       locale,
       locales,

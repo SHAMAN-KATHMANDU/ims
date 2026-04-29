@@ -14,6 +14,8 @@ import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
 import automationService from "@/modules/automation/automation.service";
+import { formSubmissionEmailQueue } from "@/queues/queue.config";
+import { logger } from "@/config/logger";
 
 const router = Router();
 
@@ -30,6 +32,16 @@ const SubmitFormSchema = z.object({
     )
     .max(30),
   submitTo: z.enum(["email", "crm-lead"]).default("email"),
+  /**
+   * Optional recipient overrides from the form block configuration.
+   * When present, emails are sent to these addresses instead of the
+   * tenant's SiteConfig.contact.email fallback.
+   */
+  recipients: z
+    .array(z.string().email().max(254))
+    .max(20)
+    .optional()
+    .default([]),
 });
 
 router.post(
@@ -53,13 +65,23 @@ router.post(
         });
       }
 
-      const { fields, submitTo } = parsed.data;
+      const { fields, submitTo, recipients } = parsed.data;
+
+      // If block has recipient list, store it as a synthetic field so the
+      // worker can pick it up without a schema change on FormSubmission.
+      const fieldsWithRecipients =
+        recipients.length > 0
+          ? [
+              { label: "__recipients__", value: recipients.join(",") },
+              ...fields,
+            ]
+          : fields;
 
       const submission = await prisma.formSubmission.create({
         data: {
           tenantId,
           fields:
-            fields as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            fieldsWithRecipients as unknown as import("@prisma/client").Prisma.InputJsonValue,
           submitTo,
         },
       });
@@ -106,9 +128,30 @@ router.post(
           });
         } catch (leadErr) {
           // Lead creation is best-effort — don't fail the form submission
-
           console.error("[form-submissions] CRM lead creation failed", leadErr);
         }
+      }
+
+      // Enqueue email notification — only for submitTo='email'.
+      // Best-effort: a queue failure must never lose the submission row.
+      if (submitTo === "email") {
+        formSubmissionEmailQueue
+          .add(
+            "send-form-submission-email",
+            { submissionId: submission.id },
+            {
+              // Unique job key prevents duplicate sends if the HTTP request
+              // is retried before the first job completes.
+              jobId: `form-submission-email:${submission.id}`,
+            },
+          )
+          .catch((queueErr: unknown) => {
+            logger.error(
+              "[form-submissions] Failed to enqueue email job",
+              undefined,
+              { submissionId: submission.id, err: queueErr },
+            );
+          });
       }
 
       automationService
@@ -123,7 +166,7 @@ router.post(
           payload: {
             submissionId: submission.id,
             submitTo,
-            fields,
+            fields, // original user-facing fields (no __recipients__ synthetic field)
             leadId: submission.leadId ?? null,
           },
         })

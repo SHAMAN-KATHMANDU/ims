@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { UpdateSiteConfigSchema, PickTemplateSchema } from "./sites.schema";
+import {
+  UpdateSiteConfigSchema,
+  PickTemplateSchema,
+  AnalyticsSchema,
+} from "./sites.schema";
 
 describe("UpdateSiteConfigSchema", () => {
   it("accepts a partial branding update", () => {

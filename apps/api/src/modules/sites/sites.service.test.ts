@@ -9,6 +9,7 @@ const mockRepo = {
   updateConfig: vi.fn(),
   listActiveTemplates: vi.fn(),
   findTemplateBySlug: vi.fn(),
+  publishAllDrafts: vi.fn(),
 } as unknown as Repo;
 
 const mockRevalidate = vi.fn().mockResolvedValue(undefined);
@@ -280,19 +281,38 @@ describe("SitesService", () => {
   });
 
   describe("publish", () => {
-    it("publishes when template is picked", async () => {
+    it("atomically promotes drafts and flips config when template is picked", async () => {
       (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config({ templateId: "tpl1" }),
       );
-      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
-        config({ isPublished: true }),
+      (mockRepo.publishAllDrafts as ReturnType<typeof vi.fn>).mockResolvedValue(
+        {
+          siteConfig: config({ isPublished: true }),
+          promoted: 2,
+          wasNoOp: false,
+        },
       );
 
       const result = await service.publish("t1");
       expect(result.isPublished).toBe(true);
-      expect(mockRepo.updateConfig).toHaveBeenCalledWith("t1", {
-        isPublished: true,
-      });
+      expect(mockRepo.publishAllDrafts).toHaveBeenCalledWith("t1");
+    });
+
+    it("returns early on idempotent publish (no drafts, already published)", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ templateId: "tpl1", isPublished: true }),
+      );
+      (mockRepo.publishAllDrafts as ReturnType<typeof vi.fn>).mockResolvedValue(
+        {
+          siteConfig: config({ isPublished: true }),
+          promoted: 0,
+          wasNoOp: true,
+        },
+      );
+
+      const result = await service.publish("t1");
+      expect(result.isPublished).toBe(true);
+      expect(mockRepo.publishAllDrafts).toHaveBeenCalledWith("t1");
     });
 
     it("throws 400 when no template picked", async () => {
@@ -302,7 +322,7 @@ describe("SitesService", () => {
       await expect(service.publish("t1")).rejects.toMatchObject({
         statusCode: 400,
       });
-      expect(mockRepo.updateConfig).not.toHaveBeenCalled();
+      expect(mockRepo.publishAllDrafts).not.toHaveBeenCalled();
     });
 
     it("throws 403 when disabled", async () => {
@@ -312,6 +332,20 @@ describe("SitesService", () => {
       await expect(service.publish("t1")).rejects.toMatchObject({
         statusCode: 403,
       });
+      expect(mockRepo.publishAllDrafts).not.toHaveBeenCalled();
+    });
+
+    it("rolls back on transaction failure", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ templateId: "tpl1" }),
+      );
+      (mockRepo.publishAllDrafts as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("Database connection lost"),
+      );
+
+      await expect(service.publish("t1")).rejects.toThrow(
+        "Database connection lost",
+      );
     });
   });
 

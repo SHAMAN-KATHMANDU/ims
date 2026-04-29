@@ -133,3 +133,32 @@ export async function resetSiteLayoutFromTemplate(
     handleApiError(error, "reset site layout from template");
   }
 }
+
+/**
+ * Refresh an existing preview token. Verifies the current token against Redis,
+ * then issues a new one with a fresh 30-minute TTL. Returns the new preview URL.
+ * Called after each successful draft save (refresh-on-activity).
+ */
+export async function refreshPreviewToken(token: string): Promise<string> {
+  try {
+    const response = await api.post<{ url: string }>(
+      "/site-layouts/preview/refresh",
+      { token },
+    );
+    return response.data.url;
+  } catch (error) {
+    handleApiError(error, "refresh preview token");
+  }
+}
+
+/**
+ * Invalidate a preview token by revoking its server-side nonce. Best-effort —
+ * called on editor close and sign-out. Accepts expired tokens.
+ */
+export async function invalidatePreviewToken(token: string): Promise<void> {
+  try {
+    await api.post("/site-layouts/preview/invalidate", { token });
+  } catch {
+    // Fire-and-forget: swallow errors — revocation is best-effort on close.
+  }
+}

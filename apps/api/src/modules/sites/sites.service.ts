@@ -238,11 +238,10 @@ export class SitesService {
       throw createError("Pick a template before publishing your site.", 400);
     }
 
-    const result = await this.repo.updateConfig(tenantId, {
-      isPublished: true,
-    });
+    // Atomically promote all draft layouts and flip config in one transaction
+    const { siteConfig } = await this.repo.publishAllDrafts(tenantId);
     await this.revalidate(tenantId);
-    return result;
+    return siteConfig;
   }
 
   async unpublish(tenantId: string): Promise<SiteConfigWithTemplate> {
