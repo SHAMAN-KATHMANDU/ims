@@ -18,6 +18,7 @@ import "@/queues/outbound-message.worker";
 import "@/queues/status-update.worker";
 import "@/queues/ai-reply.worker";
 import "@/queues/automation.worker";
+import "@/queues/form-submission-email.worker";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;

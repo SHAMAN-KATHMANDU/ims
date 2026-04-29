@@ -93,3 +93,27 @@ export const aiReplyQueue = new Queue("messaging-ai-reply", {
     },
   },
 });
+
+/**
+ * Form-submission email queue — sends notification emails when a tenant-site
+ * form block is submitted with submitTo='email'.
+ *
+ * Retry policy: 3 attempts, exponential back-off starting at 5 s.
+ * A unique jobId per submission prevents duplicate sends on HTTP retries.
+ */
+export const formSubmissionEmailQueue = new Queue("form-submission-email", {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+    removeOnComplete: {
+      age: 86400, // 24 hours
+    },
+    removeOnFail: {
+      age: 604800, // 7 days
+    },
+  },
+});

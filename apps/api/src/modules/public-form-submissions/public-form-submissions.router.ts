@@ -1,7 +1,7 @@
 /**
  * Public form submissions — unauthenticated endpoint for the tenant-site
  * form block. Tenant resolved from Host header. Stores the submission and
- * optionally creates a CRM Lead.
+ * optionally creates a CRM Lead or sends an email notification.
  */
 
 import { Router, Request, Response } from "express";
@@ -14,6 +14,8 @@ import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
 import automationService from "@/modules/automation/automation.service";
+import { formSubmissionEmailQueue } from "@/queues/queue.config";
+import { logger } from "@/config/logger";
 
 const router = Router();
 
@@ -30,6 +32,16 @@ const SubmitFormSchema = z.object({
     )
     .max(30),
   submitTo: z.enum(["email", "crm-lead"]).default("email"),
+  /**
+   * Optional per-block recipient overrides from the form block configuration.
+   * When provided, emails go to these addresses; otherwise falls back to
+   * SiteConfig.contact.email.
+   */
+  recipients: z
+    .array(z.string().email().max(254))
+    .max(20)
+    .optional()
+    .default([]),
 });
 
 router.post(
@@ -53,19 +65,28 @@ router.post(
         });
       }
 
-      const { fields, submitTo } = parsed.data;
+      const { fields, submitTo, recipients } = parsed.data;
+
+      // Store block recipients as a synthetic "__recipients__" field so the
+      // worker can retrieve them without an extra column on FormSubmission.
+      const fieldsToStore =
+        recipients.length > 0
+          ? [
+              { label: "__recipients__", value: recipients.join(",") },
+              ...fields,
+            ]
+          : fields;
 
       const submission = await prisma.formSubmission.create({
         data: {
           tenantId,
           fields:
-            fields as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            fieldsToStore as unknown as import("@prisma/client").Prisma.InputJsonValue,
           submitTo,
         },
       });
 
       // If submitTo is crm-lead, try to create a lead from the form data.
-      // Extract name + email + phone from common field labels.
       if (submitTo === "crm-lead") {
         try {
           const getField = (label: string) =>
@@ -78,8 +99,6 @@ router.post(
             getField("phone") || getField("phone number") || undefined;
           const notes = fields.map((f) => `${f.label}: ${f.value}`).join("\n");
 
-          // Lead requires assignedToId + createdById — auto-assign to
-          // the first admin user.
           const adminUser = await prisma.user.findFirst({
             where: { tenantId, role: { in: ["admin", "superAdmin"] } },
             select: { id: true },
@@ -105,10 +124,30 @@ router.post(
             data: { leadId: lead.id },
           });
         } catch (leadErr) {
-          // Lead creation is best-effort — don't fail the form submission
-
+          // Lead creation is best-effort — never fail the form submission
           console.error("[form-submissions] CRM lead creation failed", leadErr);
         }
+      }
+
+      // Enqueue email notification for submitTo='email' — best-effort.
+      // A queue failure must never lose the submission row.
+      if (submitTo === "email") {
+        formSubmissionEmailQueue
+          .add(
+            "send-form-submission-email",
+            { submissionId: submission.id },
+            {
+              // Unique jobId prevents duplicate sends on HTTP request retries.
+              jobId: `form-submission-email:${submission.id}`,
+            },
+          )
+          .catch((queueErr: unknown) => {
+            logger.error(
+              "[form-submissions] Failed to enqueue email job",
+              undefined,
+              { submissionId: submission.id, err: queueErr },
+            );
+          });
       }
 
       automationService
@@ -123,7 +162,7 @@ router.post(
           payload: {
             submissionId: submission.id,
             submitTo,
-            fields,
+            fields, // original user-visible fields (no __recipients__ synthetic field)
             leadId: submission.leadId ?? null,
           },
         })
