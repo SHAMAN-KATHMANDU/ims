@@ -19,6 +19,7 @@ import type {
   UpdateGlobalsInput,
   UpdateThemeInput,
   UpdateSeoInput,
+  AnalyticsInput,
 } from "./sites.schema";
 import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
@@ -573,6 +574,37 @@ export class SitesService {
     });
     await this.revalidate(tenantId);
     return result.seo ?? {};
+  }
+
+  // ——— ANALYTICS ———
+
+  async getAnalytics(tenantId: string): Promise<Record<string, unknown>> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+    return (config.analytics ?? {}) as Record<string, unknown>;
+  }
+
+  async updateAnalytics(
+    tenantId: string,
+    input: AnalyticsInput,
+  ): Promise<Record<string, unknown>> {
+    const config = await this.repo.findConfig(tenantId);
+    assertEnabled(config);
+
+    const current = (config.analytics ?? {}) as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...current };
+    if (input.ga4MeasurementId !== undefined)
+      merged.ga4MeasurementId = input.ga4MeasurementId;
+    if (input.gtmContainerId !== undefined)
+      merged.gtmContainerId = input.gtmContainerId;
+    if (input.metaPixelId !== undefined) merged.metaPixelId = input.metaPixelId;
+    if (input.consentMode !== undefined) merged.consentMode = input.consentMode;
+
+    const result = await this.repo.updateConfig(tenantId, {
+      analytics: merged as Prisma.InputJsonValue,
+    });
+    await this.revalidate(tenantId);
+    return (result.analytics ?? {}) as Record<string, unknown>;
   }
 }
 

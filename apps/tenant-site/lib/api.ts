@@ -91,6 +91,17 @@ export interface PublicTemplate {
   defaultPages: Record<string, unknown> | null;
 }
 
+/**
+ * Analytics tracker IDs stored on the site config.
+ * Injected server-side into <head> on published, indexable pages only.
+ */
+export interface PublicSiteAnalytics {
+  ga4MeasurementId?: string;
+  gtmContainerId?: string;
+  metaPixelId?: string;
+  consentMode?: "basic" | "granted";
+}
+
 export interface PublicSite {
   branding: Record<string, unknown> | null;
   contact: Record<string, unknown> | null;
@@ -98,6 +109,8 @@ export interface PublicSite {
   seo: Record<string, unknown> | null;
   /** Structured design tokens (Phase 7+). Preferred over branding when set. */
   themeTokens?: Record<string, unknown> | null;
+  /** Analytics tracker IDs — GA4, GTM, Meta Pixel, Consent Mode. */
+  analytics?: PublicSiteAnalytics | null;
   template: PublicTemplate | null;
   /** BCP-47 tag: tenant's default locale (drives Intl formatting). */
   locale?: string | null;

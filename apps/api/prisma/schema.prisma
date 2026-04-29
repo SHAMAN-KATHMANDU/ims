@@ -199,6 +199,9 @@ model SiteConfig {
   /// Default "NPR" preserves existing behavior for tenants who predate
   /// this column.
   currency       String   @default("NPR") @map("currency") @db.VarChar(8)
+  /// Analytics tracker IDs: { ga4MeasurementId?, gtmContainerId?, metaPixelId?, consentMode? }
+  /// Only injected server-side on published sites; never in /preview/* routes.
+  analytics      Json?
   /// Tenant has clicked "publish" — only published sites are served publicly.
   isPublished    Boolean  @default(false) @map("is_published")
   createdAt      DateTime @default(now()) @map("created_at")

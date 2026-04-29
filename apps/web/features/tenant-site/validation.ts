@@ -325,3 +325,62 @@ export function seoToJson(form: SeoFormInput): Record<string, unknown> {
   if (form.ogImage) out.ogImage = form.ogImage;
   return out;
 }
+
+// ============================================
+// Analytics
+// ============================================
+
+export const AnalyticsFormSchema = z.object({
+  ga4MeasurementId: z
+    .string()
+    .trim()
+    .regex(/^G-[A-Z0-9]+$/, "Must be in G-XXXXXXXX format (e.g. G-XXXXXXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  gtmContainerId: z
+    .string()
+    .trim()
+    .regex(/^GTM-[A-Z0-9]+$/, "Must be in GTM-XXXXXX format (e.g. GTM-XXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  metaPixelId: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{6,20}$/, "Must be a 6–20 digit numeric ID")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  consentMode: z.enum(["basic", "granted"]).optional().default("basic"),
+});
+
+export type AnalyticsFormInput = z.infer<typeof AnalyticsFormSchema>;
+
+type StoredAnalytics = {
+  ga4MeasurementId?: string;
+  gtmContainerId?: string;
+  metaPixelId?: string;
+  consentMode?: "basic" | "granted";
+};
+
+export function analyticsFromJson(
+  json: Record<string, unknown> | null,
+): AnalyticsFormInput {
+  const j = (json ?? {}) as StoredAnalytics;
+  return {
+    ga4MeasurementId: j.ga4MeasurementId ?? "",
+    gtmContainerId: j.gtmContainerId ?? "",
+    metaPixelId: j.metaPixelId ?? "",
+    consentMode: j.consentMode ?? "basic",
+  };
+}
+
+export function analyticsToJson(
+  form: AnalyticsFormInput,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    consentMode: form.consentMode ?? "basic",
+  };
+  if (form.ga4MeasurementId) out.ga4MeasurementId = form.ga4MeasurementId;
+  if (form.gtmContainerId) out.gtmContainerId = form.gtmContainerId;
+  if (form.metaPixelId) out.metaPixelId = form.metaPixelId;
+  return out;
+}

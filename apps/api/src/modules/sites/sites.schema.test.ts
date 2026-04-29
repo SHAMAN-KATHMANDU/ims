@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { UpdateSiteConfigSchema, PickTemplateSchema } from "./sites.schema";
+import {
+  UpdateSiteConfigSchema,
+  PickTemplateSchema,
+  AnalyticsSchema,
+} from "./sites.schema";
 
 describe("UpdateSiteConfigSchema", () => {
   it("accepts a partial branding update", () => {
@@ -89,5 +93,86 @@ describe("PickTemplateSchema", () => {
 
   it("rejects missing slug", () => {
     expect(() => PickTemplateSchema.parse({})).toThrow();
+  });
+});
+
+describe("AnalyticsSchema", () => {
+  it("accepts a valid GA4 measurement ID", () => {
+    const result = AnalyticsSchema.parse({ ga4MeasurementId: "G-ABC123" });
+    expect(result.ga4MeasurementId).toBe("G-ABC123");
+  });
+
+  it("accepts a valid GTM container ID", () => {
+    const result = AnalyticsSchema.parse({ gtmContainerId: "GTM-XYZ123" });
+    expect(result.gtmContainerId).toBe("GTM-XYZ123");
+  });
+
+  it("accepts a valid Meta Pixel ID", () => {
+    const result = AnalyticsSchema.parse({ metaPixelId: "123456789012" });
+    expect(result.metaPixelId).toBe("123456789012");
+  });
+
+  it("defaults consentMode to 'basic'", () => {
+    const result = AnalyticsSchema.parse({});
+    expect(result.consentMode).toBe("basic");
+  });
+
+  it("accepts consentMode 'granted'", () => {
+    const result = AnalyticsSchema.parse({ consentMode: "granted" });
+    expect(result.consentMode).toBe("granted");
+  });
+
+  it("rejects invalid GA4 ID (lowercase)", () => {
+    expect(() =>
+      AnalyticsSchema.parse({ ga4MeasurementId: "g-abc123" }),
+    ).toThrow();
+  });
+
+  it("rejects invalid GA4 ID (missing G- prefix)", () => {
+    expect(() =>
+      AnalyticsSchema.parse({ ga4MeasurementId: "ABC123" }),
+    ).toThrow();
+  });
+
+  it("rejects invalid GTM ID (wrong prefix)", () => {
+    expect(() =>
+      AnalyticsSchema.parse({ gtmContainerId: "GM-XYZ123" }),
+    ).toThrow();
+  });
+
+  it("rejects Meta Pixel ID that is too short (fewer than 6 digits)", () => {
+    expect(() => AnalyticsSchema.parse({ metaPixelId: "12345" })).toThrow();
+  });
+
+  it("rejects Meta Pixel ID with non-numeric characters", () => {
+    expect(() => AnalyticsSchema.parse({ metaPixelId: "12345abc" })).toThrow();
+  });
+
+  it("transforms empty string GA4 ID to undefined", () => {
+    const result = AnalyticsSchema.parse({ ga4MeasurementId: "" });
+    expect(result.ga4MeasurementId).toBeUndefined();
+  });
+
+  it("transforms empty string GTM ID to undefined", () => {
+    const result = AnalyticsSchema.parse({ gtmContainerId: "" });
+    expect(result.gtmContainerId).toBeUndefined();
+  });
+
+  it("transforms empty string Pixel ID to undefined", () => {
+    const result = AnalyticsSchema.parse({ metaPixelId: "" });
+    expect(result.metaPixelId).toBeUndefined();
+  });
+
+  it("accepts all three trackers at once", () => {
+    const result = AnalyticsSchema.parse({
+      ga4MeasurementId: "G-ABC123",
+      gtmContainerId: "GTM-XYZ123",
+      metaPixelId: "123456789012",
+      consentMode: "granted",
+    });
+    expect(result.ga4MeasurementId).toBe("G-ABC123");
+    expect(result.gtmContainerId).toBe("GTM-XYZ123");
+    expect(result.metaPixelId).toBe("123456789012");
+    expect(result.consentMode).toBe("granted");
   });
 });
