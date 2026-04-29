@@ -15,7 +15,7 @@
  * passed through the URL.
  */
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { env } from "@/config/env";
 
 const TOKEN_VERSION = "v1";
@@ -35,13 +35,23 @@ export interface PreviewTokenPayload {
  * index / product-detail / ...). A distinct token version prefix ("s1"
  * vs "v1") prevents a page verifier from accepting a site token and vice
  * versa, even though both share the HMAC secret.
+ *
+ * Security additions (issue #429):
+ *   - `iat` — issued-at timestamp for audit; kept in token body.
+ *   - `nonce` — crypto.randomUUID() bound to this token instance; stored in
+ *     Redis so the server can revoke individual tokens without rotating the
+ *     HMAC secret.
  */
 export interface SitePreviewTokenPayload {
   tenantId: string;
   scope: string;
   /** Only present for scope="page" — the TenantPage whose override to preview. */
   pageId?: string;
+  /** Issued-at seconds (Unix epoch). */
+  iat: number;
   exp: number;
+  /** Per-token nonce. Verified against Redis allowlist on every request. */
+  nonce: string;
 }
 
 function base64UrlEncode(input: Buffer): string {
@@ -127,23 +137,36 @@ export function verifyPreviewToken(token: string): PreviewTokenPayload | null {
 // Site-scope preview tokens (Phase 4)
 // ---------------------------------------------------------------------------
 
+/**
+ * Sign a site-scope preview token.
+ *
+ * Returns the signed token string, the generated nonce, and the TTL used so
+ * the caller can store the nonce in Redis (via `preview-nonce.ts`) before
+ * returning the token to the client — the nonce forms the server-side
+ * revocation handle.
+ */
 export function signSitePreviewToken(
-  payload: Omit<SitePreviewTokenPayload, "exp">,
+  payload: Omit<SitePreviewTokenPayload, "exp" | "iat" | "nonce">,
   ttlSeconds: number = DEFAULT_TTL_SECONDS,
-): string {
-  const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+): { token: string; nonce: string; ttlSeconds: number } {
+  const now = Math.floor(Date.now() / 1000);
+  const iat = now;
+  const exp = now + ttlSeconds;
+  const nonce = randomUUID();
   const body = base64UrlEncode(
     Buffer.from(
       JSON.stringify({
         tenantId: payload.tenantId,
         scope: payload.scope,
         ...(payload.pageId ? { pageId: payload.pageId } : {}),
+        iat,
         exp,
+        nonce,
       } satisfies SitePreviewTokenPayload),
       "utf8",
     ),
   );
-  return `${SITE_TOKEN_VERSION}.${body}.${sign(body)}`;
+  return { token: `${SITE_TOKEN_VERSION}.${body}.${sign(body)}`, nonce, ttlSeconds };
 }
 
 export function verifySitePreviewToken(
@@ -174,7 +197,10 @@ export function verifySitePreviewToken(
   if (
     typeof payload?.tenantId !== "string" ||
     typeof payload?.scope !== "string" ||
-    typeof payload?.exp !== "number"
+    typeof payload?.iat !== "number" ||
+    typeof payload?.exp !== "number" ||
+    typeof payload?.nonce !== "string" ||
+    payload.nonce.length === 0
   ) {
     return null;
   }
@@ -183,5 +209,57 @@ export function verifySitePreviewToken(
   }
   if (payload.exp < Math.floor(Date.now() / 1000)) return null;
 
+  return payload;
+}
+
+/**
+ * Parse a site-scope preview token without checking expiry.
+ *
+ * Used for revocation: a user closing the editor might trigger invalidation
+ * after the token has expired (e.g. long session), but we still want to clean
+ * up the Redis nonce key. HMAC + shape are still verified; only the `exp`
+ * clock check is skipped.
+ *
+ * Returns null on bad structure or invalid signature.
+ */
+export function parseSitePreviewTokenBody(
+  token: string,
+): SitePreviewTokenPayload | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [version, body, sig] = parts;
+  if (version !== SITE_TOKEN_VERSION) return null;
+
+  let expectedSig: string;
+  try {
+    expectedSig = sign(body);
+  } catch {
+    return null;
+  }
+  const sigBuf = Buffer.from(sig, "utf8");
+  const expectedBuf = Buffer.from(expectedSig, "utf8");
+  if (sigBuf.length !== expectedBuf.length) return null;
+  if (!timingSafeEqual(sigBuf, expectedBuf)) return null;
+
+  let payload: SitePreviewTokenPayload;
+  try {
+    payload = JSON.parse(base64UrlDecode(body).toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (
+    typeof payload?.tenantId !== "string" ||
+    typeof payload?.scope !== "string" ||
+    typeof payload?.iat !== "number" ||
+    typeof payload?.exp !== "number" ||
+    typeof payload?.nonce !== "string" ||
+    payload.nonce.length === 0
+  ) {
+    return null;
+  }
+  if (payload.pageId !== undefined && typeof payload.pageId !== "string") {
+    return null;
+  }
+  // Intentionally skip exp check — used for cleanup/revocation.
   return payload;
 }

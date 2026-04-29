@@ -17,7 +17,16 @@ import sitesRepo from "@/modules/sites/sites.repository";
 import { createError } from "@/middlewares/errorHandler";
 import { env } from "@/config/env";
 import { BlockTreeSchema } from "@repo/shared";
-import { signSitePreviewToken } from "@/modules/site-preview/preview-token";
+import {
+  signSitePreviewToken,
+  verifySitePreviewToken,
+  parseSitePreviewTokenBody,
+} from "@/modules/site-preview/preview-token";
+import {
+  storePreviewNonce,
+  checkPreviewNonce,
+  revokePreviewNonce,
+} from "@/modules/site-preview/preview-nonce";
 import defaultPagesRepo from "@/modules/pages/pages.repository";
 import { getTemplateBlueprint } from "@/modules/sites/blueprints";
 import defaultRepo, { type SiteLayoutKey } from "./site-layouts.repository";
@@ -65,8 +74,6 @@ export class SiteLayoutsService {
     input: UpsertSiteLayoutInput,
   ): Promise<SiteLayout> {
     await this.assertEnabled(tenantId);
-    // Re-validate the block tree at the service boundary even though the
-    // controller already parsed it — defence in depth + helpful error shape.
     const parsed = BlockTreeSchema.safeParse(input.blocks);
     if (!parsed.success) {
       throw createError(
@@ -103,11 +110,11 @@ export class SiteLayoutsService {
 
   /**
    * Mint a short-lived preview URL the Framer-lite editor can drop into an
-   * iframe. The URL points at /preview/site/:scope on the tenant-site
-   * renderer with an HMAC token bound to (tenantId, scope, pageId?). The
-   * tenant-site route returns the DRAFT SiteLayout for that scope — or
-   * falls back to the published tree if no draft exists — so the editor
-   * sees edits as soon as they're saved.
+   * iframe. The URL points at /preview/site/:scope on the tenant-site renderer
+   * with an HMAC token bound to (tenantId, scope, pageId?).
+   *
+   * Issue #429: also stores the nonce in Redis so it can be verified and
+   * revoked server-side without rotating the HMAC secret.
    */
   async mintPreviewUrl(
     tenantId: string,
@@ -125,11 +132,22 @@ export class SiteLayoutsService {
       );
     }
 
-    const token = signSitePreviewToken({
+    const { token, nonce, ttlSeconds } = signSitePreviewToken({
       tenantId,
       scope: key.scope,
       pageId: key.pageId ?? undefined,
     });
+
+    await storePreviewNonce(
+      tenantId,
+      nonce,
+      {
+        scope: key.scope,
+        pageId: key.pageId ?? null,
+        iat: Math.floor(Date.now() / 1000),
+      },
+      ttlSeconds,
+    );
 
     const pageSuffix = key.pageId
       ? `&pageId=${encodeURIComponent(key.pageId)}`
@@ -142,15 +160,111 @@ export class SiteLayoutsService {
   }
 
   /**
-   * Reset a single scope's draftBlocks to the tenant's current template
-   * blueprint. Used by the editor's "Reset to template default" button —
-   * lets a tenant throw away their edits and start from the blueprint
-   * again without re-picking the whole template. The published `blocks`
-   * column is left alone; the tenant still has to hit Publish to promote.
+   * Refresh a preview token. Verifies the current token (HMAC + exp + Redis
+   * nonce), issues a new token for the same (tenantId, scope, pageId) tuple,
+   * and stores the new nonce. The old nonce remains valid until its natural TTL
+   * — it is NOT revoked here to avoid race conditions with in-flight preview
+   * requests during the transition.
    *
-   * 400 if the tenant has no template picked; 404 if their template has
-   * no registered blueprint (unusual — a blueprint should exist for every
-   * shipping template).
+   * Used by the editor to extend the session on activity (each save).
+   * Auth: the caller's tenantId must match the token's tenantId (IDOR guard).
+   */
+  async refreshPreviewToken(
+    callerTenantId: string,
+    currentToken: string,
+  ): Promise<{ url: string }> {
+    const payload = verifySitePreviewToken(currentToken);
+    if (!payload) {
+      throw createError(
+        "Preview link expired or revoked. Generate a new preview from the editor.",
+        401,
+      );
+    }
+    if (payload.tenantId !== callerTenantId) {
+      throw createError(
+        "Cannot refresh a preview token for another tenant.",
+        403,
+      );
+    }
+
+    const nonceValid = await checkPreviewNonce(payload.tenantId, payload.nonce);
+    if (!nonceValid) {
+      throw createError(
+        "Preview link expired or revoked. Generate a new preview from the editor.",
+        401,
+      );
+    }
+
+    await this.assertEnabled(callerTenantId);
+
+    const hostname =
+      await defaultPagesRepo.findPrimaryWebsiteHostname(callerTenantId);
+    const baseUrl = hostname ? `https://${hostname}` : env.tenantSitePublicUrl;
+    if (!baseUrl) {
+      throw createError(
+        "No preview target available: no verified primary website domain and TENANT_SITE_PUBLIC_URL is not configured.",
+        503,
+      );
+    }
+
+    const {
+      token: newToken,
+      nonce: newNonce,
+      ttlSeconds,
+    } = signSitePreviewToken({
+      tenantId: payload.tenantId,
+      scope: payload.scope,
+      pageId: payload.pageId,
+    });
+
+    await storePreviewNonce(
+      payload.tenantId,
+      newNonce,
+      {
+        scope: payload.scope,
+        pageId: payload.pageId ?? null,
+        iat: Math.floor(Date.now() / 1000),
+      },
+      ttlSeconds,
+    );
+
+    const pageSuffix = payload.pageId
+      ? `&pageId=${encodeURIComponent(payload.pageId)}`
+      : "";
+    return {
+      url: `${baseUrl.replace(/\/+$/, "")}/preview/site/${encodeURIComponent(
+        payload.scope,
+      )}?token=${encodeURIComponent(newToken)}${pageSuffix}`,
+    };
+  }
+
+  /**
+   * Invalidate a preview token by revoking its Redis nonce. Accepts expired
+   * tokens (exp is not checked) so the editor can clean up even after a long
+   * session. HMAC + tenantId IDOR guard are still enforced.
+   *
+   * Used when the user closes the editor or signs out.
+   */
+  async invalidatePreviewToken(
+    callerTenantId: string,
+    token: string,
+  ): Promise<void> {
+    const payload = parseSitePreviewTokenBody(token);
+    if (!payload) {
+      // Malformed or tampered token — silently ignore.
+      return;
+    }
+    if (payload.tenantId !== callerTenantId) {
+      throw createError(
+        "Cannot invalidate a preview token for another tenant.",
+        403,
+      );
+    }
+    await revokePreviewNonce(payload.tenantId, payload.nonce);
+  }
+
+  /**
+   * Reset a single scope's draftBlocks to the tenant's current template blueprint.
    */
   async resetScopeFromTemplate(
     tenantId: string,

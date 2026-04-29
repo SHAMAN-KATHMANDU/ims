@@ -2,6 +2,9 @@
  * Site Layouts Router — tenant-scoped block layouts.
  * Mounted under /site-layouts; inherits auth + tenant resolution.
  * Permissions: WEBSITE.SITE.* — VIEW/UPDATE/DEPLOY for publish.
+ *
+ * IMPORTANT: /preview/refresh and /preview/invalidate are registered BEFORE
+ * /:scope so Express does not match "refresh"/"invalidate" as scope params.
  */
 
 import { Router } from "express";
@@ -24,6 +27,92 @@ const requireUpdate = requirePermission(
 const requireDeploy = requirePermission(
   "WEBSITE.SITE.DEPLOY",
   workspaceLocator(),
+);
+
+/**
+ * @swagger
+ * /site-layouts/preview/refresh:
+ *   post:
+ *     summary: Refresh an existing preview token (extends TTL by 30 minutes)
+ *     description: |
+ *       Verifies the current HMAC-signed token and its Redis nonce, then issues a
+ *       new token for the same scope/pageId with a fresh 30-minute TTL. Called by
+ *       the editor on each successful save (refresh-on-activity). The old nonce
+ *       remains valid until its natural Redis TTL to avoid race conditions with
+ *       in-flight preview requests.
+ *     tags: [SiteLayouts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Current preview token embedded in the iframe URL
+ *     responses:
+ *       200:
+ *         description: New preview URL with refreshed token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string }
+ *                 url: { type: string }
+ *       400:
+ *         description: Missing token
+ *       401:
+ *         description: Token expired or Redis nonce missing (revoked)
+ *       403:
+ *         description: Token belongs to a different tenant
+ */
+router.post(
+  "/preview/refresh",
+  requireUpdate,
+  asyncHandler(controller.refreshPreviewToken),
+);
+
+/**
+ * @swagger
+ * /site-layouts/preview/invalidate:
+ *   post:
+ *     summary: Invalidate a preview token (revoke its Redis nonce)
+ *     description: |
+ *       Immediately revokes the Redis nonce for the given token so the public
+ *       preview endpoint rejects it on the next request. Accepts expired tokens
+ *       so the editor can clean up after a long session (exp check skipped).
+ *       Called on editor close and user sign-out. Best-effort — errors do not
+ *       propagate to the client.
+ *     tags: [SiteLayouts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Token invalidated (or silently ignored if malformed)
+ *       400:
+ *         description: Missing token
+ *       403:
+ *         description: Token belongs to a different tenant
+ */
+router.post(
+  "/preview/invalidate",
+  requireUpdate,
+  asyncHandler(controller.invalidatePreviewToken),
 );
 
 /**
