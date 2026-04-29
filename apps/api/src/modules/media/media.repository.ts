@@ -8,15 +8,42 @@ export class MediaRepository {
     return prisma.mediaAsset.create({ data });
   }
 
+  /**
+   * Find a media asset by id within a tenant.
+   *
+   * Soft-deleted rows are hidden by default — pass `{ includeDeleted: true }`
+   * if a caller (e.g. an admin restore flow or a test) needs tombstones.
+   */
   async findByIdForTenant(
     id: string,
     tenantId: string,
+    opts: { includeDeleted?: boolean } = {},
   ): Promise<MediaAsset | null> {
-    return prisma.mediaAsset.findFirst({
-      where: { id, tenantId },
-    });
+    const where: Prisma.MediaAssetWhereInput = { id, tenantId };
+    if (!opts.includeDeleted) where.deletedAt = null;
+    return prisma.mediaAsset.findFirst({ where });
   }
 
+  /**
+   * Soft-delete: set `deletedAt` so the row is hidden from listings while
+   * the underlying S3 object stays around for recovery / audit. Returns the
+   * number of rows affected (0 if not found or already deleted).
+   */
+  async softDeleteByIdForTenant(
+    id: string,
+    tenantId: string,
+  ): Promise<number> {
+    const res = await prisma.mediaAsset.updateMany({
+      where: { id, tenantId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    return res.count;
+  }
+
+  /**
+   * Hard delete (kept for tests + the legacy code path). Production callers
+   * should prefer `softDeleteByIdForTenant`.
+   */
   async deleteByIdForTenant(id: string, tenantId: string): Promise<void> {
     await prisma.mediaAsset.deleteMany({
       where: { id, tenantId },
@@ -30,9 +57,11 @@ export class MediaRepository {
       cursorId?: string;
       purpose?: string;
       mimePrefix?: string;
+      includeDeleted?: boolean;
     },
   ): Promise<MediaAsset[]> {
     const where: Prisma.MediaAssetWhereInput = { tenantId };
+    if (!opts.includeDeleted) where.deletedAt = null;
     if (opts.purpose) {
       where.purpose = opts.purpose;
     }
@@ -66,12 +95,40 @@ export class MediaRepository {
     });
   }
 
+  /**
+   * Return the count of SiteLayout rows whose `blocks` or `draftBlocks` JSON
+   * mentions either the storage key or the public URL of the asset.
+   *
+   * The block tree is opaque to us (a tenant can store any block shape), so
+   * we use a substring search on the serialized JSON via raw SQL. This is a
+   * best-effort guard so we don't accidentally orphan a published page.
+   */
+  async countSiteLayoutsReferencingAsset(
+    tenantId: string,
+    storageKey: string,
+    publicUrl: string,
+  ): Promise<number> {
+    const rows = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "site_layouts"
+      WHERE "tenant_id" = ${tenantId}
+        AND (
+          "blocks"::text LIKE ${"%" + storageKey + "%"}
+          OR "blocks"::text LIKE ${"%" + publicUrl + "%"}
+          OR "draft_blocks"::text LIKE ${"%" + storageKey + "%"}
+          OR "draft_blocks"::text LIKE ${"%" + publicUrl + "%"}
+        )
+    `;
+    const first = rows[0]?.count;
+    return typeof first === "bigint" ? Number(first) : (first ?? 0);
+  }
+
   async existsForTenant(
     storageKey: string,
     tenantId: string,
   ): Promise<boolean> {
     const row = await prisma.mediaAsset.findFirst({
-      where: { storageKey, tenantId },
+      where: { storageKey, tenantId, deletedAt: null },
       select: { id: true },
     });
     return Boolean(row);
@@ -82,7 +139,7 @@ export class MediaRepository {
     tenantId: string,
   ): Promise<MediaAsset | null> {
     return prisma.mediaAsset.findFirst({
-      where: { storageKey, tenantId },
+      where: { storageKey, tenantId, deletedAt: null },
     });
   }
 
@@ -96,6 +153,7 @@ export class MediaRepository {
       where: {
         tenantId,
         fileName,
+        deletedAt: null,
         NOT: { id: excludeAssetId },
       },
     });
@@ -107,12 +165,12 @@ export class MediaRepository {
     fileName: string,
   ): Promise<MediaAsset | null> {
     const updated = await prisma.mediaAsset.updateMany({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
       data: { fileName },
     });
     if (updated.count === 0) return null;
     return prisma.mediaAsset.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId, deletedAt: null },
     });
   }
 }
