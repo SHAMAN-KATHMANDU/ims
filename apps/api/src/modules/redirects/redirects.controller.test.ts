@@ -19,7 +19,7 @@ import controller from "./redirects.controller";
 import * as serviceModule from "./redirects.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = serviceModule.default as Record<
+const mockService = serviceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
