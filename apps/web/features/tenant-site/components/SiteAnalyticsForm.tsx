@@ -190,9 +190,10 @@ export function SiteAnalyticsForm() {
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">
-                "Basic" signals &quot;denied&quot; for all Google storage grants
-                until the visitor accepts your cookie banner. Use "Granted" only
-                in jurisdictions without explicit-consent requirements.
+                &quot;Basic&quot; signals &quot;denied&quot; for all Google
+                storage grants until the visitor accepts your cookie banner. Use
+                &quot;Granted&quot; only in jurisdictions without
+                explicit-consent requirements.
               </p>
             </div>
 
