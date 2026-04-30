@@ -7,12 +7,14 @@
 
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import type { TenantRedirect } from "@prisma/client";
 import { sendControllerError } from "@/utils/controllerError";
 import { basePrisma } from "@/config/prisma";
 import service from "./internal.service";
 import {
   DomainAllowedQuerySchema,
   ResolveHostQuerySchema,
+  GetRedirectsQuerySchema,
 } from "./internal.schema";
 
 /**
@@ -147,6 +149,27 @@ class InternalController {
       return (
         handleZodError(res, error) ??
         sendControllerError(req, res, error, "Resolve host error")
+      );
+    }
+  };
+
+  getRedirects = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = GetRedirectsQuerySchema.parse(req.query);
+      const rules = await basePrisma.tenantRedirect.findMany({
+        where: { tenantId, isActive: true },
+        select: {
+          fromPath: true,
+          toPath: true,
+          statusCode: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      return res.status(200).json({ rules });
+    } catch (error) {
+      return (
+        handleZodError(res, error) ??
+        sendControllerError(req, res, error, "getRedirects")
       );
     }
   };

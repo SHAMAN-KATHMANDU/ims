@@ -1727,6 +1727,7 @@ export const SITE_LAYOUT_SCOPES = [
   "page",
   "404",
   "landing",
+  "not-found",
 ] as const;
 
 export type SiteLayoutScope = (typeof SITE_LAYOUT_SCOPES)[number];

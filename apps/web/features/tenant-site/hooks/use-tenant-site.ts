@@ -8,17 +8,21 @@ import {
   pickSiteTemplate,
   publishSite,
   unpublishSite,
+  getSiteAnalytics,
+  updateSiteAnalytics,
   type SiteConfig,
   type SiteTemplate,
   type UpdateSiteConfigData,
+  type SiteAnalytics,
 } from "../services/tenant-site.service";
 
-export type { SiteConfig, SiteTemplate, UpdateSiteConfigData };
+export type { SiteConfig, SiteTemplate, UpdateSiteConfigData, SiteAnalytics };
 
 export const tenantSiteKeys = {
   all: ["tenant-site"] as const,
   config: () => [...tenantSiteKeys.all, "config"] as const,
   templates: () => [...tenantSiteKeys.all, "templates"] as const,
+  analytics: () => [...tenantSiteKeys.all, "analytics"] as const,
 };
 
 export function useSiteConfig() {
@@ -79,6 +83,24 @@ export function useUnpublishSite() {
     mutationFn: unpublishSite,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantSiteKeys.config() });
+    },
+  });
+}
+
+export function useSiteAnalytics() {
+  return useQuery({
+    queryKey: tenantSiteKeys.analytics(),
+    queryFn: getSiteAnalytics,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateSiteAnalytics() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SiteAnalytics) => updateSiteAnalytics(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tenantSiteKeys.analytics() });
     },
   });
 }

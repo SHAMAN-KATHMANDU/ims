@@ -161,6 +161,34 @@ export const UpdateSeoSchema = z.object({
   robots: z.string().trim().max(1000).optional(),
 });
 
+// ——— ANALYTICS ———
+
+/**
+ * Analytics tracker IDs stored in SiteConfig.analytics.
+ * Only injected server-side on published tenant sites; never on /preview/* routes.
+ */
+export const AnalyticsSchema = z.object({
+  ga4MeasurementId: z
+    .string()
+    .trim()
+    .regex(/^G-[A-Z0-9]+$/, "Must be in G-XXXXXXXX format (e.g. G-XXXXXXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  gtmContainerId: z
+    .string()
+    .trim()
+    .regex(/^GTM-[A-Z0-9]+$/, "Must be in GTM-XXXXXX format (e.g. GTM-XXXXXX)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  metaPixelId: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{6,20}$/, "Must be a 6–20 digit numeric ID")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  consentMode: z.enum(["basic", "granted"]).optional().default("basic"),
+});
+
 // ——— INFERRED TYPES ———
 
 export type UpdateSiteConfigInput = z.infer<typeof UpdateSiteConfigSchema>;
@@ -174,3 +202,4 @@ export type ReorderBlocksInput = z.infer<typeof ReorderBlocksSchema>;
 export type UpdateGlobalsInput = z.infer<typeof UpdateGlobalsSchema>;
 export type UpdateThemeInput = z.infer<typeof UpdateThemeSchema>;
 export type UpdateSeoInput = z.infer<typeof UpdateSeoSchema>;
+export type AnalyticsInput = z.infer<typeof AnalyticsSchema>;

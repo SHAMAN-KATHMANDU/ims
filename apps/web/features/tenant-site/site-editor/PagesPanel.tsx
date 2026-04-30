@@ -21,6 +21,7 @@ export const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "contact", label: "Contact" },
   { value: "404", label: "404 page" },
   { value: "landing", label: "Landing page" },
+  { value: "not-found", label: "Not found (redirects)" },
 ];
 
 // ---------------------------------------------------------------------------

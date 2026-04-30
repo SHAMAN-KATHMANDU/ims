@@ -135,3 +135,39 @@ export async function unpublishSite(): Promise<SiteConfig> {
     handleApiError(error, "unpublish site");
   }
 }
+
+// ============================================
+// Analytics
+// ============================================
+
+export interface SiteAnalytics {
+  ga4MeasurementId?: string;
+  gtmContainerId?: string;
+  metaPixelId?: string;
+  consentMode?: "basic" | "granted";
+}
+
+export async function getSiteAnalytics(): Promise<SiteAnalytics> {
+  try {
+    const response = await api.get<{ analytics: SiteAnalytics }>(
+      "/sites/analytics",
+    );
+    return response.data.analytics ?? {};
+  } catch (error) {
+    handleApiError(error, "fetch site analytics");
+  }
+}
+
+export async function updateSiteAnalytics(
+  data: SiteAnalytics,
+): Promise<SiteAnalytics> {
+  try {
+    const response = await api.put<{ analytics: SiteAnalytics }>(
+      "/sites/analytics",
+      data,
+    );
+    return response.data.analytics ?? {};
+  } catch (error) {
+    handleApiError(error, "update site analytics");
+  }
+}

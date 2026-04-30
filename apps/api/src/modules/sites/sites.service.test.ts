@@ -365,4 +365,113 @@ describe("SitesService", () => {
       });
     });
   });
+
+  describe("getAnalytics", () => {
+    it("returns analytics object from config", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({
+          analytics: { ga4MeasurementId: "G-ABC123", consentMode: "basic" },
+        }),
+      );
+      const result = await service.getAnalytics("t1");
+      expect(result).toMatchObject({ ga4MeasurementId: "G-ABC123" });
+    });
+
+    it("returns empty object when analytics is null", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ analytics: null }),
+      );
+      const result = await service.getAnalytics("t1");
+      expect(result).toEqual({});
+    });
+
+    it("throws 403 when website disabled", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ websiteEnabled: false }),
+      );
+      await expect(service.getAnalytics("t1")).rejects.toMatchObject({
+        statusCode: 403,
+      });
+    });
+  });
+
+  describe("updateAnalytics", () => {
+    it("merges new analytics values into existing ones", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({
+          analytics: {
+            ga4MeasurementId: "G-OLD",
+            consentMode: "basic",
+          },
+        }),
+      );
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({
+          analytics: {
+            ga4MeasurementId: "G-NEW",
+            consentMode: "basic",
+          },
+        }),
+      );
+
+      const result = await service.updateAnalytics("t1", {
+        ga4MeasurementId: "G-NEW",
+        consentMode: "basic",
+      });
+
+      const [, data] = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      expect(data.analytics).toMatchObject({ ga4MeasurementId: "G-NEW" });
+      expect(result).toMatchObject({ ga4MeasurementId: "G-NEW" });
+    });
+
+    it("calls revalidate after updating analytics", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ analytics: {} }),
+      );
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ analytics: { gtmContainerId: "GTM-XYZ" } }),
+      );
+
+      await service.updateAnalytics("t1", { gtmContainerId: "GTM-XYZ" });
+
+      expect(mockRevalidate).toHaveBeenCalledWith("t1");
+    });
+
+    it("throws 403 when website disabled", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ websiteEnabled: false }),
+      );
+      await expect(
+        service.updateAnalytics("t1", { ga4MeasurementId: "G-ABC" }),
+      ).rejects.toMatchObject({ statusCode: 403 });
+      expect(mockRepo.updateConfig).not.toHaveBeenCalled();
+    });
+
+    it("preserves existing fields not included in the update", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({
+          analytics: {
+            ga4MeasurementId: "G-OLD",
+            gtmContainerId: "GTM-EXISTING",
+          },
+        }),
+      );
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({
+          analytics: {
+            ga4MeasurementId: "G-NEW",
+            gtmContainerId: "GTM-EXISTING",
+          },
+        }),
+      );
+
+      await service.updateAnalytics("t1", { ga4MeasurementId: "G-NEW" });
+
+      const [, data] = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      // Existing GTM ID must be preserved in the merged update
+      expect(data.analytics).toMatchObject({ gtmContainerId: "GTM-EXISTING" });
+    });
+  });
 });

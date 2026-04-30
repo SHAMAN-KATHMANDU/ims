@@ -21,6 +21,7 @@ import {
   UpdateGlobalsSchema,
   UpdateThemeSchema,
   UpdateSeoSchema,
+  AnalyticsSchema,
 } from "./sites.schema";
 
 function handleAppError(res: Response, error: unknown): Response | null {
@@ -403,6 +404,38 @@ class SitesController {
       return (
         handleAppError(res, error) ??
         sendControllerError(req, res, error, "Update SEO error")
+      );
+    }
+  };
+
+  // ——— ANALYTICS ———
+
+  getAnalytics = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const analytics = await service.getAnalytics(tenantId);
+      return ok(res, { analytics }, 200);
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Get analytics error")
+      );
+    }
+  };
+
+  updateAnalytics = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const body = AnalyticsSchema.parse(req.body);
+      const analytics = await service.updateAnalytics(tenantId, body);
+      return ok(res, { analytics }, 200);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Update analytics error")
       );
     }
   };

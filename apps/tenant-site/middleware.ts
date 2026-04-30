@@ -2,17 +2,18 @@
  * Tenant-site middleware — runs on every request before page handlers.
  *
  * 1. Reads the incoming Host header.
- * 2. Calls /api/v1/internal/resolve-host (with the shared secret) to map
- *    the host to a tenant. In-memory cache 60s to avoid hammering the API.
- * 3. If the host doesn't resolve to a published tenant, returns 404 early
- *    — no page handler runs, no database is touched.
- * 4. If it resolves, attaches x-tenant-id / x-tenant-slug / x-host to the
- *    request so downstream server components can read them via headers().
+ * 2. Calls /api/v1/internal/resolve-host to map host to tenant (cached 60s).
+ * 3. If host doesn't resolve, returns 404 early.
+ * 4. Checks redirect rules for the pathname (cached 60s, max 5 hops, loop detection).
+ * 5. On redirect match, returns 301/302.
+ * 6. Attaches x-tenant-id / x-tenant-slug / x-host headers for page handlers.
  */
 
 import { NextResponse, type NextRequest } from "next/server";
 
 const CACHE_TTL_MS = 60_000;
+const REDIRECT_CACHE_TTL_MS = 60_000;
+const MAX_REDIRECT_HOPS = 5;
 
 type CacheEntry = {
   resolved: boolean;
@@ -23,20 +24,19 @@ type CacheEntry = {
 
 const cache = new Map<string, CacheEntry>();
 
-// Some paths are intentionally public and shouldn't need tenant resolution.
-// Healthchecks + the revalidation webhook are server-internal; static assets
-// are host-agnostic. /preview/* is host-agnostic too: the tenant comes from
-// the HMAC token in the query string, not the Host header, so the admin can
-// embed the preview iframe at any reachable tenant-site URL (in dev that's
-// usually localhost). The preview page handler validates the token itself.
-//
-// /api/public/* are server-side proxy route handlers (checkout, cart-pings)
-// that forward to the backend API. They derive the customer host themselves
-// from `headers().get("host")` and pass it through, so they don't need the
-// middleware to resolve the tenant — and worse, they MUST NOT be 404'd by
-// the resolver before they get a chance to run, which is exactly what was
-// happening in production: the proxy was correct, the middleware was eating
-// the request first. Bypassing /api/public/* fixes the checkout end-to-end.
+type RedirectRule = {
+  fromPath: string;
+  toPath: string;
+  statusCode: number;
+};
+
+type RedirectCacheEntry = {
+  rules: RedirectRule[];
+  expiresAt: number;
+};
+
+const redirectCache = new Map<string, RedirectCacheEntry>();
+
 const BYPASS_PATHS = [
   "/healthz",
   "/api/revalidate",
@@ -63,11 +63,7 @@ async function resolveHost(host: string): Promise<CacheEntry> {
     const res = await fetch(
       `${api}/internal/resolve-host?host=${encodeURIComponent(host)}`,
       {
-        headers: {
-          "x-internal-token": token,
-        },
-        // Short timeout — if the API is slow, 404ing is better than
-        // holding the request open.
+        headers: { "x-internal-token": token },
         signal: AbortSignal.timeout(3000),
         cache: "no-store",
       },
@@ -95,8 +91,6 @@ async function resolveHost(host: string): Promise<CacheEntry> {
       };
     }
   } catch {
-    // Network/timeout failure — negative-cache for a short window so we
-    // don't repeat the slow path on every request.
     entry = {
       resolved: false,
       tenantId: null,
@@ -109,6 +103,78 @@ async function resolveHost(host: string): Promise<CacheEntry> {
   return entry;
 }
 
+async function resolveRedirects(tenantId: string): Promise<RedirectRule[]> {
+  const cached = redirectCache.get(tenantId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.rules;
+  }
+
+  const api = process.env.API_INTERNAL_URL ?? "http://localhost:4000/api/v1";
+  const token = process.env.INTERNAL_API_TOKEN ?? "";
+
+  try {
+    const res = await fetch(
+      `${api}/internal/redirects?tenantId=${encodeURIComponent(tenantId)}`,
+      {
+        headers: { "x-internal-token": token },
+        signal: AbortSignal.timeout(2000),
+        cache: "no-store",
+      },
+    );
+
+    if (!res.ok) {
+      redirectCache.set(tenantId, {
+        rules: [],
+        expiresAt: Date.now() + REDIRECT_CACHE_TTL_MS,
+      });
+      return [];
+    }
+
+    const body = (await res.json()) as { rules: RedirectRule[] };
+    const rules = Array.isArray(body.rules) ? body.rules : [];
+    redirectCache.set(tenantId, {
+      rules,
+      expiresAt: Date.now() + REDIRECT_CACHE_TTL_MS,
+    });
+    return rules;
+  } catch {
+    return [];
+  }
+}
+
+function resolveRedirectChain(
+  ruleMap: Map<string, RedirectRule>,
+  pathname: string,
+): { toPath: string; statusCode: number } | null {
+  const first = ruleMap.get(pathname);
+  if (!first) return null;
+
+  const visited = new Set<string>([pathname]);
+  let current: RedirectRule = first;
+  let hops = 0;
+
+  while (hops < MAX_REDIRECT_HOPS) {
+    const next = ruleMap.get(current.toPath);
+    if (!next) {
+      return { toPath: current.toPath, statusCode: current.statusCode };
+    }
+    if (visited.has(next.toPath)) {
+      console.warn(
+        `[tenant-site] Redirect loop detected at ${pathname} → … → ${next.toPath}. Skipping.`,
+      );
+      return null;
+    }
+    visited.add(current.toPath);
+    current = next;
+    hops++;
+  }
+
+  console.warn(
+    `[tenant-site] Redirect chain from ${pathname} exceeds ${MAX_REDIRECT_HOPS} hops. Skipping.`,
+  );
+  return null;
+}
+
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   if (BYPASS_PATHS.some((p) => pathname === p || pathname.startsWith(p))) {
@@ -116,7 +182,6 @@ export async function middleware(req: NextRequest) {
   }
 
   const hostHeader = req.headers.get("host") ?? "";
-  // Strip :port if present — we want just the hostname.
   const host = (hostHeader.split(":")[0] ?? "").toLowerCase();
 
   if (!host) {
@@ -126,11 +191,22 @@ export async function middleware(req: NextRequest) {
   const resolved = await resolveHost(host);
 
   if (!resolved.resolved || !resolved.tenantId) {
-    // 404 before any page handler runs.
     return new NextResponse(null, { status: 404 });
   }
 
-  // Forward resolved tenant context to server components via headers.
+  // Check redirect rules before forwarding to page handlers.
+  const rules = await resolveRedirects(resolved.tenantId);
+  if (rules.length > 0) {
+    const ruleMap = new Map<string, RedirectRule>(
+      rules.map((r) => [r.fromPath, r]),
+    );
+    const match = resolveRedirectChain(ruleMap, pathname);
+    if (match) {
+      const destination = new URL(match.toPath, req.url);
+      return NextResponse.redirect(destination, match.statusCode);
+    }
+  }
+
   const headers = new Headers(req.headers);
   headers.set("x-tenant-id", resolved.tenantId);
   if (resolved.tenantSlug) headers.set("x-tenant-slug", resolved.tenantSlug);
@@ -139,15 +215,16 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next({ request: { headers } });
 }
 
-// Keep the matcher generous so every page/route sees tenant context.
 export const config = {
   matcher: [
-    // Match everything EXCEPT Next internals and static files
     "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
   ],
 };
 
-// Test seam — used by unit tests to flush the cache between cases.
 export function __clearHostCache() {
   cache.clear();
+}
+
+export function __clearRedirectCache() {
+  redirectCache.clear();
 }

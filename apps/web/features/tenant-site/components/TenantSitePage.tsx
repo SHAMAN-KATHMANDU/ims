@@ -63,6 +63,7 @@ import { SiteTemplatePicker } from "./SiteTemplatePicker";
 import { NavMenuPanel } from "./NavMenuPanel";
 import { SiteOverviewTab } from "./SiteOverviewTab";
 import { ThemeTokensForm } from "./ThemeTokensForm";
+import { SiteAnalyticsForm } from "./SiteAnalyticsForm";
 
 function isForbiddenError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 403;
@@ -93,6 +94,7 @@ const TABS = [
   { value: "theme", label: "Theme" },
   { value: "navigation", label: "Navigation" },
   { value: "seo", label: "SEO" },
+  { value: "analytics", label: "Analytics" },
   { value: "advanced", label: "Advanced" },
 ] as const;
 
@@ -299,6 +301,10 @@ export function TenantSitePage() {
 
           <TabsContent value="seo">
             <SiteSeoForm seo={config.seo} />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <SiteAnalyticsForm />
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-6">

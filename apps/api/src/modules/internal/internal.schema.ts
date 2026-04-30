@@ -26,5 +26,11 @@ export const ResolveHostQuerySchema = z.object({
   host: hostnameField,
 });
 
+/** Tenant-site middleware sends `?tenantId=<id>` to fetch redirect rules. */
+export const GetRedirectsQuerySchema = z.object({
+  tenantId: z.string().uuid("tenantId must be a UUID"),
+});
+
 export type DomainAllowedQuery = z.infer<typeof DomainAllowedQuerySchema>;
 export type ResolveHostQuery = z.infer<typeof ResolveHostQuerySchema>;
+export type GetRedirectsQuery = z.infer<typeof GetRedirectsQuerySchema>;

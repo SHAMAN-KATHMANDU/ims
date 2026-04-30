@@ -17,6 +17,8 @@ import {
 import { ThemeTokensSchema, type ThemeTokens } from "@repo/shared";
 import { themeTokensToCssVars } from "@/lib/theme-tokens";
 import { CartProvider } from "@/components/cart/CartProvider";
+import { renderAnalyticsScripts } from "@/lib/analytics";
+import type { PublicSiteAnalytics } from "@/lib/api";
 import "./globals.css";
 
 /**
@@ -113,6 +115,18 @@ export default async function RootLayout({
     theme = cookieTheme;
   }
 
+  // Analytics — only on published, indexable pages.
+  // Preview routes don't carry x-tenant-id so they return the minimal shell
+  // above and never reach this code (isPreview is implicitly false here).
+  // noIndex is inferred from the SEO robots setting stored in site config.
+  const seoRobots =
+    (site?.seo as { robots?: string } | null)?.robots?.toLowerCase() ?? "";
+  const noIndex = seoRobots.includes("noindex");
+  const { headScripts } = renderAnalyticsScripts(
+    site?.analytics as PublicSiteAnalytics | null | undefined,
+    { isPreview: false, noIndex },
+  );
+
   // Inline the design tokens on <html> (not <body>) so the ":focus-visible"
   // outline + anything using the tokens in the document root — including
   // the scroll area before <body> fills out — still sees them.
@@ -124,6 +138,7 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
       <head>
+        {headScripts}
         {/* Warm up the TCP/TLS handshake for the image CDN — most pages ship
             at least one S3-hosted product image so the handshake is on the
             critical path. `dns-prefetch` is the universal fallback for
