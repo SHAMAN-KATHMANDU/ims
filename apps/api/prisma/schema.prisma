@@ -1666,16 +1666,19 @@ model ContactAttachment {
 }
 
 model MediaAsset {
-  id           String   @id @default(uuid()) @map("media_asset_id")
-  tenantId     String   @map("tenant_id")
-  storageKey   String   @map("storage_key") @db.VarChar(768)
-  publicUrl    String   @map("public_url") @db.VarChar(1024)
-  fileName     String   @map("file_name") @db.VarChar(255)
-  mimeType     String   @map("mime_type") @db.VarChar(120)
-  byteSize     Int?     @map("byte_size")
-  purpose      String   @map("purpose") @db.VarChar(64)
-  uploadedById String   @map("uploaded_by_id")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id           String    @id @default(uuid()) @map("media_asset_id")
+  tenantId     String    @map("tenant_id")
+  storageKey   String    @map("storage_key") @db.VarChar(768)
+  publicUrl    String    @map("public_url") @db.VarChar(1024)
+  fileName     String    @map("file_name") @db.VarChar(255)
+  mimeType     String    @map("mime_type") @db.VarChar(120)
+  byteSize     Int?      @map("byte_size")
+  purpose      String    @map("purpose") @db.VarChar(64)
+  uploadedById String    @map("uploaded_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  /// Soft-delete tombstone; rows with deletedAt set are excluded from list / lookup.
+  /// Storage objects are retained so a future restore can rehydrate the row.
+  deletedAt    DateTime? @map("deleted_at")
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploader           User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
@@ -1684,6 +1687,7 @@ model MediaAsset {
 
   @@unique([tenantId, storageKey])
   @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, deletedAt])
   @@map("media_assets")
 }
 

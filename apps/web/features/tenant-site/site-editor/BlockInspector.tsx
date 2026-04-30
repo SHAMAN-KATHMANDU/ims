@@ -61,6 +61,8 @@ import {
 import { getCatalogEntry } from "./block-catalog";
 import { ProductPickerField } from "./ProductPickerField";
 import { CategoryPickerField } from "./CategoryPickerField";
+import { MediaPickerField } from "@/features/media";
+import { isImageFieldName } from "./image-fields";
 import {
   CUSTOM_INSPECTOR_KINDS,
   CustomInspectorPanel,
@@ -984,16 +986,16 @@ function StyleOverrideSection({ block }: { block: BlockNode }) {
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Background Image URL</Label>
-          <Input
+          <Label className="text-xs">Background Image</Label>
+          <MediaPickerField
             value={style.backgroundImage ?? ""}
-            onChange={(e) =>
+            onChange={(v) =>
               updateBlockStyle(block.id, {
-                backgroundImage: e.target.value.trim() || undefined,
+                backgroundImage: v.trim() || undefined,
               })
             }
-            placeholder="https://…"
-            className="h-8 text-xs"
+            placeholder="https://… or pick from library"
+            previewSize={56}
           />
         </div>
 
@@ -1301,12 +1303,19 @@ function FieldRenderer({
   value,
   onChange,
   blockKind,
+  parentField,
 }: {
   field: FieldDescriptor;
   value: unknown;
   onChange: (v: unknown) => void;
   /** When provided, used to look up label/tooltip overrides. */
   blockKind?: string;
+  /**
+   * Name of the enclosing array-of-objects field, when the renderer is
+   * drawing a sub-field. Lets us treat `src` as an image inside `images[]`
+   * / `logos[]` / `slides[]` while leaving plain `embed.src` alone.
+   */
+  parentField?: string;
 }) {
   const override = blockKind
     ? getFieldOverride(blockKind, field.name)
@@ -1346,6 +1355,20 @@ function FieldRenderer({
           value={(value as string | undefined) ?? ""}
           onChange={(v) => onChange(v || undefined)}
         />
+      );
+    }
+    if (isImageFieldName(field.name, { blockKind, parentField })) {
+      return (
+        <div className="space-y-1">
+          <FieldLabel />
+          <MediaPickerField
+            value={(value as string | undefined) ?? ""}
+            onChange={(v) => onChange(v || undefined)}
+            placeholder="https://… or pick from library"
+            previewSize={56}
+            helperText={override?.helpText}
+          />
+        </div>
       );
     }
     return (
@@ -1558,7 +1581,11 @@ function FieldRenderer({
                   field={sub}
                   value={item[sub.name]}
                   onChange={(v) => updateItem(idx, { [sub.name]: v })}
-                  // Sub-fields of array-of-objects don't carry block-kind context
+                  // Sub-fields of array-of-objects don't carry block-kind
+                  // context, but they do inherit the parent array's name so
+                  // image-typed sub-fields (e.g. `src` inside `images[]`)
+                  // can render as a MediaPicker.
+                  parentField={field.name}
                 />
               ))}
             </div>
