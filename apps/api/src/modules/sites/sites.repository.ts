@@ -7,7 +7,7 @@
  */
 
 import prisma from "@/config/prisma";
-import type { Prisma, SiteConfig, SiteTemplate } from "@prisma/client";
+import { Prisma, type SiteConfig, type SiteTemplate } from "@prisma/client";
 import { getRequestMemo } from "@/config/tenantContext";
 
 export type SiteConfigWithTemplate = SiteConfig & {
@@ -71,6 +71,82 @@ export class SitesRepository {
 
   findTemplateBySlug(slug: string): Promise<SiteTemplate | null> {
     return prisma.siteTemplate.findUnique({ where: { slug } });
+  }
+
+  /**
+   * Atomically promote all draft SiteLayouts → published blocks and flip
+   * SiteConfig.isPublished in a single transaction. Implements idempotency:
+   * if no drafts exist and config is already published, returns early.
+   *
+   * Returns the updated SiteConfig and count of promoted layouts.
+   * Throws if transaction fails.
+   */
+  async publishAllDrafts(tenantId: string): Promise<{
+    siteConfig: SiteConfigWithTemplate;
+    promoted: number;
+    wasNoOp: boolean;
+  }> {
+    // Check current state for idempotency
+    const current = await this.findConfig(tenantId);
+    if (!current) {
+      throw new Error("SiteConfig not found");
+    }
+
+    // Find layouts with drafts
+    const drafts = await prisma.siteLayout.findMany({
+      where: {
+        tenantId,
+        draftBlocks: { not: Prisma.JsonNull },
+      },
+      select: { id: true },
+    });
+
+    // Idempotency: if no drafts and already published, no-op
+    if (drafts.length === 0 && current.isPublished) {
+      return {
+        siteConfig: current,
+        promoted: 0,
+        wasNoOp: true,
+      };
+    }
+
+    // Atomically promote all drafts and flip config in one transaction
+    const memo = getRequestMemo();
+    if (memo) memo.delete(`${SITE_CONFIG_MEMO_PREFIX}${tenantId}`);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Promote each draft layout
+      for (const layout of drafts) {
+        const existing = await tx.siteLayout.findUnique({
+          where: { id: layout.id },
+        });
+        if (existing?.draftBlocks) {
+          await tx.siteLayout.update({
+            where: { id: layout.id },
+            data: {
+              blocks: existing.draftBlocks as Prisma.InputJsonValue,
+              draftBlocks: null,
+              version: { increment: 1 },
+            },
+          });
+        }
+      }
+
+      // Flip config
+      const updatedConfig = await tx.siteConfig.update({
+        where: { tenantId },
+        data: { isPublished: true },
+        include: { template: true },
+      });
+
+      return updatedConfig;
+    });
+
+    return {
+      siteConfig: result as SiteConfigWithTemplate,
+      promoted: drafts.length,
+      wasNoOp: false,
+    };
   }
 }
 
