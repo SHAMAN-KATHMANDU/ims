@@ -94,6 +94,21 @@ const EnvSchema = z
     PHOTOS_ALLOW_LEGACY_KEYS: z.string().optional(),
     PHOTOS_ENFORCE_CONTENT_SNIFF: z.string().optional(),
     IMS_DEPLOYMENT_TIER: z.string().optional(),
+    // ── SMTP (form-submission email notifications) ────────────────────────
+    /** SMTP server hostname (e.g. smtp.mailgun.org). Omit to use Ethereal in dev. */
+    SMTP_HOST: z.string().optional(),
+    /** SMTP server port. Defaults to 587 (STARTTLS). */
+    SMTP_PORT: z
+      .string()
+      .optional()
+      .default("587")
+      .transform((v) => parseInt(v, 10)),
+    /** SMTP auth username. */
+    SMTP_USER: z.string().optional(),
+    /** SMTP auth password. */
+    SMTP_PASS: z.string().optional(),
+    /** Envelope FROM address. Defaults to noreply@localhost. */
+    SMTP_FROM: z.string().optional().default("noreply@localhost"),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -358,6 +373,12 @@ const EnvSchema = z
       photosAllowLegacyKeys,
       photosEnforceContentSniff,
       imsDeploymentTier,
+      // SMTP
+      smtpHost: raw.SMTP_HOST?.trim() ?? null,
+      smtpPort: raw.SMTP_PORT,
+      smtpUser: raw.SMTP_USER?.trim() ?? null,
+      smtpPass: raw.SMTP_PASS?.trim() ?? null,
+      smtpFrom: raw.SMTP_FROM.trim(),
     };
   });
 

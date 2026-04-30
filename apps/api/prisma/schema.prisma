@@ -458,12 +458,18 @@ model NavMenu {
 /// field values as JSON. When `submitTo = "crm-lead"`, a Lead row is also
 /// created in the CRM module.
 model FormSubmission {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  fields    Json
-  submitTo  String   @default("email") @map("submit_to") @db.VarChar(20)
-  leadId    String?  @map("lead_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  fields       Json
+  submitTo     String    @default("email") @map("submit_to") @db.VarChar(20)
+  leadId       String?   @map("lead_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  /// Set once the notification email is successfully delivered.
+  deliveredAt  DateTime? @map("delivered_at")
+  /// Last SMTP/transport error message (overwritten on each failed attempt).
+  lastError    String?   @map("last_error")
+  /// Number of delivery attempts made so far (incremented by the worker).
+  attemptCount Int       @default(0) @map("attempt_count")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
