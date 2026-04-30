@@ -335,3 +335,48 @@ export const selectSetHoveredBlockRect = (s: EditorState) =>
   s.setHoveredBlockRect;
 export const selectSetSelectedBlockRect = (s: EditorState) =>
   s.setSelectedBlockRect;
+
+// ---------------------------------------------------------------------------
+// Draft persistence helpers (Zustand `persist` middleware shape-compatible)
+// ---------------------------------------------------------------------------
+
+export interface PersistedEditorStateData {
+  present: EditorSnapshot;
+  dirty: boolean;
+  savedAt: number;
+}
+
+export function buildEditorStorageKey(
+  tenantId: string,
+  scope: string,
+  pageId: string | null | undefined,
+): string {
+  return `site-editor:${tenantId}:${scope}:${pageId ?? "none"}`;
+}
+
+export function getPersistedDraft(
+  tenantId: string,
+  scope: string,
+  pageId: string | null | undefined,
+): PersistedEditorStateData | null {
+  if (typeof localStorage === "undefined") return null;
+  const raw = localStorage.getItem(
+    buildEditorStorageKey(tenantId, scope, pageId),
+  );
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { state?: PersistedEditorStateData };
+    return parsed?.state ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPersistedDraft(
+  tenantId: string,
+  scope: string,
+  pageId: string | null | undefined,
+): void {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(buildEditorStorageKey(tenantId, scope, pageId));
+}
