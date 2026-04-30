@@ -15,6 +15,7 @@
 
 import { createError } from "@/middlewares/errorHandler";
 import { verifySitePreviewToken } from "@/modules/site-preview/preview-token";
+import { checkPreviewNonce } from "@/modules/site-preview/preview-nonce";
 import sitesRepo from "@/modules/sites/sites.repository";
 import publicSiteRepo from "@/modules/public-site/public-site.repository";
 import publicPagesRepo from "@/modules/public-pages/public-pages.repository";
@@ -89,6 +90,16 @@ export class PublicSitePreviewService {
   ): Promise<SitePreviewResponse> {
     const payload = verifySitePreviewToken(token);
     if (!payload) throw createError("Invalid or expired preview token", 401);
+
+    // Issue #429: verify the nonce is still in the Redis allowlist so revoked
+    // tokens (e.g. after editor close) are rejected even if HMAC is valid.
+    const nonceValid = await checkPreviewNonce(payload.tenantId, payload.nonce);
+    if (!nonceValid) {
+      throw createError(
+        "Preview link expired or revoked. Generate a new preview from the editor.",
+        401,
+      );
+    }
 
     if (payload.scope !== scope) {
       throw createError("Token scope does not match request", 401);

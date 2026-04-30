@@ -10,6 +10,8 @@ import {
   deleteSiteLayout,
   getSiteLayoutPreviewUrl,
   resetSiteLayoutFromTemplate,
+  refreshPreviewToken,
+  invalidatePreviewToken,
 } from "../services/site-layouts.service";
 
 export const siteLayoutKeys = {
@@ -105,5 +107,32 @@ export function useResetSiteLayoutFromTemplate() {
         ),
       });
     },
+  });
+}
+
+/**
+ * Refresh a preview token after an editor save. On success the new URL is
+ * pushed into the React Query cache so PreviewFrame re-renders automatically.
+ */
+export function useRefreshPreviewToken(
+  scope: SiteLayoutScope,
+  pageId?: string,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => refreshPreviewToken(token),
+    onSuccess: (newUrl) => {
+      qc.setQueryData(siteLayoutKeys.previewUrl(scope, pageId), newUrl);
+    },
+  });
+}
+
+/**
+ * Invalidate a preview token on editor close / sign-out. Fire-and-forget:
+ * errors are swallowed so they never block navigation.
+ */
+export function useInvalidatePreviewToken() {
+  return useMutation({
+    mutationFn: (token: string) => invalidatePreviewToken(token),
   });
 }

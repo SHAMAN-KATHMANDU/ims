@@ -11,6 +11,8 @@ import {
   useUpsertSiteLayoutDraft,
   usePublishSiteLayout,
   useSiteLayoutPreviewUrl,
+  useRefreshPreviewToken,
+  useInvalidatePreviewToken,
 } from "../hooks/use-site-layouts";
 import { useSiteConfig } from "../hooks/use-tenant-site";
 import { useTenantPages } from "@/features/tenant-pages";
@@ -167,6 +169,8 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   // ---- Data queries ----
   const layoutQuery = useSiteLayout(scope, pageId ?? undefined);
   const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
+  const refreshToken = useRefreshPreviewToken(scope, pageId ?? undefined);
+  const invalidateToken = useInvalidatePreviewToken();
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
   const configQuery = useSiteConfig();
@@ -208,6 +212,39 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveRef = useRef(handleSaveDraftSilent);
   autosaveRef.current = handleSaveDraftSilent;
+
+  // ---- Preview token lifecycle ----
+  /** Extract the current token string from the preview URL stored in RQ cache. */
+  function extractCurrentToken(): string | null {
+    const url = previewUrlQuery.data ?? null;
+    if (!url) return null;
+    try {
+      return new URL(url).searchParams.get("token");
+    } catch {
+      return null;
+    }
+  }
+
+  // Invalidate the token when the editor unmounts or the tab closes.
+  useEffect(() => {
+    function onBeforeUnload() {
+      const tok = extractCurrentToken();
+      if (!tok) return;
+      // navigator.sendBeacon survives tab close; fetch/XHR would be cancelled.
+      const blob = new Blob([JSON.stringify({ token: tok })], {
+        type: "application/json",
+      });
+      navigator.sendBeacon("/api/site-layouts/preview/invalidate", blob);
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      // Cleanup on unmount (SPA navigation away from the editor).
+      const tok = extractCurrentToken();
+      if (tok) invalidateToken.mutate(tok);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -294,6 +331,9 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
         // No toast on autosave — at 600 ms cadence it would flood during
         // inspector edits. The "Saved Xs ago" label in the header is the
         // single visible signal.
+        // Refresh the preview token on each successful save (issue #429).
+        const tok = extractCurrentToken();
+        if (tok) refreshToken.mutate(tok);
       })
       .catch(() => {
         toast({ title: "Autosave failed", variant: "destructive" });
@@ -307,6 +347,9 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
       setSavedAt(new Date());
       setRefreshKey((k) => k + 1);
       toast({ title: "Draft saved" });
+      // Refresh the preview token (issue #429).
+      const tok = extractCurrentToken();
+      if (tok) refreshToken.mutate(tok);
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
     }

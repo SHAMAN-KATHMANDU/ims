@@ -123,6 +123,48 @@ class SiteLayoutsController {
     }
   };
 
+  /**
+   * POST /site-layouts/preview/refresh
+   * Refresh an existing preview token, issuing a new one with a fresh 30-min TTL.
+   */
+  refreshPreviewToken = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { token } = req.body as { token?: unknown };
+      if (typeof token !== "string" || token.length === 0) {
+        return res.status(400).json({ message: "token is required" });
+      }
+      const result = await service.refreshPreviewToken(tenantId, token);
+      return res.status(200).json({ message: "Token refreshed", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Refresh preview token error")
+      );
+    }
+  };
+
+  /**
+   * POST /site-layouts/preview/invalidate
+   * Revoke a preview token's Redis nonce, immediately blocking further use.
+   */
+  invalidatePreviewToken = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { token } = req.body as { token?: unknown };
+      if (typeof token !== "string" || token.length === 0) {
+        return res.status(400).json({ message: "token is required" });
+      }
+      await service.invalidatePreviewToken(tenantId, token);
+      return res.status(200).json({ message: "Token invalidated" });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Invalidate preview token error")
+      );
+    }
+  };
+
   resetFromTemplate = async (req: Request, res: Response) => {
     try {
       const tenantId = getAuthContext(req).tenantId;
