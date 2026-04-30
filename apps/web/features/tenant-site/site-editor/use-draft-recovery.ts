@@ -5,7 +5,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/hooks/useToast";
-import type { SiteLayoutScope } from "@repo/shared";
 import {
   selectLoad,
   useEditorStore,
@@ -38,7 +37,7 @@ export function useDraftRecovery(
   const [shouldShowRecovery, setShouldShowRecovery] = useState(false);
   const [draftTimestamp, setDraftTimestamp] = useState<number | null>(null);
 
-  const load = useEditorStore((s) => s.load);
+  const load = useEditorStore(selectLoad);
 
   // Check for recoverable draft on mount
   useEffect(() => {

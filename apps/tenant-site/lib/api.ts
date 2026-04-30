@@ -805,6 +805,7 @@ export type PublicSiteLayoutScope =
   | "page"
   | "contact"
   | "404"
+  | "not-found"
   | "landing";
 
 export interface PublicSiteLayout {
