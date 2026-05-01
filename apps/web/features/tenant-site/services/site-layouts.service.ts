@@ -138,8 +138,16 @@ export async function resetSiteLayoutFromTemplate(
  * Refresh an existing preview token. Verifies the current token against Redis,
  * then issues a new one with a fresh 30-minute TTL. Returns the new preview URL.
  * Called after each successful draft save (refresh-on-activity).
+ *
+ * Returns `null` when the token has expired or been invalidated server-side
+ * (404). Callers should treat this as "re-mint a fresh preview URL" rather
+ * than surfacing a user-facing error — the editor would otherwise show a
+ * spurious "requested item was not found" toast on every autosave once the
+ * 30-minute Redis TTL elapses.
  */
-export async function refreshPreviewToken(token: string): Promise<string> {
+export async function refreshPreviewToken(
+  token: string,
+): Promise<string | null> {
   try {
     const response = await api.post<{ url: string }>(
       "/site-layouts/preview/refresh",
@@ -147,6 +155,14 @@ export async function refreshPreviewToken(token: string): Promise<string> {
     );
     return response.data.url;
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      (error as { response?: { status?: number } }).response?.status === 404
+    ) {
+      return null;
+    }
     handleApiError(error, "refresh preview token");
   }
 }

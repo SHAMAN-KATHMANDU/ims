@@ -215,12 +215,12 @@ export function ConvertOrderDialog({
               </SelectTrigger>
               <SelectContent>
                 {locationsQuery.isLoading && (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="__loading__" disabled>
                     Loading…
                   </SelectItem>
                 )}
                 {!locationsQuery.isLoading && showrooms.length === 0 && (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="__none__" disabled>
                     No active showrooms
                   </SelectItem>
                 )}

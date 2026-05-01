@@ -113,6 +113,10 @@ export function useResetSiteLayoutFromTemplate() {
 /**
  * Refresh a preview token after an editor save. On success the new URL is
  * pushed into the React Query cache so PreviewFrame re-renders automatically.
+ *
+ * When the token has expired (server returned 404 → service returns null),
+ * we invalidate the previewUrl query so a fresh URL is minted automatically.
+ * No user-facing toast — stale tokens are expected after the 30-minute TTL.
  */
 export function useRefreshPreviewToken(
   scope: SiteLayoutScope,
@@ -122,6 +126,12 @@ export function useRefreshPreviewToken(
   return useMutation({
     mutationFn: (token: string) => refreshPreviewToken(token),
     onSuccess: (newUrl) => {
+      if (newUrl === null) {
+        qc.invalidateQueries({
+          queryKey: siteLayoutKeys.previewUrl(scope, pageId),
+        });
+        return;
+      }
       qc.setQueryData(siteLayoutKeys.previewUrl(scope, pageId), newUrl);
     },
   });
