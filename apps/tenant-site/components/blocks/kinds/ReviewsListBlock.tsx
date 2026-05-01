@@ -12,6 +12,7 @@
  */
 
 import { Suspense } from "react";
+import { format, isValid } from "date-fns";
 import type { ReviewsListProps } from "@repo/shared";
 import { getProductReviews } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
@@ -19,13 +20,13 @@ import { StarRating } from "./StarRating";
 import { BlockReviewListSkeleton } from "./BlockSkeletons";
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  try {
+    const d = new Date(iso);
+    if (!isValid(d)) return "";
+    return format(d, "MMM d, yyyy");
+  } catch {
+    return "";
+  }
 }
 
 export function ReviewsListBlock({

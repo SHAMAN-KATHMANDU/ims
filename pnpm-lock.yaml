@@ -252,6 +252,9 @@ importers:
       "@tailwindcss/typography":
         specifier: ^0.5.15
         version: 0.5.19(tailwindcss@4.1.18)
+      date-fns:
+        specifier: 4.1.0
+        version: 4.1.0
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.0)
