@@ -28,7 +28,7 @@ import {
   revokePreviewNonce,
 } from "@/modules/site-preview/preview-nonce";
 import defaultPagesRepo from "@/modules/pages/pages.repository";
-import { getTemplateBlueprint } from "@/modules/sites/blueprints";
+import { getTemplateBlueprint } from "@/modules/sites/templates";
 import defaultRepo, { type SiteLayoutKey } from "./site-layouts.repository";
 import { revalidateSiteLayout as defaultRevalidate } from "./site-layouts.revalidate";
 import type { UpsertSiteLayoutInput } from "./site-layouts.schema";
