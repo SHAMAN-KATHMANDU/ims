@@ -72,14 +72,12 @@ export function useMessagingSocket() {
 
     const onSocketConnect = () => {
       if (isDevRuntime) {
-        // eslint-disable-next-line no-console
         console.debug("[MessagingSocket] connected", { id: socket.id });
       }
     };
 
     const onSocketDisconnect = (reason: string) => {
       if (isDevRuntime) {
-        // eslint-disable-next-line no-console
         console.debug("[MessagingSocket] disconnected", { reason });
       }
     };
