@@ -91,6 +91,7 @@ function buildMockRepo(
     createPage: vi.fn().mockResolvedValue(null),
     updatePage: vi.fn().mockResolvedValue(null),
     deletePage: vi.fn().mockResolvedValue(null),
+    publishAllDrafts: vi.fn().mockResolvedValue({ scopes: [] }),
     _updateConfigMock: updateConfig,
   };
 }

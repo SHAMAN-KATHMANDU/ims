@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   getPersistedDraft,
   clearPersistedDraft,
@@ -7,7 +10,30 @@ import {
 import type { PersistedEditorStateData } from "./editor-store";
 
 beforeEach(() => {
-  localStorage.clear();
+  // Use vi.stubGlobal to ensure localStorage is available and clean
+  const mockStore: Record<string, string> = {};
+
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => mockStore[key] ?? null,
+    setItem: (key: string, value: string) => {
+      mockStore[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete mockStore[key];
+    },
+    clear: () => {
+      for (const key in mockStore) {
+        delete mockStore[key];
+      }
+    },
+    get length() {
+      return Object.keys(mockStore).length;
+    },
+    key: (index: number) => {
+      const keys = Object.keys(mockStore);
+      return keys[index] ?? null;
+    },
+  } as Storage);
 });
 
 describe("draft recovery helpers", () => {

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
 
 /**
  * Payment icons — Visa, MC, PayPal, Apple Pay, etc.

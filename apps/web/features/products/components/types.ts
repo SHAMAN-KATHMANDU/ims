@@ -1,3 +1,5 @@
+import type { FormEvent } from "react";
+
 export type ProductFormValues = {
   imsCode: string;
   name: string;
@@ -41,3 +43,24 @@ export type ProductDiscountForm = {
   endDate: string;
   isActive: boolean;
 };
+
+/**
+ * Form return type with both legacy custom form state and RHF validation hooks.
+ * Used by product forms which need a larger refactor.
+ */
+export interface UseFormReturn<T> {
+  values: T;
+  errors: Record<string, string>;
+  isLoading: boolean;
+  handleChange: (name: keyof T, value: string) => void;
+  handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  reset: () => void;
+  /** Set multiple form values at once (e.g. when loading a product for edit). Triggers re-render. */
+  setValues: (values: Partial<T> | T) => void;
+  /** Product wizard: run RHF validation for these fields (optional; adapter-only). */
+  triggerValidation?: (fields?: (keyof T)[]) => Promise<boolean>;
+  /** Product wizard: user clicked Next on this tab — allow inline errors for that step (adapter-only). */
+  recordWizardValidationAttempt?: (tab: string) => void;
+  /** Product wizard: show all step errors (e.g. final submit failed cross-tab validation). */
+  revealAllWizardValidationErrors?: () => void;
+}

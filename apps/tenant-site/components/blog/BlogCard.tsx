@@ -1,14 +1,11 @@
 import Link from "next/link";
+import { format } from "date-fns";
 import type { PublicBlogPostListItem } from "@/lib/api";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return format(new Date(iso), "MMM d, yyyy");
   } catch {
     return "";
   }

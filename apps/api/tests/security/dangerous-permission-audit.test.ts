@@ -145,19 +145,24 @@ describe("Dangerous permission audit", () => {
 
   // ── API-level audit logging (requires controller audit emission) ──────────
 
-  it.skip(// TODO: This test requires the permissions/role controller to emit an AuditLog
-  // row when a user with SETTINGS.AUDIT.PURGE deletes audit logs, or when
-  // SETTINGS.ROLES.MANAGE is exercised. At the time of Phase 5, the controllers
-  // do not yet call createAuditLog() for dangerous RBAC actions.
+  it.skip(// BLOCKED: Requires controller-level audit emission for dangerous RBAC actions.
   //
-  // Steps to enable:
-  //   1. Wire createDeleteAuditLog (or equivalent) into the deleteRole and
-  //      upsertPermissionOverwrite handlers for dangerous permission keys.
-  //   2. Set RBAC_ENFORCE=true in the test environment so requirePermission()
-  //      enforces the permission check.
-  //   3. Seed a tenant + ADMINISTRATOR user via seedTenantRoles().
-  //   4. Make the API call, then query prisma.auditLog.findFirst() to assert
-  //      the row exists with userId + action='DELETE' + resource='ROLE'.
+  // Current status: permissionService.assert() correctly denies access to
+  // dangerous permissions (e.g. SETTINGS.AUDIT.PURGE). However, when access
+  // IS granted, controllers do not yet emit AuditLog rows for the action.
+  //
+  // To enable:
+  //   1. In apps/api/src/modules/permissions/permissions.controller.ts:
+  //      - Import createDeleteAuditLog from @/shared/audit/createDeleteAuditLog
+  //      - Call it in deleteRole() with AuditAction.DELETE, AuditResource.ROLE
+  //      - Call it in upsertPermissionOverwrite() with AuditAction.UPDATE,
+  //        AuditResource.PERMISSION for dangerous permission keys
+  //      - Logs should include userId, tenantId, resourceId (the role/permission)
+  //   2. Set RBAC_ENFORCE=true in test env to make requirePermission() enforce
+  //      the dangerous permission check.
+  //   3. Seed test data: call seedTenantRoles(tenantId) to create roles with
+  //      ADMINISTRATOR user, then make API call via Supertest.
+  //   4. Query prisma.auditLog.findFirst() to assert the row was created.
   //
   // Reference: apps/api/src/shared/audit/createDeleteAuditLog.ts
   "SETTINGS.AUDIT.PURGE action via API creates SECURITY audit log row", async () => {

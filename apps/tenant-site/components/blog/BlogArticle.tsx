@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { format } from "date-fns";
 import type { PublicBlogPost, PublicBlogPostListItem } from "@/lib/api";
 import { MarkdownBody } from "./MarkdownBody";
 import { BlogCard } from "./BlogCard";
@@ -6,11 +7,7 @@ import { BlogCard } from "./BlogCard";
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return format(new Date(iso), "MMMM d, yyyy");
   } catch {
     return "";
   }

@@ -28,7 +28,7 @@ import {
   getTemplateBlueprint,
   BLUEPRINT_SCOPES,
   type TemplateBlueprint,
-} from "./blueprints";
+} from "./templates";
 import type { BlockNode, BlockTree } from "@repo/shared";
 
 type Repo = typeof defaultRepo;

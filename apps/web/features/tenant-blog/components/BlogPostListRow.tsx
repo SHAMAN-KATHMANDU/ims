@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { format } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import { BlogStatusBadge } from "./BlogStatusBadge";
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleDateString();
+    return format(new Date(iso), "PPP");
   } catch {
     return "—";
   }

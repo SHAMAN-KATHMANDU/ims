@@ -136,7 +136,9 @@ export function TransferForm({
         setSearchResults(withStock);
       })
       .catch((err) => {
-        console.error(err);
+        if (process.env.NODE_ENV !== "production") {
+          console.error(err);
+        }
         toast({
           title: "Failed to search inventory",
           description: err instanceof Error ? err.message : "Please try again.",
