@@ -126,16 +126,18 @@ export const INSPECTOR_OVERRIDES: Record<string, FieldOverride> = {
   "collection-cards.overlay": { label: "Dark overlay on image" },
 
   // ── FBT ─────────────────────────────────────────────────────────────────
-  "fbt.source": { label: "Product source" },
-  "fbt.maxItems": { label: "Max products shown" },
-  "fbt.showImages": { label: "Show product images" },
-  "fbt.ctaLabel": { label: "Add-to-cart label" },
+  "fbt.productIdSource": { label: "Product source" },
+  "fbt.productId": { label: "Pinned product ID" },
+  "fbt.limit": { label: "Max products shown" },
+  "fbt.columns": { label: "Columns" },
+  "fbt.cardVariant": { label: "Card style" },
 
   // ── Reviews List ─────────────────────────────────────────────────────────
-  "reviews-list.showSummary": { label: "Show rating summary" },
-  "reviews-list.reviewable": { label: "Allow new reviews" },
-  "reviews-list.limit": { label: "Reviews per page" },
-  "reviews-list.sortBy": { label: "Default sort" },
+  "reviews-list.showRatingSummary": { label: "Show rating summary" },
+  "reviews-list.productIdSource": { label: "Product source" },
+  "reviews-list.productId": { label: "Pinned product ID" },
+  "reviews-list.pageSize": { label: "Reviews per page" },
+  "reviews-list.emptyMessage": { label: "Empty-state message" },
 };
 
 /**

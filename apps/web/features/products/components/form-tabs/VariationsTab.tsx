@@ -22,9 +22,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trash2, Plus, Upload, Images } from "lucide-react";
-import type { ProductVariationForm } from "../types";
-import type { UseFormReturn } from "@/hooks/useForm";
-import type { ProductFormValues } from "../types";
+import type {
+  ProductVariationForm,
+  ProductFormValues,
+  UseFormReturn,
+} from "../types";
 import type { AttributeType } from "@/features/products";
 import { useS3DirectUpload, MediaLibraryPickerDialog } from "@/features/media";
 import { useToast } from "@/hooks/useToast";

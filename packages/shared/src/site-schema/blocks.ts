@@ -1,9 +1,10 @@
 /**
  * Block schema — atoms of the tenant-site renderer.
  *
- * Adding a block kind = (1) add an entry to BlockPropsMap, (2) add the
- * matching Zod schema to BlockPropsSchemas, (3) register a React component
- * in apps/tenant-site/components/blocks/registry.ts.
+ * Adding a block kind = (1) add an entry to BlockPropsMap below, (2) create
+ * a module under `../blocks/<kind>/` exporting `<Kind>Schema` + `<kind>Catalog`
+ * and register it in `../blocks/index.ts`, (3) register a React component in
+ * `apps/tenant-site/components/blocks/registry.ts`.
  *
  * Forward-compat: unknown kinds pass through the parser so older renderers
  * keep working on newer layouts.
@@ -14,6 +15,145 @@ import {
   BlockStyleOverrideSchema,
   type BlockStyleOverride,
 } from "./block-styles";
+import { BLOCK_PROPS_SCHEMAS } from "../blocks";
+
+// Import all block props types for BlockPropsMap
+import type { SectionProps } from "../blocks/section/schema";
+import type { HeadingProps } from "../blocks/heading/schema";
+import type { RichTextProps } from "../blocks/rich-text/schema";
+import type { ImageProps } from "../blocks/image/schema";
+import type { ButtonProps } from "../blocks/button/schema";
+import type { SpacerProps } from "../blocks/spacer/schema";
+import type { DividerProps } from "../blocks/divider/schema";
+import type { MarkdownBodyProps } from "../blocks/markdown-body/schema";
+import type { ColumnsProps } from "../blocks/columns/schema";
+import type { CssGridProps } from "../blocks/css-grid/schema";
+import type { RowProps } from "../blocks/row/schema";
+import type { HeroProps } from "../blocks/hero/schema";
+import type { ProductGridProps } from "../blocks/product-grid/schema";
+import type { CategoryTilesProps } from "../blocks/category-tiles/schema";
+import type { ProductListingProps } from "../blocks/product-listing/schema";
+import type { ProductFiltersProps } from "../blocks/product-filters/schema";
+import type { BundleSpotlightProps } from "../blocks/bundle-spotlight/schema";
+import type { GiftCardRedeemProps } from "../blocks/gift-card-redeem/schema";
+import type { AnnouncementBarProps } from "../blocks/announcement-bar/schema";
+import type {
+  CollectionCardItem,
+  CollectionCardsProps,
+} from "../blocks/collection-cards/schema";
+import type { TrustStripProps } from "../blocks/trust-strip/schema";
+import type { StorySplitProps } from "../blocks/story-split/schema";
+import type { BentoShowcaseProps } from "../blocks/bento-showcase/schema";
+import type { StatsBandProps } from "../blocks/stats-band/schema";
+import type { NewsletterProps } from "../blocks/newsletter/schema";
+import type {
+  PolicyItem,
+  PolicyStripProps,
+} from "../blocks/policy-strip/schema";
+import type { ContactBlockProps } from "../blocks/contact-block/schema";
+import type { FaqProps } from "../blocks/faq/schema";
+import type { TestimonialsProps } from "../blocks/testimonials/schema";
+import type { LogoCloudProps } from "../blocks/logo-cloud/schema";
+import type { BlogListProps } from "../blocks/blog-list/schema";
+import type { PdpGalleryProps } from "../blocks/pdp-gallery/schema";
+import type { PdpBuyboxProps } from "../blocks/pdp-buybox/schema";
+import type { PdpDetailsProps } from "../blocks/pdp-details/schema";
+import type { PdpRelatedProps } from "../blocks/pdp-related/schema";
+import type { BreadcrumbsProps } from "../blocks/breadcrumbs/schema";
+import type { ProductComparisonProps } from "../blocks/product-comparison/schema";
+import type {
+  LookbookPin,
+  LookbookScene,
+  LookbookProps,
+} from "../blocks/lookbook/schema";
+import type { SizeGuideRow, SizeGuideProps } from "../blocks/size-guide/schema";
+import type { RecentlyViewedProps } from "../blocks/recently-viewed/schema";
+import type { FbtProps } from "../blocks/fbt/schema";
+import type { ReviewsListProps } from "../blocks/reviews-list/schema";
+import type { EmbedProps } from "../blocks/embed/schema";
+import type { VideoProps } from "../blocks/video/schema";
+import type { AccordionProps } from "../blocks/accordion/schema";
+import type { GalleryProps } from "../blocks/gallery/schema";
+import type { TabsProps } from "../blocks/tabs/schema";
+import type { FormFieldDef, FormBlockProps } from "../blocks/form/schema";
+import type { EmptyStateProps } from "../blocks/empty-state/schema";
+import type { CustomHtmlProps } from "../blocks/custom-html/schema";
+import type { NavBarProps } from "../blocks/nav-bar/schema";
+import type { LogoMarkProps } from "../blocks/logo-mark/schema";
+import type { UtilityBarProps } from "../blocks/utility-bar/schema";
+import type { FooterColumnsProps } from "../blocks/footer-columns/schema";
+import type { SocialLinksProps } from "../blocks/social-links/schema";
+import type { PaymentIconsProps } from "../blocks/payment-icons/schema";
+import type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
+
+// Re-export for consumers
+export type { SectionProps } from "../blocks/section/schema";
+export type { HeadingProps } from "../blocks/heading/schema";
+export type { RichTextProps } from "../blocks/rich-text/schema";
+export type { ImageProps } from "../blocks/image/schema";
+export type { ButtonProps } from "../blocks/button/schema";
+export type { SpacerProps } from "../blocks/spacer/schema";
+export type { DividerProps } from "../blocks/divider/schema";
+export type { MarkdownBodyProps } from "../blocks/markdown-body/schema";
+export type { ColumnsProps } from "../blocks/columns/schema";
+export type { CssGridProps } from "../blocks/css-grid/schema";
+export type { RowProps } from "../blocks/row/schema";
+export type { HeroProps } from "../blocks/hero/schema";
+export type { ProductGridProps } from "../blocks/product-grid/schema";
+export type { CategoryTilesProps } from "../blocks/category-tiles/schema";
+export type { ProductListingProps } from "../blocks/product-listing/schema";
+export type { ProductFiltersProps } from "../blocks/product-filters/schema";
+export type { BundleSpotlightProps } from "../blocks/bundle-spotlight/schema";
+export type { GiftCardRedeemProps } from "../blocks/gift-card-redeem/schema";
+export type { AnnouncementBarProps } from "../blocks/announcement-bar/schema";
+export type {
+  CollectionCardItem,
+  CollectionCardsProps,
+} from "../blocks/collection-cards/schema";
+export type { TrustStripProps } from "../blocks/trust-strip/schema";
+export type { StorySplitProps } from "../blocks/story-split/schema";
+export type { BentoShowcaseProps } from "../blocks/bento-showcase/schema";
+export type { StatsBandProps } from "../blocks/stats-band/schema";
+export type { NewsletterProps } from "../blocks/newsletter/schema";
+export type {
+  PolicyItem,
+  PolicyStripProps,
+} from "../blocks/policy-strip/schema";
+export type { ContactBlockProps } from "../blocks/contact-block/schema";
+export type { FaqProps } from "../blocks/faq/schema";
+export type { TestimonialsProps } from "../blocks/testimonials/schema";
+export type { LogoCloudProps } from "../blocks/logo-cloud/schema";
+export type { BlogListProps } from "../blocks/blog-list/schema";
+export type { PdpGalleryProps } from "../blocks/pdp-gallery/schema";
+export type { PdpBuyboxProps } from "../blocks/pdp-buybox/schema";
+export type { PdpDetailsProps } from "../blocks/pdp-details/schema";
+export type { PdpRelatedProps } from "../blocks/pdp-related/schema";
+export type { BreadcrumbsProps } from "../blocks/breadcrumbs/schema";
+export type { ProductComparisonProps } from "../blocks/product-comparison/schema";
+export type {
+  LookbookPin,
+  LookbookScene,
+  LookbookProps,
+} from "../blocks/lookbook/schema";
+export type { SizeGuideRow, SizeGuideProps } from "../blocks/size-guide/schema";
+export type { RecentlyViewedProps } from "../blocks/recently-viewed/schema";
+export type { FbtProps } from "../blocks/fbt/schema";
+export type { ReviewsListProps } from "../blocks/reviews-list/schema";
+export type { EmbedProps } from "../blocks/embed/schema";
+export type { VideoProps } from "../blocks/video/schema";
+export type { AccordionProps } from "../blocks/accordion/schema";
+export type { GalleryProps } from "../blocks/gallery/schema";
+export type { TabsProps } from "../blocks/tabs/schema";
+export type { FormFieldDef, FormBlockProps } from "../blocks/form/schema";
+export type { EmptyStateProps } from "../blocks/empty-state/schema";
+export type { CustomHtmlProps } from "../blocks/custom-html/schema";
+export type { NavBarProps } from "../blocks/nav-bar/schema";
+export type { LogoMarkProps } from "../blocks/logo-mark/schema";
+export type { UtilityBarProps } from "../blocks/utility-bar/schema";
+export type { FooterColumnsProps } from "../blocks/footer-columns/schema";
+export type { SocialLinksProps } from "../blocks/social-links/schema";
+export type { PaymentIconsProps } from "../blocks/payment-icons/schema";
+export type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
 
 export type { BlockStyle, BlockStyleOverride } from "./block-styles";
 export {
@@ -31,724 +171,6 @@ export interface BlockVisibility {
   mobile?: boolean;
   tablet?: boolean;
   desktop?: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Block props map — one entry per kind
-// ---------------------------------------------------------------------------
-
-// Content / structural ------------------------------------------------------
-
-export interface SectionProps {
-  background?: "default" | "surface" | "accent" | "inverted";
-  paddingY?: "none" | "compact" | "balanced" | "spacious";
-  maxWidth?: "narrow" | "default" | "wide" | "full";
-  backgroundImage?: string;
-  backgroundOverlay?: "none" | "light" | "dark";
-}
-
-export interface HeadingProps {
-  text: string;
-  level: 1 | 2 | 3 | 4;
-  alignment?: "start" | "center" | "end";
-  eyebrow?: string;
-  subtitle?: string;
-  size?: "sm" | "md" | "lg" | "xl";
-  decoration?: "none" | "underline" | "gradient";
-}
-
-export interface RichTextProps {
-  source: string; // markdown
-  maxWidth?: "narrow" | "default" | "wide";
-  alignment?: "start" | "center";
-}
-
-export interface ImageProps {
-  src: string;
-  alt: string;
-  aspectRatio?: "1/1" | "4/3" | "16/9" | "3/4" | "auto";
-  rounded?: boolean;
-  caption?: string;
-  link?: string;
-  shadow?: "none" | "sm" | "md" | "lg";
-  hoverEffect?: "none" | "zoom" | "lift";
-}
-
-export interface ButtonProps {
-  label: string;
-  href: string;
-  style: "primary" | "outline" | "ghost";
-  size?: "sm" | "md" | "lg";
-  alignment?: "start" | "center" | "end";
-  fullWidth?: boolean;
-}
-
-export interface SpacerProps {
-  size: "xs" | "sm" | "md" | "lg" | "xl";
-  customPx?: number;
-}
-
-export interface DividerProps {
-  variant?: "line" | "dotted" | "dashed";
-  inset?: boolean;
-  colorToken?: string;
-}
-
-export interface MarkdownBodyProps {
-  source: string;
-  maxWidth?: "narrow" | "default" | "wide";
-}
-
-// Commerce -------------------------------------------------------------------
-
-export interface HeroProps {
-  variant:
-    | "minimal"
-    | "standard"
-    | "luxury"
-    | "boutique"
-    | "editorial"
-    | "video"
-    | "shoppable";
-  title?: string;
-  subtitle?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-  imageUrl?: string;
-  heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
-  /** video variant only: mp4/webm source. Required when variant = "video". */
-  videoUrl?: string;
-  /** video variant only: poster image shown before playback. */
-  videoPoster?: string;
-  /**
-   * shoppable variant only: product IDs to render as a compact shelf
-   * beneath the hero copy. Order is preserved; unknown IDs skipped.
-   */
-  shoppableProductIds?: string[];
-}
-
-export interface ProductGridProps {
-  source:
-    | "featured"
-    | "category"
-    | "manual"
-    | "newest"
-    | "on-sale"
-    | "price-low"
-    | "price-high"
-    | "collection"
-    | "offers";
-  categoryId?: string;
-  productIds?: string[];
-  /**
-   * When `source === "collection"`, identifies which admin-curated
-   * collection to pull from. Ignored for other sources.
-   */
-  collectionSlug?: string;
-  limit: number;
-  columns: 2 | 3 | 4 | 5;
-  cardVariant: "bordered" | "bare" | "card";
-  heading?: string;
-  eyebrow?: string;
-  showCategory?: boolean;
-  showPrice?: boolean;
-  showDiscount?: boolean;
-  cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
-  /**
-   * Grid (default) keeps the existing N-column layout. Carousel
-   * switches to a horizontally scrolling row with scroll-snap and
-   * prev/next controls — matches the "Featured / Exclusives / Top
-   * Picks" carousels on reference designs.
-   */
-  layout?: "grid" | "carousel";
-  /**
-   * Optional "View more" link (e.g. /offers, /collections/exclusives).
-   * Rendered as a small button under the carousel/grid.
-   */
-  viewMoreHref?: string;
-  viewMoreLabel?: string;
-}
-
-export interface CategoryTilesProps {
-  heading?: string;
-  columns: 2 | 3 | 4;
-  aspectRatio?: "1/1" | "4/5" | "3/4" | "16/9";
-  showProductCount?: boolean;
-  cardStyle?: "overlay" | "below";
-}
-
-export interface ProductListingProps {
-  pageSize: number;
-  defaultSort: "newest" | "price-asc" | "price-desc" | "name-asc";
-  showSort: boolean;
-  columns: 2 | 3 | 4;
-  categoryFilter: boolean;
-  showCategory?: boolean;
-  showPrice?: boolean;
-  showDiscount?: boolean;
-  cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
-}
-
-// Marketing ------------------------------------------------------------------
-
-export interface AnnouncementBarProps {
-  text: string;
-  link?: string;
-  marquee: boolean;
-  tone?: "default" | "muted" | "accent";
-  /**
-   * Optional repeating strip of short claims (e.g. "Across Qatar ·
-   * Exclusive Brands · Scheduled Delivery"). When non-empty, `items`
-   * takes precedence over `text` in the rendered marquee.
-   */
-  items?: string[];
-  /**
-   * Presentation: "bar" (default) renders as a top strip; "modal"
-   * renders as a dismissible promo popup with a larger CTA. Modal
-   * dismissal is persisted in localStorage.
-   */
-  mode?: "bar" | "modal";
-  /** Modal-only: seconds before auto-open (0 = immediate). */
-  modalDelaySeconds?: number;
-  /** Modal-only: button label (falls back to "Shop now"). */
-  modalCtaLabel?: string;
-  /** Modal-only: optional heading shown above `text`. */
-  modalHeading?: string;
-}
-
-export interface CollectionCardItem {
-  title: string;
-  subtitle?: string;
-  imageUrl?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-}
-
-export interface CollectionCardsProps {
-  heading?: string;
-  eyebrow?: string;
-  /** 2–4 cards. Each card links to a collection, category, or landing. */
-  cards: CollectionCardItem[];
-  aspectRatio?: "square" | "portrait" | "landscape";
-  overlay?: boolean;
-}
-
-export interface ProductFiltersProps {
-  heading?: string;
-  show: {
-    category: boolean;
-    priceRange: boolean;
-    brand: boolean;
-    /**
-     * Attribute-type IDs whose facets should render. Empty = show every
-     * attribute returned in the facet payload.
-     */
-    attributes?: string[];
-  };
-  /**
-   * Sticky offset in pixels when the sidebar is nested in a columns
-   * container. Default: 96 (below the tenant header). `0` disables stick.
-   */
-  stickyOffset?: number;
-}
-
-export interface TrustStripProps {
-  items: { label: string; value: string }[];
-  dark?: boolean;
-  layout?: "inline" | "grid";
-  columns?: 2 | 3 | 4 | 5;
-}
-
-export interface StorySplitProps {
-  eyebrow?: string;
-  title: string;
-  body: string;
-  imageSide: "left" | "right";
-  imageUrl?: string;
-  imageCaption?: string;
-  ctaHref?: string;
-  ctaLabel?: string;
-  mediaType?: "image" | "video";
-  videoUrl?: string;
-}
-
-export interface BentoShowcaseProps {
-  heading?: string;
-  eyebrow?: string;
-  source: "featured" | "manual";
-  productIds?: string[];
-  limit: number;
-  columns?: 2 | 3 | 4;
-  cardVariant?: "bordered" | "bare" | "card";
-  showPrice?: boolean;
-}
-
-export interface StatsBandProps {
-  items: { value: string; label: string }[];
-  dark?: boolean;
-  alignment?: "start" | "center" | "end";
-  valueSize?: "sm" | "md" | "lg" | "xl";
-}
-
-export interface NewsletterProps {
-  title?: string;
-  subtitle?: string;
-  cta?: string;
-  variant?: "inline" | "card" | "banner" | "modal";
-  dark?: boolean;
-  /** Modal-only: seconds before first auto-open (0 disables auto-open). */
-  modalDelaySeconds?: number;
-  /** Modal-only: show on exit-intent (desktop). */
-  modalExitIntent?: boolean;
-}
-
-export interface PolicyItem {
-  label: string;
-  detail?: string;
-  icon?: "shipping" | "returns" | "secure" | "support" | "warranty" | "gift";
-  href?: string;
-}
-
-export interface PolicyStripProps {
-  heading?: string;
-  items: PolicyItem[];
-  layout?: "inline" | "grid";
-  columns?: 2 | 3 | 4;
-  dark?: boolean;
-}
-
-export interface ContactBlockProps {
-  heading?: string;
-  layout?: "centered" | "split";
-  showMap?: boolean;
-  showSocials?: boolean;
-}
-
-export interface FaqProps {
-  heading?: string;
-  items: { question: string; answer: string }[];
-  variant?: "bordered" | "minimal" | "card";
-}
-
-export interface TestimonialsProps {
-  heading?: string;
-  items: { quote: string; author: string; role?: string }[];
-  layout?: "grid" | "carousel" | "stacked";
-  columns?: 2 | 3;
-  showAvatar?: boolean;
-}
-
-export interface LogoCloudProps {
-  heading?: string;
-  logos: { src: string; alt: string }[];
-  logoHeight?: number;
-  grayscale?: boolean;
-  columns?: 3 | 4 | 5 | 6;
-}
-
-// Blog -----------------------------------------------------------------------
-
-export interface BlogListProps {
-  heading?: string;
-  limit: number;
-  columns: 2 | 3 | 4;
-  cardVariant?: "default" | "minimal" | "card";
-  showExcerpt?: boolean;
-  showDate?: boolean;
-  showCategory?: boolean;
-  showImage?: boolean;
-}
-
-// Product Detail -------------------------------------------------------------
-
-export interface PdpGalleryProps {
-  layout: "thumbs-below" | "thumbs-left" | "stacked";
-  enableZoom: boolean;
-  aspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
-}
-
-export interface PdpBuyboxProps {
-  showSku?: boolean;
-  showCategory?: boolean;
-  showAddToCart?: boolean;
-  showDescription?: boolean;
-  priceSize?: "sm" | "md" | "lg";
-  /**
-   * Render attribute-grouped chips (or a dropdown) for products with
-   * multiple active variations. Default: true — variants hide on
-   * single-variation products automatically.
-   */
-  showVariantPicker?: boolean;
-  variantDisplay?: "chips" | "dropdown";
-}
-
-export interface PdpDetailsProps {
-  tabs?: boolean;
-}
-
-export interface PdpRelatedProps {
-  heading?: string;
-  limit: number;
-  columns: 2 | 3 | 4;
-}
-
-export interface BreadcrumbsProps {
-  scope: "product" | "category" | "page";
-}
-
-export interface ProductComparisonProps {
-  heading?: string;
-  description?: string;
-  /** Explicit product IDs to render as columns (2–4). */
-  productIds: string[];
-  /**
-   * Which attribute rows to include. Defaults to the common set when
-   * omitted. Values match PublicProduct fields + a few synthetic ones
-   * ("price", "rating") resolved by the block.
-   */
-  attributes?: (
-    | "price"
-    | "category"
-    | "rating"
-    | "length"
-    | "breadth"
-    | "height"
-    | "weight"
-    | "description"
-  )[];
-}
-
-export interface LookbookPin {
-  /**
-   * Normalized coordinates 0–1 for both axes so the pin stays anchored
-   * on any aspect ratio.
-   */
-  x: number;
-  y: number;
-  productId: string;
-  label?: string;
-}
-
-export interface LookbookScene {
-  imageUrl: string;
-  alt?: string;
-  caption?: string;
-  pins: LookbookPin[];
-}
-
-export interface LookbookProps {
-  heading?: string;
-  description?: string;
-  scenes: LookbookScene[];
-  aspectRatio?: "16/9" | "4/5" | "3/4" | "1/1";
-}
-
-export interface SizeGuideRow {
-  label: string;
-  values: string[];
-}
-
-export interface SizeGuideProps {
-  triggerLabel?: string;
-  heading?: string;
-  description?: string;
-  /** Column headers for the size table (e.g. ["S", "M", "L", "XL"]). */
-  columns: string[];
-  /** Rows e.g. [{ label: "Chest (cm)", values: ["86", "91", "96", "101"] }]. */
-  rows: SizeGuideRow[];
-  note?: string;
-  /**
-   * Render variant. `inline` drops the table straight into the page;
-   * `modal` hides it behind a trigger button that opens a dialog.
-   */
-  variant?: "inline" | "modal";
-}
-
-export interface RecentlyViewedProps {
-  heading?: string;
-  limit?: number;
-  columns?: 2 | 3 | 4;
-  cardVariant?: "bordered" | "bare" | "card";
-  /**
-   * Hide the block entirely when the shopper has no recently-viewed
-   * history yet. When false, renders an empty placeholder heading (rare
-   * use — typically want `true`).
-   */
-  hideWhenEmpty?: boolean;
-  /**
-   * When mounted on a PDP, skip the currently-viewed product so the
-   * strip only shows other items. Defaults to true.
-   */
-  excludeCurrent?: boolean;
-}
-
-export interface FbtProps {
-  heading?: string;
-  /**
-   * Source of the anchor product. `current-pdp` reads activeProduct;
-   * `explicit` uses productId.
-   */
-  productIdSource?: "current-pdp" | "explicit";
-  productId?: string;
-  limit?: number;
-  columns?: 2 | 3 | 4;
-  cardVariant?: "bordered" | "bare" | "card";
-}
-
-export interface ReviewsListProps {
-  heading?: string;
-  /**
-   * Where the product id comes from. `current-pdp` uses the active
-   * product on the page; `explicit` requires `productId`. Defaults to
-   * `current-pdp` so the block is drop-in on PDP blueprints.
-   */
-  productIdSource?: "current-pdp" | "explicit";
-  productId?: string;
-  pageSize?: number;
-  emptyMessage?: string;
-  showRatingSummary?: boolean;
-}
-
-// Layer 2 blocks ---------------------------------------------------------------
-
-export interface EmbedProps {
-  src: string;
-  aspectRatio?: "16/9" | "4/3" | "1/1" | "auto";
-  allowFullscreen?: boolean;
-  caption?: string;
-  title?: string;
-  height?: number;
-}
-
-export interface VideoProps {
-  source: "youtube" | "vimeo" | "mp4";
-  url: string;
-  aspectRatio?: "16/9" | "4/3" | "1/1";
-  autoplay?: boolean;
-  loop?: boolean;
-  muted?: boolean;
-  caption?: string;
-  posterUrl?: string;
-  rounded?: boolean;
-}
-
-export interface AccordionProps {
-  items: { title: string; body: string }[];
-  allowMultiple?: boolean;
-  heading?: string;
-  icon?: "chevron" | "plus" | "arrow";
-  variant?: "bordered" | "minimal" | "card";
-}
-
-export interface ColumnsProps {
-  count: 2 | 3 | 4;
-  gap?: "sm" | "md" | "lg";
-  verticalAlign?: "start" | "center" | "end";
-  stackBelow?: "sm" | "md" | "lg";
-  /**
-   * When true, the first child becomes `position: sticky` at the viewport
-   * top (with a small offset) on breakpoints where the grid is active.
-   * Matches the standard PDP gallery-on-left pattern.
-   */
-  stickyFirst?: boolean;
-}
-
-export interface GalleryProps {
-  images: { src: string; alt: string; caption?: string }[];
-  layout: "grid" | "masonry" | "slideshow";
-  columns: 2 | 3 | 4;
-  lightbox?: boolean;
-  aspectRatio?: "1/1" | "4/3" | "3/4" | "16/9" | "auto";
-  gap?: "sm" | "md" | "lg";
-  hoverEffect?: "none" | "zoom" | "caption";
-  rounded?: boolean;
-}
-
-export interface TabsProps {
-  tabs: { label: string; content: string }[];
-  defaultTab?: number;
-  variant?: "underline" | "pills" | "bordered";
-  alignment?: "start" | "center";
-}
-
-export interface FormFieldDef {
-  kind: "text" | "email" | "textarea" | "phone" | "select";
-  label: string;
-  required?: boolean;
-  placeholder?: string;
-  options?: string[];
-  width?: "full" | "half";
-}
-
-export interface FormBlockProps {
-  heading?: string;
-  description?: string;
-  fields: FormFieldDef[];
-  submitLabel?: string;
-  successMessage?: string;
-  submitTo: "email" | "crm-lead";
-  layout?: "stacked" | "inline";
-  buttonStyle?: "primary" | "outline" | "ghost";
-  buttonAlignment?: "start" | "center" | "stretch";
-}
-
-export interface CssGridProps {
-  /** Number of columns (1–12). */
-  columns: number;
-  gap?: "sm" | "md" | "lg";
-  minRowHeight?: string;
-  mobileColumns?: number;
-  tabletColumns?: number;
-}
-
-// Commerce (bundles + gift cards) -------------------------------------------
-
-export interface BundleSpotlightProps {
-  /** Published bundle slug (required — the block fetches by slug). */
-  slug: string;
-  /** Override the heading. When omitted, uses the bundle name. */
-  heading?: string;
-  /** Optional eyebrow label displayed above the heading. */
-  eyebrow?: string;
-  /** Description override. When omitted, uses the bundle's own description. */
-  description?: string;
-  /** Layout of media + copy. */
-  layout?: "split" | "stacked";
-  /** Show individual products included in the bundle (with names + prices). */
-  showProducts?: boolean;
-  /** CTA label under the pricing panel. */
-  ctaLabel?: string;
-  /** CTA href — defaults to the first included product's PDP. */
-  ctaHref?: string;
-  /** Visual style of the CTA. */
-  buttonStyle?: "primary" | "outline" | "ghost";
-}
-
-export interface GiftCardRedeemProps {
-  heading?: string;
-  subtitle?: string;
-  /** Label on the code input. */
-  codeLabel?: string;
-  /** Label on the amount input (redemption amount in minor units). */
-  amountLabel?: string;
-  /** Submit button label. */
-  buttonLabel?: string;
-  /** Message rendered after a successful redeem (supports {balance} token). */
-  successMessage?: string;
-  variant?: "inline" | "card";
-}
-
-// Utility -------------------------------------------------------------------
-
-export interface EmptyStateProps {
-  /** Preset that influences default copy / illustration. */
-  kind?: "not-found" | "empty-search" | "empty-cart" | "generic";
-  heading: string;
-  subtitle?: string;
-  illustration?: "none" | "package" | "magnifier" | "cart" | "alert";
-  ctaLabel?: string;
-  ctaHref?: string;
-  secondaryLabel?: string;
-  secondaryHref?: string;
-}
-
-// Custom / advanced ---------------------------------------------------------
-
-/** Flexible row container — lays out children in a horizontal flex row. */
-export interface RowProps {
-  gap?: "none" | "xs" | "sm" | "md" | "lg" | "xl";
-  wrap?: boolean;
-  justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
-  align?: "start" | "center" | "end" | "stretch";
-  reverse?: boolean;
-}
-
-/**
- * Custom HTML/CSS block.
- * Only accessible to authenticated tenant admins; rendered as-is on their own site.
- */
-export interface CustomHtmlProps {
-  /** Raw HTML markup inserted verbatim. */
-  html: string;
-  /** Optional scoped CSS injected in a <style> tag above the markup. */
-  css?: string;
-}
-
-// Header blocks ---------------------------------------------------------------
-
-export interface NavBarProps {
-  brand: string;
-  brandHref?: string;
-  brandStyle?: "serif" | "sans" | "mono";
-  items?: Array<{
-    label: string;
-    href: string;
-    hasMegaMenu?: boolean;
-  }>;
-  showSearch?: boolean;
-  showCart?: boolean;
-  showAccount?: boolean;
-  cartCount?: number;
-  sticky?: boolean;
-  align?: "between" | "center";
-}
-
-export interface LogoMarkProps {
-  brand: string;
-  href?: string;
-  subtitle?: string;
-  align?: "start" | "center" | "end";
-  variant?: "text-only" | "with-icon";
-}
-
-export interface UtilityBarProps {
-  items?: Array<{
-    label: string;
-    href: string;
-  }>;
-  align?: "start" | "center" | "end" | "between";
-}
-
-// Footer blocks ---------------------------------------------------------------
-
-export interface FooterColumnsProps {
-  showBrand?: boolean;
-  brand?: string;
-  tagline?: string;
-  columns?: Array<{
-    title: string;
-    links?: Array<{
-      label: string;
-      href: string;
-    }>;
-  }>;
-}
-
-export interface SocialLinksProps {
-  items?: Array<{
-    platform: string;
-    handle?: string;
-    href: string;
-  }>;
-  variant?: "text" | "icons-only" | "icons-pill";
-  align?: "start" | "center" | "end";
-}
-
-export interface PaymentIconsProps {
-  items?: Array<{
-    name: string;
-  }>;
-  variant?: "flat" | "outlined";
-  align?: "start" | "center" | "end";
-}
-
-export interface CopyrightBarProps {
-  copy: string;
-  showLinks?: boolean;
-  items?: Array<{
-    label: string;
-    href: string;
-  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -863,811 +285,11 @@ export const BlockVisibilitySchema: z.ZodType<BlockVisibility> = z
   })
   .strict();
 
-const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
-
-export const BlockPropsSchemas = {
-  section: z
-    .object({
-      background: z
-        .enum(["default", "surface", "accent", "inverted"])
-        .optional(),
-      paddingY: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
-      maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
-      backgroundImage: optStr(1000),
-      backgroundOverlay: z.enum(["none", "light", "dark"]).optional(),
-    })
-    .strict(),
-  heading: z
-    .object({
-      text: str(300),
-      level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-      alignment: z.enum(["start", "center", "end"]).optional(),
-      eyebrow: optStr(100),
-      subtitle: optStr(400),
-      size: z.enum(["sm", "md", "lg", "xl"]).optional(),
-      decoration: z.enum(["none", "underline", "gradient"]).optional(),
-    })
-    .strict(),
-  "rich-text": z
-    .object({
-      source: z.string().min(1).max(100_000),
-      maxWidth: z.enum(["narrow", "default", "wide"]).optional(),
-      alignment: z.enum(["start", "center"]).optional(),
-    })
-    .strict(),
-  image: z
-    .object({
-      src: str(1000),
-      alt: str(200),
-      aspectRatio: z.enum(["1/1", "4/3", "16/9", "3/4", "auto"]).optional(),
-      rounded: z.boolean().optional(),
-      caption: optStr(300),
-      link: optStr(1000),
-      shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
-      hoverEffect: z.enum(["none", "zoom", "lift"]).optional(),
-    })
-    .strict(),
-  button: z
-    .object({
-      label: str(80),
-      href: str(1000),
-      style: z.enum(["primary", "outline", "ghost"]),
-      size: z.enum(["sm", "md", "lg"]).optional(),
-      alignment: z.enum(["start", "center", "end"]).optional(),
-      fullWidth: z.boolean().optional(),
-    })
-    .strict(),
-  spacer: z
-    .object({
-      size: z.enum(["xs", "sm", "md", "lg", "xl"]),
-      customPx: z.number().int().min(0).max(500).optional(),
-    })
-    .strict(),
-  divider: z
-    .object({
-      variant: z.enum(["line", "dotted", "dashed"]).optional(),
-      inset: z.boolean().optional(),
-      colorToken: z.string().max(80).optional(),
-    })
-    .strict(),
-  "markdown-body": z
-    .object({
-      source: z.string().min(1).max(200_000),
-      maxWidth: z.enum(["narrow", "default", "wide"]).optional(),
-    })
-    .strict(),
-  hero: z
-    .object({
-      variant: z.enum([
-        "minimal",
-        "standard",
-        "luxury",
-        "boutique",
-        "editorial",
-        "video",
-        "shoppable",
-      ]),
-      title: optStr(200),
-      subtitle: optStr(400),
-      ctaLabel: optStr(60),
-      ctaHref: optStr(1000),
-      imageUrl: optStr(1000),
-      heroLayout: z
-        .enum(["centered", "split-left", "split-right", "overlay"])
-        .optional(),
-      videoUrl: optStr(2000),
-      videoPoster: optStr(1000),
-      shoppableProductIds: z.array(z.string().max(80)).max(8).optional(),
-    })
-    .strict(),
-  "product-grid": z
-    .object({
-      source: z.enum([
-        "featured",
-        "category",
-        "manual",
-        "newest",
-        "on-sale",
-        "price-low",
-        "price-high",
-        "collection",
-        "offers",
-      ]),
-      categoryId: optStr(80),
-      productIds: z.array(z.string().max(80)).max(50).optional(),
-      collectionSlug: optStr(60),
-      limit: z.number().int().min(1).max(50),
-      columns: z.union([
-        z.literal(2),
-        z.literal(3),
-        z.literal(4),
-        z.literal(5),
-      ]),
-      cardVariant: z.enum(["bordered", "bare", "card"]),
-      heading: optStr(200),
-      eyebrow: optStr(100),
-      showCategory: z.boolean().optional(),
-      showPrice: z.boolean().optional(),
-      showDiscount: z.boolean().optional(),
-      cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
-      layout: z.enum(["grid", "carousel"]).optional(),
-      viewMoreHref: optStr(200),
-      viewMoreLabel: optStr(50),
-    })
-    .strict(),
-  "category-tiles": z
-    .object({
-      heading: optStr(200),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-      aspectRatio: z.enum(["1/1", "4/5", "3/4", "16/9"]).optional(),
-      showProductCount: z.boolean().optional(),
-      cardStyle: z.enum(["overlay", "below"]).optional(),
-    })
-    .strict(),
-  "product-listing": z
-    .object({
-      pageSize: z.number().int().min(1).max(100),
-      defaultSort: z.enum(["newest", "price-asc", "price-desc", "name-asc"]),
-      showSort: z.boolean(),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-      categoryFilter: z.boolean(),
-      showCategory: z.boolean().optional(),
-      showPrice: z.boolean().optional(),
-      showDiscount: z.boolean().optional(),
-      cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
-    })
-    .strict(),
-  "announcement-bar": z
-    .object({
-      text: str(200),
-      link: optStr(1000),
-      marquee: z.boolean(),
-      tone: z.enum(["default", "muted", "accent"]).optional(),
-      items: z.array(str(80)).max(12).optional(),
-      mode: z.enum(["bar", "modal"]).optional(),
-      modalDelaySeconds: z.number().int().min(0).max(120).optional(),
-      modalCtaLabel: optStr(60),
-      modalHeading: optStr(120),
-    })
-    .strict(),
-  "collection-cards": z
-    .object({
-      heading: optStr(200),
-      eyebrow: optStr(100),
-      cards: z
-        .array(
-          z
-            .object({
-              title: str(120),
-              subtitle: optStr(200),
-              imageUrl: optStr(1000),
-              ctaLabel: optStr(60),
-              ctaHref: optStr(1000),
-            })
-            .strict(),
-        )
-        .min(1)
-        .max(4),
-      aspectRatio: z.enum(["square", "portrait", "landscape"]).optional(),
-      overlay: z.boolean().optional(),
-    })
-    .strict(),
-  "product-filters": z
-    .object({
-      heading: optStr(80),
-      show: z
-        .object({
-          category: z.boolean(),
-          priceRange: z.boolean(),
-          brand: z.boolean(),
-          attributes: z.array(z.string().max(80)).max(20).optional(),
-        })
-        .strict(),
-      stickyOffset: z.number().int().min(0).max(400).optional(),
-    })
-    .strict(),
-  "trust-strip": z
-    .object({
-      items: z
-        .array(z.object({ label: str(80), value: str(80) }).strict())
-        .max(10),
-      dark: z.boolean().optional(),
-      layout: z.enum(["inline", "grid"]).optional(),
-      columns: z
-        .union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
-        .optional(),
-    })
-    .strict(),
-  "story-split": z
-    .object({
-      eyebrow: optStr(80),
-      title: str(200),
-      body: z.string().max(2000),
-      imageSide: z.enum(["left", "right"]),
-      imageUrl: optStr(1000),
-      imageCaption: optStr(200),
-      ctaHref: optStr(1000),
-      ctaLabel: optStr(60),
-      mediaType: z.enum(["image", "video"]).optional(),
-      videoUrl: optStr(2000),
-    })
-    .strict(),
-  "bento-showcase": z
-    .object({
-      heading: optStr(200),
-      eyebrow: optStr(100),
-      source: z.enum(["featured", "manual"]),
-      productIds: z.array(z.string().max(80)).max(10).optional(),
-      limit: z.number().int().min(1).max(10),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
-      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
-      showPrice: z.boolean().optional(),
-    })
-    .strict(),
-  "stats-band": z
-    .object({
-      items: z
-        .array(z.object({ value: str(40), label: str(80) }).strict())
-        .max(10),
-      dark: z.boolean().optional(),
-      alignment: z.enum(["start", "center", "end"]).optional(),
-      valueSize: z.enum(["sm", "md", "lg", "xl"]).optional(),
-    })
-    .strict(),
-  newsletter: z
-    .object({
-      title: optStr(200),
-      subtitle: optStr(400),
-      cta: optStr(40),
-      variant: z.enum(["inline", "card", "banner", "modal"]).optional(),
-      dark: z.boolean().optional(),
-      modalDelaySeconds: z.number().int().min(0).max(600).optional(),
-      modalExitIntent: z.boolean().optional(),
-    })
-    .strict(),
-  "policy-strip": z
-    .object({
-      heading: optStr(120),
-      items: z
-        .array(
-          z
-            .object({
-              label: str(80),
-              detail: optStr(200),
-              icon: z
-                .enum([
-                  "shipping",
-                  "returns",
-                  "secure",
-                  "support",
-                  "warranty",
-                  "gift",
-                ])
-                .optional(),
-              href: optStr(1000),
-            })
-            .strict(),
-        )
-        .min(1)
-        .max(8),
-      layout: z.enum(["inline", "grid"]).optional(),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
-      dark: z.boolean().optional(),
-    })
-    .strict(),
-  "contact-block": z
-    .object({
-      heading: optStr(200),
-      layout: z.enum(["centered", "split"]).optional(),
-      showMap: z.boolean().optional(),
-      showSocials: z.boolean().optional(),
-    })
-    .strict(),
-  faq: z
-    .object({
-      heading: optStr(200),
-      items: z
-        .array(
-          z
-            .object({
-              question: str(300),
-              answer: z.string().max(3000),
-            })
-            .strict(),
-        )
-        .max(50),
-      variant: z.enum(["bordered", "minimal", "card"]).optional(),
-    })
-    .strict(),
-  testimonials: z
-    .object({
-      heading: optStr(200),
-      items: z
-        .array(
-          z
-            .object({
-              quote: z.string().max(1000),
-              author: str(100),
-              role: optStr(100),
-            })
-            .strict(),
-        )
-        .max(20),
-      layout: z.enum(["grid", "carousel", "stacked"]).optional(),
-      columns: z.union([z.literal(2), z.literal(3)]).optional(),
-      showAvatar: z.boolean().optional(),
-    })
-    .strict(),
-  "logo-cloud": z
-    .object({
-      heading: optStr(200),
-      logos: z
-        .array(z.object({ src: str(1000), alt: str(200) }).strict())
-        .max(24),
-      logoHeight: z.number().int().min(16).max(200).optional(),
-      grayscale: z.boolean().optional(),
-      columns: z
-        .union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)])
-        .optional(),
-    })
-    .strict(),
-  "blog-list": z
-    .object({
-      heading: optStr(200),
-      limit: z.number().int().min(1).max(24),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-      cardVariant: z.enum(["default", "minimal", "card"]).optional(),
-      showExcerpt: z.boolean().optional(),
-      showDate: z.boolean().optional(),
-      showCategory: z.boolean().optional(),
-      showImage: z.boolean().optional(),
-    })
-    .strict(),
-  "pdp-gallery": z
-    .object({
-      layout: z.enum(["thumbs-below", "thumbs-left", "stacked"]),
-      enableZoom: z.boolean(),
-      aspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
-    })
-    .strict(),
-  "pdp-buybox": z
-    .object({
-      showSku: z.boolean().optional(),
-      showCategory: z.boolean().optional(),
-      showAddToCart: z.boolean().optional(),
-      showDescription: z.boolean().optional(),
-      priceSize: z.enum(["sm", "md", "lg"]).optional(),
-      showVariantPicker: z.boolean().optional(),
-      variantDisplay: z.enum(["chips", "dropdown"]).optional(),
-    })
-    .strict(),
-  "pdp-details": z.object({ tabs: z.boolean().optional() }).strict(),
-  "pdp-related": z
-    .object({
-      heading: optStr(200),
-      limit: z.number().int().min(1).max(12),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-    })
-    .strict(),
-  breadcrumbs: z
-    .object({ scope: z.enum(["product", "category", "page"]) })
-    .strict(),
-  "reviews-list": z
-    .object({
-      heading: optStr(200),
-      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
-      productId: optStr(80),
-      pageSize: z.number().int().min(1).max(50).optional(),
-      emptyMessage: optStr(300),
-      showRatingSummary: z.boolean().optional(),
-    })
-    .strict(),
-  fbt: z
-    .object({
-      heading: optStr(200),
-      productIdSource: z.enum(["current-pdp", "explicit"]).optional(),
-      productId: optStr(80),
-      limit: z.number().int().min(1).max(12).optional(),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
-      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
-    })
-    .strict(),
-  "recently-viewed": z
-    .object({
-      heading: optStr(200),
-      limit: z.number().int().min(1).max(12).optional(),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
-      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
-      hideWhenEmpty: z.boolean().optional(),
-      excludeCurrent: z.boolean().optional(),
-    })
-    .strict(),
-  "size-guide": z
-    .object({
-      triggerLabel: optStr(80),
-      heading: optStr(200),
-      description: optStr(500),
-      columns: z.array(str(30)).min(1).max(10),
-      rows: z
-        .array(
-          z
-            .object({
-              label: str(80),
-              values: z.array(str(30)).min(1).max(10),
-            })
-            .strict(),
-        )
-        .min(1)
-        .max(20),
-      note: optStr(500),
-      variant: z.enum(["inline", "modal"]).optional(),
-    })
-    .strict(),
-  "product-comparison": z
-    .object({
-      heading: optStr(200),
-      description: optStr(500),
-      productIds: z.array(z.string().max(80)).min(2).max(4),
-      attributes: z
-        .array(
-          z.enum([
-            "price",
-            "category",
-            "rating",
-            "length",
-            "breadth",
-            "height",
-            "weight",
-            "description",
-          ]),
-        )
-        .max(10)
-        .optional(),
-    })
-    .strict(),
-  lookbook: z
-    .object({
-      heading: optStr(200),
-      description: optStr(500),
-      scenes: z
-        .array(
-          z
-            .object({
-              imageUrl: str(1000),
-              alt: optStr(200),
-              caption: optStr(300),
-              pins: z
-                .array(
-                  z
-                    .object({
-                      x: z.number().min(0).max(1),
-                      y: z.number().min(0).max(1),
-                      productId: str(80),
-                      label: optStr(80),
-                    })
-                    .strict(),
-                )
-                .max(12),
-            })
-            .strict(),
-        )
-        .min(1)
-        .max(10),
-      aspectRatio: z.enum(["16/9", "4/5", "3/4", "1/1"]).optional(),
-    })
-    .strict(),
-  // Layer 2
-  embed: z
-    .object({
-      src: str(2000),
-      aspectRatio: z.enum(["16/9", "4/3", "1/1", "auto"]).optional(),
-      allowFullscreen: z.boolean().optional(),
-      caption: optStr(300),
-      title: optStr(200),
-      height: z.number().int().min(50).max(2000).optional(),
-    })
-    .strict(),
-  video: z
-    .object({
-      source: z.enum(["youtube", "vimeo", "mp4"]),
-      url: str(2000),
-      aspectRatio: z.enum(["16/9", "4/3", "1/1"]).optional(),
-      autoplay: z.boolean().optional(),
-      loop: z.boolean().optional(),
-      muted: z.boolean().optional(),
-      caption: optStr(300),
-      posterUrl: optStr(1000),
-      rounded: z.boolean().optional(),
-    })
-    .strict(),
-  accordion: z
-    .object({
-      items: z
-        .array(
-          z
-            .object({
-              title: str(300),
-              body: z.string().max(5000),
-            })
-            .strict(),
-        )
-        .max(50),
-      allowMultiple: z.boolean().optional(),
-      heading: optStr(200),
-      icon: z.enum(["chevron", "plus", "arrow"]).optional(),
-      variant: z.enum(["bordered", "minimal", "card"]).optional(),
-    })
-    .strict(),
-  columns: z
-    .object({
-      count: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-      gap: z.enum(["sm", "md", "lg"]).optional(),
-      verticalAlign: z.enum(["start", "center", "end"]).optional(),
-      stackBelow: z.enum(["sm", "md", "lg"]).optional(),
-      stickyFirst: z.boolean().optional(),
-    })
-    .strict(),
-  gallery: z
-    .object({
-      images: z
-        .array(
-          z
-            .object({
-              src: str(2000),
-              alt: str(200),
-              caption: optStr(300),
-            })
-            .strict(),
-        )
-        .max(50),
-      layout: z.enum(["grid", "masonry", "slideshow"]),
-      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
-      lightbox: z.boolean().optional(),
-      aspectRatio: z.enum(["1/1", "4/3", "3/4", "16/9", "auto"]).optional(),
-      gap: z.enum(["sm", "md", "lg"]).optional(),
-      hoverEffect: z.enum(["none", "zoom", "caption"]).optional(),
-      rounded: z.boolean().optional(),
-    })
-    .strict(),
-  tabs: z
-    .object({
-      tabs: z
-        .array(
-          z
-            .object({
-              label: str(100),
-              content: z.string().max(50_000),
-            })
-            .strict(),
-        )
-        .max(20),
-      defaultTab: z.number().int().min(0).optional(),
-      variant: z.enum(["underline", "pills", "bordered"]).optional(),
-      alignment: z.enum(["start", "center"]).optional(),
-    })
-    .strict(),
-  form: z
-    .object({
-      heading: optStr(200),
-      description: optStr(500),
-      fields: z
-        .array(
-          z
-            .object({
-              kind: z.enum(["text", "email", "textarea", "phone", "select"]),
-              label: str(100),
-              required: z.boolean().optional(),
-              placeholder: optStr(200),
-              options: z.array(z.string().max(100)).max(50).optional(),
-              width: z.enum(["full", "half"]).optional(),
-            })
-            .strict(),
-        )
-        .max(30),
-      submitLabel: optStr(60),
-      successMessage: optStr(500),
-      submitTo: z.enum(["email", "crm-lead"]),
-      layout: z.enum(["stacked", "inline"]).optional(),
-      buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
-      buttonAlignment: z.enum(["start", "center", "stretch"]).optional(),
-    })
-    .strict(),
-  // Layer 3
-  "css-grid": z
-    .object({
-      columns: z.number().int().min(1).max(12),
-      gap: z.enum(["sm", "md", "lg"]).optional(),
-      minRowHeight: z.string().max(20).optional(),
-      mobileColumns: z.number().int().min(1).max(12).optional(),
-      tabletColumns: z.number().int().min(1).max(12).optional(),
-    })
-    .strict(),
-  // Commerce (bundles + gift cards)
-  "bundle-spotlight": z
-    .object({
-      slug: str(200),
-      heading: optStr(200),
-      eyebrow: optStr(100),
-      description: optStr(2000),
-      layout: z.enum(["split", "stacked"]).optional(),
-      showProducts: z.boolean().optional(),
-      ctaLabel: optStr(80),
-      ctaHref: optStr(1000),
-      buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
-    })
-    .strict(),
-  "gift-card-redeem": z
-    .object({
-      heading: optStr(200),
-      subtitle: optStr(400),
-      codeLabel: optStr(80),
-      amountLabel: optStr(80),
-      buttonLabel: optStr(80),
-      successMessage: optStr(400),
-      variant: z.enum(["inline", "card"]).optional(),
-    })
-    .strict(),
-  // Utility
-  "empty-state": z
-    .object({
-      kind: z
-        .enum(["not-found", "empty-search", "empty-cart", "generic"])
-        .optional(),
-      heading: str(200),
-      subtitle: optStr(400),
-      illustration: z
-        .enum(["none", "package", "magnifier", "cart", "alert"])
-        .optional(),
-      ctaLabel: optStr(60),
-      ctaHref: optStr(1000),
-      secondaryLabel: optStr(60),
-      secondaryHref: optStr(1000),
-    })
-    .strict(),
-  // Custom / advanced
-  row: z
-    .object({
-      gap: z.enum(["none", "xs", "sm", "md", "lg", "xl"]).optional(),
-      wrap: z.boolean().optional(),
-      justify: z
-        .enum(["start", "center", "end", "between", "around", "evenly"])
-        .optional(),
-      align: z.enum(["start", "center", "end", "stretch"]).optional(),
-      reverse: z.boolean().optional(),
-    })
-    .strict(),
-  "custom-html": z
-    .object({
-      html: z.string().max(50_000),
-      css: z.string().max(10_000).optional(),
-    })
-    .strict(),
-  // Header blocks
-  "nav-bar": z
-    .object({
-      brand: str(100),
-      brandHref: optStr(500),
-      brandStyle: z.enum(["serif", "sans", "mono"]).optional(),
-      items: z
-        .array(
-          z
-            .object({
-              label: str(100),
-              href: str(500),
-              hasMegaMenu: z.boolean().optional(),
-            })
-            .strict(),
-        )
-        .optional(),
-      showSearch: z.boolean().optional(),
-      showCart: z.boolean().optional(),
-      showAccount: z.boolean().optional(),
-      cartCount: z.number().int().nonnegative().optional(),
-      sticky: z.boolean().optional(),
-      align: z.enum(["between", "center"]).optional(),
-    })
-    .strict(),
-  "logo-mark": z
-    .object({
-      brand: str(100),
-      href: optStr(500),
-      subtitle: optStr(100),
-      align: z.enum(["start", "center", "end"]).optional(),
-      variant: z.enum(["text-only", "with-icon"]).optional(),
-    })
-    .strict(),
-  "utility-bar": z
-    .object({
-      items: z
-        .array(
-          z
-            .object({
-              label: str(100),
-              href: str(500),
-            })
-            .strict(),
-        )
-        .optional(),
-      align: z.enum(["start", "center", "end", "between"]).optional(),
-    })
-    .strict(),
-  // Footer blocks
-  "footer-columns": z
-    .object({
-      showBrand: z.boolean().optional(),
-      brand: optStr(100),
-      tagline: optStr(500),
-      columns: z
-        .array(
-          z
-            .object({
-              title: str(100),
-              links: z
-                .array(
-                  z
-                    .object({
-                      label: str(100),
-                      href: str(500),
-                    })
-                    .strict(),
-                )
-                .optional(),
-            })
-            .strict(),
-        )
-        .optional(),
-    })
-    .strict(),
-  "social-links": z
-    .object({
-      items: z
-        .array(
-          z
-            .object({
-              platform: str(50),
-              handle: optStr(100),
-              href: str(500),
-            })
-            .strict(),
-        )
-        .optional(),
-      variant: z.enum(["text", "icons-only", "icons-pill"]).optional(),
-      align: z.enum(["start", "center", "end"]).optional(),
-    })
-    .strict(),
-  "payment-icons": z
-    .object({
-      items: z
-        .array(
-          z
-            .object({
-              name: str(100),
-            })
-            .strict(),
-        )
-        .optional(),
-      variant: z.enum(["flat", "outlined"]).optional(),
-      align: z.enum(["start", "center", "end"]).optional(),
-    })
-    .strict(),
-  "copyright-bar": z
-    .object({
-      copy: str(500),
-      showLinks: z.boolean().optional(),
-      items: z
-        .array(
-          z
-            .object({
-              label: str(100),
-              href: str(500),
-            })
-            .strict(),
-        )
-        .optional(),
-    })
-    .strict(),
-} satisfies Record<BlockKind, z.ZodType<unknown>>;
+/**
+ * Per-kind props validators. Backed by the per-block modules under
+ * `../blocks/<kind>/`. Re-exported here so legacy importers keep working.
+ */
+export const BlockPropsSchemas = BLOCK_PROPS_SCHEMAS;
 
 export const BlockNodeSchema: z.ZodType<BlockNode> = z.lazy(
   () =>

@@ -28,7 +28,10 @@ export class DashboardWidgetBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
-    console.error(`Dashboard widget "${this.props.widgetId}" error:`, error);
+    if (process.env.NODE_ENV !== "production") {
+      // eslint-disable-next-line no-console
+      console.error(`Dashboard widget "${this.props.widgetId}" error:`, error);
+    }
   }
 
   render() {

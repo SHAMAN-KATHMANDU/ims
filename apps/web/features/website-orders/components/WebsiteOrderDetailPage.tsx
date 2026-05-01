@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { notFound } from "next/navigation";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -53,13 +54,7 @@ import type { CartItemSnapshot } from "../services/website-orders.service";
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(new Date(iso), "MMM d, yyyy HH:mm");
   } catch {
     return iso;
   }
@@ -153,7 +148,10 @@ export function WebsiteOrderDetailPage({
         <div className="flex flex-wrap items-center gap-2">
           <Can perm="SALES.WEBSITE_ORDERS.VERIFY">
             {canVerify && (
-              <Button onClick={handleVerify} disabled={verifyMutation.isPending}>
+              <Button
+                onClick={handleVerify}
+                disabled={verifyMutation.isPending}
+              >
                 <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
                 {verifyMutation.isPending ? "Verifying…" : "Mark verified"}
               </Button>

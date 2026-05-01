@@ -4,9 +4,8 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormEvent } from "react";
-import type { UseFormReturn } from "@/hooks/useForm";
 import { ProductFormSchema } from "../validation";
-import type { ProductFormValues } from "../components/types";
+import type { ProductFormValues, UseFormReturn } from "../components/types";
 
 interface UseProductFormAdapterOptions {
   onSubmit: (values: ProductFormValues) => Promise<void>;

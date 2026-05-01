@@ -15,6 +15,7 @@ export * from "./src/crm/workflow-templates";
 export * from "./src/crm/contact-profile";
 export * from "./src/site-schema";
 export * from "./src/permissions/catalog";
+export * from "./src/blocks";
 
 /**
  * Application version - single source for frontend/build-time use.

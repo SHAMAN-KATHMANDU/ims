@@ -28,7 +28,7 @@ import {
   getTemplateBlueprint,
   BLUEPRINT_SCOPES,
   type TemplateBlueprint,
-} from "./blueprints";
+} from "./templates";
 import type { BlockNode, BlockTree } from "@repo/shared";
 
 type Repo = typeof defaultRepo;
@@ -165,7 +165,7 @@ export class SitesService {
       > | null;
       if (!existingTokens || input.resetBranding) {
         data.themeTokens =
-          blueprint.defaultThemeTokens as Prisma.InputJsonValue;
+          blueprint.defaultThemeTokens as unknown as Prisma.InputJsonValue;
       }
     }
 

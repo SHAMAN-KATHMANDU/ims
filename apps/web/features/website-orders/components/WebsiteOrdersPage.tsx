@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { format } from "date-fns";
 import axios from "axios";
 import { Lock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,13 +56,7 @@ function FeatureDisabledCard() {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(new Date(iso), "MMM d, yyyy HH:mm");
   } catch {
     return iso;
   }

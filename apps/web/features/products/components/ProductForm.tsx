@@ -26,8 +26,8 @@ import type {
   ProductFormValues,
   ProductVariationForm,
   ProductDiscountForm,
+  UseFormReturn,
 } from "./types";
-import type { UseFormReturn } from "@/hooks/useForm";
 import type { Product, Category } from "@/features/products";
 import type { AttributeType } from "@/features/products";
 

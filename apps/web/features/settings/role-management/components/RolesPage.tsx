@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { format } from "date-fns";
 import { Lock, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -156,13 +157,7 @@ function RoleRow({ role, onClick }: { role: Role; onClick: () => void }) {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(new Date(iso), "MMM d, yyyy HH:mm");
   } catch {
     return iso;
   }

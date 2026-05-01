@@ -7,6 +7,7 @@ import {
   deleteSiteLayout,
   getSiteLayoutPreviewUrl,
   resetSiteLayoutFromTemplate,
+  refreshPreviewToken,
 } from "./site-layouts.service";
 
 const mockGet = vi.fn();
@@ -266,6 +267,38 @@ describe("site-layouts.service", () => {
 
       await expect(resetSiteLayoutFromTemplate("home")).rejects.toThrow(
         "No template",
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe("refreshPreviewToken", () => {
+    it("returns the new url on success", async () => {
+      mockPost.mockResolvedValue({
+        data: { url: "https://preview.example.com/home?token=fresh" },
+      });
+
+      const result = await refreshPreviewToken("stale-token");
+
+      expect(mockPost).toHaveBeenCalledWith("/site-layouts/preview/refresh", {
+        token: "stale-token",
+      });
+      expect(result).toBe("https://preview.example.com/home?token=fresh");
+    });
+
+    it("returns null on 404 (token expired) so callers can re-mint", async () => {
+      mockPost.mockRejectedValue({ response: { status: 404 } });
+
+      const result = await refreshPreviewToken("dead-token");
+
+      expect(result).toBeNull();
+    });
+
+    it("propagates non-404 errors", async () => {
+      mockPost.mockRejectedValue(new Error("server boom"));
+
+      await expect(refreshPreviewToken("any-token")).rejects.toThrow(
+        "server boom",
       );
     });
   });

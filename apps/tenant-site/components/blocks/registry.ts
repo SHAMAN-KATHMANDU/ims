@@ -13,7 +13,7 @@
  */
 
 import type { ComponentType, ReactNode } from "react";
-import type { BlockNode } from "@repo/shared";
+import type { BlockKind, BlockNode } from "@repo/shared";
 import type { BlockDataContext } from "./data-context";
 
 // Export block prop types for use in block implementations
@@ -137,7 +137,7 @@ export interface BlockRegistryEntry {
   container?: boolean;
 }
 
-export const blockRegistry: Record<string, BlockRegistryEntry> = {
+export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = {
   // Structural / content
   section: { component: SectionBlock, container: true },
   heading: { component: HeadingBlock },

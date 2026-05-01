@@ -2,8 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { NumericInput } from "@/components/ui/numeric-input";
-import type { ProductFormValues } from "../types";
-import type { UseFormReturn } from "@/hooks/useForm";
+import type { ProductFormValues, UseFormReturn } from "../types";
 
 interface DimensionsTabProps {
   form: UseFormReturn<ProductFormValues>;

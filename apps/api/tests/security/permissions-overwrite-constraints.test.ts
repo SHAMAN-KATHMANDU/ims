@@ -145,9 +145,17 @@ describe("PermissionOverwrite schema validation (Zod / API layer)", () => {
 
 describe.skip("PermissionOverwrite DB constraints (require test DB with RBAC migration 20260423182522)", () => {
   /**
-   * TODO: Enable these tests once:
-   *   1. DATABASE_URL_TEST points to a test DB with the RBAC schema migration applied.
-   *   2. Seed fixtures from apps/api/prisma/scripts/seed-scoped-rbac.ts are run.
+   * BLOCKED: Integration tests requiring real PostgreSQL connection.
+   *
+   * Prerequisite: DATABASE_URL_TEST or DATABASE_URL env var pointing to a test
+   * PostgreSQL database with the RBAC migration (20260423182522_scoped_rbac_foundation)
+   * applied. The migration exists at apps/api/prisma/migrations/20260423182522_*.
+   *
+   * To enable:
+   *   1. Set up a test PostgreSQL database (e.g., via Docker Compose or local psql).
+   *   2. Run: cd apps/api && npx prisma migrate deploy (on test DB).
+   *   3. Optionally seed with: node prisma/scripts/seed-scoped-rbac.ts.
+   *   4. Remove describe.skip and run tests.
    *
    * DB constraints enforced by raw SQL in the migration:
    *

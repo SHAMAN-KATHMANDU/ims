@@ -175,13 +175,18 @@ describe("Cross-tenant isolation: PermissionService", () => {
 
   describe.skip("HTTP endpoints: cross-tenant IDOR (requires real DB + seedTenantRoles)", () => {
     /**
-     * TODO: Enable this describe block once:
-     *   1. A test DB with the RBAC schema migration is set up.
-     *   2. seedTenantRoles() from apps/api/prisma/scripts/seed-scoped-rbac.ts
-     *      is called for two distinct tenants (A and B) in beforeAll.
-     *   3. Resources R_A and R_B, and roles ROLE_A and ROLE_B, are seeded
-     *      in their respective tenants.
-     *   4. A valid JWT is created for an admin user in tenant-A.
+     * BLOCKED: Integration tests requiring real PostgreSQL connection and HTTP server.
+     *
+     * Prerequisite: DATABASE_URL_TEST pointing to a test DB with RBAC migration
+     * applied, plus an HTTP server fixture (via Supertest).
+     *
+     * To enable:
+     *   1. Set up test PostgreSQL database (see permissions-overwrite-constraints.test.ts).
+     *   2. Call seedTenantRoles(tenant_a_id) and seedTenantRoles(tenant_b_id) in
+     *      beforeAll via prisma (helper exists at apps/api/prisma/scripts/seed-scoped-rbac.ts).
+     *   3. Create Resources R_A (tenant A), R_B (tenant B) and roles via factory.
+     *   4. Create test JWT for admin user in tenant-A via makeReq() helper.
+     *   5. Remove describe.skip and run tests with Supertest.
      *
      * Expected assertions once enabled:
      *   GET /api/v1/permissions/me/effective?resourceId=<R_B> → 404 or 403
