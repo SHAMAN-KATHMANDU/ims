@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
-
 /**
  * PDP gallery — product photo gallery with zoom and layout options.
  */
