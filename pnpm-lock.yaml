@@ -149,6 +149,9 @@ importers:
       node-cron:
         specifier: ^4.2.1
         version: 4.2.1
+      nodemailer:
+        specifier: ^8.0.7
+        version: 8.0.7
       pdfkit:
         specifier: ^0.17.2
         version: 0.17.2
@@ -204,6 +207,9 @@ importers:
       "@types/node-cron":
         specifier: ^3.0.11
         version: 3.0.11
+      "@types/nodemailer":
+        specifier: ^8.0.0
+        version: 8.0.0
       "@types/supertest":
         specifier: ^6.0.2
         version: 6.0.3
@@ -5352,6 +5358,12 @@ packages:
     resolution:
       {
         integrity: sha512-W609buLVRVmeW693xKfzHeIV6nJGGz98uCPfeXI1ELMLXVeKYZ9m15fAMSaUPBHYLGFsVRcMmSCksQOrZV9BYA==,
+      }
+
+  "@types/nodemailer@8.0.0":
+    resolution:
+      {
+        integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==,
       }
 
   "@types/oracledb@6.5.2":
@@ -10954,6 +10966,13 @@ packages:
       {
         integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==,
       }
+
+  nodemailer@8.0.7:
+    resolution:
+      {
+        integrity: sha512-pkjE4mkBzQjdJT4/UmlKl3pX0rC9fZmjh7c6C9o7lv66Ac6w9WCnzPzhbPNxwZAzlF4mdq4CSWB5+FbK6FWCow==,
+      }
+    engines: { node: ">=6.0.0" }
 
   nodemon@3.1.11:
     resolution:
@@ -17637,6 +17656,10 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
+  "@types/nodemailer@8.0.0":
+    dependencies:
+      "@types/node": 22.15.3
+
   "@types/oracledb@6.5.2":
     dependencies:
       "@types/node": 22.15.3
@@ -21457,6 +21480,8 @@ snapshots:
     optional: true
 
   node-releases@2.0.27: {}
+
+  nodemailer@8.0.7: {}
 
   nodemon@3.1.11:
     dependencies:
