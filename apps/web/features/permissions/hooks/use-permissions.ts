@@ -81,7 +81,6 @@ export function useCan(
       process.env.NODE_ENV !== "production" &&
       typeof console !== "undefined"
     ) {
-      // eslint-disable-next-line no-console
       console.warn(`[useCan] Unknown permission key: ${permissionKey}`);
     }
     return { allowed: false, isLoading: false };
