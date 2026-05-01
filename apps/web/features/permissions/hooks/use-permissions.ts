@@ -77,7 +77,11 @@ export function useCan(
   const def = PERMISSION_BY_KEY.get(permissionKey);
   if (!def) {
     // Unknown key → fail closed and log for devs.
-    if (typeof console !== "undefined") {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      typeof console !== "undefined"
+    ) {
+      // eslint-disable-next-line no-console
       console.warn(`[useCan] Unknown permission key: ${permissionKey}`);
     }
     return { allowed: false, isLoading: false };
