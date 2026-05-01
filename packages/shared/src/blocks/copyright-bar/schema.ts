@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
 
 /**
  * Copyright bar — bottom © line + links.
