@@ -12,6 +12,11 @@
 **Method** — `GET` only (`POST`/`PUT`/`PATCH`/`DELETE` return 405)
 **Feature flag** — `EnvFeature.PUBLIC_DATA_API` (returns 404 when off)
 
+> **First time wiring up a frontend?** See the step-by-step
+> [Frontend Setup Guide](./PUBLIC-DATA-API-FRONTEND-SETUP.md) for env vars,
+> framework examples (Next.js, Astro), CORS during local dev, and a
+> reusable client snippet. This document is the API reference.
+
 ---
 
 ## Table of contents
