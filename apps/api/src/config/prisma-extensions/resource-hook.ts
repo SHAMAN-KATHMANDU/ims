@@ -18,17 +18,66 @@ import { logger } from "@/config/logger";
 /**
  * Maps a business model to its ResourceType and how to find its parent.
  *
- * parentLocator: a function that receives the created entity and returns:
- * - resourceId: the parent Resource ID
- * - type: the ResourceType of that parent (e.g., "WORKSPACE", "PIPELINE")
- * - externalId: for hierarchical typing (e.g., workspace has externalId=null, others have entity id)
+ * parentLocator: a function that receives the created entity, tenantId, and Prisma client, then returns:
+ * - parentId: the parent Resource ID
+ * - parentPath: the parent Resource's path
+ * - parentDepth: the parent Resource's depth
  */
 interface ModelResourceMapping {
   resourceType: string;
   parentLocator: (
     entity: any,
     tenantId: string,
+    client: any,
   ) => Promise<{ parentId: string; parentPath: string; parentDepth: number }>;
+}
+
+/**
+ * Fetch a parent Resource by type and external ID.
+ *
+ * Returns the parent Resource's id, path, and depth for use in child hierarchy building.
+ * If the parent Resource doesn't exist (race/missed seed), returns null; caller should fall back to workspace.
+ *
+ * @param client - Prisma client (any type due to dynamic context)
+ * @param tenantId - Tenant context
+ * @param parentType - Resource type to search for (e.g., "PIPELINE", "DEAL", "CONTACT")
+ * @param parentExternalId - External ID of the entity (e.g., pipelineId, dealId, contactId)
+ * @returns Object with parentId, parentPath, parentDepth if found; null otherwise
+ */
+async function fetchParentResource(
+  client: any,
+  tenantId: string,
+  parentType: string,
+  parentExternalId: string,
+): Promise<{
+  parentId: string;
+  parentPath: string;
+  parentDepth: number;
+} | null> {
+  try {
+    const parent = await client.resource.findFirst({
+      where: { tenantId, type: parentType, externalId: parentExternalId },
+      select: { id: true, path: true, depth: true },
+    });
+    if (!parent) return null;
+    return {
+      parentId: parent.id,
+      parentPath: parent.path,
+      parentDepth: parent.depth,
+    };
+  } catch (error) {
+    logger.warn(
+      `Failed to fetch ${parentType} Resource for externalId ${parentExternalId}`,
+      undefined,
+      {
+        tenantId,
+        parentType,
+        parentExternalId,
+        error,
+      },
+    );
+    return null;
+  }
 }
 
 /**
@@ -41,115 +90,146 @@ interface ModelResourceMapping {
 const MODEL_RESOURCE_MAPPING: Record<string, ModelResourceMapping> = {
   Product: {
     resourceType: "PRODUCT",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       // Products are children of the workspace
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Category: {
     resourceType: "CATEGORY",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Vendor: {
     resourceType: "VENDOR",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Location: {
     resourceType: "LOCATION",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Transfer: {
     resourceType: "TRANSFER",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Sale: {
     resourceType: "SALE",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   WebsiteOrder: {
     resourceType: "WEBSITE_ORDER",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   AbandonedCart: {
     resourceType: "ABANDONED_CART",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Deal: {
     resourceType: "DEAL",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, client: any) => {
       // Deal's parent is the Pipeline (if pipelineId is set), otherwise workspace
       if (entity.pipelineId) {
-        // TODO: fetch Pipeline's Resource
-        // For now, default to workspace
-        return getOrCreateWorkspaceResource(tenantId);
+        const pipeline = await fetchParentResource(
+          client,
+          tenantId,
+          "PIPELINE",
+          entity.pipelineId,
+        );
+        if (pipeline) return pipeline;
       }
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Contact: {
     resourceType: "CONTACT",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Lead: {
     resourceType: "LEAD",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Pipeline: {
     resourceType: "PIPELINE",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Workflow: {
     resourceType: "WORKFLOW",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Task: {
     resourceType: "TASK",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, _client: any) => {
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   Activity: {
     resourceType: "ACTIVITY",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, client: any) => {
       // Activity's parent is the Deal (if set), then Contact, else workspace
       if (entity.dealId) {
-        // TODO: fetch Deal's Resource
-        return getOrCreateWorkspaceResource(tenantId);
+        const deal = await fetchParentResource(
+          client,
+          tenantId,
+          "DEAL",
+          entity.dealId,
+        );
+        if (deal) return deal;
       }
       if (entity.contactId) {
-        // TODO: fetch Contact's Resource
-        return getOrCreateWorkspaceResource(tenantId);
+        const contact = await fetchParentResource(
+          client,
+          tenantId,
+          "CONTACT",
+          entity.contactId,
+        );
+        if (contact) return contact;
       }
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
   ContactNote: {
     resourceType: "CONTACT_NOTE",
-    parentLocator: async (entity: any, tenantId: string) => {
+    parentLocator: async (entity: any, tenantId: string, client: any) => {
       // ContactNote's parent is the Contact
-      // TODO: fetch Contact's Resource
+      if (entity.contactId) {
+        const contact = await fetchParentResource(
+          client,
+          tenantId,
+          "CONTACT",
+          entity.contactId,
+        );
+        if (contact) return contact;
+      }
+      // If contact Resource not found, fall back to workspace (with a warning)
+      logger.warn(
+        `ContactNote ${entity.id} has no parent Contact Resource`,
+        undefined,
+        {
+          tenantId,
+          contactId: entity.contactId,
+        },
+      );
       return getOrCreateWorkspaceResource(tenantId);
     },
   },
@@ -214,7 +294,11 @@ export const resourceAutoCreateExtension = Prisma.defineExtension((client) => {
           // Try to create the Resource row (non-fatal if it fails)
           try {
             const mapping = MODEL_RESOURCE_MAPPING[model]!;
-            const parent = await mapping.parentLocator(result, tenantId);
+            const parent = await mapping.parentLocator(
+              result,
+              tenantId,
+              client,
+            );
 
             // Use the base client to insert the Resource
             // (we're already in a transaction context if needed)
