@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-const optStr = (max: number) => z.string().trim().max(max).optional();
-
 /**
  * Product listing props — paginated product grid w/ sort + filters.
  */

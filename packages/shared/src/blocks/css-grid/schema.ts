@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
-
 /**
  * CSS Grid — advanced N-column grid layout (1–12 cols). Container block.
  */
