@@ -9,3 +9,4 @@
 export * from "./blocks";
 export * from "./nav";
 export * from "./theme";
+export * from "./templates";

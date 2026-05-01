@@ -165,7 +165,7 @@ export class SitesService {
       > | null;
       if (!existingTokens || input.resetBranding) {
         data.themeTokens =
-          blueprint.defaultThemeTokens as Prisma.InputJsonValue;
+          blueprint.defaultThemeTokens as unknown as Prisma.InputJsonValue;
       }
     }
 
