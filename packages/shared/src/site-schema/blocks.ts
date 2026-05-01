@@ -37,19 +37,13 @@ import type { ProductFiltersProps } from "../blocks/product-filters/schema";
 import type { BundleSpotlightProps } from "../blocks/bundle-spotlight/schema";
 import type { GiftCardRedeemProps } from "../blocks/gift-card-redeem/schema";
 import type { AnnouncementBarProps } from "../blocks/announcement-bar/schema";
-import type {
-  CollectionCardItem,
-  CollectionCardsProps,
-} from "../blocks/collection-cards/schema";
+import type { CollectionCardsProps } from "../blocks/collection-cards/schema";
 import type { TrustStripProps } from "../blocks/trust-strip/schema";
 import type { StorySplitProps } from "../blocks/story-split/schema";
 import type { BentoShowcaseProps } from "../blocks/bento-showcase/schema";
 import type { StatsBandProps } from "../blocks/stats-band/schema";
 import type { NewsletterProps } from "../blocks/newsletter/schema";
-import type {
-  PolicyItem,
-  PolicyStripProps,
-} from "../blocks/policy-strip/schema";
+import type { PolicyStripProps } from "../blocks/policy-strip/schema";
 import type { ContactBlockProps } from "../blocks/contact-block/schema";
 import type { FaqProps } from "../blocks/faq/schema";
 import type { TestimonialsProps } from "../blocks/testimonials/schema";
@@ -61,12 +55,8 @@ import type { PdpDetailsProps } from "../blocks/pdp-details/schema";
 import type { PdpRelatedProps } from "../blocks/pdp-related/schema";
 import type { BreadcrumbsProps } from "../blocks/breadcrumbs/schema";
 import type { ProductComparisonProps } from "../blocks/product-comparison/schema";
-import type {
-  LookbookPin,
-  LookbookScene,
-  LookbookProps,
-} from "../blocks/lookbook/schema";
-import type { SizeGuideRow, SizeGuideProps } from "../blocks/size-guide/schema";
+import type { LookbookProps } from "../blocks/lookbook/schema";
+import type { SizeGuideProps } from "../blocks/size-guide/schema";
 import type { RecentlyViewedProps } from "../blocks/recently-viewed/schema";
 import type { FbtProps } from "../blocks/fbt/schema";
 import type { ReviewsListProps } from "../blocks/reviews-list/schema";
@@ -75,7 +65,7 @@ import type { VideoProps } from "../blocks/video/schema";
 import type { AccordionProps } from "../blocks/accordion/schema";
 import type { GalleryProps } from "../blocks/gallery/schema";
 import type { TabsProps } from "../blocks/tabs/schema";
-import type { FormFieldDef, FormBlockProps } from "../blocks/form/schema";
+import type { FormBlockProps } from "../blocks/form/schema";
 import type { EmptyStateProps } from "../blocks/empty-state/schema";
 import type { CustomHtmlProps } from "../blocks/custom-html/schema";
 import type { NavBarProps } from "../blocks/nav-bar/schema";
