@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * CanvasOverlay — parent-side absolutely-positioned overlay used in
- * CROSS-ORIGIN iframe mode.
+ * CanvasOverlay — parent-side overlay used in CROSS-ORIGIN iframe mode.
  *
  * When the tenant-site is served from a different origin (e.g. custom domain
  * in production), PreviewFrame cannot portal the BlockOverlay into the iframe
@@ -16,9 +15,15 @@
  *
  * For SAME-ORIGIN iframes, the existing `BlockOverlay` portaled into the
  * iframe body is used instead — CanvasOverlay renders nothing in that case.
+ *
+ * Layout invariant: the overlay container is sized + positioned to match the
+ * iframe's bounding rect EXACTLY, with `overflow: hidden` so any outline that
+ * would extend past the iframe is clipped to the iframe's visible viewport.
+ * The container's rect is recomputed reactively on iframe scroll, parent
+ * scroll, window resize, and ResizeObserver — all rAF-throttled.
  */
 
-import { type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   selectHoveredBlockRect,
   selectSelectedBlockRect,
@@ -33,45 +38,113 @@ interface Props {
   iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
+interface IframeBox {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+const ZERO_BOX: IframeBox = { top: 0, left: 0, width: 0, height: 0 };
+
+/**
+ * Track the iframe's bounding rect reactively. Returns the latest rect, kept
+ * in sync via `requestAnimationFrame`-throttled listeners on:
+ *   - parent window scroll  (sticky/scrollable editor frames)
+ *   - parent window resize  (responsive layouts)
+ *   - ResizeObserver(iframe) (DevTools docked, parent layout shifts)
+ *   - iframe contentWindow scroll (catches in-iframe scroll for completeness;
+ *     not strictly required — we clip with overflow: hidden — but keeps
+ *     hover/selection rects stable when the user scrolls inside the iframe)
+ */
+function useIframeBox(
+  iframeRef: RefObject<HTMLIFrameElement | null>,
+): IframeBox {
+  const [box, setBox] = useState<IframeBox>(ZERO_BOX);
+  const rafRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const el = iframeRef.current;
+    if (!el) return;
+
+    const recompute = () => {
+      rafRef.current = null;
+      const r = el.getBoundingClientRect();
+      setBox((prev) =>
+        prev.top === r.top &&
+        prev.left === r.left &&
+        prev.width === r.width &&
+        prev.height === r.height
+          ? prev
+          : { top: r.top, left: r.left, width: r.width, height: r.height },
+      );
+    };
+
+    const schedule = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = window.requestAnimationFrame(recompute);
+    };
+
+    // Initial measure
+    recompute();
+
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
+
+    const ro = new ResizeObserver(schedule);
+    ro.observe(el);
+
+    // Best-effort iframe-scroll listener (same-origin only; cross-origin will
+    // throw on access — caught and ignored).
+    let iframeWin: Window | null = null;
+    try {
+      iframeWin = el.contentWindow ?? null;
+      iframeWin?.addEventListener("scroll", schedule, true);
+    } catch {
+      iframeWin = null;
+    }
+
+    return () => {
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+      ro.disconnect();
+      try {
+        iframeWin?.removeEventListener("scroll", schedule, true);
+      } catch {
+        /* ignore cross-origin */
+      }
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [iframeRef]);
+
+  return box;
+}
+
 export function CanvasOverlay({ iframeRef }: Props) {
   const hoveredRect = useEditorStore(selectHoveredBlockRect);
   const selectedRect = useEditorStore(selectSelectedBlockRect);
+  const ifBox = useIframeBox(iframeRef);
 
   // Nothing to show — skip rendering entirely.
   if (!hoveredRect && !selectedRect) return null;
-
-  const iframeEl = iframeRef.current;
-  if (!iframeEl) return null;
-
-  // Iframe's bounding rect in parent-document space.
-  // getBoundingClientRect() is safe to call in render for read-only use.
-  const ifBounds = iframeEl.getBoundingClientRect();
-
-  /**
-   * Translates an iframe-document rect to parent-document `position: fixed`
-   * coordinates.
-   */
-  function toFixed(rect: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }) {
-    return {
-      top: ifBounds.top + rect.y,
-      left: ifBounds.left + rect.x,
-      width: rect.width,
-      height: rect.height,
-    };
-  }
+  if (ifBox.width === 0 || ifBox.height === 0) return null;
 
   return (
-    // Use `position: fixed` so the outlines are always in the viewport
-    // regardless of any scroll on the parent page.
+    // The container is sized + positioned to match the iframe's bounding rect
+    // exactly. `overflow: hidden` clips any child outline that would extend
+    // past the iframe's visible viewport, so a tall block's selection ring
+    // never bleeds onto the editor chrome.
     <div
       style={{
         position: "fixed",
-        inset: 0,
+        top: ifBox.top,
+        left: ifBox.left,
+        width: ifBox.width,
+        height: ifBox.height,
+        overflow: "hidden",
         pointerEvents: "none",
         zIndex: 50,
       }}
@@ -81,7 +154,10 @@ export function CanvasOverlay({ iframeRef }: Props) {
         <div
           style={{
             position: "absolute",
-            ...toFixed(hoveredRect),
+            top: hoveredRect.y,
+            left: hoveredRect.x,
+            width: hoveredRect.width,
+            height: hoveredRect.height,
             outline: "1.5px dashed oklch(0.62 0.08 150 / 0.55)",
             outlineOffset: -1,
           }}
@@ -91,7 +167,10 @@ export function CanvasOverlay({ iframeRef }: Props) {
         <div
           style={{
             position: "absolute",
-            ...toFixed(selectedRect),
+            top: selectedRect.y,
+            left: selectedRect.x,
+            width: selectedRect.width,
+            height: selectedRect.height,
             outline: "2px solid oklch(0.62 0.08 150)",
             outlineOffset: 0,
           }}

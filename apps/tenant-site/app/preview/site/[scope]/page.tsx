@@ -19,7 +19,9 @@ import { EditorPreviewShell } from "@/components/blocks/EditorPreviewShell";
 import { EditorBridge } from "@/components/editor-bridge";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
-import type { BlockNode } from "@repo/shared";
+import { ThemeTokensSchema, type BlockNode } from "@repo/shared";
+import { brandingToCssVars, brandingTheme } from "@/lib/theme";
+import { themeTokensToCssVars } from "@/lib/theme-tokens";
 import type {
   PublicCategory,
   PublicNavPage,
@@ -58,6 +60,7 @@ interface SitePreviewApiResponse {
   } | null;
   site: {
     branding: unknown;
+    themeTokens: unknown;
     contact: unknown;
     features: unknown;
     seo: unknown;
@@ -221,6 +224,25 @@ export default async function SitePreviewRoute({
     businessProfile: result.site.businessProfile,
   };
 
+  // Mirror app/layout.tsx (96–108): prefer structured themeTokens; fall back
+  // to legacy branding so a corrupted tokens payload doesn't blank the
+  // preview. Vars are applied on a wrapper div (the root layout owns <html>
+  // for preview routes), and CSS uses var(--…) lookups that resolve up.
+  let cssVars: Record<string, string>;
+  let theme: string;
+  const parsedTokens = ThemeTokensSchema.safeParse(result.site.themeTokens);
+  if (parsedTokens.success) {
+    cssVars = themeTokensToCssVars(parsedTokens.data);
+    theme = parsedTokens.data.mode === "dark" ? "dark" : "light";
+  } else {
+    cssVars = brandingToCssVars(
+      result.site.branding as Record<string, unknown> | null,
+    );
+    theme = brandingTheme(
+      result.site.branding as Record<string, unknown> | null,
+    );
+  }
+
   const blocks =
     result.draftLayout && Array.isArray(result.draftLayout.blocks)
       ? (result.draftLayout.blocks as BlockNode[])
@@ -245,7 +267,10 @@ export default async function SitePreviewRoute({
   };
 
   return (
-    <>
+    <div
+      data-theme={theme}
+      style={{ ...(cssVars as React.CSSProperties), minHeight: "100vh" }}
+    >
       {showGrid && <GridOverlay />}
       <PreviewBanner scope={scope} />
       {/*
@@ -285,7 +310,7 @@ export default async function SitePreviewRoute({
         host={dataContext.host}
         navPages={result.navPages}
       />
-    </>
+    </div>
   );
 }
 

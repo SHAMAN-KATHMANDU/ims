@@ -63,6 +63,12 @@ export interface SitePreviewResponse {
   } | null;
   site: {
     branding: unknown;
+    /**
+     * Structured design tokens (Phase 7+). Preferred by the renderer over
+     * the legacy `branding` JSON when present. Surfaced here so the editor
+     * preview applies the same theme as the published site.
+     */
+    themeTokens: unknown;
     contact: unknown;
     features: unknown;
     seo: unknown;
@@ -195,6 +201,7 @@ export class PublicSitePreviewService {
       draftLayout,
       site: {
         branding: config.branding,
+        themeTokens: config.themeTokens,
         contact: config.contact,
         features: config.features,
         seo: config.seo,
