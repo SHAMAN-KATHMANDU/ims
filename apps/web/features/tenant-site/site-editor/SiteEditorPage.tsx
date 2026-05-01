@@ -49,6 +49,9 @@ import { DomainPanel } from "./DomainPanel";
 import { Confetti } from "./Confetti";
 import { EditorTopBar } from "./EditorTopBar";
 import { EmptyCanvas } from "./EmptyCanvas";
+import { SlashMenu } from "./SlashMenu";
+import { useEditorKeyboard } from "./use-editor-keyboard";
+import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import {
   OverviewPanel,
   BrandingPanel,
@@ -91,6 +94,10 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // ---- Notion-style chrome (slash menu + keyboard) — gated by env flag ----
+  const notionChromeEnabled = useEnvFeatureFlag(EnvFeature.NOTION_STYLE_EDITOR);
+  useEditorKeyboard(notionChromeEnabled);
 
   // ---- Target (scope + optional pageId) ----
   const initialTarget: EditorTarget = useMemo(() => {
@@ -702,6 +709,14 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
             </div>
           </div>
         </>
+      )}
+
+      {/* Notion-style slash-menu inserter — gated by EnvFeature flag. */}
+      {notionChromeEnabled && (
+        <SlashMenu
+          scope={scope}
+          onInsert={(entry) => toast({ title: `Inserted ${entry.label}` })}
+        />
       )}
     </div>
   );

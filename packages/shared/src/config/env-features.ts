@@ -71,6 +71,14 @@ export enum EnvFeature {
    * development + staging while the feature is being validated.
    */
   TENANT_WEBSITES = "TENANT_WEBSITES",
+  /**
+   * Notion-style site editor chrome: per-block drag handles, four-edge drop
+   * indicators (top/bottom = sibling, left/right = wrap-in-row, center =
+   * insert-into-container), slash menu, gutter "+" buttons. The underlying
+   * tree-mutation primitives + drop-zone geometry ship unflagged; only the
+   * visible chrome is gated.
+   */
+  NOTION_STYLE_EDITOR = "NOTION_STYLE_EDITOR",
 }
 
 /**
@@ -119,6 +127,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    NOTION_STYLE_EDITOR: true,
   },
   staging: {
     CRM: true,
@@ -161,6 +170,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    NOTION_STYLE_EDITOR: true,
   },
   "staging-production": {
     CRM: true,
@@ -203,6 +213,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: false,
+    NOTION_STYLE_EDITOR: false,
   },
   production: {
     CRM: true,
@@ -245,6 +256,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: false,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    NOTION_STYLE_EDITOR: false,
   },
 };
 
