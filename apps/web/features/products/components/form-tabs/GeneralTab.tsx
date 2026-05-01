@@ -31,9 +31,8 @@ import {
   IndianRupee,
 } from "lucide-react";
 import { MrpBelowCostConfirmDialog } from "../dialogs/MrpBelowCostConfirmDialog";
-import type { ProductFormValues } from "../types";
+import type { ProductFormValues, UseFormReturn } from "../types";
 import type { Category } from "@/features/products";
-import type { UseFormReturn } from "@/hooks/useForm";
 import { useVendorsPaginated } from "@/features/vendors";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { useCategorySubcategories } from "@/features/products";
