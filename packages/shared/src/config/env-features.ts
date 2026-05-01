@@ -71,6 +71,12 @@ export enum EnvFeature {
    * development + staging while the feature is being validated.
    */
   TENANT_WEBSITES = "TENANT_WEBSITES",
+  /**
+   * Public Data API: tenant-issued, domain-verified API keys that allow
+   * third-party frontends to read tenant data (products, blog, catalog,
+   * locations, site layouts) at /public/v1/*. Read-only and rate-limited.
+   */
+  PUBLIC_DATA_API = "PUBLIC_DATA_API",
 }
 
 /**
@@ -119,6 +125,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    PUBLIC_DATA_API: true,
   },
   staging: {
     CRM: true,
@@ -161,6 +168,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    PUBLIC_DATA_API: true,
   },
   "staging-production": {
     CRM: true,
@@ -203,6 +211,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: true,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: false,
+    PUBLIC_DATA_API: false,
   },
   production: {
     CRM: true,
@@ -245,6 +254,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MESSAGING: false,
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
+    PUBLIC_DATA_API: false,
   },
 };
 

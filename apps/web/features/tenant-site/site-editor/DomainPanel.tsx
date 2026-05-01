@@ -11,6 +11,7 @@ import {
   useDeleteMyDomain,
   type TenantDomain,
 } from "../../sites/hooks/use-my-domains";
+import { PublicApiKeysSection } from "@/features/public-api-keys";
 
 export function DomainPanel() {
   const [addOpen, setAddOpen] = useState(false);
@@ -122,6 +123,12 @@ export function DomainPanel() {
           <Plus size={12} />
           Add domain
         </button>
+
+        {/* Public API keys — bound to verified domains above. Hidden when
+            EnvFeature.PUBLIC_DATA_API is off. */}
+        <div className="-mx-3 mt-4 border-t border-border">
+          <PublicApiKeysSection />
+        </div>
       </div>
       {/* No tenantId — uses the tenant-self API (/tenants/me/domains) */}
       <AddDomainDialog open={addOpen} onOpenChange={setAddOpen} />

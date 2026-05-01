@@ -79,6 +79,8 @@ import giftCardRouter, {
 import permissionsRouter from "@/modules/permissions/permissions.router";
 import tenantRouter from "@/modules/tenants/tenant.router";
 import businessProfileRouter from "@/modules/business-profile/business-profile.router";
+import publicApiKeysRouter from "@/modules/public-api-keys/public-api-keys.router";
+import publicDataApiRouter from "@/modules/public-data-api/public-data-api.router";
 
 const router = Router();
 
@@ -112,6 +114,14 @@ router.use("/auth", authRouter);
 // ============================================
 router.use("/public/preview/page", publicPagePreviewRouter);
 router.use("/public/preview/site", publicSitePreviewRouter);
+
+// ============================================
+// Public Data API (no JWT; tenant resolved from API key + Origin pinning)
+// Mounted BEFORE the hostname-based public surface so /public/v1/* never
+// falls through to resolveTenantFromHostname.
+// ============================================
+router.use("/public/v1", publicDataApiRouter);
+
 router.use("/public", publicSiteRouter);
 router.use("/public/blog", publicBlogRouter);
 router.use("/public/pages", publicPagesRouter);
@@ -184,5 +194,6 @@ router.use("/gift-cards", giftCardRouter);
 router.use("/permissions", permissionsRouter);
 router.use("/roles", permissionsRouter);
 router.use("/tenants", tenantRouter);
+router.use("/public-api-keys", publicApiKeysRouter);
 
 export default router;
