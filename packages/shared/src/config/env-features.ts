@@ -72,6 +72,14 @@ export enum EnvFeature {
    */
   TENANT_WEBSITES = "TENANT_WEBSITES",
   /**
+   * Notion-style site editor chrome: per-block drag handles, four-edge drop
+   * indicators (top/bottom = sibling, left/right = wrap-in-row, center =
+   * insert-into-container), slash menu, gutter "+" buttons. The underlying
+   * tree-mutation primitives + drop-zone geometry ship unflagged; only the
+   * visible chrome is gated.
+   */
+  NOTION_STYLE_EDITOR = "NOTION_STYLE_EDITOR",
+  /**
    * Public Data API: tenant-issued, domain-verified API keys that allow
    * third-party frontends to read tenant data (products, blog, catalog,
    * locations, site layouts) at /public/v1/*. Read-only and rate-limited.
@@ -126,6 +134,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
+    NOTION_STYLE_EDITOR: true,
   },
   staging: {
     CRM: true,
@@ -169,6 +178,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
+    NOTION_STYLE_EDITOR: true,
   },
   "staging-production": {
     CRM: true,
@@ -212,6 +222,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
+    NOTION_STYLE_EDITOR: true,
   },
   production: {
     CRM: true,
@@ -255,6 +266,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     MEDIA_UPLOAD: true,
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: false,
+    NOTION_STYLE_EDITOR: false,
   },
 };
 
