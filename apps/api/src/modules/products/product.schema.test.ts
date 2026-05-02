@@ -9,6 +9,9 @@ import {
   GetListQuerySchema,
   GetProductDiscountsListQuerySchema,
   excelProductRowSchema,
+  CreateProductTagSchema,
+  UpdateProductTagSchema,
+  ListProductTagsQuerySchema,
 } from "./product.schema";
 
 const minimalValidProduct = {
@@ -373,5 +376,106 @@ describe("excelProductRowSchema (bulk upload)", () => {
       finalSP: 20,
     });
     expect(result.quantity).toBe(5);
+  });
+});
+
+describe("CreateProductSchema — tagIds", () => {
+  it("accepts an array of UUID tag ids", () => {
+    const r = CreateProductSchema.safeParse({
+      ...minimalValidProduct,
+      tagIds: [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "550e8400-e29b-41d4-a716-446655440001",
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("accepts omitted tagIds", () => {
+    const r = CreateProductSchema.safeParse(minimalValidProduct);
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects non-UUID tag ids", () => {
+    const r = CreateProductSchema.safeParse({
+      ...minimalValidProduct,
+      tagIds: ["not-a-uuid"],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("UpdateProductSchema — tagIds", () => {
+  it("accepts empty tagIds array (clears all)", () => {
+    const r = UpdateProductSchema.safeParse({ tagIds: [] });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects non-UUID tag ids", () => {
+    const r = UpdateProductSchema.safeParse({ tagIds: ["nope"] });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("CreateProductTagSchema", () => {
+  it("accepts a valid name", () => {
+    expect(CreateProductTagSchema.safeParse({ name: "Sale" }).success).toBe(
+      true,
+    );
+  });
+
+  it("trims whitespace", () => {
+    const r = CreateProductTagSchema.parse({ name: "  Sale  " });
+    expect(r.name).toBe("Sale");
+  });
+
+  it("rejects empty after trim", () => {
+    expect(CreateProductTagSchema.safeParse({ name: "   " }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects names longer than 100 chars", () => {
+    expect(
+      CreateProductTagSchema.safeParse({ name: "a".repeat(101) }).success,
+    ).toBe(false);
+  });
+});
+
+describe("UpdateProductTagSchema", () => {
+  it("accepts a valid name", () => {
+    expect(UpdateProductTagSchema.safeParse({ name: "Renamed" }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects missing name", () => {
+    expect(UpdateProductTagSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("ListProductTagsQuerySchema", () => {
+  it("accepts page + limit + search", () => {
+    const r = ListProductTagsQuerySchema.parse({
+      page: "2",
+      limit: "10",
+      search: "  pro  ",
+    });
+    expect(r.page).toBe(2);
+    expect(r.limit).toBe(10);
+    expect(r.search).toBe("pro");
+  });
+
+  it("accepts an empty query (all undefined)", () => {
+    const r = ListProductTagsQuerySchema.parse({});
+    expect(r.page).toBeUndefined();
+    expect(r.limit).toBeUndefined();
+    expect(r.search).toBeUndefined();
+  });
+
+  it("rejects limit > 100", () => {
+    expect(ListProductTagsQuerySchema.safeParse({ limit: "999" }).success).toBe(
+      false,
+    );
   });
 });

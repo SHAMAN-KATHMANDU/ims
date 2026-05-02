@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import ExcelJS from "exceljs";
 import fs from "fs";
 import type { AppError } from "@/middlewares/errorHandler";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import {
   processProductBulkRows,
   buildProductBulkTemplate,
@@ -25,6 +26,9 @@ import {
   GetListQuerySchema,
   GetProductDiscountsListQuerySchema,
   getProductBulkParseOptions,
+  CreateProductTagSchema,
+  UpdateProductTagSchema,
+  ListProductTagsQuerySchema,
 } from "./product.schema";
 import { parseBulkFile, type ValidationError } from "@/utils/bulkParse";
 import { logger } from "@/config/logger";
@@ -788,6 +792,84 @@ class ProductController {
         error,
         "Download discount template error",
       );
+    }
+  };
+
+  // ─── ProductTag handlers (internal-only — never reaches /public/*) ──────
+
+  getTags = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const parsed = ListProductTagsQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const usePagination = data?.page != null && data?.limit != null;
+      const query = usePagination
+        ? { page: data!.page!, limit: data!.limit!, search: data!.search }
+        : data?.search
+          ? { search: data.search }
+          : undefined;
+      const result = await productService.getTags(tenantId, query);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get product tags error");
+    }
+  };
+
+  createTag = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { name } = CreateProductTagSchema.parse(req.body);
+      const { tag, created } = await productService.createTag(tenantId, name);
+      return res
+        .status(created ? 201 : 200)
+        .json({ message: created ? "Tag created" : "OK", tag });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return sendControllerError(req, res, error, "Create product tag error");
+    }
+  };
+
+  updateTag = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { name } = UpdateProductTagSchema.parse(req.body);
+      const tagId = Array.isArray(req.params.tagId)
+        ? req.params.tagId[0]
+        : req.params.tagId;
+      const tag = await productService.updateTag(tenantId, tagId, name);
+      return res.status(200).json({ message: "OK", tag });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Update product tag error");
+    }
+  };
+
+  deleteTag = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const tagId = Array.isArray(req.params.tagId)
+        ? req.params.tagId[0]
+        : req.params.tagId;
+      await productService.deleteTag(tenantId, tagId);
+      return res.status(200).json({ message: "Tag deleted" });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Delete product tag error");
     }
   };
 }

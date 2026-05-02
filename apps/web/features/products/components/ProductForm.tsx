@@ -22,6 +22,7 @@ import {
 import { GeneralTab } from "./form-tabs/GeneralTab";
 import { VariationsTab } from "./form-tabs/VariationsTab";
 import { DiscountsTab } from "./form-tabs/DiscountsTab";
+import { ProductTagPicker } from "./ProductTagPicker";
 import type {
   ProductFormValues,
   ProductVariationForm,
@@ -44,6 +45,9 @@ interface ProductFormProps {
   attributeTypes?: AttributeType[];
   productAttributeTypeIds?: string[];
   onProductAttributeTypeIdsChange?: (ids: string[]) => void;
+  /** Selected tag ids — internal-only, never sent to /public/* surfaces. */
+  productTagIds?: string[];
+  onProductTagIdsChange?: (ids: string[]) => void;
   defaultLocationId?: string;
   onDefaultLocationChange?: (locationId: string | undefined) => void;
   onReset: () => void;
@@ -91,6 +95,8 @@ export function ProductForm({
   attributeTypes = [],
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
+  productTagIds = [],
+  onProductTagIdsChange,
   defaultLocationId,
   onDefaultLocationChange,
   onReset,
@@ -287,6 +293,12 @@ export function ProductForm({
               mrpBelowCpAccepted={mrpBelowCpAccepted}
               onMrpBelowCpAcceptedChange={onMrpBelowCpAcceptedChange}
             />
+            {onProductTagIdsChange && (
+              <ProductTagPicker
+                value={productTagIds}
+                onChange={onProductTagIdsChange}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="variations" className="space-y-4 mt-4">

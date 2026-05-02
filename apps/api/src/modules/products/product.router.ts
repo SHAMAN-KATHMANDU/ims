@@ -158,6 +158,122 @@ productRouter.post(
   asyncHandler(productController.createProduct),
 );
 
+// ─── Product tags (internal-only — JWT-gated; never reaches /public/*) ──────
+//
+// These MUST be registered before any "/:id" route below; otherwise
+// `/products/tags` would dispatch to the by-id handler with id="tags".
+//
+// Permissions piggy-back on the catalog category permissions: anyone with
+// CATEGORIES.{VIEW,CREATE,UPDATE,DELETE} can manage tags too — same trust
+// model as the existing category settings.
+
+/**
+ * @swagger
+ * /products/tags:
+ *   get:
+ *     summary: List product tags for the calling tenant
+ *     tags: [Products]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Tags list (paginated when page+limit provided) }
+ */
+productRouter.get(
+  "/tags",
+  requirePermission("INVENTORY.CATEGORIES.VIEW", workspaceLocator()),
+  asyncHandler(productController.getTags),
+);
+
+/**
+ * @swagger
+ * /products/tags:
+ *   post:
+ *     summary: Create a product tag (or no-op if a tag with the same name already exists)
+ *     tags: [Products]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string, maxLength: 100 }
+ *     responses:
+ *       201: { description: Tag created }
+ *       200: { description: Tag with this name already existed (idempotent) }
+ *       400: { description: Validation error }
+ */
+productRouter.post(
+  "/tags",
+  requirePermission("INVENTORY.CATEGORIES.CREATE", workspaceLocator()),
+  asyncHandler(productController.createTag),
+);
+
+/**
+ * @swagger
+ * /products/tags/{tagId}:
+ *   patch:
+ *     summary: Rename a product tag
+ *     tags: [Products]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string, maxLength: 100 }
+ *     responses:
+ *       200: { description: Tag renamed }
+ *       400: { description: Validation error }
+ *       404: { description: Tag not found }
+ */
+productRouter.patch(
+  "/tags/:tagId",
+  requirePermission("INVENTORY.CATEGORIES.UPDATE", workspaceLocator()),
+  asyncHandler(productController.updateTag),
+);
+
+/**
+ * @swagger
+ * /products/tags/{tagId}:
+ *   delete:
+ *     summary: Delete a product tag (cascades to its tag links)
+ *     tags: [Products]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: tagId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Tag deleted }
+ *       404: { description: Tag not found }
+ */
+productRouter.delete(
+  "/tags/:tagId",
+  requirePermission("INVENTORY.CATEGORIES.DELETE", workspaceLocator()),
+  asyncHandler(productController.deleteTag),
+);
+
 /**
  * @swagger
  * /products:

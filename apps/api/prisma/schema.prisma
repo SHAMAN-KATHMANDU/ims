@@ -54,6 +54,7 @@ model Tenant {
   payments              TenantPayment[]
   attributeTypes        AttributeType[]
   productVariations     ProductVariation[]
+  productTags           ProductTag[]
 
   // CRM relations
   companies             Company[]
@@ -843,8 +844,36 @@ model Product {
   dealLineItems         DealLineItem[]
   collections           ProductCollection[]
   reviews               ProductReview[]
+  tagLinks              ProductTagLink[]
 
   @@map("products")
+}
+
+/// Tenant-scoped, free-text tags attached to Products. Internal-only — never
+/// surfaced via /public/* or /public/v1/* endpoints. Mirrors ContactTag.
+model ProductTag {
+  id        String   @id @default(uuid()) @map("tag_id")
+  tenantId  String   @map("tenant_id")
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products ProductTagLink[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("product_tags")
+}
+
+model ProductTagLink {
+  productId String @map("product_id")
+  tagId     String @map("tag_id")
+
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@map("product_tag_links")
 }
 
 // ============================================

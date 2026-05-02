@@ -298,6 +298,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const [productDiscounts, setProductDiscounts] = useState<
     ProductDiscountForm[]
   >([]);
+  const [productTagIds, setProductTagIds] = useState<string[]>([]);
   const [mrpBelowCpAccepted, setMrpBelowCpAccepted] = useState(false);
 
   // Fetch discount types
@@ -441,6 +442,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         if (imsTrim) {
           data.imsCode = imsTrim;
         }
+        // Tag ids — always sent (empty array clears links on update). Internal-only.
+        data.tagIds = productTagIds;
 
         if (isEditing) {
           data.variations = productVariations.map((v) => ({
@@ -537,6 +540,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         setEditingProduct(null);
         setProductVariations([]);
         setProductDiscounts([]);
+        setProductTagIds([]);
         productForm.reset();
       } catch (error: unknown) {
         const err = error as {
@@ -659,6 +663,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       setProductDiscounts([]);
     }
 
+    // Hydrate the tag picker from `tagLinks` (admin-only field).
+    setProductTagIds((product.tagLinks ?? []).map((link) => link.tag.id));
+
     setProductDialog(true);
   };
 
@@ -666,6 +673,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setEditingProduct(null);
     setProductVariations([]);
     setProductDiscounts([]);
+    setProductTagIds([]);
     setMrpBelowCpAccepted(false);
     productForm.reset();
   };
@@ -978,6 +986,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 validateProduct={validateProduct}
                 mrpBelowCpAccepted={mrpBelowCpAccepted}
                 onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
+                productTagIds={productTagIds}
+                onProductTagIdsChange={setProductTagIds}
               />
             )}
           </div>

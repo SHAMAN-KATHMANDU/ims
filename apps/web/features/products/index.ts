@@ -22,6 +22,7 @@ export { CategoriesPage } from "./components/CategoriesPage";
 export { CatalogPage } from "./components/CatalogPage";
 export { DiscountsPage } from "./components/DiscountsPage";
 export { AttributeTypesPage } from "./components/AttributeTypesPage";
+export { ProductTagsPage } from "./components/ProductTagsPage";
 export { ProductBulkUploadPage } from "./components/ProductBulkUploadPage";
 
 export {

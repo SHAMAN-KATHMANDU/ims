@@ -9,6 +9,12 @@ const mockFindProductForUpdate = vi.fn();
 const mockSoftDeleteProduct = vi.fn();
 const mockGetLowStockVariationIds = vi.fn();
 const mockFindAllProductsByTotalStock = vi.fn();
+const mockFindTags = vi.fn();
+const mockFindTagsPaginated = vi.fn();
+const mockCountTags = vi.fn();
+const mockCreateTag = vi.fn();
+const mockUpdateTag = vi.fn();
+const mockDeleteTag = vi.fn();
 
 const mockRepo = {
   findProductById: mockFindProductById,
@@ -16,6 +22,12 @@ const mockRepo = {
   softDeleteProduct: mockSoftDeleteProduct,
   getLowStockVariationIds: mockGetLowStockVariationIds,
   findAllProductsByTotalStock: mockFindAllProductsByTotalStock,
+  findTags: mockFindTags,
+  findTagsPaginated: mockFindTagsPaginated,
+  countTags: mockCountTags,
+  createTag: mockCreateTag,
+  updateTag: mockUpdateTag,
+  deleteTag: mockDeleteTag,
 } as unknown as ProductRepository;
 
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
@@ -208,6 +220,87 @@ describe("ProductService", () => {
       );
       expect(result.data).toHaveLength(1);
       expect(result.pagination.totalItems).toBe(1);
+    });
+  });
+
+  describe("getTags", () => {
+    it("returns the unpaginated list when page/limit are absent", async () => {
+      mockFindTags.mockResolvedValue([
+        { id: "t1", name: "Sale", createdAt: new Date() },
+      ]);
+      const result = await productService.getTags("tenant-1");
+      expect(mockFindTags).toHaveBeenCalledWith("tenant-1");
+      expect(mockFindTagsPaginated).not.toHaveBeenCalled();
+      expect(result.tags).toHaveLength(1);
+      expect("pagination" in result).toBe(false);
+    });
+
+    it("returns paginated tags when page+limit are provided", async () => {
+      mockFindTagsPaginated.mockResolvedValue([
+        { id: "t1", name: "Sale", createdAt: new Date() },
+        { id: "t2", name: "New", createdAt: new Date() },
+      ]);
+      mockCountTags.mockResolvedValue(2);
+      const result = await productService.getTags("tenant-1", {
+        page: 1,
+        limit: 10,
+        search: "sa",
+      });
+      expect(mockFindTagsPaginated).toHaveBeenCalledWith(
+        "tenant-1",
+        0,
+        10,
+        "sa",
+      );
+      expect(mockCountTags).toHaveBeenCalledWith("tenant-1", "sa");
+      expect("pagination" in result).toBe(true);
+    });
+  });
+
+  describe("createTag", () => {
+    it("delegates to repo and surfaces { tag, created } shape", async () => {
+      mockCreateTag.mockResolvedValue({
+        tag: { id: "t1", name: "Sale" },
+        created: true,
+      });
+      const result = await productService.createTag("tenant-1", "Sale");
+      expect(mockCreateTag).toHaveBeenCalledWith("tenant-1", "Sale");
+      expect(result.created).toBe(true);
+    });
+  });
+
+  describe("updateTag", () => {
+    it("returns the updated tag on success", async () => {
+      mockUpdateTag.mockResolvedValue({ id: "t1", name: "Renamed" });
+      const result = await productService.updateTag(
+        "tenant-1",
+        "t1",
+        "Renamed",
+      );
+      expect(result.name).toBe("Renamed");
+    });
+
+    it("throws 404 when repo returns null", async () => {
+      mockUpdateTag.mockResolvedValue(null);
+      await expect(
+        productService.updateTag("tenant-1", "missing", "Whatever"),
+      ).rejects.toMatchObject(createError("Tag not found", 404));
+    });
+  });
+
+  describe("deleteTag", () => {
+    it("throws 404 when repo returns null", async () => {
+      mockDeleteTag.mockResolvedValue(null);
+      await expect(
+        productService.deleteTag("tenant-1", "missing"),
+      ).rejects.toMatchObject(createError("Tag not found", 404));
+    });
+
+    it("resolves silently on success", async () => {
+      mockDeleteTag.mockResolvedValue({ id: "t1", name: "Sale" });
+      await expect(
+        productService.deleteTag("tenant-1", "t1"),
+      ).resolves.toBeUndefined();
     });
   });
 });
