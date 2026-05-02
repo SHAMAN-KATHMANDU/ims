@@ -13,6 +13,15 @@ export {
 } from "./hooks/use-tenant-domains";
 
 export {
+  useMyDomains,
+  useAddMyDomain,
+  useDeleteMyDomain,
+  useMyDomainVerificationInstructions,
+  useVerifyMyDomain,
+  myDomainKeys,
+} from "./hooks/use-my-domains";
+
+export {
   useTenantSiteConfig,
   useEnableTenantWebsite,
   useDisableTenantWebsite,

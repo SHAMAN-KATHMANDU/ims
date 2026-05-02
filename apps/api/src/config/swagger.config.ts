@@ -63,6 +63,13 @@ const swaggerDefinition: SwaggerDefinition = {
         bearerFormat: "JWT",
         description: "Enter JWT token obtained from /auth/login endpoint",
       },
+      apiKeyAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "pk_live_...",
+        description:
+          "Public Data API key. Enter `pk_live_<id>_<secret>` (issued via /public-api-keys). Requests must also include an `Origin` header matching the verified domain bound to the key.",
+      },
     },
     schemas: {
       Error: {
@@ -1043,6 +1050,16 @@ const swaggerDefinition: SwaggerDefinition = {
     {
       name: "Permissions - Effective",
       description: "Resolve effective permissions for the current user",
+    },
+    {
+      name: "PublicApiKeys",
+      description:
+        "Tenant-issued public API keys bound to verified domains (admin CRUD; JWT-auth)",
+    },
+    {
+      name: "PublicDataApi",
+      description:
+        "Read-only public data endpoints under /public/v1/* — authenticated by tenant API key + Origin pinning",
     },
   ],
 };

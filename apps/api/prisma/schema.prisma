@@ -86,6 +86,10 @@ model Tenant {
   domains    TenantDomain[]
   siteConfig SiteConfig?
 
+  // Public Data API: domain-verified read-only keys issued to tenants for
+  // third-party frontends running on their own infrastructure.
+  publicApiKeys TenantApiKey[]
+
   // Blog relations
   blogPosts      BlogPost[]
   blogCategories BlogCategory[]
@@ -120,14 +124,14 @@ model Tenant {
   giftCards GiftCard[]
 
   // RBAC relations
-  rbacRoles           RbacRole[]
-  userRoles           UserRole[]
-  resources           Resource[]
+  rbacRoles            RbacRole[]
+  userRoles            UserRole[]
+  resources            Resource[]
   permissionOverwrites PermissionOverwrite[]
 
   // Single-source-of-truth identity (logo, contact, address, tax IDs).
   // Website renderer + receipts + invoices all read from here.
-  businessProfile     TenantBusinessProfile?
+  businessProfile TenantBusinessProfile?
 
   // URL redirect rules (301/302) evaluated by the tenant-site middleware.
   tenantRedirects TenantRedirect[]
@@ -154,9 +158,42 @@ model TenantDomain {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Public Data API keys bound to this verified domain.
+  publicApiKeys TenantApiKey[]
+
   @@index([tenantId])
   @@index([appType])
   @@map("tenant_domains")
+}
+
+/// Public Data API key — a tenant-issued credential that lets a third-party
+/// frontend call the read-only `/public/v1/*` surface from a domain the
+/// tenant has already verified via DNS TXT record.
+///
+/// The full key string (`pk_live_<8hex>_<32hex>`) is shown once at creation;
+/// only the prefix (lookup id) and a bcrypt hash of the secret half are
+/// persisted. CORS for /public/v1/* requests is pinned to the bound
+/// `tenantDomain.hostname`.
+model TenantApiKey {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  tenantDomainId  String    @map("tenant_domain_id")
+  name            String // user-given label, e.g. "shop.acme.com production"
+  prefix          String    @unique // public lookup id, e.g. "pk_live_a1b2c3d4"
+  hash            String // bcryptjs hash of the secret half
+  last4           String // last 4 chars of secret, for UI display
+  scopes          String[]  @default([]) // future-proof; ignored v1 (all GET)
+  rateLimitPerMin Int       @default(120) @map("rate_limit_per_min")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  revokedAt       DateTime? @map("revoked_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantDomain TenantDomain @relation(fields: [tenantDomainId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantDomainId])
+  @@map("tenant_api_keys")
 }
 
 enum TenantDomainApp {
@@ -632,7 +669,7 @@ model User {
   tenantId    String    @map("tenant_id")
   username    String
   password    String
-  role        Role   @default(user)
+  role        Role      @default(user)
   lastLoginAt DateTime? @map("last_login_at")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -2826,9 +2863,9 @@ model RbacRole {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users       UserRole[]
-  overwrites  PermissionOverwrite[]
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users      UserRole[]
+  overwrites PermissionOverwrite[]
 
   @@unique([tenantId, name])
   @@index([tenantId, isSystem])
@@ -2839,16 +2876,16 @@ model RbacRole {
 /// User-role assignment (join table).
 /// Tenant admins can assign roles to users. Multiple roles per user allowed.
 model UserRole {
-  userId   String   @map("user_id")
-  roleId   String   @map("role_id")
-  tenantId String   @map("tenant_id")
-  assignedAt   DateTime @default(now()) @map("assigned_at")
-  assignedBy   String?  @map("assigned_by") // User ID of the admin who assigned
+  userId     String   @map("user_id")
+  roleId     String   @map("role_id")
+  tenantId   String   @map("tenant_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  assignedBy String?  @map("assigned_by") // User ID of the admin who assigned
 
   // Relations
-  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rbacRole RbacRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
   @@index([tenantId, userId])
@@ -2873,9 +2910,9 @@ model Resource {
   createdAt  DateTime     @default(now()) @map("created_at")
 
   // Relations
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent     Resource?           @relation("ResourceHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children   Resource[]          @relation("ResourceHierarchy")
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent     Resource?             @relation("ResourceHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children   Resource[]            @relation("ResourceHierarchy")
   overwrites PermissionOverwrite[]
 
   @@unique([tenantId, externalId])
@@ -2888,20 +2925,20 @@ model Resource {
 /// Permission overwrite (allow/deny at resource or resource subtree).
 /// XOR constraint: either roleId OR userId must be set, never both.
 model PermissionOverwrite {
-  id         String                @id @default(uuid())
-  tenantId   String                @map("tenant_id")
-  resourceId String                @map("resource_id")
-  subjectType OverwriteSubjectType  @map("subject_type")
+  id          String               @id @default(uuid())
+  tenantId    String               @map("tenant_id")
+  resourceId  String               @map("resource_id")
+  subjectType OverwriteSubjectType @map("subject_type")
   /// roleId if subjectType == ROLE, else null
-  roleId     String?               @map("role_id")
+  roleId      String?              @map("role_id")
   /// userId if subjectType == USER, else null
-  userId     String?               @map("user_id")
+  userId      String?              @map("user_id")
   /// Bitset of explicitly allowed bits (64 bytes).
-  allow      Bytes
+  allow       Bytes
   /// Bitset of explicitly denied bits (64 bytes).
-  deny       Bytes
-  createdAt  DateTime              @default(now()) @map("created_at")
-  updatedAt  DateTime              @updatedAt @map("updated_at")
+  deny        Bytes
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
   // Relations
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -2924,49 +2961,49 @@ model PermissionOverwrite {
 // all pull from here. Per-website visual overrides (theme tokens) live
 // on SiteConfig — but identity NEVER does.
 model TenantBusinessProfile {
-  id                  String    @id @default(uuid())
-  tenantId            String    @unique @map("tenant_id")
+  id       String @id @default(uuid())
+  tenantId String @unique @map("tenant_id")
 
   // Identity
-  legalName           String?   @map("legal_name") @db.VarChar(255)
-  displayName         String?   @map("display_name") @db.VarChar(255)
-  tagline             String?   @db.VarChar(255)
-  logoUrl             String?   @map("logo_url")
-  faviconUrl          String?   @map("favicon_url")
+  legalName   String? @map("legal_name") @db.VarChar(255)
+  displayName String? @map("display_name") @db.VarChar(255)
+  tagline     String? @db.VarChar(255)
+  logoUrl     String? @map("logo_url")
+  faviconUrl  String? @map("favicon_url")
 
   // Contact
-  email               String?
-  phone               String?   @db.VarChar(40)
-  alternatePhone      String?   @map("alternate_phone") @db.VarChar(40)
-  websiteUrl          String?   @map("website_url")
+  email          String?
+  phone          String? @db.VarChar(40)
+  alternatePhone String? @map("alternate_phone") @db.VarChar(40)
+  websiteUrl     String? @map("website_url")
 
   // Address (single primary; secondary inventory locations live in Location)
-  addressLine1        String?   @map("address_line_1")
-  addressLine2        String?   @map("address_line_2")
-  city                String?   @db.VarChar(120)
-  state               String?   @db.VarChar(120)
-  postalCode          String?   @map("postal_code") @db.VarChar(20)
-  country             String?   @db.VarChar(2) // ISO 3166-1 alpha-2
-  mapUrl              String?   @map("map_url")
+  addressLine1 String? @map("address_line_1")
+  addressLine2 String? @map("address_line_2")
+  city         String? @db.VarChar(120)
+  state        String? @db.VarChar(120)
+  postalCode   String? @map("postal_code") @db.VarChar(20)
+  country      String? @db.VarChar(2) // ISO 3166-1 alpha-2
+  mapUrl       String? @map("map_url")
 
   // Tax / regulatory (NP-first; nullable so non-NP tenants ignore)
-  panNumber           String?   @map("pan_number") @db.VarChar(20)
-  vatNumber           String?   @map("vat_number") @db.VarChar(20)
-  registrationNumber  String?   @map("registration_number") @db.VarChar(40)
-  taxId               String?   @map("tax_id") @db.VarChar(40)
+  panNumber          String? @map("pan_number") @db.VarChar(20)
+  vatNumber          String? @map("vat_number") @db.VarChar(20)
+  registrationNumber String? @map("registration_number") @db.VarChar(40)
+  taxId              String? @map("tax_id") @db.VarChar(40)
 
   // Localization defaults
-  defaultCurrency     String    @default("NPR") @map("default_currency") @db.VarChar(8)
-  timezone            String?   @db.VarChar(64)
+  defaultCurrency String  @default("NPR") @map("default_currency") @db.VarChar(8)
+  timezone        String? @db.VarChar(64)
 
   // Socials — JSON keeps the door open without migrations
   // Shape: { facebook?, instagram?, x?, tiktok?, linkedin?, youtube? }
-  socials             Json?
+  socials Json?
 
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt      @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_business_profiles")
 }
