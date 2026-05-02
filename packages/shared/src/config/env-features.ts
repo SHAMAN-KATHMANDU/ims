@@ -210,8 +210,8 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: true,
     MEDIA_UPLOAD: true,
-    TENANT_WEBSITES: false,
-    PUBLIC_DATA_API: false,
+    TENANT_WEBSITES: true,
+    PUBLIC_DATA_API: true,
   },
   production: {
     CRM: true,
