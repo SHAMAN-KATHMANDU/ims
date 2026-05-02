@@ -1,5 +1,5 @@
 # Production release: manual trigger. Builds and pushes Docker images to prod.
-# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: self-hosted` with `runs-on: ubuntu-latest`.
+# ⚠ To switch back to the self-hosted runner: replace every `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
 # Trigger: Actions → Release (Production) → Run workflow.
 # Images: :<tag>, :prod, :latest.
 # New release: tag from main (or branch) with manual/auto semver.
@@ -57,7 +57,7 @@ concurrency:
 jobs:
   resolve-tag:
     name: Resolve tag
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
@@ -148,7 +148,7 @@ jobs:
 
   build-api:
     name: Build API (prod)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag]
     # Gates on the `production` GitHub environment. Configure required
     # reviewers in Settings → Environments → production.
@@ -193,7 +193,7 @@ jobs:
 
   build-web:
     name: Build Web (prod)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag]
     environment: production
     permissions:
@@ -249,7 +249,7 @@ jobs:
 
   build-tenant-site:
     name: Build Tenant Site (prod)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag]
     environment: production
     permissions:
@@ -289,7 +289,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag, build-api, build-web, build-tenant-site]
     if: github.event.inputs.create_github_release == 'true'
     permissions:
