@@ -17,6 +17,10 @@ vi.mock("./product.service", () => ({
     findAllProductDiscounts: vi.fn(),
     getProductDiscounts: vi.fn(),
     getProductsForExport: vi.fn(),
+    getTags: vi.fn(),
+    createTag: vi.fn(),
+    updateTag: vi.fn(),
+    deleteTag: vi.fn(),
   },
 }));
 
@@ -540,6 +544,112 @@ describe("ProductController", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(mockService.getProductsForExport).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getTags", () => {
+    it("returns 200 with the unpaginated list when no page/limit", async () => {
+      mockService.getTags.mockResolvedValue({
+        tags: [{ id: "t1", name: "Sale", createdAt: new Date() }],
+      });
+      const req = makeReq();
+      const res = mockRes() as Response;
+      await productController.getTags(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockService.getTags).toHaveBeenCalledWith("t1", undefined);
+    });
+
+    it("forwards pagination params", async () => {
+      mockService.getTags.mockResolvedValue({
+        tags: [],
+        pagination: { totalItems: 0 },
+      });
+      const req = makeReq({ query: { page: "2", limit: "10", search: "x" } });
+      const res = mockRes() as Response;
+      await productController.getTags(req, res);
+      expect(mockService.getTags).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ page: 2, limit: 10, search: "x" }),
+      );
+    });
+  });
+
+  describe("createTag", () => {
+    it("returns 201 when a new tag is created", async () => {
+      mockService.createTag.mockResolvedValue({
+        tag: { id: "t1", name: "Sale" },
+        created: true,
+      });
+      const req = makeReq({ body: { name: "Sale" } });
+      const res = mockRes() as Response;
+      await productController.createTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(mockService.createTag).toHaveBeenCalledWith("t1", "Sale");
+    });
+
+    it("returns 200 when an existing tag is matched (idempotent)", async () => {
+      mockService.createTag.mockResolvedValue({
+        tag: { id: "t1", name: "Sale" },
+        created: false,
+      });
+      const req = makeReq({ body: { name: "Sale" } });
+      const res = mockRes() as Response;
+      await productController.createTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("returns 400 on Zod validation failure (empty name)", async () => {
+      const req = makeReq({ body: { name: "" } });
+      const res = mockRes() as Response;
+      await productController.createTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.createTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTag", () => {
+    it("returns 200 with the renamed tag", async () => {
+      mockService.updateTag.mockResolvedValue({ id: "t1", name: "Renamed" });
+      const req = makeReq({
+        params: { tagId: "t1" },
+        body: { name: "Renamed" },
+      });
+      const res = mockRes() as Response;
+      await productController.updateTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("returns 404 when service throws 404", async () => {
+      mockService.updateTag.mockRejectedValue(
+        makeAppError("Tag not found", 404),
+      );
+      const req = makeReq({
+        params: { tagId: "missing" },
+        body: { name: "x" },
+      });
+      const res = mockRes() as Response;
+      await productController.updateTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe("deleteTag", () => {
+    it("returns 200 on success", async () => {
+      mockService.deleteTag.mockResolvedValue(undefined);
+      const req = makeReq({ params: { tagId: "t1" } });
+      const res = mockRes() as Response;
+      await productController.deleteTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("returns 404 when service throws 404", async () => {
+      mockService.deleteTag.mockRejectedValue(
+        makeAppError("Tag not found", 404),
+      );
+      const req = makeReq({ params: { tagId: "missing" } });
+      const res = mockRes() as Response;
+      await productController.deleteTag(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
     });
   });
 });

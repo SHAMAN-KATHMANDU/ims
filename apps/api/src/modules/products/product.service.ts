@@ -293,6 +293,19 @@ export class ProductService {
       }
     }
 
+    // Tags — validate every id belongs to this tenant, then attach.
+    // Internal-only (never reaches /public/*).
+    if (Array.isArray(data.tagIds) && data.tagIds.length > 0) {
+      const validTagIds = await this.repo.findTagsByIdsAndTenant(
+        tenantId,
+        data.tagIds,
+      );
+      await this.repo.replaceProductTagLinks(
+        product.id,
+        validTagIds.map((t) => t.id),
+      );
+    }
+
     if (warehouseLocation && product.variations?.length) {
       for (const v of product.variations) {
         const subVariations = Array.isArray(
@@ -917,6 +930,20 @@ export class ProductService {
       }
     }
 
+    // Tags — when provided, replace the product's tag links wholesale.
+    // Internal-only; the public-site repo never reads tagLinks.
+    if (data.tagIds !== undefined) {
+      const ids = Array.isArray(data.tagIds) ? data.tagIds : [];
+      const validTagIds =
+        ids.length > 0
+          ? await this.repo.findTagsByIdsAndTenant(tenantId, ids)
+          : [];
+      await this.repo.replaceProductTagLinks(
+        id,
+        validTagIds.map((t) => t.id),
+      );
+    }
+
     let updatedProduct;
     try {
       updatedProduct = await this.repo.updateProduct(id, updateData);
@@ -1392,6 +1419,44 @@ export class ProductService {
       }
     }
     return where;
+  }
+
+  // ─── ProductTag CRUD (internal-only — never reaches /public/*) ───────────
+
+  async getTags(
+    tenantId: string,
+    query?: { page?: number; limit?: number; search?: string },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const search = query?.search;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const tags = await this.repo.findTags(tenantId);
+      return { tags };
+    }
+    const [tags, totalItems] = await Promise.all([
+      this.repo.findTagsPaginated(tenantId, (page - 1) * limit, limit, search),
+      this.repo.countTags(tenantId, search),
+    ]);
+    const result = createPaginationResult(tags, totalItems, page, limit);
+    return { tags: result.data, pagination: result.pagination };
+  }
+
+  async createTag(tenantId: string, name: string) {
+    return this.repo.createTag(tenantId, name);
+  }
+
+  async updateTag(tenantId: string, id: string, name: string) {
+    const tag = await this.repo.updateTag(id, tenantId, name);
+    if (!tag) throw createError("Tag not found", 404);
+    return tag;
+  }
+
+  async deleteTag(tenantId: string, id: string) {
+    const tag = await this.repo.deleteTag(id, tenantId);
+    if (!tag) throw createError("Tag not found", 404);
   }
 }
 

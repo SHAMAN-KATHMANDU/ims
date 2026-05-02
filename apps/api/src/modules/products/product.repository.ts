@@ -97,6 +97,9 @@ const PRODUCT_INCLUDE_FULL = {
     },
   },
   discounts: { include: { discountType: true } },
+  // Internal-only — never reaches /public/* (those routes use a separate
+  // public-site repository that does NOT include tagLinks).
+  tagLinks: { include: { tag: { select: { id: true, name: true } } } },
 } as const;
 
 const PRODUCT_INCLUDE_WITH_INVENTORY = {
@@ -130,6 +133,8 @@ const PRODUCT_INCLUDE_WITH_INVENTORY = {
     },
   },
   discounts: { include: { discountType: true } },
+  // Internal-only — see comment on PRODUCT_INCLUDE_FULL.
+  tagLinks: { include: { tag: { select: { id: true, name: true } } } },
 } as const;
 
 // ─── ProductRepository ──────────────────────────────────────────────────────
@@ -1111,6 +1116,104 @@ export class ProductRepository {
     );
 
     return { products, totalItems };
+  }
+
+  // ─── ProductTag (internal-only — never reaches /public/*) ────────────────
+
+  async findTags(tenantId: string) {
+    return prisma.productTag.findMany({
+      where: { tenantId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async findTagsPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.productTag.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, createdAt: true },
+      skip,
+      take,
+    });
+  }
+
+  async countTags(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.productTag.count({ where });
+  }
+
+  async findTagsByIdsAndTenant(tenantId: string, ids: string[]) {
+    if (ids.length === 0) return [];
+    return prisma.productTag.findMany({
+      where: { id: { in: ids }, tenantId },
+      select: { id: true },
+    });
+  }
+
+  async createTag(tenantId: string, name: string) {
+    const trimmed = name.trim();
+    const existing = await prisma.productTag.findUnique({
+      where: { tenantId_name: { tenantId, name: trimmed } },
+    });
+    if (existing) return { tag: existing, created: false };
+    const tag = await prisma.productTag.create({
+      data: { tenantId, name: trimmed },
+    });
+    return { tag, created: true };
+  }
+
+  async updateTag(id: string, tenantId: string, name: string) {
+    const existing = await prisma.productTag.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) return null;
+    return prisma.productTag.update({
+      where: { id },
+      data: { name: name.trim() },
+    });
+  }
+
+  async deleteTag(id: string, tenantId: string) {
+    const existing = await prisma.productTag.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) return null;
+    await prisma.productTag.delete({ where: { id } });
+    return existing;
+  }
+
+  /**
+   * Replace the product's tag links wholesale with the given tag ids. Caller
+   * is responsible for verifying that every id in `tagIds` belongs to the
+   * tenant (via `findTagsByIdsAndTenant`). Idempotent — safe to call when
+   * `tagIds` is empty (clears all links).
+   */
+  async replaceProductTagLinks(productId: string, tagIds: string[]) {
+    await prisma.productTagLink.deleteMany({ where: { productId } });
+    if (tagIds.length === 0) return;
+    await prisma.productTagLink.createMany({
+      data: tagIds.map((tagId) => ({ productId, tagId })),
+      skipDuplicates: true,
+    });
   }
 }
 

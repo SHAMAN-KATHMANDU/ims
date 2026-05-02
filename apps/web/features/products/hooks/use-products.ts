@@ -22,6 +22,10 @@ import {
   getProductDiscountsList,
   bulkUploadProducts,
   bulkUploadDiscounts,
+  getProductTags,
+  createProductTag,
+  updateProductTag,
+  deleteProductTag,
   type Product,
   type ProductVariation,
   type CreateProductData,
@@ -39,6 +43,9 @@ import {
   type PaginatedDiscountTypesResponse,
   type CreateDiscountTypeData,
   type UpdateDiscountTypeData,
+  type ProductTag,
+  type ProductTagListParams,
+  type PaginatedProductTagsResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "../services/product.service";
@@ -80,6 +87,9 @@ export type {
   PaginatedDiscountTypesResponse,
   CreateDiscountTypeData,
   UpdateDiscountTypeData,
+  ProductTag,
+  ProductTagListParams,
+  PaginatedProductTagsResponse,
 };
 
 // Re-export defaults
@@ -111,6 +121,13 @@ export const productDiscountKeys = {
   all: ["product-discounts"] as const,
   lists: (params: ProductDiscountListParams) =>
     [...productDiscountKeys.all, "list", params] as const,
+};
+
+export const productTagKeys = {
+  all: ["product-tags"] as const,
+  lists: () => [...productTagKeys.all, "list"] as const,
+  list: (params: ProductTagListParams = {}) =>
+    [...productTagKeys.lists(), params] as const,
 };
 
 // ============================================
@@ -644,4 +661,89 @@ export function useVariations() {
       throw new Error("Variations should be deleted through product update");
     },
   };
+}
+
+// ============================================
+// ProductTag hooks (internal-only)
+// ============================================
+
+/**
+ * List product tags. With page+limit, returns paginated; otherwise returns
+ * the full list (use this in pickers).
+ */
+export function useProductTags(
+  params: ProductTagListParams = {},
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: productTagKeys.list(params),
+    queryFn: () => getProductTags(params),
+    enabled: options?.enabled ?? true,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useCreateProductTag() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (name: string) => createProductTag(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productTagKeys.all });
+      // Tags surface inside Product reads (via tagLinks) — invalidate product
+      // detail caches so a freshly-renamed tag flows through.
+      queryClient.invalidateQueries({ queryKey: productKeys.details() });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Failed to create tag",
+        description:
+          error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useUpdateProductTag() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateProductTag(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productTagKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.details() });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Failed to rename tag",
+        description:
+          error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useDeleteProductTag() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (id: string) => deleteProductTag(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productTagKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.details() });
+      // Deleting a tag drops its row from the product list payload too.
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Failed to delete tag",
+        description:
+          error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
 }

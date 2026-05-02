@@ -100,6 +100,33 @@ export interface Product {
       description?: string;
     };
   }>;
+  /**
+   * Internal-only product tags. Surfaced from the admin /products/* API
+   * via the `tagLinks` include — never returned by /public/v1/* or
+   * /public/* routes.
+   */
+  tagLinks?: Array<{ tag: { id: string; name: string } }>;
+}
+
+// ============================================
+// ProductTag (internal-only — never reaches /public/*)
+// ============================================
+
+export interface ProductTag {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface ProductTagListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PaginatedProductTagsResponse {
+  tags: ProductTag[];
+  pagination?: PaginationMeta;
 }
 
 // ============================================
@@ -148,6 +175,8 @@ export interface CreateProductData {
   defaultLocationId?: string;
   /** EAV: attribute type IDs to apply to this product (e.g. Color, Size). */
   attributeTypeIds?: string[];
+  /** Internal-only tag ids to attach. Never sent to /public/* surfaces. */
+  tagIds?: string[];
   variations?: Array<{
     stockQuantity?: number;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
@@ -180,6 +209,11 @@ export interface UpdateProductData {
   mrp?: number;
   vendorId?: string;
   attributeTypeIds?: string[];
+  /**
+   * When provided, replaces the product's tag links wholesale. Empty array
+   * clears all tags. Internal-only.
+   */
+  tagIds?: string[];
   variations?: Array<{
     id?: string;
     stockQuantity?: number;
@@ -973,5 +1007,78 @@ export async function downloadDiscountBulkTemplate(): Promise<void> {
     downloadBlobFromResponse(response, "discounts_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download discount template");
+  }
+}
+
+// ============================================
+// ProductTag CRUD (internal-only — never reaches /public/*)
+// ============================================
+
+interface TagsListResponse {
+  message?: string;
+  tags: ProductTag[];
+  pagination?: PaginationMeta;
+}
+
+interface TagResponse {
+  message?: string;
+  tag: ProductTag;
+}
+
+export async function getProductTags(
+  params: ProductTagListParams = {},
+): Promise<PaginatedProductTagsResponse> {
+  try {
+    const usp = new URLSearchParams();
+    if (params.page) usp.set("page", String(params.page));
+    if (params.limit) usp.set("limit", String(params.limit));
+    if (params.search) usp.set("search", params.search);
+    const qs = usp.toString();
+    const response = await api.get<TagsListResponse>(
+      qs ? `/products/tags?${qs}` : "/products/tags",
+    );
+    return {
+      tags: response.data.tags ?? [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "list product tags");
+  }
+}
+
+export async function createProductTag(name: string): Promise<ProductTag> {
+  if (!name?.trim()) throw new Error("Tag name is required");
+  try {
+    const response = await api.post<TagResponse>("/products/tags", {
+      name: name.trim(),
+    });
+    return response.data.tag;
+  } catch (error) {
+    handleApiError(error, "create product tag");
+  }
+}
+
+export async function updateProductTag(
+  id: string,
+  name: string,
+): Promise<ProductTag> {
+  if (!id?.trim()) throw new Error("Tag ID is required");
+  if (!name?.trim()) throw new Error("Tag name is required");
+  try {
+    const response = await api.patch<TagResponse>(`/products/tags/${id}`, {
+      name: name.trim(),
+    });
+    return response.data.tag;
+  } catch (error) {
+    handleApiError(error, `update product tag "${id}"`);
+  }
+}
+
+export async function deleteProductTag(id: string): Promise<void> {
+  if (!id?.trim()) throw new Error("Tag ID is required");
+  try {
+    await api.delete(`/products/tags/${id}`);
+  } catch (error) {
+    handleApiError(error, `delete product tag "${id}"`);
   }
 }

@@ -193,17 +193,11 @@ const DiscountSchema = z.object({
 });
 
 export const CreateProductSchema = z.object({
-  imsCode: z.preprocess(
-    (val) => {
-      if (val === undefined || val === null) return undefined;
-      const s = String(val).trim();
-      return s === "" ? undefined : s;
-    },
-    z
-      .string()
-      .max(100, "Product code must be at most 100 characters")
-      .optional(),
-  ),
+  imsCode: z.preprocess((val) => {
+    if (val === undefined || val === null) return undefined;
+    const s = String(val).trim();
+    return s === "" ? undefined : s;
+  }, z.string().max(100, "Product code must be at most 100 characters").optional()),
   name: z
     .string({ required_error: "Product name is required" })
     .min(1, "Product name is required"),
@@ -221,6 +215,11 @@ export const CreateProductSchema = z.object({
   vendorId: z.string().uuid().nullish(),
   defaultLocationId: z.string().uuid().nullish(),
   attributeTypeIds: z.array(z.string().uuid()).optional(),
+  /**
+   * Optional list of `ProductTag.id` values to attach to this product.
+   * Tags are internal-only — never surfaced via /public/* routes.
+   */
+  tagIds: z.array(z.string().uuid()).optional(),
   variations: z
     .array(VariationSchema)
     .min(1, "At least one variation is required"),
@@ -246,9 +245,37 @@ export const UpdateProductSchema = z.object({
   mrp: z.coerce.number().optional(),
   vendorId: z.string().uuid().nullish(),
   attributeTypeIds: z.array(z.string().uuid()).optional(),
+  /**
+   * When provided, replaces the product's tag links wholesale. Internal-only.
+   */
+  tagIds: z.array(z.string().uuid()).optional(),
   variations: z.array(VariationSchema).optional(),
   discounts: z.array(DiscountSchema).optional(),
 });
+
+// ─── Product tag schemas (internal-only — never reach /public/*) ─────────────
+export const CreateProductTagSchema = z.object({
+  name: z.string().trim().min(1, "Tag name is required").max(100),
+});
+
+export const UpdateProductTagSchema = z.object({
+  name: z.string().trim().min(1, "Tag name is required").max(100),
+});
+
+export const ListProductTagsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
+});
+
+export type CreateProductTagDto = z.infer<typeof CreateProductTagSchema>;
+export type UpdateProductTagDto = z.infer<typeof UpdateProductTagSchema>;
+export type ListProductTagsQueryDto = z.infer<
+  typeof ListProductTagsQuerySchema
+>;
 
 // Helper/related schemas
 export const CreateDiscountTypeSchema = z.object({
