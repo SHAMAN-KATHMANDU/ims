@@ -21,16 +21,21 @@ import {
   selectAddBlock,
   selectBlocks,
   selectDirty,
+  selectInsertChildOf,
+  selectInsertSiblingOf,
   selectLoad,
   selectMarkClean,
   selectMoveBlockTo,
+  selectMoveBlockToPath,
   selectRedo,
   selectSelectedId,
   selectSetSelected,
   selectUndo,
   selectUpdateBlockProps,
+  selectWrapInRowAt,
   useEditorStore,
 } from "./editor-store";
+import { findPath, nodeAt } from "./blockTree";
 import { BlockInspector } from "./BlockInspector";
 import { PreviewFrame } from "./PreviewFrame";
 import { BlockTreePanel } from "./BlockTreePanel";
@@ -325,6 +330,110 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
       toast({ title: `Added ${entry.label}` });
     },
     [addBlockToStore, toast],
+  );
+
+  // ---- Notion four-edge DnD bridges (in-iframe overlay → store actions) ----
+  const insertSiblingOf = useEditorStore(selectInsertSiblingOf);
+  const insertChildOf = useEditorStore(selectInsertChildOf);
+  const wrapInRowAt = useEditorStore(selectWrapInRowAt);
+  const moveBlockToPath = useEditorStore(selectMoveBlockToPath);
+
+  /** Build a fresh BlockNode from a catalog kind. Returns null on unknown kind. */
+  const blockFromKind = useCallback((kind: string): BlockNode | null => {
+    const entry = BLOCK_CATALOG.find((b) => b.kind === kind);
+    if (!entry) return null;
+    return {
+      id: makeBlockId(),
+      kind: entry.kind,
+      props: entry.createDefaultProps() as BlockNode["props"],
+    };
+  }, []);
+
+  const handleNotionSiblingDrop = useCallback(
+    (params: {
+      dragKind: string | null;
+      dragId: string | null;
+      anchorId: string;
+      where: "before" | "after";
+    }) => {
+      // Palette insert: create a new block.
+      if (params.dragKind && !params.dragId) {
+        const node = blockFromKind(params.dragKind);
+        if (!node) return;
+        insertSiblingOf(params.anchorId, params.where, node);
+        pushRecentBlock(params.dragKind);
+        return;
+      }
+      // Move existing canvas block: compute target path next to the anchor.
+      if (params.dragId) {
+        const fromPath = findPath(blocks, params.dragId);
+        const anchorPath = findPath(blocks, params.anchorId);
+        if (!fromPath || !anchorPath) return;
+        const slot =
+          anchorPath[anchorPath.length - 1]! +
+          (params.where === "after" ? 1 : 0);
+        const toPath = [...anchorPath.slice(0, -1), slot];
+        moveBlockToPath(fromPath, toPath);
+      }
+    },
+    [blockFromKind, blocks, insertSiblingOf, moveBlockToPath],
+  );
+
+  const handleNotionWrapInRow = useCallback(
+    (params: {
+      dragKind: string | null;
+      dragId: string | null;
+      anchorId: string;
+      side: "left" | "right";
+    }) => {
+      // Palette insert: create + wrap.
+      if (params.dragKind && !params.dragId) {
+        const node = blockFromKind(params.dragKind);
+        if (!node) return;
+        wrapInRowAt(params.anchorId, params.side, node);
+        pushRecentBlock(params.dragKind);
+        return;
+      }
+      // Move-and-wrap is intentionally deferred to a follow-up — it's a
+      // two-step mutation (remove + wrap) that needs an atomic store action
+      // for clean undo. Today we silently no-op.
+      if (params.dragId) {
+        toast({
+          title: "Drop another block here to make a row",
+          description:
+            "Wrapping an existing block on drop is coming soon — drag from the palette to make a row.",
+        });
+      }
+    },
+    [blockFromKind, toast, wrapInRowAt],
+  );
+
+  const handleNotionChildDrop = useCallback(
+    (params: {
+      dragKind: string | null;
+      dragId: string | null;
+      parentId: string;
+    }) => {
+      // Palette insert as child.
+      if (params.dragKind && !params.dragId) {
+        const node = blockFromKind(params.dragKind);
+        if (!node) return;
+        insertChildOf(params.parentId, node);
+        pushRecentBlock(params.dragKind);
+        return;
+      }
+      // Move existing block as last child of the container.
+      if (params.dragId) {
+        const fromPath = findPath(blocks, params.dragId);
+        const parentPath = findPath(blocks, params.parentId);
+        if (!fromPath || !parentPath) return;
+        const parentNode = nodeAt(blocks, parentPath);
+        const childCount = parentNode?.children?.length ?? 0;
+        const toPath = [...parentPath, childCount];
+        moveBlockToPath(fromPath, toPath);
+      }
+    },
+    [blockFromKind, blocks, insertChildOf, moveBlockToPath],
   );
 
   // ---- Save / publish ----
@@ -633,6 +742,10 @@ export function SiteEditorPage({ fullScreen = false }: SiteEditorPageProps) {
                         onInlineEdit={handleInlineEdit}
                         onReorder={handleReorder}
                         onInsertAt={handleInsertAt}
+                        notionDnDEnabled={notionChromeEnabled}
+                        onNotionSiblingDrop={handleNotionSiblingDrop}
+                        onNotionWrapInRow={handleNotionWrapInRow}
+                        onNotionChildDrop={handleNotionChildDrop}
                       />
                     )}
                   </div>

@@ -29,6 +29,7 @@ import {
   Plus,
 } from "lucide-react";
 import { CanvasOverlay } from "./CanvasOverlay";
+import { NotionDnDOverlay, isContainerKind } from "./NotionDnDOverlay";
 import {
   selectSetHoveredBlockId,
   selectSetHoveredBlockRect,
@@ -67,6 +68,33 @@ type Props = {
   onReorder?: (blockId: string, toIndex: number) => void;
   /** Called when a palette-dragged block is dropped on a canvas drop zone. */
   onInsertAt?: (kind: string, atIndex: number) => void;
+
+  // ── Notion-style nested DnD (gated by EnvFeature.NOTION_STYLE_EDITOR) ─────
+  /** Mounts the per-block four-edge drop overlay when true. */
+  notionDnDEnabled?: boolean;
+  /**
+   * Called when a sibling-edge zone (top/bottom) drop completes. Exactly one
+   * of dragKind / dragId is set: dragKind = palette insert, dragId = move.
+   */
+  onNotionSiblingDrop?: (params: {
+    dragKind: string | null;
+    dragId: string | null;
+    anchorId: string;
+    where: "before" | "after";
+  }) => void;
+  /** Side-edge (left/right) zone drop — wraps the anchor in a row. */
+  onNotionWrapInRow?: (params: {
+    dragKind: string | null;
+    dragId: string | null;
+    anchorId: string;
+    side: "left" | "right";
+  }) => void;
+  /** Center zone drop on a container — insert as a child. */
+  onNotionChildDrop?: (params: {
+    dragKind: string | null;
+    dragId: string | null;
+    parentId: string;
+  }) => void;
 };
 
 type BlockRect = {
@@ -258,6 +286,114 @@ function useIframeBlockRects(
       };
     } catch {
       // cross-origin — skip
+      return;
+    }
+  }, [iframeRef, iframeReady, enabled]);
+
+  return rects;
+}
+
+/**
+ * Like `useIframeBlockRects` but collects EVERY `[data-block-id]` element,
+ * not just top-level ones, and includes each block's `data-block-kind` so
+ * downstream callers (NotionDnDOverlay) can ask `isContainerKind(kind)`.
+ *
+ * Same recompute strategy as the top-level variant — MutationObserver +
+ * ResizeObserver + iframe scroll/resize, throttled with rAF.
+ */
+function useIframeAllBlockRects(
+  iframeRef: React.RefObject<HTMLIFrameElement | null>,
+  iframeReady: number,
+  enabled: boolean,
+): Array<BlockRect & { kind: string }> {
+  const [rects, setRects] = useState<Array<BlockRect & { kind: string }>>([]);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const frame = iframeRef.current;
+    if (!frame) return;
+    let disposed = false;
+    let mo: MutationObserver | null = null;
+    let ro: ResizeObserver | null = null;
+    let doc: Document | null = null;
+
+    const recompute = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        if (disposed) return;
+        try {
+          const d = frame.contentDocument;
+          if (!d) return;
+          const win = frame.contentWindow;
+          if (!win) return;
+          const all = Array.from(
+            d.querySelectorAll<HTMLElement>("[data-block-id]"),
+          );
+          const scrollX = win.scrollX || 0;
+          const scrollY = win.scrollY || 0;
+          const next: Array<BlockRect & { kind: string }> = all.map((el) => {
+            const r = el.getBoundingClientRect();
+            return {
+              id: el.getAttribute("data-block-id") || "",
+              kind: el.getAttribute("data-block-kind") || "",
+              top: r.top + scrollY,
+              left: r.left + scrollX,
+              width: r.width,
+              height: r.height,
+            };
+          });
+          setRects((prev) => {
+            if (prev.length !== next.length) return next;
+            for (let i = 0; i < next.length; i++) {
+              const a = prev[i]!;
+              const b = next[i]!;
+              if (
+                a.id !== b.id ||
+                a.kind !== b.kind ||
+                Math.abs(a.top - b.top) > 0.5 ||
+                Math.abs(a.left - b.left) > 0.5 ||
+                Math.abs(a.width - b.width) > 0.5 ||
+                Math.abs(a.height - b.height) > 0.5
+              )
+                return next;
+            }
+            return prev;
+          });
+        } catch {
+          // cross-origin — skip
+        }
+      });
+    };
+
+    try {
+      doc = frame.contentDocument;
+      if (!doc) return;
+      const body = doc.body;
+      if (!body) return;
+      mo = new MutationObserver(recompute);
+      mo.observe(body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-block-id", "data-block-kind", "style", "class"],
+      });
+      ro = new ResizeObserver(recompute);
+      ro.observe(body);
+      const win = frame.contentWindow;
+      win?.addEventListener("scroll", recompute, { passive: true });
+      win?.addEventListener("resize", recompute);
+      recompute();
+
+      return () => {
+        disposed = true;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        mo?.disconnect();
+        ro?.disconnect();
+        win?.removeEventListener("scroll", recompute);
+        win?.removeEventListener("resize", recompute);
+      };
+    } catch {
       return;
     }
   }, [iframeRef, iframeReady, enabled]);
@@ -469,6 +605,10 @@ export function PreviewFrame({
   onInlineEdit,
   onReorder,
   onInsertAt,
+  notionDnDEnabled = false,
+  onNotionSiblingDrop,
+  onNotionWrapInRow,
+  onNotionChildDrop,
 }: Props) {
   const [showGrid, setShowGrid] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -682,6 +822,13 @@ export function PreviewFrame({
     iframeReady,
     isSameOrigin === true,
   );
+  // Notion-style overlay needs ALL block rects + their kinds; only collect
+  // when the feature is enabled to avoid the extra MutationObserver work.
+  const allBlockRects = useIframeAllBlockRects(
+    iframeRef,
+    iframeReady,
+    isSameOrigin === true && notionDnDEnabled,
+  );
   const [overlayTarget, setOverlayTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (isSameOrigin !== true) {
@@ -852,6 +999,29 @@ export function PreviewFrame({
                 selectedId={selectedId}
                 onReorder={stableOnReorder}
                 onInsertAt={stableOnInsertAt}
+              />,
+              overlayTarget,
+            )}
+          {/* Notion-style per-block four-edge drop overlay — same iframe-body
+              portal target so it scrolls with the content. Mounts every block
+              at every nesting depth (top-level + nested), gated by the
+              NOTION_STYLE_EDITOR env flag from the parent. */}
+          {overlayTarget &&
+            notionDnDEnabled &&
+            createPortal(
+              <NotionDnDOverlay
+                blocks={allBlockRects.map((r) => ({
+                  id: r.id,
+                  kind: r.kind as never,
+                  isContainer: isContainerKind(r.kind),
+                  top: r.top,
+                  left: r.left,
+                  width: r.width,
+                  height: r.height,
+                }))}
+                onSiblingDrop={(p) => onNotionSiblingDrop?.(p)}
+                onWrapInRow={(p) => onNotionWrapInRow?.(p)}
+                onChildDrop={(p) => onNotionChildDrop?.(p)}
               />,
               overlayTarget,
             )}
