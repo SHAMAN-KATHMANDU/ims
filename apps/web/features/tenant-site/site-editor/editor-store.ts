@@ -19,6 +19,17 @@ import type {
   BlockStyleOverride,
   BlockVisibility,
 } from "@repo/shared";
+import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
+import {
+  type BlockPath,
+  findPath,
+  insertChild as insertChildTree,
+  insertSibling as insertSiblingTree,
+  move as moveInTree,
+  nodeAt,
+  unwrapEmpty,
+  wrapInRow as wrapInRowTree,
+} from "./blockTree";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,10 +78,37 @@ interface EditorState {
 
   // ---- tree mutations ----
   addBlock: (block: BlockNode, atIndex?: number) => void;
+  /** Tree-aware: removes a block at any depth. */
   removeBlock: (id: string) => void;
-  /** Move a block by ±1 delta or to an absolute target index. */
+  /** Move a block by ±1 delta among its current siblings (any depth). */
   moveBlock: (id: string, delta: -1 | 1) => void;
+  /** Move a block to a target index in the SAME parent (any depth). */
   moveBlockTo: (id: string, toIndex: number) => void;
+  /**
+   * Cross-depth move via explicit paths. After the move, any row/columns
+   * containers left with ≤1 child are auto-collapsed (`unwrapEmpty`).
+   */
+  moveBlockToPath: (fromPath: BlockPath, toPath: BlockPath) => void;
+  /** Insert a sibling of `anchorId` (any depth). */
+  insertSiblingOf: (
+    anchorId: string,
+    where: "before" | "after",
+    block: BlockNode,
+  ) => void;
+  /**
+   * Insert a child of the container with id `parentId`. No-op if the target
+   * is not a container kind.
+   */
+  insertChildOf: (parentId: string, block: BlockNode, index?: number) => void;
+  /**
+   * Wrap an anchor with a `row` container; place `block` on `side`. Uses the
+   * shared row catalog's default props.
+   */
+  wrapInRowAt: (
+    anchorId: string,
+    side: "left" | "right",
+    block: BlockNode,
+  ) => void;
   updateBlockProps: <K extends BlockKind>(
     id: string,
     props: Partial<BlockPropsMap[K]>,
@@ -99,16 +137,39 @@ interface EditorState {
 // Pure reducers
 // ---------------------------------------------------------------------------
 
-function findIndexById(blocks: BlockNode[], id: string): number {
-  return blocks.findIndex((b) => b.id === id);
-}
-
+/**
+ * Apply `fn` to the (single) node with `id` anywhere in the tree, recursing
+ * into `children`. Used for per-field updates (props, visibility, style,
+ * responsive) — those work at any depth out of the box.
+ */
 function mapBlocks(
   blocks: BlockNode[],
   id: string,
   fn: (block: BlockNode) => BlockNode,
 ): BlockNode[] {
-  return blocks.map((b) => (b.id === id ? fn(b) : b));
+  return blocks.map((b) => {
+    if (b.id === id) return fn(b);
+    if (b.children && b.children.length > 0) {
+      const nextChildren = mapBlocks(b.children, id, fn);
+      if (nextChildren !== b.children) return { ...b, children: nextChildren };
+    }
+    return b;
+  });
+}
+
+/** Look up the row catalog entry once. Defaults are stable across calls. */
+function makeDefaultRow(children: BlockNode[]): BlockNode {
+  const entry = BLOCK_CATALOG_ENTRIES.find((e) => e.kind === "row");
+  // Defensive: if the catalog ever drops "row", fall back to a minimal shape
+  // so a misconfigured editor still applies the wrap (the renderer will
+  // ignore unknown kinds — see BlockNodeSchema forward-compat note).
+  const props = entry?.createDefaultProps() ?? ({} as BlockNode["props"]);
+  return {
+    id: `row-${crypto.randomUUID().slice(0, 8)}`,
+    kind: "row" as BlockNode["kind"],
+    props,
+    children,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -168,32 +229,116 @@ export const useEditorStore = create<EditorState>()((set, get) => {
 
     removeBlock: (id) => {
       const { present, selectedId } = get();
-      const blocks = present.blocks.filter((b) => b.id !== id);
+      const path = findPath(present.blocks, id);
+      if (!path) return;
+      const fromPath = path.slice(0, -1);
+      const slot = path[path.length - 1]!;
+      // Use blockTree's path-aware removal so nested blocks work too.
+      const parentPath = fromPath;
+      const parentChildren =
+        parentPath.length === 0
+          ? present.blocks
+          : (nodeAt(present.blocks, parentPath)?.children ?? []);
+      const nextSiblings = [
+        ...parentChildren.slice(0, slot),
+        ...parentChildren.slice(slot + 1),
+      ];
+      // Reuse moveInTree's removeAt indirectly via a simple direct path edit:
+      const blocks = (() => {
+        if (parentPath.length === 0) return nextSiblings;
+        // Rebuild only along the parent path.
+        function rebuild(nodes: BlockNode[], depth: number): BlockNode[] {
+          return nodes.map((n, i) => {
+            if (i !== parentPath[depth]) return n;
+            if (depth === parentPath.length - 1) {
+              return { ...n, children: nextSiblings };
+            }
+            return {
+              ...n,
+              children: rebuild(n.children ?? [], depth + 1),
+            };
+          });
+        }
+        return rebuild(present.blocks, 0);
+      })();
       commit({ blocks });
       if (selectedId === id) set({ selectedId: null });
     },
 
     moveBlock: (id, delta) => {
       const { present } = get();
-      const idx = findIndexById(present.blocks, id);
-      if (idx === -1) return;
-      const target = idx + delta;
-      if (target < 0 || target >= present.blocks.length) return;
-      const blocks = [...present.blocks];
-      const [item] = blocks.splice(idx, 1);
-      blocks.splice(target, 0, item!);
+      const path = findPath(present.blocks, id);
+      if (!path) return;
+      const slot = path[path.length - 1]!;
+      const parentPath = path.slice(0, -1);
+      const parentChildren =
+        parentPath.length === 0
+          ? present.blocks
+          : (nodeAt(present.blocks, parentPath)?.children ?? []);
+      const target = slot + delta;
+      if (target < 0 || target >= parentChildren.length) return;
+      const blocks = moveInTree(
+        present.blocks,
+        path,
+        // moveInTree adjusts forward-moves automatically; pass the visible
+        // post-removal target slot.
+        delta > 0 ? [...parentPath, target + 1] : [...parentPath, target],
+      );
       commit({ blocks });
     },
 
     moveBlockTo: (id, toIndex) => {
       const { present } = get();
-      const fromIndex = findIndexById(present.blocks, id);
-      if (fromIndex === -1 || fromIndex === toIndex) return;
-      const clamped = Math.max(0, Math.min(toIndex, present.blocks.length - 1));
-      const blocks = [...present.blocks];
-      const [item] = blocks.splice(fromIndex, 1);
-      blocks.splice(clamped, 0, item!);
+      const path = findPath(present.blocks, id);
+      if (!path) return;
+      const slot = path[path.length - 1]!;
+      const parentPath = path.slice(0, -1);
+      const parentChildren =
+        parentPath.length === 0
+          ? present.blocks
+          : (nodeAt(present.blocks, parentPath)?.children ?? []);
+      if (parentChildren.length === 0) return;
+      const clamped = Math.max(0, Math.min(toIndex, parentChildren.length - 1));
+      if (clamped === slot) return;
+      const blocks = moveInTree(present.blocks, path, [
+        ...parentPath,
+        clamped > slot ? clamped + 1 : clamped,
+      ]);
       commit({ blocks });
+    },
+
+    moveBlockToPath: (fromPath, toPath) => {
+      const { present } = get();
+      const moved = moveInTree(present.blocks, fromPath, toPath);
+      const cleaned = unwrapEmpty(moved);
+      commit({ blocks: cleaned });
+    },
+
+    insertSiblingOf: (anchorId, where, block) => {
+      const { present } = get();
+      const blocks = insertSiblingTree(present.blocks, anchorId, where, block);
+      commit({ blocks });
+      set({ selectedId: block.id });
+    },
+
+    insertChildOf: (parentId, block, index = -1) => {
+      const { present } = get();
+      const blocks = insertChildTree(present.blocks, parentId, block, index);
+      commit({ blocks });
+      set({ selectedId: block.id });
+    },
+
+    wrapInRowAt: (anchorId, side, block) => {
+      const { present } = get();
+      const blocks = wrapInRowTree(
+        present.blocks,
+        anchorId,
+        side,
+        block,
+        makeDefaultRow,
+      );
+      commit({ blocks });
+      set({ selectedId: block.id });
     },
 
     updateBlockProps: (id, props) => {
@@ -238,14 +383,14 @@ export const useEditorStore = create<EditorState>()((set, get) => {
 
     duplicateBlock: (id) => {
       const { present } = get();
-      const idx = findIndexById(present.blocks, id);
-      if (idx === -1) return;
-      const source = present.blocks[idx]!;
+      const path = findPath(present.blocks, id);
+      if (!path) return;
+      const source = nodeAt(present.blocks, path);
+      if (!source) return;
       const newId = `${source.kind}-${crypto.randomUUID().slice(0, 8)}`;
       const clone: BlockNode = JSON.parse(JSON.stringify(source));
       clone.id = newId;
-      const blocks = [...present.blocks];
-      blocks.splice(idx + 1, 0, clone);
+      const blocks = insertSiblingTree(present.blocks, id, "after", clone);
       commit({ blocks });
       set({ selectedId: newId });
     },
@@ -299,7 +444,9 @@ export const selectBlocks = (s: EditorState) => s.present.blocks;
 export const selectSelectedId = (s: EditorState) => s.selectedId;
 export const selectSelectedBlock = (s: EditorState): BlockNode | null => {
   if (!s.selectedId) return null;
-  return s.present.blocks.find((b) => b.id === s.selectedId) ?? null;
+  // Tree-aware: walk into containers to support nested selection.
+  const path = findPath(s.present.blocks, s.selectedId);
+  return path ? nodeAt(s.present.blocks, path) : null;
 };
 export const selectDirty = (s: EditorState) => s.dirty;
 
@@ -311,6 +458,10 @@ export const selectAddBlock = (s: EditorState) => s.addBlock;
 export const selectRemoveBlock = (s: EditorState) => s.removeBlock;
 export const selectMoveBlock = (s: EditorState) => s.moveBlock;
 export const selectMoveBlockTo = (s: EditorState) => s.moveBlockTo;
+export const selectMoveBlockToPath = (s: EditorState) => s.moveBlockToPath;
+export const selectInsertSiblingOf = (s: EditorState) => s.insertSiblingOf;
+export const selectInsertChildOf = (s: EditorState) => s.insertChildOf;
+export const selectWrapInRowAt = (s: EditorState) => s.wrapInRowAt;
 export const selectUpdateBlockProps = (s: EditorState) => s.updateBlockProps;
 export const selectUpdateBlockVisibility = (s: EditorState) =>
   s.updateBlockVisibility;

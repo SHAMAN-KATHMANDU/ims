@@ -338,4 +338,107 @@ describe("editor-store", () => {
       expect(getStore().dirty).toBe(true);
     });
   });
+
+  // -------------------------------------------------------------------------
+  describe("cross-depth tree mutations", () => {
+    function withSection(): BlockNode {
+      return {
+        id: "p",
+        kind: "section" as BlockNode["kind"],
+        props: {} as BlockNode["props"],
+        children: [
+          {
+            id: "c1",
+            kind: "image" as BlockNode["kind"],
+            props: {} as BlockNode["props"],
+          },
+          {
+            id: "c2",
+            kind: "button" as BlockNode["kind"],
+            props: {} as BlockNode["props"],
+          },
+        ],
+      };
+    }
+
+    it("removeBlock removes a nested block", () => {
+      const store = getStore();
+      store.load([makeBlock("a"), withSection()]);
+      store.removeBlock("c1");
+      const blocks = getStore().present.blocks;
+      expect(blocks).toHaveLength(2);
+      expect(blocks[1]!.children?.map((n) => n.id)).toEqual(["c2"]);
+    });
+
+    it("moveBlock(±1) reorders within the same nested parent", () => {
+      const store = getStore();
+      store.load([withSection()]);
+      store.moveBlock("c1", 1);
+      const section = getStore().present.blocks[0]!;
+      expect(section.children?.map((n) => n.id)).toEqual(["c2", "c1"]);
+    });
+
+    it("moveBlockToPath moves a block from root into a section", () => {
+      const store = getStore();
+      store.load([makeBlock("a"), withSection()]);
+      // Move "a" into "p" as the first child.
+      store.moveBlockToPath([0], [1, 0]);
+      const blocks = getStore().present.blocks;
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]!.id).toBe("p");
+      expect(blocks[0]!.children?.map((n) => n.id)).toEqual(["a", "c1", "c2"]);
+    });
+
+    it("moveBlockToPath out of a one-child row collapses the empty row", () => {
+      const store = getStore();
+      store.load([
+        {
+          id: "r",
+          kind: "row" as BlockNode["kind"],
+          props: {} as BlockNode["props"],
+          children: [makeBlock("inner", "button")],
+        },
+      ]);
+      // Move "inner" out to root slot 0; row left empty -> unwrapEmpty drops it.
+      store.moveBlockToPath([0, 0], [1]);
+      const blocks = getStore().present.blocks;
+      expect(blocks.map((n) => n.id)).toEqual(["inner"]);
+    });
+
+    it("insertSiblingOf places a new block next to an anchor at any depth", () => {
+      const store = getStore();
+      store.load([withSection()]);
+      const fresh = makeBlock("x", "heading");
+      store.insertSiblingOf("c1", "after", fresh);
+      const section = getStore().present.blocks[0]!;
+      expect(section.children?.map((n) => n.id)).toEqual(["c1", "x", "c2"]);
+      expect(getStore().selectedId).toBe("x");
+    });
+
+    it("insertChildOf no-ops when target is not a container", () => {
+      const store = getStore();
+      store.load([makeBlock("a")]);
+      store.insertChildOf("a", makeBlock("x"));
+      expect(getStore().present.blocks.map((n) => n.id)).toEqual(["a"]);
+    });
+
+    it("insertChildOf appends to a container's children", () => {
+      const store = getStore();
+      store.load([withSection()]);
+      store.insertChildOf("p", makeBlock("x", "heading"));
+      const section = getStore().present.blocks[0]!;
+      expect(section.children?.map((n) => n.id)).toEqual(["c1", "c2", "x"]);
+    });
+
+    it("wrapInRowAt replaces the anchor with a row containing both", () => {
+      const store = getStore();
+      store.load([makeBlock("a", "heading"), makeBlock("b", "image")]);
+      store.wrapInRowAt("a", "right", makeBlock("x", "button"));
+      const blocks = getStore().present.blocks;
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0]!.kind).toBe("row");
+      expect(blocks[0]!.children?.map((n) => n.id)).toEqual(["a", "x"]);
+      expect(blocks[1]!.id).toBe("b");
+    });
+  });
 });
