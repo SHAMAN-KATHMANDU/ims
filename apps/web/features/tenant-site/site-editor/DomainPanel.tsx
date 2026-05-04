@@ -136,6 +136,7 @@ export function DomainPanel() {
         open={!!verifyTarget}
         onOpenChange={(o) => !o && setVerifyTarget(null)}
         domain={verifyTarget}
+        selfServe
       />
     </div>
   );

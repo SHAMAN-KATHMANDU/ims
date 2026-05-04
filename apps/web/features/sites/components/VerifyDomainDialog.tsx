@@ -17,11 +17,20 @@ import {
   useVerifyTenantDomain,
   type TenantDomain,
 } from "../hooks/use-tenant-domains";
+import {
+  useMyDomainVerificationInstructions,
+  useVerifyMyDomain,
+} from "../hooks/use-my-domains";
 
 interface VerifyDomainDialogProps {
   domain: TenantDomain | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When true, hits /tenants/me/domains/* (tenant-self). When false (default),
+   * hits /platform/domains/* which requires platformAdmin role.
+   */
+  selfServe?: boolean;
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -61,12 +70,20 @@ export function VerifyDomainDialog({
   domain,
   open,
   onOpenChange,
+  selfServe = false,
 }: VerifyDomainDialogProps) {
   const { toast } = useToast();
-  const instructions = useDomainVerificationInstructions(
-    open && domain ? domain.id : null,
+  const targetId = open && domain ? domain.id : null;
+  const platformInstructions = useDomainVerificationInstructions(
+    selfServe ? null : targetId,
   );
-  const verifyMutation = useVerifyTenantDomain();
+  const myInstructions = useMyDomainVerificationInstructions(
+    selfServe ? targetId : null,
+  );
+  const instructions = selfServe ? myInstructions : platformInstructions;
+  const platformVerify = useVerifyTenantDomain();
+  const myVerify = useVerifyMyDomain();
+  const verifyMutation = selfServe ? myVerify : platformVerify;
 
   const handleVerify = async () => {
     if (!domain) return;

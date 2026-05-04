@@ -161,6 +161,10 @@ services:
       API_PUBLIC_URL: ${API_PUBLIC_URL}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      # Platform-owned preview hostname (optional). Middleware short-circuits
+      # non-/preview/ paths on this host to 204 so editor iframe prefetches
+      # don't 404. Leave unset if you don't expose a preview hostname.
+      TENANT_SITE_PUBLIC_URL: ${TENANT_SITE_PUBLIC_URL:-}
       NODE_ENV: production
     depends_on:
       prod_api:
