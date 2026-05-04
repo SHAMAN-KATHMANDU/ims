@@ -70,6 +70,20 @@ stage-api.shamankathmandu.com {
     }
 }
 
+stage-preview.shamankathmandu.com {
+    encode zstd gzip
+    # Platform-owned hostname used as TENANT_SITE_PUBLIC_URL fallback for the
+    # site-editor preview iframe. Tenant-site reads the token from the query
+    # string and the tenantId from the token payload — no Host-based routing.
+    reverse_proxy dev_tenant_site:3100 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+}
+
 # ============================================================================
 # Tenant custom domains — on-demand TLS
 # ============================================================================

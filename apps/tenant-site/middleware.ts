@@ -49,6 +49,26 @@ const BYPASS_PATHS = [
   "/preview/",
 ];
 
+/**
+ * Hostname used by the site-editor preview iframe (TENANT_SITE_PUBLIC_URL on
+ * the API side). Only `/preview/*` resolves on this host — other paths
+ * (sub-page links rendered inside the iframe, browser prefetches) get 204
+ * No Content so the editor's network panel stays clean instead of flooding
+ * with 404s for /products, /contact, /blog, etc.
+ */
+const PLATFORM_PREVIEW_HOST = (() => {
+  const raw =
+    process.env.TENANT_SITE_PUBLIC_URL ??
+    process.env.NEXT_PUBLIC_TENANT_SITE_PUBLIC_URL ??
+    "";
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+})();
+
 async function resolveHost(host: string): Promise<CacheEntry> {
   const cached = cache.get(host);
   if (cached && cached.expiresAt > Date.now()) {
@@ -186,6 +206,10 @@ export async function middleware(req: NextRequest) {
 
   if (!host) {
     return new NextResponse("Missing Host header", { status: 400 });
+  }
+
+  if (PLATFORM_PREVIEW_HOST && host === PLATFORM_PREVIEW_HOST) {
+    return new NextResponse(null, { status: 204 });
   }
 
   const resolved = await resolveHost(host);
