@@ -41,6 +41,10 @@ export interface UpdateTenantDomainData {
 
 export interface DomainVerificationInstructions {
   hostname: string;
+  /** A record name — the hostname itself. */
+  aRecordName: string;
+  /** Public IPv4 of the platform host. Empty when the platform hasn't configured TENANT_DOMAIN_TARGET_IP. */
+  aRecordValue: string;
   txtName: string;
   txtValue: string;
   verifiedAt: string | null;

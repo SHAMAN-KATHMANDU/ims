@@ -66,6 +66,8 @@ const EnvSchema = z
     TENANT_SITE_INTERNAL_URL: z.string().optional(),
     /** Public base URL for the tenant-site preview iframe in dev (e.g. http://localhost:3001). In prod the tenant's primary website domain is used instead. */
     TENANT_SITE_PUBLIC_URL: z.string().optional(),
+    /** Public IPv4 of the Caddy host. Surfaced in domain-verification instructions so tenants know which A record to set. Empty ⇒ dialog renders a "contact support" fallback. */
+    TENANT_DOMAIN_TARGET_IP: z.string().optional(),
     /** HMAC secret for signing short-lived page preview tokens. Falls back to JWT_SECRET in dev. */
     PREVIEW_TOKEN_SECRET: z.string().optional(),
     AI_REPLY_PROVIDER: z
@@ -353,6 +355,7 @@ const EnvSchema = z
       revalidateSecret: raw.REVALIDATE_SECRET?.trim() ?? "",
       tenantSiteInternalUrl: raw.TENANT_SITE_INTERNAL_URL?.trim() ?? "",
       tenantSitePublicUrl: raw.TENANT_SITE_PUBLIC_URL?.trim() ?? "",
+      tenantDomainTargetIp: raw.TENANT_DOMAIN_TARGET_IP?.trim() ?? "",
       previewTokenSecret:
         raw.PREVIEW_TOKEN_SECRET?.trim() || raw.JWT_SECRET?.trim() || "",
       aiReplyProvider: raw.AI_REPLY_PROVIDER,

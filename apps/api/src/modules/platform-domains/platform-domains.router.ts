@@ -111,7 +111,7 @@ router.delete("/domains/:id", asyncHandler(controller.deleteDomain));
  * @swagger
  * /platform/domains/{id}/verification:
  *   get:
- *     summary: Fetch DNS TXT verification instructions for a domain
+ *     summary: Fetch DNS verification instructions (A + TXT) for a domain
  *     tags: [Platform, Domains]
  *     security:
  *       - bearerAuth: []

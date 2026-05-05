@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { resolveTxt as nodeResolveTxt } from "node:dns/promises";
 import type { TenantDomain, TenantDomainApp } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
+import { env } from "@/config/env";
 import platformWebsitesService from "@/modules/platform-websites/platform-websites.service";
 import defaultRepo from "./platform-domains.repository";
 import type {
@@ -103,11 +104,19 @@ export class PlatformDomainsService {
   }
 
   /**
-   * Fetch DNS-verification instructions for a domain. Customers place a TXT
-   * record at `_shaman.<hostname>` containing `shaman-verify=<token>`.
+   * Fetch DNS-verification instructions for a domain. Two records are needed:
+   * an A record pointing the hostname at the platform's public IP (so Caddy
+   * can answer the TLS challenge), and a TXT record at `_shaman.<hostname>`
+   * containing `shaman-verify=<token>` that proves ownership.
+   *
+   * `aRecordValue` is empty when `TENANT_DOMAIN_TARGET_IP` isn't configured
+   * (typical in local dev). The UI renders a "contact support" fallback in
+   * that case rather than a copyable empty string.
    */
   async getVerificationInstructions(id: string): Promise<{
     hostname: string;
+    aRecordName: string;
+    aRecordValue: string;
     txtName: string;
     txtValue: string;
     verifiedAt: Date | null;
@@ -116,6 +125,8 @@ export class PlatformDomainsService {
     if (!domain) throw createError("Domain not found", 404);
     return {
       hostname: domain.hostname,
+      aRecordName: domain.hostname,
+      aRecordValue: env.tenantDomainTargetIp,
       txtName: `_shaman.${domain.hostname}`,
       txtValue: `${VERIFY_TXT_PREFIX}${domain.verifyToken}`,
       verifiedAt: domain.verifiedAt,
