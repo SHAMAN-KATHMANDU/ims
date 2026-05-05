@@ -1,4 +1,8 @@
-import type { BlockKind, BlockPropsMap } from "../site-schema/blocks";
+import type {
+  BlockKind,
+  BlockPropsMap,
+  SiteLayoutScope,
+} from "../site-schema/blocks";
 
 export type CatalogCategory =
   | "layout"
@@ -9,11 +13,11 @@ export type CatalogCategory =
   | "pdp"
   | "form";
 
-export type CatalogScope =
-  | "home"
-  | "products-index"
-  | "product-detail"
-  | "page";
+// Derived from SITE_LAYOUT_SCOPES so adding a new scope to the runtime
+// enum automatically widens what `scopes:` declarations on a CatalogEntry
+// can reference. Without this, scopes like "offers" / "blog-index" /
+// "landing" silently filtered blocks out of the editor palette + slash menu.
+export type CatalogScope = SiteLayoutScope;
 
 export interface CatalogEntry<K extends BlockKind = BlockKind> {
   id?: string;

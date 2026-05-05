@@ -23,12 +23,34 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
+/**
+ * Toggle on by setting `localStorage.setItem("site-editor:debug", "1")` in
+ * either the editor (parent) or the iframe devtools, then reload. Logs trace
+ * each step of the click → postMessage → store-update path so the first
+ * silent link can be pinpointed.
+ */
+const DEBUG = (() => {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("site-editor:debug") === "1";
+  } catch {
+    return false;
+  }
+})();
+
+function debugLog(...args: unknown[]): void {
+  if (!DEBUG) return;
+  // eslint-disable-next-line no-console
+  console.log("[site-editor:bridge]", ...args);
+}
+
 export function EditorBridge() {
   const searchParams = useSearchParams();
   const isEditorMode = searchParams.has("_editor");
 
   useEffect(() => {
     if (!isEditorMode) return;
+    debugLog("mount", { href: window.location.href });
 
     let rafId: number | null = null;
     let lastHoveredEl: HTMLElement | null = null;
@@ -40,19 +62,28 @@ export function EditorBridge() {
       el: HTMLElement | null,
     ): void {
       if (!el) {
+        debugLog("post", type, "blockId=null");
         window.parent.postMessage({ type, blockId: null, rect: null }, "*");
         return;
       }
       const blockId = el.dataset.blockId;
-      if (!blockId) return;
+      if (!blockId) {
+        debugLog("post-skip: el has no data-block-id", el);
+        return;
+      }
       const rect = el.getBoundingClientRect();
+      debugLog("post", type, blockId);
       window.parent.postMessage({ type, blockId, rect: rect.toJSON() }, "*");
     }
 
     const onClick = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest?.(
-        "[data-block-id]",
-      ) as HTMLElement | null;
+      const target = e.target as HTMLElement | null;
+      const el = target?.closest?.("[data-block-id]") as HTMLElement | null;
+      debugLog("click", {
+        target: target?.tagName,
+        targetClasses: target?.className,
+        matchedBlock: el?.dataset?.blockId ?? null,
+      });
       if (!el) return;
       e.preventDefault();
       e.stopPropagation();
