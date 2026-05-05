@@ -109,7 +109,7 @@ router.delete(
  * @swagger
  * /tenants/me/domains/{domainId}/verification:
  *   get:
- *     summary: Get DNS TXT verification instructions for a domain
+ *     summary: Get DNS verification instructions (A + TXT) for a domain
  *     tags: [Tenants, Domains]
  *     operationId: getMyDomainVerificationInstructions
  *     security:
