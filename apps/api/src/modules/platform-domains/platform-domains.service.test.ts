@@ -283,13 +283,15 @@ describe("PlatformDomainsService", () => {
   });
 
   describe("getVerificationInstructions", () => {
-    it("returns TXT name/value for the domain", async () => {
+    it("returns A and TXT record instructions for the domain", async () => {
       (mockRepo.findById as ReturnType<typeof vi.fn>).mockResolvedValue(
         domain(),
       );
       const result = await service.getVerificationInstructions("d1");
       expect(result).toEqual({
         hostname: "www.acme.com",
+        aRecordName: "www.acme.com",
+        aRecordValue: expect.any(String),
         txtName: "_shaman.www.acme.com",
         txtValue: "shaman-verify=tok123",
         verifiedAt: null,

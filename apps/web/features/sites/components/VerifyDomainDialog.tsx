@@ -112,8 +112,9 @@ export function VerifyDomainDialog({
         <DialogHeader>
           <DialogTitle>Verify domain</DialogTitle>
           <DialogDescription>
-            Ask the customer to add this TXT record at their DNS provider, then
-            click Verify.
+            Add both DNS records below at the customer&apos;s DNS provider — an
+            A record so traffic reaches our server, and a TXT record so we can
+            prove ownership — then click Verify.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,30 +132,77 @@ export function VerifyDomainDialog({
           </div>
         ) : instructions.data ? (
           <div className="space-y-4 py-2">
-            <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Name
-                  </div>
-                  <div className="truncate">{instructions.data.txtName}</div>
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs">
+                <div className="text-[10px] uppercase text-muted-foreground mb-2 font-sans tracking-wide">
+                  A record · point your domain here
                 </div>
-                <CopyButton
-                  value={instructions.data.txtName}
-                  label="TXT name"
-                />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      Name
+                    </div>
+                    <div className="truncate">
+                      {instructions.data.aRecordName}
+                    </div>
+                  </div>
+                  <CopyButton
+                    value={instructions.data.aRecordName}
+                    label="A record name"
+                  />
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      Value
+                    </div>
+                    {instructions.data.aRecordValue ? (
+                      <div className="truncate">
+                        {instructions.data.aRecordValue}
+                      </div>
+                    ) : (
+                      <div className="truncate font-sans text-muted-foreground">
+                        Contact support for the server IP
+                      </div>
+                    )}
+                  </div>
+                  {instructions.data.aRecordValue && (
+                    <CopyButton
+                      value={instructions.data.aRecordValue}
+                      label="A record value"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="mt-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase text-muted-foreground">
-                    Value
-                  </div>
-                  <div className="truncate">{instructions.data.txtValue}</div>
+
+              <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs">
+                <div className="text-[10px] uppercase text-muted-foreground mb-2 font-sans tracking-wide">
+                  TXT record · proves ownership
                 </div>
-                <CopyButton
-                  value={instructions.data.txtValue}
-                  label="TXT value"
-                />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      Name
+                    </div>
+                    <div className="truncate">{instructions.data.txtName}</div>
+                  </div>
+                  <CopyButton
+                    value={instructions.data.txtName}
+                    label="TXT name"
+                  />
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      Value
+                    </div>
+                    <div className="truncate">{instructions.data.txtValue}</div>
+                  </div>
+                  <CopyButton
+                    value={instructions.data.txtValue}
+                    label="TXT value"
+                  />
+                </div>
               </div>
             </div>
 
