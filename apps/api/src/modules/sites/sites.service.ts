@@ -30,6 +30,7 @@ import {
   type TemplateBlueprint,
 } from "./templates";
 import type { BlockNode, BlockTree } from "@repo/shared";
+import { BlockTreeSchema } from "@repo/shared";
 
 type Repo = typeof defaultRepo;
 type Revalidate = (tenantId: string) => Promise<void>;
@@ -208,7 +209,18 @@ export class SitesService {
       const blocks = blueprint.layouts[scope];
       if (!blocks || blocks.length === 0) continue;
 
-      const json = blocks as unknown as Prisma.InputJsonValue;
+      // Validate before write — the editor save path also validates, so an
+      // invalid template would round-trip through the DB and surface as a
+      // 400 on the user's first save (silent corruption from their POV).
+      // Failing loudly here makes a bad blueprint a deployment-time bug.
+      const parsed = BlockTreeSchema.safeParse(blocks);
+      if (!parsed.success) {
+        throw createError(
+          `Template "${blueprint.slug}" layout "${scope}" failed schema validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
+          500,
+        );
+      }
+      const json = parsed.data as unknown as Prisma.InputJsonValue;
 
       if (publishNow) {
         // Write to both draft and published so the site reflects the new

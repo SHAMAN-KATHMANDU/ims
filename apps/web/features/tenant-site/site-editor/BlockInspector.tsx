@@ -121,6 +121,18 @@ export function BlockInspector() {
   const setSelected = useEditorStore(selectSetSelected);
   const [tab, setTab] = useState<InspectorTab>("content");
 
+  if (
+    typeof window !== "undefined" &&
+    window.localStorage?.getItem("site-editor:debug") === "1"
+  ) {
+    // eslint-disable-next-line no-console
+    console.log("[site-editor:inspector] render", {
+      selectedId,
+      hasSelectedBlock: !!selected,
+      kind: selected?.kind,
+    });
+  }
+
   // ── Header / Footer pseudo-block selection ───────────────────────────────
   // These are not real BlockNodes; they're sentinel IDs set by the
   // Header/Footer pseudo-rows in BlockTreePanel.

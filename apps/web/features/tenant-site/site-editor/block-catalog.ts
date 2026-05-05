@@ -30,19 +30,9 @@ export function getCatalogEntry(kind: string): CatalogEntry | undefined {
   return CATALOG_BY_KIND[kind as BlockKind];
 }
 
-export function listForScope(
-  scope:
-    | "home"
-    | "products-index"
-    | "product-detail"
-    | "page"
-    | "header"
-    | "footer"
-    | string,
-): CatalogEntry[] {
+export function listForScope(scope: string): CatalogEntry[] {
   return BLOCK_CATALOG.filter(
-    (entry) =>
-      !entry.scopes || (entry.scopes as string[]).includes(scope as string),
+    (entry) => !entry.scopes || (entry.scopes as string[]).includes(scope),
   );
 }
 

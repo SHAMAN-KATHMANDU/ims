@@ -210,7 +210,22 @@ export const useEditorStore = create<EditorState>()((set, get) => {
 
     markClean: () => set({ dirty: false }),
 
-    setSelected: (id) => set({ selectedId: id }),
+    setSelected: (id) => {
+      if (
+        typeof window !== "undefined" &&
+        window.localStorage?.getItem("site-editor:debug") === "1"
+      ) {
+        const present = get().present.blocks;
+        const found = id ? findPath(present, id) : null;
+        // eslint-disable-next-line no-console
+        console.log("[site-editor:store] setSelected", {
+          id,
+          treeSize: present.length,
+          foundInTree: !!found,
+        });
+      }
+      set({ selectedId: id });
+    },
     setHoveredBlockId: (id) => set({ hoveredBlockId: id }),
     setHoveredBlockRect: (rect) => set({ hoveredBlockRect: rect }),
     setSelectedBlockRect: (rect) => set({ selectedBlockRect: rect }),
