@@ -122,6 +122,15 @@ import {
   CopyrightBarBlock,
 } from "./kinds/FooterBlocks";
 
+// Cart / commerce checkout
+import { CartLineItemsBlock } from "./kinds/CartLineItemsBlock";
+import { OrderSummaryBlock } from "./kinds/OrderSummaryBlock";
+import { AccountBarBlock } from "./kinds/AccountBarBlock";
+import { PriceTiersBlock } from "./kinds/PriceTiersBlock";
+
+// Phase 5: reusable BlockNode[] sub-trees referenced by id
+import { SnippetRefBlock } from "./kinds/SnippetRefBlock";
+
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
   props: P;
@@ -207,4 +216,11 @@ export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = {
   "social-links": { component: SocialLinksBlock },
   "payment-icons": { component: PaymentIconsBlock },
   "copyright-bar": { component: CopyrightBarBlock },
+  // Cart / commerce checkout
+  "cart-line-items": { component: CartLineItemsBlock },
+  "order-summary": { component: OrderSummaryBlock },
+  "account-bar": { component: AccountBarBlock },
+  "price-tiers": { component: PriceTiersBlock },
+  // Phase 5: reusable BlockNode[] sub-trees referenced by id
+  "snippet-ref": { component: SnippetRefBlock },
 };
