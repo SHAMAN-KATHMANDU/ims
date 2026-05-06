@@ -17,6 +17,8 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useGlobalSearch } from "@/features/global-search";
+import { FileText, Newspaper, Package, Sparkles } from "lucide-react";
 import {
   useAuthStore,
   selectUserRole,
@@ -83,9 +85,36 @@ function writeRecent(
   }
 }
 
+// Debounce helper for the cross-entity search input. Keeps the cmd-K
+// from firing 4 list queries per keystroke.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(handle);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+const SEARCH_KIND_ICON = {
+  page: FileText,
+  post: Newspaper,
+  product: Package,
+  snippet: Sparkles,
+} as const;
+
+const SEARCH_KIND_LABEL = {
+  page: "Pages",
+  post: "Blog posts",
+  product: "Products",
+  snippet: "Snippets",
+} as const;
+
 export function CommandPalette(): React.ReactElement {
   const [open, setOpen] = useState(false);
   const [recentTick, setRecentTick] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(searchQuery, 200);
   const router = useRouter();
   const pathname = usePathname();
   const userRole = useAuthStore(selectUserRole);
@@ -162,6 +191,25 @@ export function CommandPalette(): React.ReactElement {
     return readRecent(workspaceSlug, user.id);
   }, [user?.id, workspaceSlug, recentTick]);
 
+  // Cross-entity search — only runs while the palette is open and the
+  // user has typed enough characters (the hook itself enforces ≥ 2).
+  const search = useGlobalSearch(debouncedQuery, { enabled: open });
+  const groupedSearchResults = useMemo(() => {
+    const results = search.data ?? [];
+    const order: Array<keyof typeof SEARCH_KIND_LABEL> = [
+      "page",
+      "post",
+      "product",
+      "snippet",
+    ];
+    return order
+      .map((kind) => ({
+        kind,
+        items: results.filter((r) => r.kind === kind),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [search.data]);
+
   const runNav = useCallback(
     (href: string, label: string) => {
       if (user?.id) {
@@ -173,17 +221,66 @@ export function CommandPalette(): React.ReactElement {
     [router, user?.id, workspaceSlug],
   );
 
+  // Reset the search box when the palette closes — otherwise a stale
+  // query lingers in the next open and surprises the user.
+  useEffect(() => {
+    if (!open) setSearchQuery("");
+  }, [open]);
+
+  const hasSearchResults = groupedSearchResults.length > 0;
+  const isSearching = debouncedQuery.trim().length >= 2;
+
   return (
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
       title="Go to…"
-      description="Search workspace navigation and recent pages"
+      description="Search workspace navigation, pages, posts, products, and snippets"
     >
-      <CommandInput placeholder="Search pages…" />
+      <CommandInput
+        placeholder="Search pages, posts, products, snippets…"
+        value={searchQuery}
+        onValueChange={setSearchQuery}
+      />
       <CommandList>
-        <CommandEmpty>No matching pages.</CommandEmpty>
-        {recentItems.length > 0 ? (
+        <CommandEmpty>
+          {isSearching && search.isLoading ? "Searching…" : "No matches."}
+        </CommandEmpty>
+
+        {hasSearchResults &&
+          groupedSearchResults.map((group, gi) => {
+            const Icon = SEARCH_KIND_ICON[group.kind];
+            return (
+              <CommandGroup
+                key={group.kind}
+                heading={SEARCH_KIND_LABEL[group.kind]}
+              >
+                {group.items.map((r) => {
+                  const href = r.href(workspaceSlug);
+                  return (
+                    <CommandItem
+                      key={`${group.kind}:${r.id}`}
+                      value={`${r.label} ${r.sub ?? ""} ${group.kind}`}
+                      onSelect={() => runNav(href, r.label)}
+                    >
+                      <Icon className="size-4" />
+                      <span className="flex-1 truncate">{r.label}</span>
+                      {r.sub && (
+                        <span className="text-xs font-mono text-muted-foreground/70 truncate">
+                          {r.sub}
+                        </span>
+                      )}
+                    </CommandItem>
+                  );
+                })}
+                {gi < groupedSearchResults.length - 1 && <CommandSeparator />}
+              </CommandGroup>
+            );
+          })}
+
+        {hasSearchResults && <CommandSeparator />}
+
+        {!isSearching && recentItems.length > 0 ? (
           <CommandGroup heading="Recent">
             {recentItems.map((r) => (
               <CommandItem
@@ -196,7 +293,7 @@ export function CommandPalette(): React.ReactElement {
             ))}
           </CommandGroup>
         ) : null}
-        {recentItems.length > 0 ? <CommandSeparator /> : null}
+        {!isSearching && recentItems.length > 0 ? <CommandSeparator /> : null}
         {filteredSections.map((section) => (
           <CommandGroup key={section.title} heading={section.title}>
             {section.items.map((item) => {
