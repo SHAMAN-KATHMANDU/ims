@@ -4,10 +4,17 @@ import type { PrismaClient, Prisma } from "@prisma/client";
  * Platform-level catalog of website templates tenants can pick from.
  * Idempotent upsert keyed by slug.
  *
- * Phase C: `tier` enum is gone. Templates now carry a free-text `category`
- * string so new categories (editorial / dark / brutalist / ...) can be added
- * without a schema migration, and `defaultPages` JSON so the template can
- * suggest which top-level pages should be on by default.
+ * Phase D: replaces the prior 11-template catalog (editorial / brutalist /
+ * zen / coastal / retro / dark / gallery / organic / apothecary / artisan /
+ * blank) with 10 niche-targeted blueprints derived from the
+ * Ecommerse Template design system. The runner repoints any SiteConfig on a
+ * deprecated slug to its closest replacement, then deletes the deprecated
+ * SiteTemplate rows.
+ *
+ * The 10 new templates are paired 1:1 with TemplateBlueprint exports under
+ * `apps/api/src/modules/sites/templates/<slug>/`. Picking any of them seeds
+ * 5 SiteLayout rows (home / products-index / product-detail / offers / cart)
+ * via sites.service.seedLayoutsFromBlueprint().
  */
 
 type TemplateSeed = {
@@ -22,22 +29,6 @@ type TemplateSeed = {
   sortOrder: number;
 };
 
-/**
- * The full default-branding shape templates emit.
- *
- *   colors: 9 tokens (primary, secondary, accent, background, surface, text,
- *           muted, border, ring) — all optional, render as CSS variables.
- *   typography: { heading, body, display, scaleRatio, baseFontSize }
- *   spacing: { base, sectionPadding: "compact" | "balanced" | "spacious" }
- *   radius: "sharp" | "soft" | "rounded"
- *   theme: "light" | "dark"
- *
- * This shape is documented in docs/TENANT-WEBSITES.md §20 (template catalog).
- * Phase C.2 will widen the renderer's `brandingToCssVars` to consume every
- * token; until then the older Phase-A templates only read `colors.primary`
- * and `theme`, and the new tokens are forward-compatible noise.
- */
-
 const DEFAULT_PAGES = {
   home: true,
   products: true,
@@ -45,43 +36,60 @@ const DEFAULT_PAGES = {
   contact: true,
 };
 
-// The 4 Phase-A placeholder templates (minimal/standard/luxury/boutique) were
-// removed in favour of the 10 bespoke Phase-C.4 layouts below. The seed runner
-// repoints any SiteConfig pointing at a deprecated slug to `editorial` and
-// then deletes the SiteTemplate rows. See `cleanupDeprecatedTemplates` below.
-const DEPRECATED_TEMPLATE_SLUGS = [
-  "minimal",
-  "standard",
-  "luxury",
-  "boutique",
-] as const;
+/**
+ * Slugs from the previous template catalog that are no longer shipped.
+ * Tenants on these slugs are repointed to their closest replacement (see
+ * DEPRECATED_REPOINTS) and the deprecated SiteTemplate rows are deleted.
+ */
+const DEPRECATED_REPOINTS: Record<string, string> = {
+  // Old Phase-A placeholders (already removed once but might linger in old DBs)
+  minimal: "fold",
+  standard: "fold",
+  luxury: "auric",
+  boutique: "auric",
+  // Phase-C templates we're replacing in Phase-D
+  editorial: "maison",
+  organic: "verdant",
+  dark: "volt",
+  brutalist: "fold",
+  zen: "auric",
+  coastal: "lumen",
+  apothecary: "pantry",
+  retro: "pantry",
+  artisan: "maison",
+  gallery: "auric",
+  // NOTE: "blank" is intentionally NOT in this map. SiteTemplatePicker
+  // special-cases the "blank" slug ("Start from a blank canvas") and
+  // expects the row to exist; we keep it seeded as a minimal template
+  // below.
+};
 
 const TEMPLATES: TemplateSeed[] = [
   {
-    slug: "editorial",
-    name: "Editorial",
+    slug: "maison",
+    name: "Maison",
     description:
-      "Magazine-style. Serif display, asymmetric newspaper grid, cover-story hero. Best for brands that want to feel like a print publication.",
-    category: "editorial",
+      "Editorial warmth. Oak-and-clay palette, full-bleed editorial heroes, generous Fraunces serif display. Best for interior design, furniture, and craft homeware.",
+    category: "interior",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#1A1A1A",
-        secondary: "#4A4A4A",
-        accent: "#C8A45C",
-        background: "#FBF9F4",
-        surface: "#F4F1E8",
-        text: "#1A1A1A",
-        muted: "#7A7466",
-        border: "#E5E0D1",
-        ring: "#1A1A1A",
+        primary: "#2a241a",
+        secondary: "#7a6845",
+        accent: "#c9a672",
+        background: "#f7f1e3",
+        surface: "#ede4cc",
+        text: "#2a241a",
+        muted: "#7a6845",
+        border: "#d9caa3",
+        ring: "#2a241a",
       },
       typography: {
-        heading: "Cormorant Garamond",
-        body: "Source Sans 3",
-        display: "Cormorant Garamond",
-        scaleRatio: 1.333,
-        baseFontSize: 17,
+        heading: "Fraunces",
+        body: "Inter",
+        display: "Fraunces",
+        scaleRatio: 1.25,
+        baseFontSize: 16,
       },
       spacing: { base: 4, sectionPadding: "spacious" },
       radius: "sharp",
@@ -89,40 +97,40 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
-      products: true,
       categories: true,
       story: true,
-      articles: true,
+      products: true,
+      testimonials: true,
+      newsletter: true,
       contact: true,
-      newsletter: false,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 11,
+    sortOrder: 1,
   },
   {
-    slug: "brutalist",
-    name: "Brutalist",
+    slug: "fold",
+    name: "Fold",
     description:
-      "Monospace, hard edges, exposed grid lines. Loud, opinionated, instantly recognisable. Best for zines, indie streetwear, anyone with strong opinions.",
-    category: "brutalist",
+      "Swiss grid, ruthless typography. White, black, and a single oxblood accent. Inter 800 display. Best for fashion, apparel, and footwear.",
+    category: "fashion",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#000000",
-        secondary: "#333333",
-        accent: "#FF4500",
-        background: "#F5F5F0",
-        surface: "#E8E8DF",
-        text: "#000000",
-        muted: "#5A5A52",
-        border: "#000000",
-        ring: "#FF4500",
+        primary: "#0a0a0a",
+        secondary: "#3a3a3a",
+        accent: "#7a1c20",
+        background: "#f5f5f3",
+        surface: "#eceae5",
+        text: "#0a0a0a",
+        muted: "#6b6863",
+        border: "#d8d4cb",
+        ring: "#7a1c20",
       },
       typography: {
-        heading: "JetBrains Mono",
-        body: "JetBrains Mono",
-        display: "JetBrains Mono",
-        scaleRatio: 1.25,
+        heading: "Inter",
+        body: "Inter",
+        display: "Inter",
+        scaleRatio: 1.333,
         baseFontSize: 15,
       },
       spacing: { base: 4, sectionPadding: "balanced" },
@@ -131,122 +139,80 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
-      products: true,
-      categories: false,
-      articles: true,
-      contact: true,
-      newsletter: false,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 12,
-  },
-  {
-    slug: "zen",
-    name: "Zen",
-    description:
-      "Japanese-inspired. Generous whitespace, thin type, muted palette, slow rhythm. Best for ceramics, tea, stationery, craft shops.",
-    category: "zen",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#2E2E2E",
-        secondary: "#4D4D4D",
-        accent: "#A6947C",
-        background: "#F8F6F1",
-        surface: "#F0EDE4",
-        text: "#2E2E2E",
-        muted: "#8B8578",
-        border: "#E0DAC9",
-        ring: "#A6947C",
-      },
-      typography: {
-        heading: "Noto Serif JP",
-        body: "Inter",
-        display: "Noto Serif JP",
-        scaleRatio: 1.2,
-        baseFontSize: 16,
-      },
-      spacing: { base: 4, sectionPadding: "spacious" },
-      radius: "sharp",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
-      categories: false,
-      story: true,
-      articles: true,
-      contact: true,
-      newsletter: false,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 13,
-  },
-  {
-    slug: "coastal",
-    name: "Coastal",
-    description:
-      "Breezy blue and white, light serif, airy spacing. Best for linen, beachwear, resortwear, and travel brands.",
-    category: "coastal",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#2F5B7C",
-        secondary: "#4A7A9A",
-        accent: "#F5C35C",
-        background: "#FAFBFC",
-        surface: "#EDF2F7",
-        text: "#1A2B3C",
-        muted: "#6A7A8A",
-        border: "#D6DFE7",
-        ring: "#2F5B7C",
-      },
-      typography: {
-        heading: "Georgia",
-        body: "Inter",
-        display: "Georgia",
-        scaleRatio: 1.25,
-        baseFontSize: 17,
-      },
-      spacing: { base: 4, sectionPadding: "balanced" },
-      radius: "soft",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
       categories: true,
-      articles: true,
-      contact: true,
+      products: true,
+      story: true,
       newsletter: true,
+      contact: true,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 21,
+    sortOrder: 2,
   },
   {
-    slug: "retro",
-    name: "Retro",
+    slug: "forge",
+    name: "Forge",
     description:
-      "70s and 80s revival. Bold colors, chunky type, rounded pills. Best for vinyl, skate, streetwear, kitsch homeware.",
-    category: "retro",
+      "Data-dense industrial. Dark steel surface, hazard-amber accent, JetBrains Mono headings. Account bars, tier pricing, and tabular grids. Best for wholesale and B2B.",
+    category: "wholesale",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#E63946",
-        secondary: "#D62828",
-        accent: "#FFD166",
-        background: "#FFF8EC",
-        surface: "#FCE9C4",
-        text: "#1D1A1A",
-        muted: "#5A4F4A",
-        border: "#E8D29C",
-        ring: "#E63946",
+        primary: "#d4af3a",
+        secondary: "#3d4148",
+        accent: "#d4af3a",
+        background: "#14171c",
+        surface: "#1a1d22",
+        text: "#e8e4d8",
+        muted: "#8a8e96",
+        border: "#2a2e35",
+        ring: "#d4af3a",
       },
       typography: {
-        heading: "Helvetica Neue",
-        body: "Helvetica Neue",
-        display: "Helvetica Neue",
-        scaleRatio: 1.333,
+        heading: "Inter",
+        body: "Inter",
+        display: "JetBrains Mono",
+        scaleRatio: 1.2,
+        baseFontSize: 14,
+      },
+      spacing: { base: 4, sectionPadding: "compact" },
+      radius: "sharp",
+      theme: "dark",
+    },
+    defaultSections: {
+      hero: true,
+      stats: true,
+      categories: true,
+      products: true,
+      trust: true,
+      contact: true,
+    },
+    defaultPages: DEFAULT_PAGES,
+    sortOrder: 3,
+  },
+  {
+    slug: "lumen",
+    name: "Lumen",
+    description:
+      "Soft blush gradients, italic Fraunces serif, generous whitespace. Pillows of product air. Best for beauty, cosmetics, and skincare.",
+    category: "beauty",
+    previewImageUrl: null,
+    defaultBranding: {
+      colors: {
+        primary: "#6b3f33",
+        secondary: "#8a5e51",
+        accent: "#ecc8b9",
+        background: "#f5dfd2",
+        surface: "#fbf4ee",
+        text: "#6b3f33",
+        muted: "#9a7a6f",
+        border: "#e8c8b8",
+        ring: "#6b3f33",
+      },
+      typography: {
+        heading: "Fraunces",
+        body: "Inter",
+        display: "Fraunces",
+        scaleRatio: 1.25,
         baseFontSize: 16,
       },
       spacing: { base: 4, sectionPadding: "balanced" },
@@ -255,41 +221,40 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
-      products: true,
-      categories: false,
-      trust: true,
-      articles: true,
-      contact: true,
+      categories: true,
+      bento: true,
+      testimonials: true,
       newsletter: true,
+      contact: true,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 22,
+    sortOrder: 4,
   },
   {
-    slug: "dark",
-    name: "Dark",
+    slug: "volt",
+    name: "Volt",
     description:
-      "Pure dark mode with neon accents and a bento-style product showcase. Best for gaming, audio gear, streetwear, tech accessories.",
-    category: "dark",
+      "Deep-night UI, lime accent, monospaced specs, glow-and-grid. JetBrains Mono accents. Best for electronics, gadgets, and audio gear.",
+    category: "electronics",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#00E5A0",
-        secondary: "#00C088",
-        accent: "#FF2E88",
-        background: "#0A0A0A",
-        surface: "#141414",
-        text: "#F5F5F5",
-        muted: "#9CA3AF",
-        border: "#2A2A2A",
-        ring: "#00E5A0",
+        primary: "#d6f25a",
+        secondary: "#9aa3b0",
+        accent: "#d6f25a",
+        background: "#07090d",
+        surface: "#15191f",
+        text: "#e8eaf0",
+        muted: "#9aa3b0",
+        border: "#2a2f38",
+        ring: "#d6f25a",
       },
       typography: {
         heading: "Inter",
         body: "Inter",
-        display: "Inter",
-        scaleRatio: 1.25,
-        baseFontSize: 16,
+        display: "JetBrains Mono",
+        scaleRatio: 1.2,
+        baseFontSize: 14,
       },
       spacing: { base: 4, sectionPadding: "balanced" },
       radius: "soft",
@@ -297,41 +262,39 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
+      categories: true,
       products: true,
-      categories: false,
-      bento: true,
-      trust: true,
-      articles: true,
+      story: true,
+      stats: true,
       contact: true,
-      newsletter: true,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 31,
+    sortOrder: 5,
   },
   {
-    slug: "gallery",
-    name: "Gallery",
+    slug: "auric",
+    name: "Auric",
     description:
-      "Product-as-art. Minimal chrome, oversized imagery, bento showcase, exhibition-style typography. Best for limited-run design objects, prints, fine art.",
-    category: "gallery",
+      "Cream-on-cream luxury. Hairline rules, italic Fraunces display, gold accent, museum-tier whitespace. Best for jewelry, accessories, and bridal.",
+    category: "jewelry",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#1A1A1A",
-        secondary: "#3A3A3A",
-        accent: "#D9B382",
-        background: "#F7F5F0",
-        surface: "#EDEBE4",
-        text: "#1A1A1A",
-        muted: "#7A7A72",
-        border: "#DCD9CF",
-        ring: "#1A1A1A",
+        primary: "#2a1f17",
+        secondary: "#6b4a1f",
+        accent: "#b8924a",
+        background: "#f5ede0",
+        surface: "#fbf6ec",
+        text: "#2a1f17",
+        muted: "#9a8770",
+        border: "#dcc69a",
+        ring: "#b8924a",
       },
       typography: {
-        heading: "Inter",
+        heading: "Fraunces",
         body: "Inter",
-        display: "Inter",
-        scaleRatio: 1.2,
+        display: "Fraunces",
+        scaleRatio: 1.25,
         baseFontSize: 16,
       },
       spacing: { base: 4, sectionPadding: "spacious" },
@@ -340,41 +303,40 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
+      categories: true,
+      story: true,
       products: true,
-      categories: false,
-      bento: true,
-      articles: true,
+      testimonials: true,
       contact: true,
-      newsletter: false,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 32,
+    sortOrder: 6,
   },
   {
-    slug: "organic",
-    name: "Organic",
+    slug: "pantry",
+    name: "Pantry & Co.",
     description:
-      "Warm earth tones, lifestyle-first, gentle curves, trust strip. Best for natural, handcrafted, or wellness brands.",
-    category: "organic",
+      "Hand-feel labels, warm reds, recipe-style PDP. Fraunces display. Built for olive oils, sauces, tins, and other gourmet pantry goods.",
+    category: "food",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#4A6B3A",
-        secondary: "#6B8A5A",
-        accent: "#E8D4A8",
-        background: "#FAF6EF",
-        surface: "#F0E9DB",
-        text: "#2D3B24",
-        muted: "#6B6B5A",
-        border: "#DDD4BF",
-        ring: "#4A6B3A",
+        primary: "#b53626",
+        secondary: "#3a4a2a",
+        accent: "#b53626",
+        background: "#f1e6d2",
+        surface: "#ebd9b9",
+        text: "#2a1a14",
+        muted: "#6e5a48",
+        border: "#d8c19d",
+        ring: "#b53626",
       },
       typography: {
-        heading: "Lora",
+        heading: "Fraunces",
         body: "Inter",
-        display: "Lora",
+        display: "Fraunces",
         scaleRatio: 1.25,
-        baseFontSize: 17,
+        baseFontSize: 16,
       },
       spacing: { base: 4, sectionPadding: "balanced" },
       radius: "soft",
@@ -382,134 +344,227 @@ const TEMPLATES: TemplateSeed[] = [
     },
     defaultSections: {
       hero: true,
-      trust: true,
-      products: true,
+      categories: true,
       story: true,
-      articles: true,
-      contact: true,
+      products: true,
+      trust: true,
       newsletter: true,
+      contact: true,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 41,
+    sortOrder: 7,
   },
   {
-    slug: "apothecary",
-    name: "Apothecary",
+    slug: "ridge",
+    name: "Ridge//",
     description:
-      "Cream and sage with pharmacy-counter nostalgia. Trust-led, story-driven, monthly-bulletin newsletter. Best for skincare, candles, herbal goods, perfume.",
-    category: "apothecary",
+      "High-contrast performance. Italic mono numerals, oversized CTAs, tactical orange accent. Inter 800 display. Best for sports, fitness, and outdoor.",
+    category: "sports",
     previewImageUrl: null,
     defaultBranding: {
       colors: {
-        primary: "#3E5B4A",
-        secondary: "#5A7A68",
-        accent: "#E8D9B8",
-        background: "#F6F1E4",
-        surface: "#EEE5D0",
-        text: "#2B3B2E",
-        muted: "#6A7A66",
-        border: "#DBCFB2",
-        ring: "#3E5B4A",
+        primary: "#0a0a0a",
+        secondary: "#3a3a3a",
+        accent: "#ff5722",
+        background: "#f5f4f0",
+        surface: "#e8e6e0",
+        text: "#0a0a0a",
+        muted: "#6b6863",
+        border: "#d6d3cc",
+        ring: "#ff5722",
       },
       typography: {
-        heading: "Cormorant Garamond",
-        body: "Lora",
-        display: "Cormorant Garamond",
-        scaleRatio: 1.25,
-        baseFontSize: 17,
+        heading: "Inter",
+        body: "Inter",
+        display: "Inter",
+        scaleRatio: 1.333,
+        baseFontSize: 15,
       },
       spacing: { base: 4, sectionPadding: "balanced" },
-      radius: "soft",
+      radius: "sharp",
       theme: "light",
     },
     defaultSections: {
       hero: true,
-      trust: true,
-      products: true,
-      story: true,
-      articles: true,
-      contact: true,
-      newsletter: true,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 42,
-  },
-  {
-    slug: "artisan",
-    name: "Artisan",
-    description:
-      "Heritage crafts, story-first, warm greens — inspired by the shamanktm reference. The densest layout: trust, category tiles, workshop grid, founder story, newsletter. Best for folk art, handmade goods, spiritual stores.",
-    category: "artisan",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#3A7A1A",
-        secondary: "#5A9A3A",
-        accent: "#C9A75A",
-        background: "#FDFCF7",
-        surface: "#F4EFE0",
-        text: "#1A3A0A",
-        muted: "#5A6A4A",
-        border: "#DED7BE",
-        ring: "#3A7A1A",
-      },
-      typography: {
-        heading: "Cormorant Garamond",
-        body: "Montserrat",
-        display: "Cormorant Garamond",
-        scaleRatio: 1.25,
-        baseFontSize: 17,
-      },
-      spacing: { base: 4, sectionPadding: "balanced" },
-      radius: "soft",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      trust: true,
+      stats: true,
       categories: true,
       products: true,
       story: true,
-      articles: true,
       contact: true,
-      newsletter: true,
     },
     defaultPages: DEFAULT_PAGES,
-    sortOrder: 43,
+    sortOrder: 8,
+  },
+  {
+    slug: "verdant",
+    name: "Verdant",
+    description:
+      "Forest-floor palette. Botanical Fraunces serif, soil-tone surfaces, care-guide PDP modules. Best for plants, garden, and natural goods.",
+    category: "plants",
+    previewImageUrl: null,
+    defaultBranding: {
+      colors: {
+        primary: "#6b8458",
+        secondary: "#a89270",
+        accent: "#a89270",
+        background: "#2f3a2f",
+        surface: "#3a4838",
+        text: "#e3ddc8",
+        muted: "#a8b29a",
+        border: "#475744",
+        ring: "#6b8458",
+      },
+      typography: {
+        heading: "Fraunces",
+        body: "Inter",
+        display: "Fraunces",
+        scaleRatio: 1.25,
+        baseFontSize: 16,
+      },
+      spacing: { base: 4, sectionPadding: "balanced" },
+      radius: "sharp",
+      theme: "dark",
+    },
+    defaultSections: {
+      hero: true,
+      categories: true,
+      story: true,
+      products: true,
+      testimonials: true,
+      newsletter: true,
+      contact: true,
+    },
+    defaultPages: DEFAULT_PAGES,
+    sortOrder: 9,
+  },
+  {
+    slug: "foxglove",
+    name: "Foxglove & Co.",
+    description:
+      "Library-paper warmth, literary italic, indexed PLP, marginalia annotations on PDP. Hairline 1px radius. Best for books, stationery, and indie press.",
+    category: "books",
+    previewImageUrl: null,
+    defaultBranding: {
+      colors: {
+        primary: "#2a1f17",
+        secondary: "#6b3a26",
+        accent: "#2f4a3a",
+        background: "#ece4d3",
+        surface: "#ddd2bb",
+        text: "#2a1f17",
+        muted: "#6e5a48",
+        border: "#c8b89c",
+        ring: "#6b3a26",
+      },
+      typography: {
+        heading: "Fraunces",
+        body: "Inter",
+        display: "Fraunces",
+        scaleRatio: 1.25,
+        baseFontSize: 17,
+      },
+      spacing: { base: 4, sectionPadding: "spacious" },
+      radius: "sharp",
+      theme: "light",
+    },
+    defaultSections: {
+      hero: true,
+      categories: true,
+      story: true,
+      products: true,
+      testimonials: true,
+      newsletter: true,
+      contact: true,
+    },
+    defaultPages: DEFAULT_PAGES,
+    sortOrder: 10,
+  },
+  // "Blank canvas" — kept as the 11th seed because SiteTemplatePicker
+  // surfaces it as a separate "Start from scratch" affordance below the
+  // niche-targeted templates. No blueprint module: picking it leaves the
+  // tenant's SiteLayouts empty so they can author from zero.
+  {
+    slug: "blank",
+    name: "Blank canvas",
+    description:
+      "Start from scratch. No pre-seeded sections, no theme presets — design every block by hand.",
+    category: "general",
+    previewImageUrl: null,
+    defaultBranding: {
+      colors: {
+        primary: "#1a1a1a",
+        secondary: "#525252",
+        accent: "#3b82f6",
+        background: "#ffffff",
+        surface: "#fafafa",
+        text: "#1a1a1a",
+        muted: "#737373",
+        border: "#e5e5e5",
+        ring: "#3b82f6",
+      },
+      typography: {
+        heading: "Inter",
+        body: "Inter",
+        display: "Inter",
+        scaleRatio: 1.2,
+        baseFontSize: 16,
+      },
+      spacing: { base: 4, sectionPadding: "balanced" },
+      radius: "rounded",
+      theme: "light",
+    },
+    defaultSections: { hero: false, products: false },
+    defaultPages: DEFAULT_PAGES,
+    sortOrder: 99,
   },
 ];
 
 /**
- * Repoint any SiteConfig still using a deprecated template slug to `editorial`
- * (the new default), then delete the deprecated SiteTemplate rows. Idempotent:
- * if the deprecated rows are already gone this is a no-op.
+ * Repoint any SiteConfig referencing a deprecated template slug to the
+ * closest new equivalent, then delete the deprecated SiteTemplate rows.
+ * Idempotent — if a deprecated row is already gone, that mapping is a no-op.
  */
 async function cleanupDeprecatedTemplates(
   prisma: PrismaClient,
-  editorialId: string,
+  newSlugToId: Record<string, string>,
 ): Promise<void> {
+  const deprecatedSlugs = Object.keys(DEPRECATED_REPOINTS);
   const deprecated = await prisma.siteTemplate.findMany({
-    where: { slug: { in: [...DEPRECATED_TEMPLATE_SLUGS] } },
+    where: { slug: { in: deprecatedSlugs } },
     select: { id: true, slug: true },
   });
   if (deprecated.length === 0) return;
 
-  const deprecatedIds = deprecated.map((t) => t.id);
-  const repointed = await prisma.siteConfig.updateMany({
-    where: { templateId: { in: deprecatedIds } },
-    data: { templateId: editorialId },
-  });
+  let totalRepointed = 0;
+  for (const row of deprecated) {
+    const targetSlug = DEPRECATED_REPOINTS[row.slug];
+    const targetId = targetSlug ? newSlugToId[targetSlug] : undefined;
+    if (!targetId) {
+      console.warn(
+        `  ⚠ Deprecated template "${row.slug}" maps to "${targetSlug}", but the new row is missing — skipping repoint.`,
+      );
+      continue;
+    }
+    const result = await prisma.siteConfig.updateMany({
+      where: { templateId: row.id },
+      data: { templateId: targetId },
+    });
+    totalRepointed += result.count;
+  }
+
   await prisma.siteTemplate.deleteMany({
-    where: { id: { in: deprecatedIds } },
+    where: { id: { in: deprecated.map((d) => d.id) } },
   });
+
   console.log(
     `  ✓ Removed ${deprecated.length} deprecated templates (${deprecated
-      .map((t) => t.slug)
-      .join(", ")}); repointed ${repointed.count} site config(s) to editorial`,
+      .map((d) => d.slug)
+      .join(", ")}); repointed ${totalRepointed} site config(s)`,
   );
 }
 
 export async function seedSiteTemplates(prisma: PrismaClient): Promise<void> {
+  // Upsert the 10 new templates first so deprecated repoints have targets.
   for (const t of TEMPLATES) {
     await prisma.siteTemplate.upsert({
       where: { slug: t.slug },
@@ -534,17 +589,20 @@ export async function seedSiteTemplates(prisma: PrismaClient): Promise<void> {
         defaultSections: t.defaultSections,
         defaultPages: t.defaultPages,
         sortOrder: t.sortOrder,
+        isActive: true,
       },
     });
   }
 
-  const editorial = await prisma.siteTemplate.findUnique({
-    where: { slug: "editorial" },
-    select: { id: true },
+  // Build the new-slug → id lookup once, then run the deprecated-slug cleanup.
+  const newRows = await prisma.siteTemplate.findMany({
+    where: { slug: { in: TEMPLATES.map((t) => t.slug) } },
+    select: { id: true, slug: true },
   });
-  if (editorial) {
-    await cleanupDeprecatedTemplates(prisma, editorial.id);
-  }
+  const newSlugToId: Record<string, string> = {};
+  for (const r of newRows) newSlugToId[r.slug] = r.id;
+
+  await cleanupDeprecatedTemplates(prisma, newSlugToId);
 
   console.log(`  ✓ Site templates (${TEMPLATES.length})`);
 }

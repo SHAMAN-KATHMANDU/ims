@@ -1,0 +1,55 @@
+/**
+ * Foxglove & Co. template blueprint — Books · Stationery
+ *
+ * Library-paper warmth. Fraunces 400 italic display, hairline 1px radius,
+ * spacious rhythm.
+ */
+
+import type { TemplateBlueprint } from "@repo/shared";
+import { resetIdCounter } from "../_shared/factories";
+import { productsIndexLayout, offersLayout } from "../_shared";
+import { foxgloveHome } from "./home";
+import { foxglovePdp } from "./pdp";
+import { foxgloveCart } from "./cart";
+
+export const foxgloveBlueprint: TemplateBlueprint = {
+  slug: "foxglove",
+  layouts: {
+    home: foxgloveHome(),
+    "products-index": (() => {
+      resetIdCounter();
+      return productsIndexLayout();
+    })(),
+    "product-detail": foxglovePdp(),
+    offers: (() => {
+      resetIdCounter();
+      return offersLayout();
+    })(),
+    cart: foxgloveCart(),
+  },
+  defaultThemeTokens: {
+    mode: "light",
+    colors: {
+      primary: "#2a1f17",
+      secondary: "#6b3a26",
+      accent: "#2f4a3a",
+      background: "#ece4d3",
+      surface: "#ddd2bb",
+      text: "#2a1f17",
+      muted: "#6e5a48",
+      border: "#c8b89c",
+      ring: "#6b3a26",
+      onPrimary: "#ece4d3",
+    },
+    typography: {
+      heading: { family: "Fraunces, Georgia, serif", weights: [400, 500] },
+      body: { family: "Inter, system-ui, sans-serif" },
+      display: { family: "Fraunces, Georgia, serif", weights: [400] },
+      scaleRatio: 1.25,
+      baseSize: 17,
+    },
+    spacing: { unit: 4, section: "spacious", container: 1280 },
+    shape: { radius: 1, buttonStyle: "outline" },
+    motion: { enableAnimations: true, duration: 240 },
+  },
+};

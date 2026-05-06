@@ -6,3 +6,4 @@ export { block, nextId, resetIdCounter } from "./factories";
 export { pdpColumns } from "./pdp";
 export { offersLayout } from "./offers";
 export { productsIndexLayout } from "./products-index";
+export { cartLayout, type CartLayoutOptions } from "./cart";

@@ -14,6 +14,7 @@
  */
 
 export type { CatalogCategory, CatalogScope, CatalogEntry } from "./types";
+export { blocksToMarkdown, blockToMarkdown } from "./serialize";
 
 import type { BlockKind } from "../site-schema/blocks";
 import type { CatalogEntry } from "./types";
@@ -112,6 +113,15 @@ import { SocialLinksSchema, socialLinksCatalog } from "./social-links";
 import { PaymentIconsSchema, paymentIconsCatalog } from "./payment-icons";
 import { CopyrightBarSchema, copyrightBarCatalog } from "./copyright-bar";
 
+// Cart / commerce checkout
+import { CartLineItemsSchema, cartLineItemsCatalog } from "./cart-line-items";
+import { OrderSummarySchema, orderSummaryCatalog } from "./order-summary";
+import { AccountBarSchema, accountBarCatalog } from "./account-bar";
+import { PriceTiersSchema, priceTiersCatalog } from "./price-tiers";
+
+// Phase 5: reusable sub-trees
+import { SnippetRefSchema, snippetRefCatalog } from "./snippet-ref";
+
 /**
  * Catalog entries in palette display order. Order here is the order the
  * editor's block palette presents within each category, so changes are
@@ -192,6 +202,15 @@ export const BLOCK_CATALOG_ENTRIES: readonly CatalogEntry[] = [
   socialLinksCatalog,
   paymentIconsCatalog,
   copyrightBarCatalog,
+
+  // Cart / commerce checkout
+  accountBarCatalog,
+  cartLineItemsCatalog,
+  orderSummaryCatalog,
+  priceTiersCatalog,
+
+  // Phase 5: reusable sub-trees
+  snippetRefCatalog,
 ];
 
 /**
@@ -260,4 +279,9 @@ export const BLOCK_PROPS_SCHEMAS: Record<BlockKind, z.ZodType<unknown>> = {
   "copyright-bar": CopyrightBarSchema,
   row: RowSchema,
   "custom-html": CustomHtmlSchema,
+  "cart-line-items": CartLineItemsSchema,
+  "order-summary": OrderSummarySchema,
+  "account-bar": AccountBarSchema,
+  "price-tiers": PriceTiersSchema,
+  "snippet-ref": SnippetRefSchema,
 };
