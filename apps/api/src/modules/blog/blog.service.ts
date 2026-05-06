@@ -16,6 +16,8 @@
 import { Prisma } from "@prisma/client";
 import sitesRepo from "@/modules/sites/sites.repository";
 import { createError } from "@/middlewares/errorHandler";
+import { blocksToMarkdown, type BlockNode } from "@repo/shared";
+import { snapshotBlogPost } from "@/modules/versions/versions.service";
 import defaultRepo, {
   type BlogPostListItem,
   type BlogPostWithCategory,
@@ -28,6 +30,47 @@ import type {
   UpdateBlogPostInput,
 } from "./blog.schema";
 import { computeReadingMinutes } from "./blog.schema";
+
+/**
+ * Reconcile the markdown body and the canonical block tree from input. The
+ * Zod schema guarantees at least one of them is present on create; on
+ * update we only touch the columns the caller actually sent.
+ *
+ * Output:
+ *   - `body`         — BlockNode[] for the `body` JSONB column
+ *   - `bodyMarkdown` — string for the legacy column (RSS / SEO / fallback)
+ *   - `dirty`        — true when any body-shaped field was supplied
+ *
+ * If the caller sends `body`, that is canonical and `bodyMarkdown` is
+ * derived from it. If the caller sends only `bodyMarkdown`, we wrap it
+ * in a single `markdown-body` block so `body` stays in sync — this keeps
+ * the columns lock-step regardless of which path the client took.
+ */
+function reconcileBody(input: { body?: BlockNode[]; bodyMarkdown?: string }): {
+  body?: BlockNode[];
+  bodyMarkdown?: string;
+  dirty: boolean;
+} {
+  const hasBody = Array.isArray(input.body);
+  const hasMd = typeof input.bodyMarkdown === "string";
+  if (!hasBody && !hasMd) return { dirty: false };
+
+  if (hasBody) {
+    const body = input.body as BlockNode[];
+    const md = blocksToMarkdown(body) || (input.bodyMarkdown ?? "");
+    return { body, bodyMarkdown: md, dirty: true };
+  }
+
+  const md = input.bodyMarkdown!;
+  const body: BlockNode[] = [
+    {
+      id: "md-1",
+      kind: "markdown-body",
+      props: { source: md },
+    },
+  ];
+  return { body, bodyMarkdown: md, dirty: true };
+}
 import {
   revalidateBlog as defaultRevalidate,
   type RevalidateBlogOpts,
@@ -101,6 +144,7 @@ export class BlogService {
   async createPost(
     tenantId: string,
     input: CreateBlogPostInput,
+    editorId: string | null = null,
   ): Promise<BlogPostWithCategory> {
     await this.assertEnabled(tenantId);
 
@@ -112,17 +156,31 @@ export class BlogService {
       if (!category) throw createError("Blog category not found", 404);
     }
 
+    const reconciled = reconcileBody({
+      body: input.body,
+      bodyMarkdown: input.bodyMarkdown,
+    });
+    // Schema refine guarantees one was provided on create.
+    const bodyMarkdown = reconciled.bodyMarkdown ?? "";
+    const body = reconciled.body ?? [];
+
     const data: Omit<Prisma.BlogPostCreateInput, "tenant"> = {
       slug: input.slug,
       title: input.title,
       excerpt: input.excerpt ?? null,
-      bodyMarkdown: input.bodyMarkdown,
+      bodyMarkdown,
+      body: body as unknown as Prisma.InputJsonValue,
       heroImageUrl: input.heroImageUrl ?? null,
+      coverImageUrl: input.coverImageUrl ?? null,
+      icon: input.icon ?? null,
       authorName: input.authorName ?? null,
+      scheduledPublishAt: input.scheduledPublishAt
+        ? new Date(input.scheduledPublishAt)
+        : null,
       seoTitle: input.seoTitle ?? null,
       seoDescription: input.seoDescription ?? null,
       tags: input.tags ?? [],
-      readingMinutes: computeReadingMinutes(input.bodyMarkdown),
+      readingMinutes: computeReadingMinutes(bodyMarkdown),
       ...(input.categoryId
         ? { category: { connect: { id: input.categoryId } } }
         : {}),
@@ -131,6 +189,11 @@ export class BlogService {
     try {
       const post = await this.repo.createPost(tenantId, data);
       await this.revalidate(tenantId, { slug: post.slug });
+      await snapshotBlogPost(post, post, {
+        tenantId,
+        editorId,
+        note: "Created",
+      });
       return post;
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -144,6 +207,7 @@ export class BlogService {
     tenantId: string,
     id: string,
     input: UpdateBlogPostInput,
+    editorId: string | null = null,
   ): Promise<BlogPostWithCategory> {
     await this.assertEnabled(tenantId);
 
@@ -162,15 +226,36 @@ export class BlogService {
     if (input.slug !== undefined) data.slug = input.slug;
     if (input.title !== undefined) data.title = input.title;
     if (input.excerpt !== undefined) data.excerpt = input.excerpt ?? null;
-    if (input.bodyMarkdown !== undefined) {
-      data.bodyMarkdown = input.bodyMarkdown;
-      data.readingMinutes = computeReadingMinutes(input.bodyMarkdown);
+
+    const reconciled = reconcileBody({
+      body: input.body,
+      bodyMarkdown: input.bodyMarkdown,
+    });
+    if (reconciled.dirty) {
+      if (reconciled.body) {
+        data.body = reconciled.body as unknown as Prisma.InputJsonValue;
+      }
+      if (reconciled.bodyMarkdown !== undefined) {
+        data.bodyMarkdown = reconciled.bodyMarkdown;
+        data.readingMinutes = computeReadingMinutes(reconciled.bodyMarkdown);
+      }
     }
     if (input.heroImageUrl !== undefined) {
       data.heroImageUrl = input.heroImageUrl ?? null;
     }
+    if (input.coverImageUrl !== undefined) {
+      data.coverImageUrl = input.coverImageUrl ?? null;
+    }
+    if (input.icon !== undefined) {
+      data.icon = input.icon ?? null;
+    }
     if (input.authorName !== undefined) {
       data.authorName = input.authorName ?? null;
+    }
+    if (input.scheduledPublishAt !== undefined) {
+      data.scheduledPublishAt = input.scheduledPublishAt
+        ? new Date(input.scheduledPublishAt)
+        : null;
     }
     if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle ?? null;
     if (input.seoDescription !== undefined) {
@@ -190,6 +275,11 @@ export class BlogService {
       if (existing.slug !== post.slug) {
         await this.revalidate(tenantId, { slug: existing.slug });
       }
+      await snapshotBlogPost(post, post, {
+        tenantId,
+        editorId,
+        note: "Updated",
+      });
       return post;
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -202,12 +292,19 @@ export class BlogService {
   async publishPost(
     tenantId: string,
     id: string,
+    editorId: string | null = null,
   ): Promise<BlogPostWithCategory> {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.getPostById(tenantId, id);
     if (!existing) throw createError("Blog post not found", 404);
 
-    const data: Prisma.BlogPostUpdateInput = { status: "PUBLISHED" };
+    const data: Prisma.BlogPostUpdateInput = {
+      status: "PUBLISHED",
+      // Clear any pending schedule — manual publish supersedes it; otherwise
+      // the cron worker would re-fire and snapshot a duplicate "scheduled
+      // publish" later.
+      scheduledPublishAt: null,
+    };
     // Preserve publishedAt on re-publish so the original publication date
     // doesn't bounce around every time a post is toggled.
     if (!existing.publishedAt) {
@@ -216,19 +313,35 @@ export class BlogService {
 
     const post = await this.repo.updatePost(tenantId, id, data);
     await this.revalidate(tenantId, { slug: post.slug });
+    await snapshotBlogPost(post, post, {
+      tenantId,
+      editorId,
+      note: "Published",
+    });
     return post;
   }
 
   async unpublishPost(
     tenantId: string,
     id: string,
+    editorId: string | null = null,
   ): Promise<BlogPostWithCategory> {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.getPostById(tenantId, id);
     if (!existing) throw createError("Blog post not found", 404);
 
-    const post = await this.repo.updatePost(tenantId, id, { status: "DRAFT" });
+    // Unpublish also clears any pending schedule — otherwise the cron
+    // would re-publish a draft the author just demoted.
+    const post = await this.repo.updatePost(tenantId, id, {
+      status: "DRAFT",
+      scheduledPublishAt: null,
+    });
     await this.revalidate(tenantId, { slug: post.slug });
+    await snapshotBlogPost(post, post, {
+      tenantId,
+      editorId,
+      note: "Unpublished",
+    });
     return post;
   }
 

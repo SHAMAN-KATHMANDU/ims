@@ -18,6 +18,11 @@ const PAGE_LIST_SELECT = {
   showInNav: true,
   navOrder: true,
   isPublished: true,
+  // Phase 6 — surface review state in lists.
+  reviewStatus: true,
+  // Phase 8 — page-top customization.
+  coverImageUrl: true,
+  icon: true,
   seoTitle: true,
   seoDescription: true,
   createdAt: true,

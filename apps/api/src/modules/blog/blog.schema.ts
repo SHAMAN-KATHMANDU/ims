@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { BlockTreeSchema } from "@repo/shared";
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,80}$/;
 const slug = z
@@ -24,12 +25,36 @@ const tagString = z
   .max(40)
   .regex(/^[a-z0-9][a-z0-9- ]*$/i, "Invalid tag");
 
-export const CreateBlogPostSchema = z.object({
+/**
+ * Base shape (no refines) so .partial() is available for UpdateBlogPostSchema.
+ * The exported Create/Update variants apply the cross-field refinements.
+ */
+const blogPostBaseShape = z.object({
   slug,
   title: z.string().trim().min(1).max(200),
   excerpt: optionalString(500),
-  bodyMarkdown: z.string().min(1).max(100_000),
+  /**
+   * Markdown body. Either this or `body` (block tree) must be set on create.
+   * When `body` is provided the API derives bodyMarkdown from it via
+   * blocksToMarkdown(); when only bodyMarkdown is provided we wrap it in
+   * a single `markdown-body` block so `body` stays in sync.
+   */
+  bodyMarkdown: z.string().min(1).max(100_000).optional(),
+  /** Canonical block tree. New CMS clients write this directly. */
+  body: BlockTreeSchema.optional(),
+  /**
+   * Optional ISO-8601 timestamp (UTC). When set on a DRAFT post the
+   * scheduler worker (Phase 4) flips it to PUBLISHED at this time.
+   */
+  scheduledPublishAt: z
+    .union([z.string().datetime(), z.date()])
+    .optional()
+    .nullable(),
   heroImageUrl: optionalString(1000),
+  /** Phase 8: Notion-style cover image (full-bleed above title). */
+  coverImageUrl: optionalString(1000),
+  /** Phase 8: emoji or short string rendered before the heading. */
+  icon: optionalString(80),
   authorName: optionalString(120),
   categoryId: z.string().uuid().optional().nullable(),
   tags: z.array(tagString).max(20).optional().default([]),
@@ -37,10 +62,18 @@ export const CreateBlogPostSchema = z.object({
   seoDescription: optionalString(500),
 });
 
-export const UpdateBlogPostSchema = CreateBlogPostSchema.partial().refine(
-  (v) => Object.keys(v).length > 0,
-  { message: "At least one field must be provided" },
+export const CreateBlogPostSchema = blogPostBaseShape.refine(
+  (v) =>
+    (v.bodyMarkdown && v.bodyMarkdown.length > 0) ||
+    (v.body && v.body.length > 0),
+  { message: "Provide bodyMarkdown or body", path: ["body"] },
 );
+
+export const UpdateBlogPostSchema = blogPostBaseShape
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field must be provided",
+  });
 
 export const ListBlogPostsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

@@ -14,10 +14,14 @@ import {
   workspaceLocator,
 } from "@/shared/permissions/resourceLocator";
 import controller from "./pages.controller";
+import reviewController from "@/modules/review-workflow/review-workflow.controller";
+import authorizeRoles from "@/middlewares/roleMiddleware";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
+
+const reviewWorkflowGate = enforceEnvFeature(EnvFeature.CMS_REVIEW_WORKFLOW);
 
 /**
  * @swagger
@@ -187,6 +191,63 @@ router.delete(
   "/:id",
   requirePermission("WEBSITE.PAGES.DELETE", paramLocator("PAGE", "id")),
   asyncHandler(controller.deletePage),
+);
+
+// ==================== REVIEW WORKFLOW (Phase 6) ====================
+
+router.post(
+  "/:id/review/request",
+  reviewWorkflowGate,
+  requirePermission("WEBSITE.PAGES.UPDATE", paramLocator("PAGE", "id")),
+  asyncHandler(reviewController.pageRequestReview),
+);
+
+router.post(
+  "/:id/review/approve",
+  reviewWorkflowGate,
+  authorizeRoles("admin", "superAdmin"),
+  requirePermission("WEBSITE.PAGES.PUBLISH", paramLocator("PAGE", "id")),
+  asyncHandler(reviewController.pageApprove),
+);
+
+router.post(
+  "/:id/review/reject",
+  reviewWorkflowGate,
+  authorizeRoles("admin", "superAdmin"),
+  requirePermission("WEBSITE.PAGES.PUBLISH", paramLocator("PAGE", "id")),
+  asyncHandler(reviewController.pageReject),
+);
+
+// ==================== VERSIONS ====================
+
+/**
+ * @swagger
+ * /pages/{id}/versions:
+ *   get:
+ *     summary: List version history for a custom page
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/:id/versions",
+  requirePermission("WEBSITE.PAGES.VIEW", paramLocator("PAGE", "id")),
+  asyncHandler(controller.listVersions),
+);
+
+/**
+ * @swagger
+ * /pages/{id}/versions/{versionId}/restore:
+ *   post:
+ *     summary: Restore a page to an earlier version
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/:id/versions/:versionId/restore",
+  requirePermission("WEBSITE.PAGES.UPDATE", paramLocator("PAGE", "id")),
+  asyncHandler(controller.restoreVersion),
 );
 
 export default router;

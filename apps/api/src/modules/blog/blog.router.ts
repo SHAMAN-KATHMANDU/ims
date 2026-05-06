@@ -14,8 +14,14 @@ import {
   workspaceLocator,
 } from "@/shared/permissions/resourceLocator";
 import controller from "./blog.controller";
+import reviewController from "@/modules/review-workflow/review-workflow.controller";
+import authorizeRoles from "@/middlewares/roleMiddleware";
 
 const router = Router();
+
+// Phase 6: review-workflow gate. The whole workflow lives behind this
+// flag — when off, request-review/approve/reject endpoints 404 below.
+const reviewWorkflowGate = enforceEnvFeature(EnvFeature.CMS_REVIEW_WORKFLOW);
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
 
@@ -124,6 +130,84 @@ router.delete(
   "/posts/:id",
   requirePermission("WEBSITE.BLOG.DELETE", paramLocator("BLOG_POST", "id")),
   asyncHandler(controller.deletePost),
+);
+
+// ==================== REVIEW WORKFLOW (Phase 6) ====================
+
+/**
+ * @swagger
+ * /blog/posts/{id}/review/request:
+ *   post:
+ *     summary: Move a draft post into review (Phase 6 — flagged)
+ *     tags: [Blog]
+ */
+router.post(
+  "/posts/:id/review/request",
+  reviewWorkflowGate,
+  requirePermission("WEBSITE.BLOG.UPDATE", paramLocator("BLOG_POST", "id")),
+  asyncHandler(reviewController.blogRequestReview),
+);
+
+/**
+ * @swagger
+ * /blog/posts/{id}/review/approve:
+ *   post:
+ *     summary: Approve a post in review (admin / superAdmin only)
+ *     tags: [Blog]
+ */
+router.post(
+  "/posts/:id/review/approve",
+  reviewWorkflowGate,
+  authorizeRoles("admin", "superAdmin"),
+  requirePermission("WEBSITE.BLOG.PUBLISH", paramLocator("BLOG_POST", "id")),
+  asyncHandler(reviewController.blogApprove),
+);
+
+/**
+ * @swagger
+ * /blog/posts/{id}/review/reject:
+ *   post:
+ *     summary: Reject a post (admin / superAdmin only) — moves it back to DRAFT
+ *     tags: [Blog]
+ */
+router.post(
+  "/posts/:id/review/reject",
+  reviewWorkflowGate,
+  authorizeRoles("admin", "superAdmin"),
+  requirePermission("WEBSITE.BLOG.PUBLISH", paramLocator("BLOG_POST", "id")),
+  asyncHandler(reviewController.blogReject),
+);
+
+// ==================== VERSIONS ====================
+
+/**
+ * @swagger
+ * /blog/posts/{id}/versions:
+ *   get:
+ *     summary: List version history for a blog post
+ *     tags: [Blog]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/posts/:id/versions",
+  requirePermission("WEBSITE.BLOG.VIEW", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.listVersions),
+);
+
+/**
+ * @swagger
+ * /blog/posts/{id}/versions/{versionId}/restore:
+ *   post:
+ *     summary: Restore a blog post to an earlier version
+ *     tags: [Blog]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/posts/:id/versions/:versionId/restore",
+  requirePermission("WEBSITE.BLOG.UPDATE", paramLocator("BLOG_POST", "id")),
+  asyncHandler(controller.restoreVersion),
 );
 
 // ==================== CATEGORIES ====================

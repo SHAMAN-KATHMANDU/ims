@@ -17,7 +17,11 @@ vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
 vi.mock("@/shared/auth/getAuthContext", () => ({
-  getAuthContext: vi.fn(() => ({ id: "u1", tenantId: "t1", role: "admin" })),
+  getAuthContext: vi.fn(() => ({
+    userId: "u1",
+    tenantId: "t1",
+    role: "admin",
+  })),
 }));
 vi.mock("@/config/prisma", () => ({ default: {} }));
 
@@ -85,7 +89,7 @@ describe("PagesController", () => {
     mockService.publishPage.mockResolvedValue({ id: "p1" });
     const res = mockRes() as Response;
     await controller.publishPage(makeReq({ params: { id: "p1" } }), res);
-    expect(mockService.publishPage).toHaveBeenCalledWith("t1", "p1");
+    expect(mockService.publishPage).toHaveBeenCalledWith("t1", "p1", "u1");
     expect(res.status).toHaveBeenCalledWith(200);
   });
 

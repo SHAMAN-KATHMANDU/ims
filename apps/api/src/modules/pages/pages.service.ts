@@ -19,7 +19,36 @@ import { signPreviewToken } from "@/modules/site-preview/preview-token";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
 import type { BlockNode } from "@repo/shared";
+import { blocksToMarkdown } from "@repo/shared";
+import { snapshotTenantPage } from "@/modules/versions/versions.service";
 import defaultRepo, { type TenantPageListItem } from "./pages.repository";
+
+/**
+ * Reconcile the markdown body and the canonical block tree from input.
+ * Mirrors blog.service's helper. See that file for the design rationale —
+ * `body` wins when present and `bodyMarkdown` is derived; otherwise the
+ * markdown is wrapped in a single `markdown-body` block so the columns
+ * stay lock-step regardless of which path the caller used.
+ */
+function reconcileBody(input: { body?: BlockNode[]; bodyMarkdown?: string }): {
+  body?: BlockNode[];
+  bodyMarkdown?: string;
+  dirty: boolean;
+} {
+  const hasBody = Array.isArray(input.body);
+  const hasMd = typeof input.bodyMarkdown === "string";
+  if (!hasBody && !hasMd) return { dirty: false };
+  if (hasBody) {
+    const body = input.body as BlockNode[];
+    const md = blocksToMarkdown(body) || (input.bodyMarkdown ?? "");
+    return { body, bodyMarkdown: md, dirty: true };
+  }
+  const md = input.bodyMarkdown!;
+  const body: BlockNode[] = [
+    { id: "md-1", kind: "markdown-body", props: { source: md } },
+  ];
+  return { body, bodyMarkdown: md, dirty: true };
+}
 import type {
   CreateTenantPageInput,
   ListTenantPagesQuery,
@@ -92,16 +121,31 @@ export class PagesService {
     return page;
   }
 
-  async createPage(tenantId: string, input: CreateTenantPageInput) {
+  async createPage(
+    tenantId: string,
+    input: CreateTenantPageInput,
+    editorId: string | null = null,
+  ) {
     await this.assertEnabled(tenantId);
+
+    const reconciled = reconcileBody({
+      body: input.body,
+      bodyMarkdown: input.bodyMarkdown,
+    });
 
     const data: Omit<Prisma.TenantPageCreateInput, "tenant"> = {
       slug: input.slug,
       title: input.title,
-      bodyMarkdown: input.bodyMarkdown,
+      bodyMarkdown: reconciled.bodyMarkdown ?? "",
+      body: (reconciled.body ?? []) as unknown as Prisma.InputJsonValue,
+      scheduledPublishAt: input.scheduledPublishAt
+        ? new Date(input.scheduledPublishAt)
+        : null,
       layoutVariant: input.layoutVariant,
       showInNav: input.showInNav,
       navOrder: input.navOrder,
+      coverImageUrl: input.coverImageUrl ?? null,
+      icon: input.icon ?? null,
       seoTitle: input.seoTitle ?? null,
       seoDescription: input.seoDescription ?? null,
     };
@@ -109,6 +153,11 @@ export class PagesService {
     try {
       const page = await this.repo.createPage(tenantId, data);
       await this.revalidate(tenantId, { slug: page.slug });
+      await snapshotTenantPage(page, page, {
+        tenantId,
+        editorId,
+        note: "Created",
+      });
       return page;
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -118,7 +167,12 @@ export class PagesService {
     }
   }
 
-  async updatePage(tenantId: string, id: string, input: UpdateTenantPageInput) {
+  async updatePage(
+    tenantId: string,
+    id: string,
+    input: UpdateTenantPageInput,
+    editorId: string | null = null,
+  ) {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.getPageById(tenantId, id);
     if (!existing) throw createError("Page not found", 404);
@@ -126,12 +180,34 @@ export class PagesService {
     const data: Prisma.TenantPageUpdateInput = {};
     if (input.slug !== undefined) data.slug = input.slug;
     if (input.title !== undefined) data.title = input.title;
-    if (input.bodyMarkdown !== undefined)
-      data.bodyMarkdown = input.bodyMarkdown;
+
+    const reconciled = reconcileBody({
+      body: input.body,
+      bodyMarkdown: input.bodyMarkdown,
+    });
+    if (reconciled.dirty) {
+      if (reconciled.body) {
+        data.body = reconciled.body as unknown as Prisma.InputJsonValue;
+      }
+      if (reconciled.bodyMarkdown !== undefined) {
+        data.bodyMarkdown = reconciled.bodyMarkdown;
+      }
+    }
+    if (input.scheduledPublishAt !== undefined) {
+      data.scheduledPublishAt = input.scheduledPublishAt
+        ? new Date(input.scheduledPublishAt)
+        : null;
+    }
     if (input.layoutVariant !== undefined)
       data.layoutVariant = input.layoutVariant;
     if (input.showInNav !== undefined) data.showInNav = input.showInNav;
     if (input.navOrder !== undefined) data.navOrder = input.navOrder;
+    if (input.coverImageUrl !== undefined) {
+      data.coverImageUrl = input.coverImageUrl ?? null;
+    }
+    if (input.icon !== undefined) {
+      data.icon = input.icon ?? null;
+    }
     if (input.seoTitle !== undefined) data.seoTitle = input.seoTitle ?? null;
     if (input.seoDescription !== undefined) {
       data.seoDescription = input.seoDescription ?? null;
@@ -143,6 +219,11 @@ export class PagesService {
       if (existing.slug !== page.slug) {
         await this.revalidate(tenantId, { slug: existing.slug });
       }
+      await snapshotTenantPage(page, page, {
+        tenantId,
+        editorId,
+        note: "Updated",
+      });
       return page;
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -152,25 +233,47 @@ export class PagesService {
     }
   }
 
-  async publishPage(tenantId: string, id: string) {
+  async publishPage(
+    tenantId: string,
+    id: string,
+    editorId: string | null = null,
+  ) {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.getPageById(tenantId, id);
     if (!existing) throw createError("Page not found", 404);
     const page = await this.repo.updatePage(tenantId, id, {
       isPublished: true,
+      // Manual publish supersedes any pending schedule.
+      scheduledPublishAt: null,
     });
     await this.revalidate(tenantId, { slug: page.slug });
+    await snapshotTenantPage(page, page, {
+      tenantId,
+      editorId,
+      note: "Published",
+    });
     return page;
   }
 
-  async unpublishPage(tenantId: string, id: string) {
+  async unpublishPage(
+    tenantId: string,
+    id: string,
+    editorId: string | null = null,
+  ) {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.getPageById(tenantId, id);
     if (!existing) throw createError("Page not found", 404);
     const page = await this.repo.updatePage(tenantId, id, {
       isPublished: false,
+      // Cancel any pending auto-publish so the cron doesn't re-flip it.
+      scheduledPublishAt: null,
     });
     await this.revalidate(tenantId, { slug: page.slug });
+    await snapshotTenantPage(page, page, {
+      tenantId,
+      editorId,
+      note: "Unpublished",
+    });
     return page;
   }
 
@@ -298,9 +401,22 @@ export class PagesService {
       slug,
       title: `${original.title} (copy)`,
       bodyMarkdown: original.bodyMarkdown,
+      // Phase 2 — carry the canonical block tree so duplicates aren't silently
+      // reduced to markdown-only bodies.
+      body: original.body as unknown as Prisma.InputJsonValue,
       layoutVariant: original.layoutVariant,
       showInNav: false, // duplicate hidden by default to avoid surprise nav entries
       navOrder: original.navOrder,
+      // Phase 8 — preserve cover/icon so the duplicate looks like the source.
+      coverImageUrl: original.coverImageUrl ?? null,
+      icon: original.icon ?? null,
+      // Preserve hierarchy + landing-flag so a duplicated nested page stays
+      // nested and a duplicated landing page stays chrome-less. Without
+      // these the copy silently lifts to the root or grows full chrome.
+      isLandingPage: original.isLandingPage,
+      ...(original.parentId
+        ? { parent: { connect: { id: original.parentId } } }
+        : {}),
       seoTitle: original.seoTitle ?? null,
       seoDescription: original.seoDescription ?? null,
     });

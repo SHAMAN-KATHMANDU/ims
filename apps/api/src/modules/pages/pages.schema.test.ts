@@ -67,6 +67,40 @@ describe("UpdateTenantPageSchema", () => {
   });
 });
 
+describe("CreateTenantPageSchema — body / scheduledPublishAt", () => {
+  it("accepts a body block tree without bodyMarkdown", () => {
+    const result = CreateTenantPageSchema.parse({
+      slug: "block-page",
+      title: "Block page",
+      body: [{ id: "h-1", kind: "heading", props: { text: "Hi", level: 2 } }],
+    });
+    expect(result.body).toHaveLength(1);
+  });
+
+  it("rejects when neither bodyMarkdown nor body is provided", () => {
+    expect(() =>
+      CreateTenantPageSchema.parse({ slug: "no-body", title: "No body" }),
+    ).toThrow();
+    expect(() =>
+      CreateTenantPageSchema.parse({
+        slug: "empty-body",
+        title: "Empty body",
+        body: [],
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a scheduledPublishAt ISO timestamp", () => {
+    const result = CreateTenantPageSchema.parse({
+      slug: "scheduled",
+      title: "Scheduled",
+      bodyMarkdown: "Body",
+      scheduledPublishAt: "2026-12-01T00:00:00.000Z",
+    });
+    expect(result.scheduledPublishAt).toBe("2026-12-01T00:00:00.000Z");
+  });
+});
+
 describe("ListTenantPagesQuerySchema", () => {
   it("coerces published query param", () => {
     const result = ListTenantPagesQuerySchema.parse({ published: "true" });
