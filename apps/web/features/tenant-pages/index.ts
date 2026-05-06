@@ -10,6 +10,8 @@ export {
   useUnpublishTenantPage,
   useDeleteTenantPage,
   useReorderTenantPages,
+  useTenantPageVersions,
+  useRestoreTenantPageVersion,
   tenantPagesKeys,
 } from "./hooks/use-tenant-pages";
 
@@ -20,6 +22,17 @@ export type {
   CreateTenantPageData,
   UpdateTenantPageData,
 } from "./services/tenant-pages.service";
+export {
+  listTenantPages,
+  requestPageReview,
+  approvePageReview,
+  rejectPageReview,
+} from "./services/tenant-pages.service";
+export {
+  useRequestPageReview,
+  useApprovePageReview,
+  useRejectPageReview,
+} from "./hooks/use-tenant-pages";
 
 export {
   TenantPageFormSchema,

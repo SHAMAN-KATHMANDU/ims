@@ -35,7 +35,7 @@ import {
   selectWrapInRowAt,
   useEditorStore,
 } from "./editor-store";
-import { findPath, nodeAt } from "./blockTree";
+import { findPath, nodeAt } from "@/lib/block-tree";
 import { BlockInspector } from "./BlockInspector";
 import { PreviewFrame } from "./PreviewFrame";
 import { BlockTreePanel } from "./BlockTreePanel";

@@ -13,6 +13,8 @@ import {
   createBlogCategory,
   updateBlogCategory,
   deleteBlogCategory,
+  listBlogPostVersions,
+  restoreBlogPostVersion,
   type ListBlogPostsQuery,
   type CreateBlogPostData,
   type UpdateBlogPostData,
@@ -26,6 +28,7 @@ export const tenantBlogKeys = {
     [...tenantBlogKeys.all, "posts", query ?? {}] as const,
   post: (id: string) => [...tenantBlogKeys.all, "post", id] as const,
   categories: () => [...tenantBlogKeys.all, "categories"] as const,
+  versions: (id: string) => [...tenantBlogKeys.all, "versions", id] as const,
 };
 
 // ==================== POSTS ====================
@@ -102,6 +105,31 @@ export function useDeleteBlogPost() {
   });
 }
 
+// ==================== VERSIONS ====================
+
+export function useBlogPostVersions(id: string | null) {
+  return useQuery({
+    queryKey: tenantBlogKeys.versions(id ?? ""),
+    queryFn: () => {
+      if (!id) throw new Error("Post id is required");
+      return listBlogPostVersions(id);
+    },
+    enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useRestoreBlogPostVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, versionId }: { id: string; versionId: string }) =>
+      restoreBlogPostVersion(id, versionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantBlogKeys.all });
+    },
+  });
+}
+
 // ==================== CATEGORIES ====================
 
 export function useBlogCategories() {
@@ -139,6 +167,44 @@ export function useDeleteBlogCategory() {
     mutationFn: (id: string) => deleteBlogCategory(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tenantBlogKeys.categories() });
+    },
+  });
+}
+
+// ==================== REVIEW WORKFLOW (Phase 6) ====================
+
+import {
+  requestBlogReview,
+  approveBlogReview,
+  rejectBlogReview,
+} from "../services/tenant-blog.service";
+
+export function useRequestBlogReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => requestBlogReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantBlogKeys.all });
+    },
+  });
+}
+
+export function useApproveBlogReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => approveBlogReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantBlogKeys.all });
+    },
+  });
+}
+
+export function useRejectBlogReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => rejectBlogReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantBlogKeys.all });
     },
   });
 }

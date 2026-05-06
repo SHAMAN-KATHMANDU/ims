@@ -32,8 +32,8 @@ import {
   resolveDropZone,
   type DropTargetResult,
   type DropZone,
-} from "./dropZones";
-import { CONTAINER_KINDS } from "./blockTree";
+  CONTAINER_KINDS,
+} from "@/lib/block-tree";
 import type { BlockKind } from "@repo/shared";
 
 interface BlockMeta {

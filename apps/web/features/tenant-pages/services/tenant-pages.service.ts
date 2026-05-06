@@ -22,6 +22,12 @@ export interface TenantPageListItem {
   showInNav: boolean;
   navOrder: number;
   isPublished: boolean;
+  /** Phase 6: review state, independent of `isPublished`. Defaults to DRAFT for legacy rows. */
+  reviewStatus?: ContentReviewStatus;
+  /** Phase 8 — Notion-style cover image. */
+  coverImageUrl?: string | null;
+  /** Phase 8 — emoji or short string. */
+  icon?: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   createdAt: string;
@@ -30,12 +36,32 @@ export interface TenantPageListItem {
 
 export interface TenantPage extends TenantPageListItem {
   bodyMarkdown: string;
+  /** Block tree body (Phase 2). Empty array on legacy / freshly-migrated pages. */
+  body?: BlockNodeJson[];
+  /** Phase 4: ISO-8601 timestamp of a scheduled auto-publish; null = none. */
+  scheduledPublishAt?: string | null;
 }
+
+/** See blog service for the rationale on this loose JSON type. */
+export type BlockNodeJson = {
+  id: string;
+  kind: string;
+  props: unknown;
+  children?: BlockNodeJson[];
+};
 
 export interface CreateTenantPageData {
   slug: string;
   title: string;
-  bodyMarkdown: string;
+  /** Either bodyMarkdown or body must be set; API derives the other. */
+  bodyMarkdown?: string;
+  body?: BlockNodeJson[];
+  /** Phase 4: ISO-8601 timestamp; the worker auto-publishes drafts at this time. */
+  scheduledPublishAt?: string | null;
+  /** Phase 8 — Notion-style cover image. */
+  coverImageUrl?: string | null;
+  /** Phase 8 — emoji or short string. */
+  icon?: string | null;
   layoutVariant?: TenantPageLayoutVariant;
   showInNav?: boolean;
   navOrder?: number;
@@ -149,6 +175,46 @@ export async function deleteTenantPage(id: string): Promise<void> {
   }
 }
 
+// ============================================
+// API — Versions (Phase 4)
+// ============================================
+
+export interface TenantPageVersionListItem {
+  id: string;
+  createdAt: string;
+  editorId: string | null;
+  note: string | null;
+}
+
+export async function listTenantPageVersions(
+  id: string,
+): Promise<TenantPageVersionListItem[]> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.get<{ versions: TenantPageVersionListItem[] }>(
+      `/pages/${id}/versions`,
+    );
+    return response.data.versions ?? [];
+  } catch (error) {
+    handleApiError(error, "list tenant page versions");
+  }
+}
+
+export async function restoreTenantPageVersion(
+  id: string,
+  versionId: string,
+): Promise<TenantPage> {
+  if (!id || !versionId) throw new Error("Page id and version id are required");
+  try {
+    const response = await api.post<{ page: TenantPage }>(
+      `/pages/${id}/versions/${versionId}/restore`,
+    );
+    return response.data.page;
+  } catch (error) {
+    handleApiError(error, "restore tenant page version");
+  }
+}
+
 export async function getTenantPagePreviewUrl(id: string): Promise<string> {
   if (!id) throw new Error("Page id is required");
   try {
@@ -207,5 +273,60 @@ export async function duplicateTenantPage(id: string): Promise<TenantPage> {
     return response.data.page;
   } catch (error) {
     handleApiError(error, "duplicate tenant page");
+  }
+}
+
+// ============================================
+// API — Review workflow (Phase 6, behind CMS_REVIEW_WORKFLOW)
+// ============================================
+
+export type ContentReviewStatus =
+  | "DRAFT"
+  | "IN_REVIEW"
+  | "APPROVED"
+  | "PUBLISHED";
+
+export async function requestPageReview(
+  id: string,
+): Promise<{ id: string; reviewStatus: ContentReviewStatus }> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.post<{
+      id: string;
+      reviewStatus: ContentReviewStatus;
+    }>(`/pages/${id}/review/request`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "request page review");
+  }
+}
+
+export async function approvePageReview(
+  id: string,
+): Promise<{ id: string; reviewStatus: ContentReviewStatus }> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.post<{
+      id: string;
+      reviewStatus: ContentReviewStatus;
+    }>(`/pages/${id}/review/approve`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "approve tenant page");
+  }
+}
+
+export async function rejectPageReview(
+  id: string,
+): Promise<{ id: string; reviewStatus: ContentReviewStatus }> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.post<{
+      id: string;
+      reviewStatus: ContentReviewStatus;
+    }>(`/pages/${id}/review/reject`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "reject tenant page");
   }
 }

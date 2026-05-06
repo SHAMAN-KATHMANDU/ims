@@ -29,7 +29,7 @@ import {
   nodeAt,
   unwrapEmpty,
   wrapInRow as wrapInRowTree,
-} from "./blockTree";
+} from "@/lib/block-tree";
 
 // ---------------------------------------------------------------------------
 // Types
