@@ -91,8 +91,29 @@ export default async function BlogPostPage({ params }: Props) {
     );
   }
 
+  // Phase 8 — render the cover at the route level so the shell can place
+  // it outside `.container` and let it span the full viewport. The shell
+  // accepts an optional `cover` slot for exactly this case.
+  const cover = result.post.coverImageUrl ? (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={result.post.coverImageUrl}
+      alt=""
+      aria-hidden="true"
+      loading="eager"
+      fetchPriority="high"
+      decoding="async"
+      sizes="100vw"
+      style={{
+        width: "100%",
+        aspectRatio: "16 / 5",
+        objectFit: "cover",
+        display: "block",
+      }}
+    />
+  ) : null;
   return (
-    <BlogPageShell>
+    <BlogPageShell cover={cover}>
       <BlogArticle post={result.post} related={result.related} />
     </BlogPageShell>
   );

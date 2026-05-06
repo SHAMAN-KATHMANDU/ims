@@ -66,6 +66,25 @@ export default async function LandingPage({ params }: Props) {
   // No header/footer — that's the point of a landing page
   return (
     <main>
+      {/* Phase 8 — full-bleed cover above the page content (when set). */}
+      {page.coverImageUrl && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={page.coverImageUrl}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          sizes="100vw"
+          style={{
+            width: "100%",
+            aspectRatio: "16 / 5",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      )}
       {layout && Array.isArray(layout.blocks) && layout.blocks.length > 0 ? (
         <div
           style={{
@@ -93,9 +112,20 @@ export default async function LandingPage({ params }: Props) {
               fontFamily: "var(--font-display)",
               lineHeight: 1.15,
               marginBottom: "2rem",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "0.65rem",
             }}
           >
-            {page.title}
+            {page.icon && (
+              <span
+                aria-hidden="true"
+                style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}
+              >
+                {page.icon}
+              </span>
+            )}
+            <span>{page.title}</span>
           </h1>
           <MarkdownBody source={page.bodyMarkdown} />
         </div>
