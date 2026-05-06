@@ -3,21 +3,20 @@
  *
  * When a tenant picks a template, the sites service uses getTemplateBlueprint()
  * to fetch the blueprint, then seeds SiteLayout rows for each scope (home,
- * products-index, product-detail, offers) from the matching blueprint.
+ * products-index, product-detail, offers, cart) from the matching blueprint.
  */
 
 import type { TemplateBlueprint } from "@repo/shared";
-import { editorialBlueprint } from "./editorial";
-import { organicBlueprint } from "./organic";
-import { darkBlueprint } from "./dark";
-import { brutalistBlueprint } from "./brutalist";
-import { zenBlueprint } from "./zen";
-import { coastalBlueprint } from "./coastal";
-import { apothecaryBlueprint } from "./apothecary";
-import { retroBlueprint } from "./retro";
-import { artisanBlueprint } from "./artisan";
-import { galleryBlueprint } from "./gallery";
-import { blankBlueprint } from "./blank";
+import { maisonBlueprint } from "./maison";
+import { foldBlueprint } from "./fold";
+import { forgeBlueprint } from "./forge";
+import { lumenBlueprint } from "./lumen";
+import { voltBlueprint } from "./volt";
+import { auricBlueprint } from "./auric";
+import { pantryBlueprint } from "./pantry";
+import { ridgeBlueprint } from "./ridge";
+import { verdantBlueprint } from "./verdant";
+import { foxgloveBlueprint } from "./foxglove";
 
 // ---------------------------------------------------------------------------
 // Type definitions
@@ -27,13 +26,15 @@ export type BlueprintScope =
   | "home"
   | "products-index"
   | "product-detail"
-  | "offers";
+  | "offers"
+  | "cart";
 
 export const BLUEPRINT_SCOPES = [
   "home",
   "products-index",
   "product-detail",
   "offers",
+  "cart",
 ] as const satisfies readonly BlueprintScope[];
 
 // Re-export the interface for external consumers
@@ -44,17 +45,16 @@ export type { TemplateBlueprint } from "@repo/shared";
 // ---------------------------------------------------------------------------
 
 export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
-  editorial: editorialBlueprint,
-  organic: organicBlueprint,
-  dark: darkBlueprint,
-  brutalist: brutalistBlueprint,
-  zen: zenBlueprint,
-  coastal: coastalBlueprint,
-  apothecary: apothecaryBlueprint,
-  retro: retroBlueprint,
-  artisan: artisanBlueprint,
-  gallery: galleryBlueprint,
-  blank: blankBlueprint,
+  maison: maisonBlueprint,
+  fold: foldBlueprint,
+  forge: forgeBlueprint,
+  lumen: lumenBlueprint,
+  volt: voltBlueprint,
+  auric: auricBlueprint,
+  pantry: pantryBlueprint,
+  ridge: ridgeBlueprint,
+  verdant: verdantBlueprint,
+  foxglove: foxgloveBlueprint,
 };
 
 /**

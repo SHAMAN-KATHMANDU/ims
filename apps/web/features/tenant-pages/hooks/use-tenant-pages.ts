@@ -13,6 +13,8 @@ import {
   getTenantPagePreviewUrl,
   convertPageToBlocks,
   duplicateTenantPage,
+  listTenantPageVersions,
+  restoreTenantPageVersion,
   type ListTenantPagesQuery,
   type CreateTenantPageData,
   type UpdateTenantPageData,
@@ -28,6 +30,7 @@ export const tenantPagesKeys = {
   page: (id: string) => [...tenantPagesKeys.all, "page", id] as const,
   previewUrl: (id: string) =>
     [...tenantPagesKeys.all, "preview-url", id] as const,
+  versions: (id: string) => [...tenantPagesKeys.all, "versions", id] as const,
 };
 
 export function useTenantPagePreviewUrl(id: string | null) {
@@ -144,6 +147,69 @@ export function useDuplicateTenantPage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => duplicateTenantPage(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+    },
+  });
+}
+
+// ==================== VERSIONS ====================
+
+export function useTenantPageVersions(id: string | null) {
+  return useQuery({
+    queryKey: tenantPagesKeys.versions(id ?? ""),
+    queryFn: () => {
+      if (!id) throw new Error("Page id is required");
+      return listTenantPageVersions(id);
+    },
+    enabled: !!id,
+    retry: false,
+  });
+}
+
+export function useRestoreTenantPageVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, versionId }: { id: string; versionId: string }) =>
+      restoreTenantPageVersion(id, versionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+    },
+  });
+}
+
+// ==================== REVIEW WORKFLOW (Phase 6) ====================
+
+import {
+  requestPageReview,
+  approvePageReview,
+  rejectPageReview,
+} from "../services/tenant-pages.service";
+
+export function useRequestPageReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => requestPageReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+    },
+  });
+}
+
+export function useApprovePageReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => approvePageReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+    },
+  });
+}
+
+export function useRejectPageReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => rejectPageReview(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
     },

@@ -50,12 +50,82 @@ import type {
   CreateTenantPageData,
 } from "../services/tenant-pages.service";
 import { BlogMarkdownEditor } from "@/features/tenant-blog";
+import {
+  ContentBlockEditor,
+  VersionHistorySheet,
+  ReviewStatusControls,
+  PageHeaderCustomization,
+} from "@/features/content";
+import { blocksToMarkdown, type BlockNode } from "@repo/shared";
+import { History as HistoryIcon, MessageSquare } from "lucide-react";
+import { CommentsSheet } from "@/features/block-comments";
+import {
+  useTenantPageVersions,
+  useRestoreTenantPageVersion,
+  useRequestPageReview,
+  useApprovePageReview,
+  useRejectPageReview,
+} from "../hooks/use-tenant-pages";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
+
+type BodyMode = "markdown" | "blocks";
+
+function BodyModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: BodyMode;
+  onChange: (next: BodyMode) => void;
+}) {
+  const baseClass =
+    "px-2.5 h-7 text-[11px] font-medium uppercase tracking-wider rounded-md transition-colors";
+  return (
+    <div
+      role="tablist"
+      aria-label="Body editor mode"
+      className="inline-flex items-center rounded-md border border-border bg-card overflow-hidden"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "blocks"}
+        onClick={() => onChange("blocks")}
+        className={`${baseClass} ${
+          mode === "blocks"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Blocks
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "markdown"}
+        onClick={() => onChange("markdown")}
+        className={`${baseClass} ${
+          mode === "markdown"
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        Markdown
+      </button>
+    </div>
+  );
+}
 
 function toFormValues(page?: TenantPage | null): TenantPageFormInput {
+  const body = (page?.body ?? []) as unknown as BlockNode[];
   return {
     slug: page?.slug ?? "",
     title: page?.title ?? "",
     bodyMarkdown: page?.bodyMarkdown ?? "",
+    body,
+    scheduledPublishAt: page?.scheduledPublishAt ?? null,
+    coverImageUrl: page?.coverImageUrl ?? undefined,
+    icon: page?.icon ?? "",
     layoutVariant: page?.layoutVariant ?? "default",
     showInNav: page?.showInNav ?? true,
     navOrder: page?.navOrder ?? 0,
@@ -65,16 +135,27 @@ function toFormValues(page?: TenantPage | null): TenantPageFormInput {
 }
 
 function toApiPayload(values: TenantPageFormInput): CreateTenantPageData {
-  return {
+  const useBlocks = values.body && values.body.length > 0;
+  const payload: CreateTenantPageData = {
     slug: values.slug,
     title: values.title,
-    bodyMarkdown: values.bodyMarkdown,
     layoutVariant: values.layoutVariant,
     showInNav: values.showInNav,
     navOrder: values.navOrder,
+    coverImageUrl: values.coverImageUrl || null,
+    icon: values.icon ? values.icon.trim() || null : null,
     seoTitle: values.seoTitle || null,
     seoDescription: values.seoDescription || null,
   };
+  if (useBlocks) {
+    payload.body = values.body as CreateTenantPageData["body"];
+  } else {
+    payload.bodyMarkdown = values.bodyMarkdown ?? "";
+  }
+  if (values.scheduledPublishAt !== undefined) {
+    payload.scheduledPublishAt = values.scheduledPublishAt;
+  }
+  return payload;
 }
 
 export function TenantPageEditor({
@@ -104,12 +185,26 @@ export function TenantPageEditor({
   const updateMutation = useUpdateTenantPage();
   const publishMutation = usePublishTenantPage();
   const unpublishMutation = useUnpublishTenantPage();
+  const requestReview = useRequestPageReview();
+  const approveReview = useApprovePageReview();
+  const rejectReview = useRejectPageReview();
+  const reviewWorkflowEnabled = useEnvFeatureFlag(
+    EnvFeature.CMS_REVIEW_WORKFLOW,
+  );
+  const userRole = useAuthStore(selectUserRole);
+  const isAdmin = userRole === "admin" || userRole === "superAdmin";
 
   const [slugTouched, setSlugTouched] = useState(!!page);
+  const initialMode: BodyMode =
+    (page?.body?.length ?? 0) > 0 ? "blocks" : "markdown";
+  const [bodyMode, setBodyMode] = useState<BodyMode>(initialMode);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   useEffect(() => {
     form.reset(toFormValues(page));
     setSlugTouched(!!page);
+    setBodyMode((page?.body?.length ?? 0) > 0 ? "blocks" : "markdown");
   }, [page, form]);
 
   const watchedTitle = form.watch("title");
@@ -212,6 +307,43 @@ export function TenantPageEditor({
               {page.isPublished ? "Published" : "Draft"}
             </Badge>
           )}
+          {isEdit && page && reviewWorkflowEnabled && (
+            <ReviewStatusControls
+              recordId={page.id}
+              status={page.reviewStatus ?? "DRAFT"}
+              isAdmin={isAdmin}
+              onRequestReview={requestReview}
+              onApprove={approveReview}
+              onReject={rejectReview}
+            />
+          )}
+          {isEdit && page && reviewWorkflowEnabled && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCommentsOpen(true)}
+              aria-label="Comments"
+            >
+              <MessageSquare
+                className="mr-1.5 h-3.5 w-3.5"
+                aria-hidden="true"
+              />
+              Comments
+            </Button>
+          )}
+          {isEdit && page && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setHistoryOpen(true)}
+              aria-label="Version history"
+            >
+              <HistoryIcon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              History
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -290,24 +422,108 @@ export function TenantPageEditor({
               </div>
 
               <div className="space-y-2">
-                <Label>Body</Label>
-                <Controller
-                  control={form.control}
-                  name="bodyMarkdown"
-                  render={({ field }) => (
-                    <BlogMarkdownEditor
-                      id="page-body-markdown"
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Body</Label>
+                  <BodyModeToggle
+                    mode={bodyMode}
+                    onChange={(next) => {
+                      if (next === bodyMode) return;
+                      if (next === "blocks") {
+                        const md = (
+                          form.getValues("bodyMarkdown") ?? ""
+                        ).trim();
+                        const blocks: BlockNode[] = md
+                          ? [
+                              {
+                                id: `md-${Math.random()
+                                  .toString(36)
+                                  .slice(2, 8)}`,
+                                kind: "markdown-body" as BlockNode["kind"],
+                                props: { source: md } as BlockNode["props"],
+                              },
+                            ]
+                          : [];
+                        form.setValue("body", blocks, { shouldDirty: true });
+                      } else {
+                        const blocks = form.getValues("body") ?? [];
+                        const md = blocksToMarkdown(blocks);
+                        form.setValue("bodyMarkdown", md, {
+                          shouldDirty: true,
+                        });
+                        form.setValue("body", [], { shouldDirty: true });
+                      }
+                      setBodyMode(next);
+                    }}
+                  />
+                </div>
+                {bodyMode === "blocks" ? (
+                  <Controller
+                    control={form.control}
+                    name="body"
+                    render={({ field }) => (
+                      <ContentBlockEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                ) : (
+                  <Controller
+                    control={form.control}
+                    name="bodyMarkdown"
+                    render={({ field }) => (
+                      <BlogMarkdownEditor
+                        id="page-body-markdown"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                )}
+                {form.formState.errors.body && (
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.body.message as string}
+                  </p>
+                )}
                 {form.formState.errors.bodyMarkdown && (
                   <p className="text-xs text-destructive">
                     {form.formState.errors.bodyMarkdown.message}
                   </p>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Page header</CardTitle>
+              <CardDescription>
+                Optional cover image (full-bleed above the title) and an icon
+                shown next to the heading.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Controller
+                control={form.control}
+                name="coverImageUrl"
+                render={({ field: coverField }) => (
+                  <Controller
+                    control={form.control}
+                    name="icon"
+                    render={({ field: iconField }) => (
+                      <PageHeaderCustomization
+                        coverImageUrl={coverField.value ?? undefined}
+                        icon={iconField.value ?? ""}
+                        onCoverChange={(next) =>
+                          coverField.onChange(next ?? undefined)
+                        }
+                        onIconChange={(next) => iconField.onChange(next)}
+                        idPrefix="page"
+                      />
+                    )}
+                  />
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -503,6 +719,27 @@ export function TenantPageEditor({
           </div>
         )}
       </div>
+
+      {isEdit && page && (
+        <VersionHistorySheet
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          recordId={page.id}
+          recordLabel={`page "${page.title}"`}
+          title="Page history"
+          useVersions={useTenantPageVersions}
+          useRestore={useRestoreTenantPageVersion}
+        />
+      )}
+      {isEdit && page && reviewWorkflowEnabled && (
+        <CommentsSheet
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          recordType="TENANT_PAGE"
+          recordId={page.id}
+          recordLabel={`page "${page.title}"`}
+        />
+      )}
     </form>
   );
 }

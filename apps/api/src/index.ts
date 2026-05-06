@@ -8,6 +8,7 @@ import "@/config/braintrust";
 import { verifyS3Connectivity } from "@/lib/s3/s3Storage";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
+import { startScheduledPublishCron } from "@/jobs/scheduledPublish";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
 import { startAbandonedCartScheduler } from "@/modules/abandoned-carts/abandoned-carts.scheduler";
 import { setupSocketIO } from "@/config/socket.config";
@@ -109,6 +110,7 @@ const startServer = async () => {
       startUploadCleanupCron();
       startRemarketingScheduler();
       startAbandonedCartScheduler();
+      startScheduledPublishCron();
       logger.log("BullMQ workers started");
       logger.log("Server startup complete");
     });

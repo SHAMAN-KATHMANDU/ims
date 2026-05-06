@@ -27,6 +27,11 @@ import {
   ListChecks,
   ShoppingBag,
   Globe,
+  LayoutGrid,
+  FileText,
+  ImageIcon,
+  Newspaper,
+  Sparkles,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
 import {
@@ -302,6 +307,63 @@ export const dashboardNavSections: NavSection[] = [
         tenantFeature: "websiteEnabled",
         openInNewTab: true,
         permModule: "WEBSITE" as const,
+      },
+    ],
+  },
+  {
+    // CONTENT — the CMS surface. Bundles every content-shaped route
+    // (pages, blog, products, media, ...) under one navigable group so
+    // tenants who think "manage content" find one place. The visual
+    // builder lives in the (editor) shell and is reachable via the
+    // top-bar mode switcher.
+    title: "CONTENT",
+    items: [
+      {
+        path: "content",
+        label: "Content hub",
+        icon: LayoutGrid,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
+      {
+        path: "content/pages",
+        label: "Pages",
+        icon: FileText,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
+      {
+        path: "content/blog",
+        label: "Blog",
+        icon: Newspaper,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
+      {
+        path: "content/snippets",
+        label: "Snippets",
+        icon: Sparkles,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
+      // Products + Catalog Settings live under INVENTORY — duplicating them
+      // here split the active-state and confused the "where is X?" mental
+      // model. Products are reachable from the Content Hub landing tile.
+      {
+        path: "media",
+        label: "Media library",
+        icon: ImageIcon,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.MEDIA_UPLOAD,
+        permModule: "INVENTORY" as const,
       },
     ],
   },

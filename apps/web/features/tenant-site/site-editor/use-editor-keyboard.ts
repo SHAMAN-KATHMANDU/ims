@@ -28,7 +28,7 @@ import {
   selectSetSelected,
   useEditorStore,
 } from "./editor-store";
-import { findPath, nodeAt } from "./blockTree";
+import { findPath, nodeAt } from "@/lib/block-tree";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;

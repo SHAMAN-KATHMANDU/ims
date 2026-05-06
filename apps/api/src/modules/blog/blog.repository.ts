@@ -20,8 +20,14 @@ const POST_LIST_SELECT = {
   title: true,
   excerpt: true,
   heroImageUrl: true,
+  // Phase 8 — Notion-style page-top customization.
+  coverImageUrl: true,
+  icon: true,
   authorName: true,
   status: true,
+  // Phase 6 — surface review state in lists so the editor can render
+  // the per-row badge without a second query.
+  reviewStatus: true,
   publishedAt: true,
   categoryId: true,
   tags: true,

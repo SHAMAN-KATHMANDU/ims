@@ -75,6 +75,11 @@ import type { FooterColumnsProps } from "../blocks/footer-columns/schema";
 import type { SocialLinksProps } from "../blocks/social-links/schema";
 import type { PaymentIconsProps } from "../blocks/payment-icons/schema";
 import type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
+import type { CartLineItemsProps } from "../blocks/cart-line-items/schema";
+import type { OrderSummaryProps } from "../blocks/order-summary/schema";
+import type { AccountBarProps } from "../blocks/account-bar/schema";
+import type { PriceTiersProps } from "../blocks/price-tiers/schema";
+import type { SnippetRefProps } from "../blocks/snippet-ref/schema";
 
 // Re-export for consumers
 export type { SectionProps } from "../blocks/section/schema";
@@ -144,6 +149,11 @@ export type { FooterColumnsProps } from "../blocks/footer-columns/schema";
 export type { SocialLinksProps } from "../blocks/social-links/schema";
 export type { PaymentIconsProps } from "../blocks/payment-icons/schema";
 export type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
+export type { CartLineItemsProps } from "../blocks/cart-line-items/schema";
+export type { OrderSummaryProps } from "../blocks/order-summary/schema";
+export type { AccountBarProps } from "../blocks/account-bar/schema";
+export type { PriceTier, PriceTiersProps } from "../blocks/price-tiers/schema";
+export type { SnippetRefProps } from "../blocks/snippet-ref/schema";
 
 export type { BlockStyle, BlockStyleOverride } from "./block-styles";
 export {
@@ -237,6 +247,13 @@ export interface BlockPropsMap {
   // Custom / advanced
   row: RowProps;
   "custom-html": CustomHtmlProps;
+  // Cart / commerce checkout
+  "cart-line-items": CartLineItemsProps;
+  "order-summary": OrderSummaryProps;
+  "account-bar": AccountBarProps;
+  "price-tiers": PriceTiersProps;
+  // Phase 5: reusable BlockNode[] sub-trees referenced by id.
+  "snippet-ref": SnippetRefProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
@@ -333,6 +350,7 @@ export const SITE_LAYOUT_SCOPES = [
   "products-index",
   "product-detail",
   "offers",
+  "cart",
   "blog-index",
   "blog-post",
   "contact",

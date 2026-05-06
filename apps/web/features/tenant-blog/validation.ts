@@ -3,37 +3,59 @@
  */
 
 import { z } from "zod";
+import { BlockTreeSchema } from "@repo/shared";
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
 const optionalString = (max: number) =>
   z.string().trim().max(max).optional().or(z.literal(""));
 
-export const BlogPostFormSchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .regex(SLUG_REGEX, "Lowercase letters, digits, and dashes only")
-    .max(80),
-  title: z.string().trim().min(1, "Title is required").max(200),
-  excerpt: optionalString(500),
-  bodyMarkdown: z.string().trim().min(1, "Post body is required").max(100_000),
-  heroImageUrl: z
-    .string()
-    .trim()
-    .url("Must be a valid URL")
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  authorName: optionalString(120),
-  categoryId: z
-    .string()
-    .uuid("Invalid category")
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
-  seoTitle: optionalString(200),
-  seoDescription: optionalString(500),
-});
+export const BlogPostFormSchema = z
+  .object({
+    slug: z
+      .string()
+      .trim()
+      .regex(SLUG_REGEX, "Lowercase letters, digits, and dashes only")
+      .max(80),
+    title: z.string().trim().min(1, "Title is required").max(200),
+    excerpt: optionalString(500),
+    /** Markdown body — required when body is empty/absent. */
+    bodyMarkdown: z.string().trim().max(100_000).optional().default(""),
+    /** Block tree — canonical body when present (Phase 2 onward). */
+    body: BlockTreeSchema.default([]),
+    /** ISO-8601 schedule timestamp; null clears the schedule. */
+    scheduledPublishAt: z.string().datetime().nullable().optional(),
+    heroImageUrl: z
+      .string()
+      .trim()
+      .url("Must be a valid URL")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    /** Phase 8 — cover image (full-bleed above the title). */
+    coverImageUrl: z
+      .string()
+      .trim()
+      .url("Must be a valid URL")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    /** Phase 8 — emoji / short string rendered before the heading. */
+    icon: z.string().trim().max(80).optional().or(z.literal("")),
+    authorName: optionalString(120),
+    categoryId: z
+      .string()
+      .uuid("Invalid category")
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+    seoTitle: optionalString(200),
+    seoDescription: optionalString(500),
+  })
+  .refine(
+    (v) =>
+      (v.bodyMarkdown && v.bodyMarkdown.trim().length > 0) ||
+      (v.body && v.body.length > 0),
+    { message: "Post body is required", path: ["body"] },
+  );
 
 export type BlogPostFormInput = z.infer<typeof BlogPostFormSchema>;
 

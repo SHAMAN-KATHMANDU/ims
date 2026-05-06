@@ -11,6 +11,9 @@ const PUBLIC_PAGE_SELECT = {
   title: true,
   bodyMarkdown: true,
   layoutVariant: true,
+  // Phase 8 — page-top customization.
+  coverImageUrl: true,
+  icon: true,
   seoTitle: true,
   seoDescription: true,
   updatedAt: true,

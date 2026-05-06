@@ -1,6 +1,7 @@
 export * from "./hooks/use-products";
 export * from "./hooks/use-attribute-types";
 export {
+  getProducts,
   getProductDiscounts,
   getProductById,
   getProductByImsCode,

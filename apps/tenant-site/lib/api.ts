@@ -370,6 +370,10 @@ export interface PublicBlogPostListItem {
   title: string;
   excerpt: string | null;
   heroImageUrl: string | null;
+  /** Phase 8: Notion-style full-bleed cover above the title. */
+  coverImageUrl?: string | null;
+  /** Phase 8: emoji or short string rendered before the heading. */
+  icon?: string | null;
   authorName: string | null;
   publishedAt: string | null;
   tags: string[];
@@ -784,6 +788,10 @@ export interface PublicTenantPage {
   title: string;
   bodyMarkdown: string;
   layoutVariant: "default" | "full-width" | "narrow" | string;
+  /** Phase 8: Notion-style full-bleed cover above the title. */
+  coverImageUrl?: string | null;
+  /** Phase 8: emoji or short string rendered before the heading. */
+  icon?: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   updatedAt: string;
@@ -887,6 +895,38 @@ export async function getTenantPageBySlug(
     },
   );
   return resp?.page ?? null;
+}
+
+// ============================================================================
+// Snippets (Phase 5 — reusable BlockNode[] sub-trees)
+// ============================================================================
+
+/**
+ * One snippet body for the snippet-ref renderer. The body is loosely
+ * typed as `unknown` here because the renderer hands it directly back to
+ * BlockRenderer which already does the per-kind validation.
+ */
+export interface PublicSnippet {
+  id: string;
+  slug: string;
+  title: string;
+  body: unknown;
+}
+
+export async function getSnippetById(
+  host: string,
+  tenantId: string,
+  id: string,
+): Promise<PublicSnippet | null> {
+  const resp = await publicFetch<{ snippet: PublicSnippet }>(
+    `/public/snippets/${encodeURIComponent(id)}`,
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:snippet:${id}`, `tenant:${tenantId}:snippets`],
+    },
+  );
+  return resp?.snippet ?? null;
 }
 
 // ============================================================================

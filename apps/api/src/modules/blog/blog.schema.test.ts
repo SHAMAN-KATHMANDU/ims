@@ -50,6 +50,36 @@ describe("CreateBlogPostSchema", () => {
     const tags = Array.from({ length: 21 }, (_, i) => `tag${i}`);
     expect(() => CreateBlogPostSchema.parse({ ...valid, tags })).toThrow();
   });
+
+  it("accepts a body block tree without bodyMarkdown", () => {
+    const result = CreateBlogPostSchema.parse({
+      slug: "block-post",
+      title: "Block post",
+      body: [{ id: "h-1", kind: "heading", props: { text: "Hi", level: 2 } }],
+    });
+    expect(result.body).toHaveLength(1);
+  });
+
+  it("rejects when neither bodyMarkdown nor body is provided", () => {
+    expect(() =>
+      CreateBlogPostSchema.parse({ slug: "no-body", title: "No body" }),
+    ).toThrow();
+    expect(() =>
+      CreateBlogPostSchema.parse({
+        slug: "empty-body",
+        title: "Empty body",
+        body: [],
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a scheduledPublishAt ISO timestamp", () => {
+    const result = CreateBlogPostSchema.parse({
+      ...valid,
+      scheduledPublishAt: "2026-12-01T00:00:00.000Z",
+    });
+    expect(result.scheduledPublishAt).toBe("2026-12-01T00:00:00.000Z");
+  });
 });
 
 describe("UpdateBlogPostSchema", () => {

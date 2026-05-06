@@ -16,6 +16,7 @@ export const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "products-index", label: "Products" },
   { value: "product-detail", label: "Product detail" },
   { value: "offers", label: "Offers" },
+  { value: "cart", label: "Cart" },
   { value: "blog-index", label: "Blog index" },
   { value: "blog-post", label: "Blog post" },
   { value: "contact", label: "Contact" },

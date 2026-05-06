@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import { BlockTreeSchema } from "@repo/shared";
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
@@ -51,21 +52,47 @@ const slugField = z
 const optionalString = (max: number) =>
   z.string().trim().max(max).optional().nullable();
 
-export const CreateTenantPageSchema = z.object({
+/**
+ * Base shape (no refines) so .partial() flows for UpdateTenantPageSchema.
+ */
+const tenantPageBaseShape = z.object({
   slug: slugField,
   title: z.string().trim().min(1).max(200),
-  bodyMarkdown: z.string().min(1).max(200_000),
+  /**
+   * Markdown body. Either this or `body` must be supplied on create.
+   * On update either alone is fine; the API keeps both columns in sync.
+   */
+  bodyMarkdown: z.string().min(1).max(200_000).optional(),
+  /** Canonical block tree — new CMS clients write here directly. */
+  body: BlockTreeSchema.optional(),
+  /** Phase 4 scheduler input. Null/undefined = no schedule. */
+  scheduledPublishAt: z
+    .union([z.string().datetime(), z.date()])
+    .optional()
+    .nullable(),
   layoutVariant: z.enum(LAYOUT_VARIANTS).optional().default("default"),
   showInNav: z.boolean().optional().default(true),
   navOrder: z.number().int().min(0).max(10_000).optional().default(0),
+  /** Phase 8: Notion-style cover image (full-bleed above title). */
+  coverImageUrl: optionalString(1000),
+  /** Phase 8: emoji or short string rendered before the heading. */
+  icon: optionalString(80),
   seoTitle: optionalString(200),
   seoDescription: optionalString(500),
 });
 
-export const UpdateTenantPageSchema = CreateTenantPageSchema.partial().refine(
-  (v) => Object.keys(v).length > 0,
-  { message: "At least one field must be provided" },
+export const CreateTenantPageSchema = tenantPageBaseShape.refine(
+  (v) =>
+    (v.bodyMarkdown && v.bodyMarkdown.length > 0) ||
+    (v.body && v.body.length > 0),
+  { message: "Provide bodyMarkdown or body", path: ["body"] },
 );
+
+export const UpdateTenantPageSchema = tenantPageBaseShape
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "At least one field must be provided",
+  });
 
 export const ReorderPagesSchema = z.object({
   order: z.array(

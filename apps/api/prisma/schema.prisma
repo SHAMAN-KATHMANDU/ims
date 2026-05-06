@@ -101,6 +101,10 @@ model Tenant {
   // Block-based layouts + nav menus (Phase 1 of template overhaul)
   siteLayouts SiteLayout[]
   navMenus    NavMenu[]
+  // Reusable BlockNode[] sub-trees referenced via `snippet-ref` blocks (Phase 5)
+  siteSnippets SiteSnippet[]
+  // Inline comments on blog posts / pages (Phase 6 review workflow)
+  blockComments BlockComment[]
 
   // Curated product groupings ("Featured", "Exclusives", "Top Picks", ...)
   collections Collection[]
@@ -314,9 +318,28 @@ model BlogPost {
   title          String
   excerpt        String?
   bodyMarkdown   String         @map("body_markdown")
+  /// Block tree (BlockNode[]) — the canonical source for the post body
+  /// once Phase 2 ships. `bodyMarkdown` is kept in sync server-side via
+  /// blocksToMarkdown() so RSS / SEO / legacy renderers keep working.
+  /// Defaults to an empty tree for new rows; backfilled for existing rows
+  /// with a single `markdown-body` block via the backfill script.
+  body           Json           @default("[]")
+  /// Optional scheduled-publish timestamp. When set and `status='DRAFT'`,
+  /// the scheduler worker (Phase 4) flips the post to PUBLISHED at this
+  /// time. Null = no schedule.
+  scheduledPublishAt DateTime?  @map("scheduled_publish_at")
   heroImageUrl   String?        @map("hero_image_url")
+  /// Phase 8 — Notion-style page-top customization. Cover image renders
+  /// full-bleed above the title; icon (emoji or short string) renders
+  /// inline before the heading. Both optional; both fall back to clean
+  /// chrome when absent.
+  coverImageUrl  String?        @map("cover_image_url") @db.VarChar(1000)
+  icon           String?        @db.VarChar(80)
   authorName     String?        @map("author_name")
   status         BlogPostStatus @default(DRAFT)
+  /// Phase 6 review workflow (gated by CMS_REVIEW_WORKFLOW). Independent
+  /// of `status` so legacy single-author tenants can keep ignoring it.
+  reviewStatus   ContentReviewStatus @default(DRAFT) @map("review_status")
   publishedAt    DateTime?      @map("published_at")
   categoryId     String?        @map("category_id")
   tags           String[]       @default([])
@@ -328,6 +351,7 @@ model BlogPost {
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  versions BlogPostVersion[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, publishedAt])
@@ -335,10 +359,56 @@ model BlogPost {
   @@map("blog_posts")
 }
 
+/// Immutable snapshot of a BlogPost row, written by the API on every
+/// successful update / publish / restore. Phase 4 versioning. The service
+/// caps each post at 50 rows by deleting the oldest in the same
+/// transaction that writes a new one.
+///
+/// `snapshot` is the full BlogPost row as JSON at the moment the version
+/// was taken — restoring copies it back into the live row inside a
+/// transaction (preserving the post id but overwriting every other field).
+model BlogPostVersion {
+  id         String   @id @default(uuid())
+  blogPostId String   @map("blog_post_id")
+  tenantId   String   @map("tenant_id")
+  snapshot   Json
+  /// Optional ID of the user who triggered the save. Null when the
+  /// scheduler worker auto-publishes (no human in the loop).
+  editorId   String?  @map("editor_id")
+  /// Free-text note (e.g. "Fixed typo", "Pre-publish snapshot").
+  note       String?  @db.VarChar(280)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+
+  @@index([blogPostId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("blog_post_versions")
+}
+
 enum BlogPostStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+/// Phase 6 review workflow. Independent of `BlogPostStatus` /
+/// `TenantPage.isPublished`: a record is IN_REVIEW when an author has
+/// asked an admin to approve it; APPROVED is the green-light state
+/// before the admin clicks Publish (which flips the per-record
+/// status/isPublished column). PUBLISHED here mirrors the publish
+/// state for read-only status displays — the `status`/`isPublished`
+/// columns remain authoritative for what's live on the storefront.
+///
+/// Named `ContentReviewStatus` to avoid colliding with the existing
+/// `ReviewStatus` enum used by product reviews.
+enum ContentReviewStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+
+  @@map("content_review_status")
 }
 
 // ============================================
@@ -354,12 +424,25 @@ model TenantPage {
   slug           String   @db.VarChar(80)
   title          String   @db.VarChar(200)
   bodyMarkdown   String   @map("body_markdown")
+  /// Block tree (BlockNode[]) — canonical body source once Phase 2 ships.
+  /// `bodyMarkdown` is derived from this via blocksToMarkdown() for RSS /
+  /// SEO / legacy renderers. Defaults to an empty tree for new rows.
+  body           Json     @default("[]")
+  /// Optional scheduled-publish timestamp. When set and `isPublished=false`,
+  /// the scheduler worker (Phase 4) publishes the page at this time.
+  scheduledPublishAt DateTime? @map("scheduled_publish_at")
   /// Renderer layout variant: "default" | "full-width" | "narrow".
   /// The tenant-site maps this to width + padding presets.
   layoutVariant  String   @default("default") @map("layout_variant") @db.VarChar(40)
   showInNav      Boolean  @default(true) @map("show_in_nav")
   navOrder       Int      @default(0) @map("nav_order")
   isPublished    Boolean  @default(false) @map("is_published")
+  /// Phase 6 review workflow (gated by CMS_REVIEW_WORKFLOW). Independent
+  /// of `isPublished` so legacy single-author tenants can keep ignoring it.
+  reviewStatus   ContentReviewStatus @default(DRAFT) @map("review_status")
+  /// Phase 8 — Notion-style page-top customization (see BlogPost).
+  coverImageUrl  String?  @map("cover_image_url") @db.VarChar(1000)
+  icon           String?  @db.VarChar(80)
   /// Landing pages render without header/footer chrome at /landing/<slug>.
   isLandingPage  Boolean  @default(false) @map("is_landing_page")
   /// Parent page for nested URL structure (/parent/child). Null = top-level.
@@ -374,11 +457,29 @@ model TenantPage {
   children     TenantPage[]            @relation("PageHierarchy")
   siteLayouts  SiteLayout[]
   translations TenantPageTranslation[]
+  versions     TenantPageVersion[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, isPublished, navOrder])
   @@index([tenantId, parentId])
   @@map("tenant_pages")
+}
+
+/// See BlogPostVersion — the same pattern, snapshotting TenantPage rows.
+model TenantPageVersion {
+  id           String   @id @default(uuid())
+  tenantPageId String   @map("tenant_page_id")
+  tenantId     String   @map("tenant_id")
+  snapshot     Json
+  editorId     String?  @map("editor_id")
+  note         String?  @db.VarChar(280)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  page TenantPage @relation(fields: [tenantPageId], references: [id], onDelete: Cascade)
+
+  @@index([tenantPageId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("tenant_page_versions")
 }
 
 /// Translated version of a TenantPage. One row per (page, locale) pair.
@@ -431,12 +532,106 @@ model SiteLayout {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  page   TenantPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  page     TenantPage?         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  versions SiteLayoutVersion[]
 
   @@unique([tenantId, scope, pageId])
   @@index([tenantId])
   @@map("site_layouts")
+}
+
+/// See BlogPostVersion — the same pattern, snapshotting SiteLayout rows
+/// on publish/draft commits. Phase 4 versioning.
+model SiteLayoutVersion {
+  id           String   @id @default(uuid())
+  siteLayoutId String   @map("site_layout_id")
+  tenantId     String   @map("tenant_id")
+  snapshot     Json
+  editorId     String?  @map("editor_id")
+  note         String?  @db.VarChar(280)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  siteLayout SiteLayout @relation(fields: [siteLayoutId], references: [id], onDelete: Cascade)
+
+  @@index([siteLayoutId, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("site_layout_versions")
+}
+
+// ============================================
+// BLOCK COMMENTS (Phase 6 — inline review threads)
+// ============================================
+
+/// Resource type the comment is attached to. Free-text in the column
+/// (VarChar) but enumerated here in the API service for safety.
+enum BlockCommentRecordType {
+  BLOG_POST
+  TENANT_PAGE
+}
+
+/// One inline comment on a record (or, optionally, a specific block
+/// inside that record). Threading via `parentId`. `resolvedAt` flips the
+/// thread to "resolved" without deleting it. Phase 6 of the CMS overhaul.
+model BlockComment {
+  id          String                 @id @default(uuid())
+  tenantId    String                 @map("tenant_id")
+  recordType  BlockCommentRecordType @map("record_type")
+  /// Foreign-keyless reference into BlogPost / TenantPage (recordType
+  /// disambiguates). We avoid two real FK columns to keep the model
+  /// polymorphic; tenant-scoped queries stay cheap via the indexes.
+  recordId    String                 @map("record_id")
+  /// Optional anchor to a specific block id within the record body.
+  /// Null = thread on the whole record.
+  blockId     String?                @map("block_id")
+  body        String                 @db.VarChar(2000)
+  authorId    String                 @map("author_id")
+  /// Threading: replies set parentId to the root thread comment.
+  parentId    String?                @map("parent_id")
+  resolvedAt  DateTime?              @map("resolved_at")
+  resolvedBy  String?                @map("resolved_by")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author User   @relation("BlockCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  parent BlockComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies BlockComment[] @relation("CommentReplies")
+
+  @@index([tenantId, recordType, recordId, createdAt])
+  @@index([tenantId, recordType, recordId, blockId])
+  @@index([tenantId, authorId])
+  @@map("block_comments")
+}
+
+// ============================================
+// SITE SNIPPETS (Phase 5 — reusable block sub-trees)
+// ============================================
+
+/// Reusable BlockNode[] tree the tenant can drop into any page or post via
+/// a `snippet-ref` block. Phase 5 of the CMS — edit once, render
+/// everywhere. The tenant-site renderer dereferences `snippet-ref.props.
+/// snippetId` at request time and recurses through the standard
+/// BlockRenderer; the recursion is bounded by a depth cap to defend
+/// against accidental cycles.
+///
+/// `category` is free-text so tenants can group their library however
+/// they like (e.g. "headers", "promos", "ctas") without a schema change.
+model SiteSnippet {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  slug      String   @db.VarChar(80)
+  title     String   @db.VarChar(160)
+  category  String?  @db.VarChar(60)
+  body      Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, updatedAt])
+  @@map("site_snippets")
 }
 
 // ============================================
@@ -692,6 +887,8 @@ model User {
   websiteOrdersConverted         WebsiteOrder[]         @relation("WebsiteOrderConverter")
   auditLogs                      AuditLog[]
   errorReports                   ErrorReport[]
+  // Phase 6 — inline comments authored by this user
+  blockComments                  BlockComment[]         @relation("BlockCommentAuthor")
 
   // CRM relations
   assignedLeads                Lead[]                 @relation("LeadAssignedTo")

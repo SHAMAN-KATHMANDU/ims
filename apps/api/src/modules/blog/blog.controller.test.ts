@@ -20,7 +20,11 @@ vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
 vi.mock("@/shared/auth/getAuthContext", () => ({
-  getAuthContext: vi.fn(() => ({ id: "u1", tenantId: "t1", role: "admin" })),
+  getAuthContext: vi.fn(() => ({
+    userId: "u1",
+    tenantId: "t1",
+    role: "admin",
+  })),
 }));
 vi.mock("@/config/prisma", () => ({ default: {} }));
 
@@ -134,7 +138,7 @@ describe("BlogController", () => {
       mockService.publishPost.mockResolvedValue({ id: "p1" });
       const res = mockRes() as Response;
       await controller.publishPost(makeReq({ params: { id: "p1" } }), res);
-      expect(mockService.publishPost).toHaveBeenCalledWith("t1", "p1");
+      expect(mockService.publishPost).toHaveBeenCalledWith("t1", "p1", "u1");
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
