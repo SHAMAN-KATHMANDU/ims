@@ -85,6 +85,15 @@ export enum EnvFeature {
    * locations, site layouts) at /public/v1/*. Read-only and rate-limited.
    */
   PUBLIC_DATA_API = "PUBLIC_DATA_API",
+  /**
+   * Phase 6 of the CMS overhaul: review-workflow + inline block comments
+   * for blog posts and custom pages. With the flag off, body editors
+   * keep the simple Draft/Published toggle; with it on, posts move
+   * through Draft → In review → Approved → Published, and tenants can
+   * leave threaded comments on any block. Behind a flag because the
+   * extra states confuse single-author workflows.
+   */
+  CMS_REVIEW_WORKFLOW = "CMS_REVIEW_WORKFLOW",
 }
 
 /**
@@ -135,6 +144,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
+    CMS_REVIEW_WORKFLOW: true,
   },
   staging: {
     CRM: true,
@@ -179,6 +189,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
+    CMS_REVIEW_WORKFLOW: true,
   },
   "staging-production": {
     CRM: true,
@@ -223,6 +234,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
+    CMS_REVIEW_WORKFLOW: true,
   },
   production: {
     CRM: true,
@@ -267,6 +279,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TENANT_WEBSITES: true,
     PUBLIC_DATA_API: false,
     NOTION_STYLE_EDITOR: false,
+    CMS_REVIEW_WORKFLOW: false,
   },
 };
 

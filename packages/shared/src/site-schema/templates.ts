@@ -56,13 +56,15 @@ export type BlueprintScope =
   | "home"
   | "products-index"
   | "product-detail"
-  | "offers";
+  | "offers"
+  | "cart";
 
 export const BLUEPRINT_SCOPES = [
   "home",
   "products-index",
   "product-detail",
   "offers",
+  "cart",
 ] as const satisfies readonly BlueprintScope[];
 
 /**
@@ -86,7 +88,13 @@ export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
   slug: z.string().min(1).max(100),
   layouts: z
     .record(
-      z.enum(["home", "products-index", "product-detail", "offers"] as const),
+      z.enum([
+        "home",
+        "products-index",
+        "product-detail",
+        "offers",
+        "cart",
+      ] as const),
       z.array(BlockNodeSchema),
     )
     .optional(),
