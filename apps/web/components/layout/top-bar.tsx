@@ -24,14 +24,7 @@ import {
   Trash2,
   KeyRound,
   UserCircle2,
-  LayoutGrid,
-  Paintbrush,
 } from "lucide-react";
-import {
-  deriveEditorMode,
-  contentEntryPath,
-  designEntryPath,
-} from "@/lib/editor-mode";
 import { selectTenantWebsiteEnabled, useAuthStore } from "@/store/auth-store";
 import { useAuth } from "@/features/auth";
 import { ChangePasswordDialog } from "@/features/users";
@@ -130,53 +123,11 @@ function NotificationsBell({ basePath }: { basePath: string }) {
   );
 }
 
-/**
- * Segmented control that switches between Content (CMS) and Design (visual
- * builder) modes. The currently active mode is read from the URL via
- * deriveEditorMode(); clicking the inactive pill navigates to the entry
- * route of that mode. State-free on purpose — see lib/editor-mode.ts.
- */
-function ModeSwitcher({
-  mode,
-  contentHref,
-  designHref,
-}: {
-  mode: "content" | "design";
-  contentHref: string;
-  designHref: string;
-}) {
-  const baseClass =
-    "inline-flex items-center gap-1.5 px-3 h-8 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-  const activeClass = "bg-primary text-primary-foreground";
-  const inactiveClass =
-    "text-muted-foreground hover:text-foreground hover:bg-muted/50";
-  return (
-    <div
-      role="tablist"
-      aria-label="Workspace mode"
-      className="hidden md:inline-flex items-center rounded-md border border-border bg-card overflow-hidden"
-    >
-      <Link
-        href={contentHref}
-        role="tab"
-        aria-selected={mode === "content"}
-        className={`${baseClass} ${mode === "content" ? activeClass : inactiveClass}`}
-      >
-        <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
-        Content
-      </Link>
-      <Link
-        href={designHref}
-        role="tab"
-        aria-selected={mode === "design"}
-        className={`${baseClass} ${mode === "design" ? activeClass : inactiveClass}`}
-      >
-        <Paintbrush className="h-3.5 w-3.5" aria-hidden="true" />
-        Design
-      </Link>
-    </div>
-  );
-}
+// The Content/Design ModeSwitcher previously rendered here was relocated
+// into the site editor's own top bar (see
+// `apps/web/features/tenant-site/site-editor/shell/EditorTopBar.tsx`).
+// Admin chrome now stays focused on content; users enter Design mode via
+// the "Open design editor" CTA on Settings → Site, which opens in a new tab.
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -192,11 +143,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const notificationsEnabled = useEnvFeatureFlag(EnvFeature.NOTIFICATIONS);
-  const tenantSitesEnabled = useEnvFeatureFlag(EnvFeature.TENANT_WEBSITES);
-  const websiteEnabled = useAuthStore(selectTenantWebsiteEnabled);
-  const mode = deriveEditorMode(pathname);
-  const showModeSwitch =
-    user?.role !== "platformAdmin" && tenantSitesEnabled && websiteEnabled;
+  useAuthStore(selectTenantWebsiteEnabled);
 
   const handleLogout = async () => {
     try {
@@ -237,13 +184,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             <Menu className="h-5 w-5" aria-hidden="true" />
           </Button>
         )}
-        {showModeSwitch && (
-          <ModeSwitcher
-            mode={mode}
-            contentHref={contentEntryPath(workspace || "admin")}
-            designHref={designEntryPath(workspace || "admin")}
-          />
-        )}
+        {/* Content/Design toggle is rendered inside the site editor's own
+            top bar (shell/EditorTopBar.tsx) — admin chrome stays focused on
+            content workflows. Users enter Design mode via the "Open design
+            editor" CTA on Settings → Site, which opens the editor in a new
+            tab. */}
       </div>
       <div className="flex items-center gap-1 md:gap-2">
         {user?.role !== "platformAdmin" && notificationsEnabled && (

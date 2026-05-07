@@ -16,6 +16,9 @@ import React, { useRef, useEffect, useState } from "react";
 import { RotateCcw, AlertCircle } from "lucide-react";
 import type { SiteLayoutScope } from "@repo/shared";
 import { usePreviewUrl } from "../hooks/usePreviewUrl";
+import { useEditorStore } from "../store/editor-store";
+import { selectBlocks } from "../store/selectors";
+import { sendToPreview } from "./PreviewMessageBus";
 
 interface CanvasFrameProps {
   scope: SiteLayoutScope;
@@ -34,6 +37,8 @@ const DEVICE_WIDTHS: Record<CanvasFrameProps["device"], string> = {
   mobile: "390px",
 };
 
+const DRAFT_SYNC_DEBOUNCE_MS = 300;
+
 export const CanvasFrame = React.forwardRef<HTMLDivElement, CanvasFrameProps>(
   ({ scope, device, zoom, pageId, refreshKey = 0, onRefresh }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -47,6 +52,21 @@ export const CanvasFrame = React.forwardRef<HTMLDivElement, CanvasFrameProps>(
       setLoading(true);
       setErrored(false);
     }, [url, refreshKey]);
+
+    // Live block sync: post the current draft tree to the iframe whenever
+    // the editor store changes (debounced 300 ms). The iframe-side listener
+    // applies the new tree without a full reload, so edits surface ~instantly
+    // in the preview.
+    const blocks = useEditorStore(selectBlocks);
+    useEffect(() => {
+      if (!iframeRef.current?.contentWindow || loading) return;
+      const handle = window.setTimeout(() => {
+        const win = iframeRef.current?.contentWindow;
+        if (!win) return;
+        sendToPreview(win, { type: "draft", scope, blocks });
+      }, DRAFT_SYNC_DEBOUNCE_MS);
+      return () => window.clearTimeout(handle);
+    }, [blocks, scope, loading]);
 
     const handleLoad = (): void => {
       setLoading(false);
