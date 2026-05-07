@@ -28,6 +28,9 @@ interface PublishModalProps {
   scope: SiteLayoutScope;
   draftBlocks: BlockNode[];
   publishedBlocks: BlockNode[] | null;
+  /** Called only when publish succeeds, before `onClose`. Use it to bump
+   *  the canvas refreshKey so the iframe reloads the published version. */
+  onPublished?: () => void;
 }
 
 interface BlockDiff {
@@ -82,6 +85,7 @@ export function PublishModal({
   scope,
   draftBlocks,
   publishedBlocks,
+  onPublished,
 }: PublishModalProps) {
   const publish = usePublishLayout(scope);
 
@@ -94,6 +98,7 @@ export function PublishModal({
 
   const handlePublish = async (): Promise<void> => {
     await publish.mutateAsync();
+    onPublished?.();
     onClose();
   };
 

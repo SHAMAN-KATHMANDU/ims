@@ -22,6 +22,10 @@ import { PublishModal } from "./shell/PublishModal";
 import { CanvasFrame } from "./canvas/CanvasFrame";
 import { CanvasOverlay } from "./canvas/CanvasOverlay";
 import { SlashMenu } from "./canvas/SlashMenu";
+import {
+  BlockContextMenu,
+  type BlockMenuState,
+} from "./canvas/BlockContextMenu";
 
 interface SiteEditorPageProps {
   tenantId: string;
@@ -39,6 +43,11 @@ export function SiteEditorPage({
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<BlockMenuState>(null);
+  // Bumped whenever something the iframe should hard-reload around happens
+  // (publish succeeded, scope changed, etc.). CanvasFrame keys its iframe
+  // on this so the published version reloads cleanly.
+  const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +115,7 @@ export function SiteEditorPage({
         onScopeChange={setScope}
         device={device}
         onDeviceChange={setDevice}
+        workspace={tenantId}
         onPublishClick={() => setShowPublishModal(true)}
       />
 
@@ -116,14 +126,30 @@ export function SiteEditorPage({
         {/* Left dock */}
         <LeftDock scope={scope} onScopeChange={setScope} workspace={tenantId} />
 
-        {/* Canvas area */}
-        <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Canvas area. The wrapper's onContextMenu picks up right-clicks
+            that land on the editor chrome around the iframe (the iframe
+            itself stays cross-origin and routes context menus via the
+            preview message bus — wired separately in Fix 8.4). */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- canvas wrapper handles right-click for the BlockContextMenu; iframe-side support is wired separately via the preview message bus */}
+        <div
+          className="flex-1 flex flex-col relative overflow-hidden"
+          onContextMenu={(e) => {
+            if (!selectedId) return;
+            e.preventDefault();
+            setContextMenu({
+              blockId: selectedId,
+              x: e.clientX,
+              y: e.clientY,
+            });
+          }}
+        >
           <div ref={canvasRef} className="flex-1 relative">
             <CanvasFrame
               scope={scope}
               device={device}
               zoom={1}
-              onRefresh={() => {}}
+              refreshKey={previewRefreshKey}
+              onRefresh={() => setPreviewRefreshKey((k) => k + 1)}
             />
             <div ref={overlayRef} className="absolute inset-0">
               <CanvasOverlay />
@@ -143,6 +169,7 @@ export function SiteEditorPage({
       <PublishModal
         open={showPublishModal}
         onClose={() => setShowPublishModal(false)}
+        onPublished={() => setPreviewRefreshKey((k) => k + 1)}
         scope={scope}
         draftBlocks={draftBlocks}
         publishedBlocks={(layout?.blocks as BlockNode[] | undefined) ?? null}
@@ -151,6 +178,11 @@ export function SiteEditorPage({
         isOpen={slashMenuOpen}
         onClose={() => setSlashMenuOpen(false)}
         anchorId={selectedId ?? undefined}
+      />
+      <BlockContextMenu
+        state={contextMenu}
+        blocks={draftBlocks}
+        onClose={() => setContextMenu(null)}
       />
     </div>
   );
