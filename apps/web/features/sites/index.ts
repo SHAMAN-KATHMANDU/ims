@@ -16,6 +16,7 @@ export {
   useMyDomains,
   useAddMyDomain,
   useDeleteMyDomain,
+  useUpdateMyDomain,
   useMyDomainVerificationInstructions,
   useVerifyMyDomain,
   myDomainKeys,

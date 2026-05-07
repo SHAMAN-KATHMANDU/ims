@@ -26,11 +26,13 @@ import {
   useMyDomains,
   useDeleteMyDomain,
   useAddMyDomain,
+  useUpdateMyDomain,
   useVerifyMyDomain,
   useMyDomainVerificationInstructions,
   type TenantDomain,
   type DomainVerificationInstructions,
 } from "@/features/sites";
+import { Star } from "lucide-react";
 
 export function DomainPanel() {
   const [addOpen, setAddOpen] = useState(false);
@@ -39,7 +41,21 @@ export function DomainPanel() {
   const domainsQuery = useMyDomains();
   const createDomain = useAddMyDomain();
   const deleteDomain = useDeleteMyDomain();
+  const updateDomain = useUpdateMyDomain();
   const { toast } = useToast();
+
+  const handleSetPrimary = (domain: TenantDomain): void => {
+    if (domain.isPrimary) return;
+    updateDomain.mutate(
+      { domainId: domain.id, data: { isPrimary: true } },
+      {
+        onSuccess: () =>
+          toast({ title: `${domain.hostname} is now the primary domain` }),
+        onError: () =>
+          toast({ title: "Failed to set primary", variant: "destructive" }),
+      },
+    );
+  };
 
   const handleCreateDomain = async (): Promise<void> => {
     if (!newHostname.trim()) {
@@ -165,6 +181,8 @@ export function DomainPanel() {
             domain={domain}
             onDelete={handleDelete}
             onOpenVerify={() => setVerifyTarget(domain)}
+            onSetPrimary={handleSetPrimary}
+            isUpdating={updateDomain.isPending}
           />
         ))}
       </div>
@@ -183,9 +201,17 @@ interface DomainCardProps {
   domain: TenantDomain;
   onDelete: (domain: TenantDomain) => void;
   onOpenVerify: () => void;
+  onSetPrimary: (domain: TenantDomain) => void;
+  isUpdating: boolean;
 }
 
-function DomainCard({ domain, onDelete, onOpenVerify }: DomainCardProps) {
+function DomainCard({
+  domain,
+  onDelete,
+  onOpenVerify,
+  onSetPrimary,
+  isUpdating,
+}: DomainCardProps) {
   const isVerified = Boolean(domain.verifiedAt);
   return (
     <div className="p-3 rounded-md border border-border bg-card space-y-2">
@@ -208,7 +234,8 @@ function DomainCard({ domain, onDelete, onOpenVerify }: DomainCardProps) {
               </span>
             )}
             {domain.isPrimary && (
-              <span className="px-1.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
+              <span className="inline-flex items-center gap-1 px-1.5 rounded text-[10px] font-medium bg-primary/10 text-primary">
+                <Star size={9} />
                 Primary
               </span>
             )}
@@ -225,6 +252,18 @@ function DomainCard({ domain, onDelete, onOpenVerify }: DomainCardProps) {
             onClick={onOpenVerify}
           >
             Verify DNS
+          </Button>
+        )}
+        {isVerified && !domain.isPrimary && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs h-7"
+            onClick={() => onSetPrimary(domain)}
+            disabled={isUpdating}
+          >
+            <Star size={12} className="mr-1" />
+            Set primary
           </Button>
         )}
         <Button

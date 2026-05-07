@@ -26,6 +26,7 @@ import {
   BlockContextMenu,
   type BlockMenuState,
 } from "./canvas/BlockContextMenu";
+import { PdpProductPicker } from "./canvas/PdpProductPicker";
 
 interface SiteEditorPageProps {
   tenantId: string;
@@ -48,6 +49,9 @@ export function SiteEditorPage({
   // (publish succeeded, scope changed, etc.). CanvasFrame keys its iframe
   // on this so the published version reloads cleanly.
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  // Active product id used when scope === "product-detail" — passed as
+  // pageId to usePreviewUrl so the iframe hydrates the right SKU.
+  const [pdpProductId, setPdpProductId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -143,11 +147,22 @@ export function SiteEditorPage({
             });
           }}
         >
+          {scope === "product-detail" && (
+            <PdpProductPicker
+              productId={pdpProductId}
+              onProductIdChange={setPdpProductId}
+            />
+          )}
           <div ref={canvasRef} className="flex-1 relative">
             <CanvasFrame
               scope={scope}
               device={device}
               zoom={1}
+              pageId={
+                scope === "product-detail"
+                  ? (pdpProductId ?? undefined)
+                  : undefined
+              }
               refreshKey={previewRefreshKey}
               onRefresh={() => setPreviewRefreshKey((k) => k + 1)}
             />

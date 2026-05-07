@@ -5,6 +5,7 @@ import {
   getMyDomains,
   createMyDomain,
   deleteMyDomain,
+  updateMyDomain,
   getMyDomainVerificationInstructions,
   verifyMyDomain,
   type TenantDomain,
@@ -52,6 +53,27 @@ export function useDeleteMyDomain() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (domainId: string) => deleteMyDomain(domainId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myDomainKeys.all });
+    },
+  });
+}
+
+/**
+ * Update a domain belonging to the calling tenant. Today only `isPrimary`
+ * is settable from this surface; setting it clears primary on the tenant's
+ * other domains of the same appType (handled server-side).
+ */
+export function useUpdateMyDomain() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      domainId,
+      data,
+    }: {
+      domainId: string;
+      data: { isPrimary?: boolean };
+    }) => updateMyDomain(domainId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: myDomainKeys.all });
     },
