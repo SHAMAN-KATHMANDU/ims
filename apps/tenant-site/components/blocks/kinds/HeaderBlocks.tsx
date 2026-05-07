@@ -69,9 +69,13 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
     </Link>
   );
 
+  // Tailwind needs class names to be statically resolvable, so the gap
+  // template-string `gap-${isCentered ? 8 : 6}` was producing zero gap at
+  // runtime — items rendered as "LivingDiningBedroomOutdoor". Pin the
+  // class names instead.
   const navElement = items.length > 0 && (
     <nav
-      className={`hidden md:flex gap-${isCentered ? "8" : "6"} text-sm text-[var(--t-text)]`}
+      className={`hidden md:flex ${isCentered ? "gap-8" : "gap-6"} text-sm text-[var(--t-text)]`}
     >
       {items.map((item, i) => (
         <Link
