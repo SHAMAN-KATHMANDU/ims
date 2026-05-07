@@ -877,9 +877,9 @@ export function PreviewFrame({
       if (type === "editor:select-block") {
         if (
           typeof window !== "undefined" &&
-          window.localStorage?.getItem("site-editor:debug") === "1"
+          typeof window.localStorage?.getItem === "function" &&
+          window.localStorage.getItem("site-editor:debug") === "1"
         ) {
-          // eslint-disable-next-line no-console
           console.log("[site-editor:parent] received select", {
             blockId,
             hasOnBlockSelect: typeof onBlockSelect === "function",

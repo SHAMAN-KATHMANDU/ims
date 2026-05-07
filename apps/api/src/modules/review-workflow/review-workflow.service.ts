@@ -24,11 +24,6 @@ import auditRepository from "@/modules/audit/audit.repository";
 
 export type ContentRecordType = "BLOG_POST" | "TENANT_PAGE";
 
-const RECORD_DELEGATE = {
-  BLOG_POST: "blogPost",
-  TENANT_PAGE: "tenantPage",
-} as const;
-
 interface RecordRow {
   id: string;
   reviewStatus: ContentReviewStatus;

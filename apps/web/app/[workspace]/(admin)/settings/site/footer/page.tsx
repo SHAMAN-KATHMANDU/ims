@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { FooterPanel } from "@/features/tenant-site/components/FooterPanel";
+import { FooterPanel } from "@/features/tenant-site";
 
 export default function FooterPage() {
   return (

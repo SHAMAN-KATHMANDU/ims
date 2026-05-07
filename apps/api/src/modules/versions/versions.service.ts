@@ -70,7 +70,6 @@ export async function snapshotBlogPost(
       note: ctx.note ?? null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[versions] snapshotBlogPost failed:", err);
   }
 }
@@ -89,7 +88,6 @@ export async function snapshotTenantPage(
       note: ctx.note ?? null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[versions] snapshotTenantPage failed:", err);
   }
 }
@@ -108,7 +106,6 @@ export async function snapshotSiteLayout(
       note: ctx.note ?? null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[versions] snapshotSiteLayout failed:", err);
   }
 }

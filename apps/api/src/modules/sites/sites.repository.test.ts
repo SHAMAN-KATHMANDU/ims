@@ -128,21 +128,23 @@ describe("SitesRepository.publishAllDrafts", () => {
     };
 
     // Mock the transaction callback to execute and return the updated config
-    $transaction.mockImplementation(async (callback: Function) => {
-      const mockTx = {
-        siteLayout: {
-          findUnique: vi.fn().mockResolvedValue({
-            id: "l1",
-            draftBlocks: [{ id: "b1" }],
-          }),
-          update: vi.fn().mockResolvedValue({}),
-        },
-        siteConfig: {
-          update: vi.fn().mockResolvedValue(updatedConfig),
-        },
-      };
-      return callback(mockTx);
-    });
+    $transaction.mockImplementation(
+      async (callback: (tx: unknown) => unknown) => {
+        const mockTx = {
+          siteLayout: {
+            findUnique: vi.fn().mockResolvedValue({
+              id: "l1",
+              draftBlocks: [{ id: "b1" }],
+            }),
+            update: vi.fn().mockResolvedValue({}),
+          },
+          siteConfig: {
+            update: vi.fn().mockResolvedValue(updatedConfig),
+          },
+        };
+        return callback(mockTx);
+      },
+    );
 
     await runWithTenant("t1", async () => {
       const result = await sitesRepo.publishAllDrafts("t1");

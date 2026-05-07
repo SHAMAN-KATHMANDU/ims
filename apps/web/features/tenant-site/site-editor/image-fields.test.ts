@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { isImageFieldName } from "./image-fields";
-import { BLOCK_PROPS_SCHEMAS } from "@repo/shared";
-import { z } from "zod";
 
 describe("isImageFieldName", () => {
   it("matches always-image field names regardless of context", () => {

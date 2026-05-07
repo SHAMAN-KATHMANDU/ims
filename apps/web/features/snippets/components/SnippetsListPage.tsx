@@ -98,7 +98,7 @@ export function SnippetsListPage() {
           <CardHeader>
             <CardTitle>New snippet</CardTitle>
             <CardDescription>
-              Give it a name. You'll edit the body next.
+              Give it a name. You&apos;ll edit the body next.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-2">

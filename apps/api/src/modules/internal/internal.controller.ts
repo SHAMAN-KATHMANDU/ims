@@ -7,7 +7,6 @@
 
 import { Request, Response } from "express";
 import { ZodError } from "zod";
-import type { TenantRedirect } from "@prisma/client";
 import { sendControllerError } from "@/utils/controllerError";
 import { basePrisma } from "@/config/prisma";
 import service from "./internal.service";
