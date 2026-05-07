@@ -11,9 +11,14 @@ import { BlogPostsList } from "./BlogPostsList";
 interface PagesPanelProps {
   currentScope: SiteLayoutScope;
   onScopeChange: (scope: SiteLayoutScope) => void;
+  workspace: string;
 }
 
-export function PagesPanel({ currentScope, onScopeChange }: PagesPanelProps) {
+export function PagesPanel({
+  currentScope,
+  onScopeChange,
+  workspace,
+}: PagesPanelProps) {
   const [search, setSearch] = useState("");
 
   const handleScopeChange = (scope: SiteLayoutScope) => {
@@ -67,7 +72,7 @@ export function PagesPanel({ currentScope, onScopeChange }: PagesPanelProps) {
               <Plus className="w-4 h-4 text-gray-600" />
             </button>
           </div>
-          <CustomPagesList search={search} />
+          <CustomPagesList search={search} workspace={workspace} />
         </div>
 
         {/* Blog posts */}
@@ -83,7 +88,7 @@ export function PagesPanel({ currentScope, onScopeChange }: PagesPanelProps) {
               <Plus className="w-4 h-4 text-gray-600" />
             </button>
           </div>
-          <BlogPostsList search={search} />
+          <BlogPostsList search={search} workspace={workspace} />
         </div>
       </div>
     </div>

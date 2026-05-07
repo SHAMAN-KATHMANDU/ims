@@ -21,6 +21,7 @@ import { DraftRecoveryBanner } from "./shell/DraftRecoveryBanner";
 import { PublishModal } from "./shell/PublishModal";
 import { CanvasFrame } from "./canvas/CanvasFrame";
 import { CanvasOverlay } from "./canvas/CanvasOverlay";
+import { SlashMenu } from "./canvas/SlashMenu";
 
 interface SiteEditorPageProps {
   tenantId: string;
@@ -37,6 +38,7 @@ export function SiteEditorPage({
   );
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -67,12 +69,12 @@ export function SiteEditorPage({
   // Autosave
   useAutosave(scope);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — `/` (or ⌘K) opens the inline slash menu anchored
+  // to the currently selected block; if nothing's selected the menu inserts
+  // at the root.
   useEditorKeyboard({
     enabled: true,
-    onSlashMenu: () => {
-      // Phase 2 slash menu will open
-    },
+    onSlashMenu: () => setSlashMenuOpen(true),
   });
 
   // Keyboard shortcut for Help (?)
@@ -112,7 +114,7 @@ export function SiteEditorPage({
       {/* Main layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left dock */}
-        <LeftDock scope={scope} onScopeChange={setScope} />
+        <LeftDock scope={scope} onScopeChange={setScope} workspace={tenantId} />
 
         {/* Canvas area */}
         <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -144,6 +146,11 @@ export function SiteEditorPage({
         scope={scope}
         draftBlocks={draftBlocks}
         publishedBlocks={(layout?.blocks as BlockNode[] | undefined) ?? null}
+      />
+      <SlashMenu
+        isOpen={slashMenuOpen}
+        onClose={() => setSlashMenuOpen(false)}
+        anchorId={selectedId ?? undefined}
       />
     </div>
   );
