@@ -1,9 +1,22 @@
 /**
- * Editor top bar: site/scope selector, undo/redo, device toggle, publish menu.
+ * Editor top bar: Content/Design toggle, scope selector, undo/redo,
+ * device toggle, publish menu.
+ *
+ * The Content/Design toggle was previously rendered inside the admin
+ * top-bar (apps/web/components/layout/top-bar.tsx) — relocated here so
+ * the admin chrome stays focused on content workflows and the toggle
+ * lives next to the design surface it activates.
  */
 
 import React from "react";
-import { ChevronDown, Undo2, Redo2 } from "lucide-react";
+import Link from "next/link";
+import {
+  ChevronDown,
+  Undo2,
+  Redo2,
+  LayoutGrid,
+  Paintbrush,
+} from "lucide-react";
 import type { SiteLayoutScope } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
 import {
@@ -12,12 +25,14 @@ import {
   selectUndo,
   selectRedo,
 } from "../store/selectors";
+import { contentEntryPath } from "@/lib/editor-mode";
 
 interface EditorTopBarProps {
   scope: SiteLayoutScope;
   onScopeChange: (scope: SiteLayoutScope) => void;
   device: "desktop" | "tablet" | "mobile";
   onDeviceChange: (device: "desktop" | "tablet" | "mobile") => void;
+  workspace: string;
   onPublishClick?: () => void;
 }
 
@@ -28,6 +43,7 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
       onScopeChange: _onScopeChange,
       device,
       onDeviceChange,
+      workspace,
       onPublishClick,
     },
     ref,
@@ -42,8 +58,9 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
         ref={ref}
         className="flex items-center justify-between h-12 px-4 bg-white border-b border-gray-200"
       >
-        {/* Left: Scope selector */}
+        {/* Left: Content/Design toggle + scope selector */}
         <div className="flex items-center gap-4">
+          <ModeSwitcher workspace={workspace} />
           <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors">
             <span className="text-sm font-medium capitalize">{scope}</span>
             <ChevronDown className="w-4 h-4" />
@@ -102,3 +119,40 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
 );
 
 EditorTopBar.displayName = "EditorTopBar";
+
+/**
+ * Segmented Content / Design pill — same UX as the previous admin top-bar
+ * version, just relocated. Design pill is always active in the editor;
+ * Content pill links back to the workspace's content hub.
+ */
+function ModeSwitcher({ workspace }: { workspace: string }) {
+  const baseClass =
+    "inline-flex items-center gap-1.5 px-3 h-8 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const activeClass = "bg-blue-600 text-white";
+  const inactiveClass = "text-gray-600 hover:text-gray-900 hover:bg-gray-100";
+  return (
+    <div
+      role="tablist"
+      aria-label="Workspace mode"
+      className="inline-flex items-center rounded-md border border-gray-200 bg-white overflow-hidden"
+    >
+      <Link
+        href={contentEntryPath(workspace)}
+        role="tab"
+        aria-selected={false}
+        className={`${baseClass} ${inactiveClass}`}
+      >
+        <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
+        Content
+      </Link>
+      <span
+        role="tab"
+        aria-selected={true}
+        className={`${baseClass} ${activeClass} cursor-default`}
+      >
+        <Paintbrush className="h-3.5 w-3.5" aria-hidden="true" />
+        Design
+      </span>
+    </div>
+  );
+}

@@ -107,6 +107,40 @@ router.delete(
 
 /**
  * @swagger
+ * /tenants/me/domains/{domainId}:
+ *   patch:
+ *     summary: Update a domain belonging to the calling tenant
+ *     description: Currently only the `isPrimary` flag is settable here. Setting one domain primary clears primary on the tenant's other domains of the same appType.
+ *     tags: [Tenants, Domains]
+ *     operationId: updateMyDomain
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: domainId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isPrimary: { type: boolean }
+ *     responses:
+ *       200: { description: Domain updated }
+ *       400: { description: Validation error }
+ *       404: { description: Domain not found }
+ */
+router.patch(
+  "/me/domains/:domainId",
+  requirePermission("SETTINGS.DOMAINS.UPDATE", workspaceLocator()),
+  asyncHandler(controller.updateMyDomain),
+);
+
+/**
+ * @swagger
  * /tenants/me/domains/{domainId}/verification:
  *   get:
  *     summary: Get DNS verification instructions (A + TXT) for a domain
