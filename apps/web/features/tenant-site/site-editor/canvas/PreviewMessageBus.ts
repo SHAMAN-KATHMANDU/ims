@@ -49,6 +49,14 @@ export type PreviewMessage =
     }
   | {
       type: "slash-close";
+    }
+  // Live block sync: parent emits the current draft tree after every
+  // store mutation so the iframe can re-render without a full reload.
+  // Iframe-side listener lives in `apps/tenant-site/.../preview/site/[scope]`.
+  | {
+      type: "draft";
+      scope: string;
+      blocks: unknown;
     };
 
 /**
