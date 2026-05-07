@@ -106,10 +106,13 @@ export function TemplatesPanel({ activeTemplateId }: TemplatesPanelProps) {
         </div>
       )}
 
-      {/* Grid */}
+      {/* Grid — `min-h-0` lets the flex child actually shrink so the inner
+          `overflow-y-auto` can scroll. Without it, flex items default to
+          `min-height: auto` and the panel grows past the dock instead of
+          scrolling. */}
       {filtered.length > 0 ? (
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 gap-3">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="grid grid-cols-1 gap-3 pb-2">
             {filtered.map((template) => (
               <TemplateCard
                 key={template.slug}
