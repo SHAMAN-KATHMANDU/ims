@@ -7,13 +7,24 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { ridgeHome } from "./home";
 import { ridgePdp } from "./pdp";
 import { ridgeCart } from "./cart";
 
+const ridgeNav = buildTemplateNavSeed({
+  brandName: "Ridge//",
+  brandTagline: "Built for the climb.",
+  headerCta: { label: "Shop gear", href: "/products", style: "primary" },
+});
+
 export const ridgeBlueprint: TemplateBlueprint = {
   slug: "ridge",
+  ...ridgeNav,
   layouts: {
     home: ridgeHome(),
     "products-index": (() => {

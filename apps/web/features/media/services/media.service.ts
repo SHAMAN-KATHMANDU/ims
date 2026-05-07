@@ -5,7 +5,12 @@ export type MediaPurpose =
   | "product_photo"
   | "contact_attachment"
   | "library"
-  | "message_media";
+  | "message_media"
+  | "logo"
+  | "favicon"
+  | "hero"
+  | "cover"
+  | "background";
 
 export type PresignResponse = {
   uploadUrl: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   Dialog,
@@ -9,7 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { listMediaAssets, type MediaAssetRow } from "../services/media.service";
+import {
+  listMediaAssets,
+  type MediaAssetRow,
+  type MediaPurpose,
+} from "../services/media.service";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import Image from "next/image";
@@ -20,6 +24,11 @@ type MediaLibraryPickerDialogProps = {
   onOpenChange: (open: boolean) => void;
   onPick: (asset: { publicUrl: string; fileName: string }) => void;
   title?: string;
+  /**
+   * Optional purpose to filter the library by. Used in the API query
+   * to constrain results to matching assets.
+   */
+  purpose?: MediaPurpose;
 };
 
 function formatBytes(value: number | null): string {
@@ -35,8 +44,11 @@ export function MediaLibraryPickerDialog({
   onOpenChange,
   onPick,
   title = "Choose from library",
+  purpose,
 }: MediaLibraryPickerDialogProps) {
   const { toast } = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
   const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const [items, setItems] = useState<MediaAssetRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -47,7 +59,7 @@ export function MediaLibraryPickerDialog({
     if (!open || !mediaUploadEnabled) return;
     let cancelled = false;
     setLoading(true);
-    listMediaAssets({ limit: 30 })
+    listMediaAssets({ limit: 30, purpose })
       .then((res) => {
         if (!cancelled) {
           const imageItems = res.items.filter((a) =>
@@ -58,7 +70,7 @@ export function MediaLibraryPickerDialog({
         }
       })
       .catch((e) => {
-        toast({
+        toastRef.current({
           title: getApiErrorMessage(e),
           variant: "destructive",
         });
@@ -69,27 +81,31 @@ export function MediaLibraryPickerDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, mediaUploadEnabled, toast]);
+  }, [open, mediaUploadEnabled, purpose]);
 
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore || !mediaUploadEnabled) return;
     setLoadingMore(true);
     try {
-      const res = await listMediaAssets({ limit: 30, cursor: nextCursor });
+      const res = await listMediaAssets({
+        limit: 30,
+        cursor: nextCursor,
+        purpose,
+      });
       const imageItems = res.items.filter((a) =>
         a.mimeType.startsWith("image/"),
       );
       setItems((prev) => [...prev, ...imageItems]);
       setNextCursor(res.nextCursor);
     } catch (e) {
-      toast({
+      toastRef.current({
         title: getApiErrorMessage(e),
         variant: "destructive",
       });
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [nextCursor, loadingMore, mediaUploadEnabled, purpose]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

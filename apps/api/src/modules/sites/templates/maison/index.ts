@@ -7,13 +7,26 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { maisonHome } from "./home";
 import { maisonPdp } from "./pdp";
 import { maisonCart } from "./cart";
 
+const maisonNav = buildTemplateNavSeed({
+  brandName: "Maison",
+  brandTagline: "Heirloom interiors, made to live with.",
+  headerLayout: "centered",
+  enableNewsletter: true,
+  newsletterHeading: "Join the studio list",
+});
+
 export const maisonBlueprint: TemplateBlueprint = {
   slug: "maison",
+  ...maisonNav,
   layouts: {
     home: maisonHome(),
     "products-index": (() => {

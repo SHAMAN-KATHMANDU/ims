@@ -7,14 +7,17 @@ import { cn } from "@/lib/utils";
 /**
  * Pill-style nav rendered above every /settings/site/* page.
  *
- *   "Website" → /settings/site           (branding + sections + template + publish)
- *   "Pages"   → /settings/site/pages     (custom About/FAQ/Shipping pages)
- *   "Blog"    → /settings/site/blog      (posts + categories)
+ *   "Website"     → /settings/site           (branding + sections + template + publish)
+ *   "Pages"       → /settings/site/pages     (custom About/FAQ/Shipping pages)
+ *   "Blog"        → /settings/site/blog      (posts + categories)
+ *   "Offers"      → /settings/site/offers    (promotions and discounts)
+ *   "Navigation"  → /settings/site/navigation (header + mobile drawer config)
+ *   "Footer"      → /settings/site/footer    (footer config: brand + columns + socials + legal)
+ *   "Collections" → /settings/site/collections (product collections)
  *
- * Uses link-based navigation rather than shadcn <Tabs> because the three
- * tabs host entirely separate routes with their own URLs — visitors should
- * be able to deep-link to /settings/site/blog/new or /settings/site/pages/new
- * and land directly there.
+ * Uses link-based navigation rather than shadcn <Tabs> because tabs host
+ * entirely separate routes with their own URLs — visitors should be able to
+ * deep-link and land directly there.
  */
 export function SiteTabsNav() {
   const pathname = usePathname() ?? "";
@@ -26,9 +29,15 @@ export function SiteTabsNav() {
   const isPages = pathname.startsWith(`${base}/pages`);
   const isOffers = pathname.startsWith(`${base}/offers`);
   const isNavigation = pathname.startsWith(`${base}/navigation`);
+  const isFooter = pathname.startsWith(`${base}/footer`);
   const isCollections = pathname.startsWith(`${base}/collections`);
   const isWebsite =
-    !isBlog && !isPages && !isOffers && !isNavigation && !isCollections;
+    !isBlog &&
+    !isPages &&
+    !isOffers &&
+    !isNavigation &&
+    !isFooter &&
+    !isCollections;
 
   const tabs = [
     { href: base, label: "Website", active: isWebsite },
@@ -36,6 +45,7 @@ export function SiteTabsNav() {
     { href: `${base}/blog`, label: "Blog", active: isBlog },
     { href: `${base}/offers`, label: "Offers", active: isOffers },
     { href: `${base}/navigation`, label: "Navigation", active: isNavigation },
+    { href: `${base}/footer`, label: "Footer", active: isFooter },
     {
       href: `${base}/collections`,
       label: "Collections",

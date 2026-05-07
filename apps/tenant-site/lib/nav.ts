@@ -2,16 +2,19 @@
  * Nav helpers for the tenant-site renderer.
  *
  * Fetches NavMenu rows for the current tenant and decodes them into the
- * shared NavConfig / NavItem shapes. When a row exists the renderer uses
- * it; when it doesn't, callers fall through to the legacy hardcoded
- * header/footer in shared.tsx so existing tenants keep working unchanged.
+ * shared NavConfig / NavItem / FooterConfig shapes. When a row exists the
+ * renderer uses it; when it doesn't, callers fall through to the legacy
+ * hardcoded header/footer in shared.tsx so existing tenants keep working
+ * unchanged.
  */
 
 import {
   NavConfigSchema,
   NavItemsOnlySchema,
+  FooterConfigSchema,
   type NavConfig,
   type NavItem,
+  type FooterConfig,
 } from "@repo/shared";
 import { getNavMenu, type PublicNavPage } from "./api";
 import { getTenantContext } from "./tenant";
@@ -116,4 +119,40 @@ export function expandAutoItems(
     expanded.push(item);
   }
   return expanded;
+}
+
+/**
+ * Fetch + parse the mobile drawer nav items for the current tenant. Returns null
+ * when the tenant has no saved mobile drawer menu yet or when the stored payload
+ * fails validation (in which case we log and fall through to empty drawer).
+ */
+export async function loadMobileDrawerConfig(): Promise<NavItem[] | null> {
+  return loadNavItems("mobile-drawer");
+}
+
+/**
+ * Fetch + parse the footer config for the current tenant. Returns null
+ * when the tenant has no saved footer config yet or when the stored payload
+ * fails validation (in which case we log and fall through to legacy).
+ */
+export async function loadFooterConfig(): Promise<FooterConfig | null> {
+  try {
+    const ctx = await getTenantContext();
+    const menu = await getNavMenu(ctx.host, ctx.tenantId, "footer-config");
+    if (!menu) return null;
+    const parsed = FooterConfigSchema.safeParse(menu.items);
+    if (!parsed.success) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[tenant-site] footer FooterConfig failed validation; falling back",
+        parsed.error.issues[0]?.message,
+      );
+      return null;
+    }
+    return parsed.data;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[tenant-site] loadFooterConfig threw", err);
+    return null;
+  }
 }

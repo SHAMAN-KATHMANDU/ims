@@ -7,13 +7,25 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { pantryHome } from "./home";
 import { pantryPdp } from "./pdp";
 import { pantryCart } from "./cart";
 
+const pantryNav = buildTemplateNavSeed({
+  brandName: "Pantry & Co.",
+  brandTagline: "Small-batch larder essentials.",
+  enableNewsletter: true,
+  newsletterHeading: "Recipes & restocks, monthly",
+});
+
 export const pantryBlueprint: TemplateBlueprint = {
   slug: "pantry",
+  ...pantryNav,
   layouts: {
     home: pantryHome(),
     "products-index": (() => {

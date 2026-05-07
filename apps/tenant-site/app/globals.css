@@ -336,6 +336,17 @@ hr {
   display: flex;
 }
 
+/* Footer link hover transition — applies color transition and muted-color hover
+   state to links in ConfiguredFooter. */
+.tpl-footer-link {
+  color: inherit;
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.tpl-footer-link:hover {
+  color: var(--color-muted);
+}
+
 /* Phase 9 — product card hover. Vercel-Commerce-style: the image
    scales slightly, the card lifts with a soft shadow, the border
    brightens. Kept subtle so luxury / minimalist templates still read

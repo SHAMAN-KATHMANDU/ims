@@ -8,9 +8,9 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
-import type { NavConfig, NavSlot } from "@repo/shared";
+import type { NavConfig, NavSlot, FooterConfig } from "@repo/shared";
 
-export type { NavConfig, NavItem, NavSlot } from "@repo/shared";
+export type { NavConfig, NavItem, NavSlot, FooterConfig } from "@repo/shared";
 
 export interface NavMenuRow {
   id: string;
@@ -33,7 +33,7 @@ export async function listNavMenus(): Promise<NavMenuRow[]> {
 
 export async function upsertNavMenu(
   slot: NavSlot,
-  items: NavConfig | { items: unknown[] },
+  items: NavConfig | { items: unknown[] } | FooterConfig,
 ): Promise<NavMenuRow> {
   try {
     const response = await api.put<{ menu: NavMenuRow }>("/nav-menus", {

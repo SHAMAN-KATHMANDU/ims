@@ -7,13 +7,25 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { foldHome } from "./home";
 import { foldPdp } from "./pdp";
 import { foldCart } from "./cart";
 
+const foldNav = buildTemplateNavSeed({
+  brandName: "Fold",
+  brandTagline: "Apparel without ornament.",
+  headerLayout: "minimal",
+  footerLayout: "minimal",
+});
+
 export const foldBlueprint: TemplateBlueprint = {
   slug: "fold",
+  ...foldNav,
   layouts: {
     home: foldHome(),
     "products-index": (() => {

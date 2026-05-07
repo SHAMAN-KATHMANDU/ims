@@ -7,13 +7,27 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { auricHome } from "./home";
 import { auricPdp } from "./pdp";
 import { auricCart } from "./cart";
 
+const auricNav = buildTemplateNavSeed({
+  brandName: "Auric",
+  brandTagline: "Quiet luxury, kept close.",
+  headerLayout: "centered",
+  footerLayout: "centered",
+  enableNewsletter: true,
+  newsletterHeading: "Atelier dispatches",
+});
+
 export const auricBlueprint: TemplateBlueprint = {
   slug: "auric",
+  ...auricNav,
   layouts: {
     home: auricHome(),
     "products-index": (() => {

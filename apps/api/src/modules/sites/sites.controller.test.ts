@@ -156,10 +156,14 @@ describe("SitesController", () => {
 
       await controller.pickTemplate(req, res);
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockService.pickTemplate).toHaveBeenCalledWith("t1", {
-        templateSlug: "luxury",
-        resetBranding: true,
-      });
+      expect(mockService.pickTemplate).toHaveBeenCalledWith(
+        "t1",
+        {
+          templateSlug: "luxury",
+          resetBranding: true,
+        },
+        req.requestId,
+      );
     });
 
     it("returns 400 when templateSlug is missing", async () => {

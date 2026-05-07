@@ -7,13 +7,25 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { verdantHome } from "./home";
 import { verdantPdp } from "./pdp";
 import { verdantCart } from "./cart";
 
+const verdantNav = buildTemplateNavSeed({
+  brandName: "Verdant",
+  brandTagline: "Living things, grown well.",
+  enableNewsletter: true,
+  newsletterHeading: "Care notes from the greenhouse",
+});
+
 export const verdantBlueprint: TemplateBlueprint = {
   slug: "verdant",
+  ...verdantNav,
   layouts: {
     home: verdantHome(),
     "products-index": (() => {

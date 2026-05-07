@@ -17,7 +17,7 @@ describe("Template blueprints — schema validation", () => {
     describe(slug, () => {
       for (const scope of BLUEPRINT_SCOPES) {
         it(`${scope} layout passes BlockTreeSchema`, () => {
-          const blocks = blueprint.layouts[scope];
+          const blocks = blueprint.layouts?.[scope];
           if (!blocks || blocks.length === 0) return;
           const result = BlockTreeSchema.safeParse(blocks);
           if (!result.success) {

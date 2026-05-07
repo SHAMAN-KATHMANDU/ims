@@ -5,7 +5,7 @@ export const productGridCatalog: CatalogEntry<"product-grid"> = {
   label: "Product grid",
   description: "Featured / category / manual product grid.",
   category: "commerce",
-  scopes: ["home", "product-detail"],
+  scopes: ["home", "product-detail", "cart"],
   createDefaultProps: () => ({
     source: "featured",
     limit: 8,
