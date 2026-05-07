@@ -1,0 +1,3603 @@
+{
+  "issues": [
+    {
+      "file": "apps/api/prisma/scripts/backfill-content-body.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/prisma/scripts/backfill-content-body.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/prisma/scripts/backfill-nav-menus.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/prisma/scripts/backfill-nav-menus.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/prisma/scripts/seed-demo-home-layout.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/prisma/scripts/seed-demo-home-layout.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/prisma/scripts/seed-scoped-rbac.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/prisma/scripts/seed-scoped-rbac.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/messagingUploadRateLimit.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/api/src/middlewares/messagingUploadRateLimit.ts" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/config/prisma-extensions/resource-hook.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/api/src/config/prisma-extensions/resource-hook.ts" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/shared/permissions/filterVisible.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/src/shared/permissions/filterVisible.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/shared/permissions/viewOwnOnly.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/src/shared/permissions/viewOwnOnly.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/bulk/bulk.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/src/modules/bulk/bulk.repository.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/permissions/permissions.types.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/api/src/modules/permissions/permissions.types.ts" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/receipt/grid.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/api/src/modules/sales/receipt/grid.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/package.json",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [
+        { "name": "@fontsource/roboto", "line": 35, "col": 6, "pos": 1173 },
+        {
+          "name": "@opentelemetry/semantic-conventions",
+          "line": 42,
+          "col": 6,
+          "pos": 1482
+        },
+        { "name": "pino-pretty", "line": 64, "col": 6, "pos": 2133 }
+      ],
+      "devDependencies": [
+        { "name": "@types/bcrypt", "line": 76, "col": 6, "pos": 2470 }
+      ],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceOriginMatch.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "enforceOriginMatch", "line": 29, "col": 17, "pos": 975 },
+          { "name": "default", "line": 63, "col": 16, "pos": 1917 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 63, "col": 16, "pos": 1917 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/enforcePlanLimits.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "enforcePlanLimits", "line": 68, "col": 17, "pos": 1745 },
+          { "name": "default", "line": 329, "col": 16, "pos": 9636 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 329, "col": 16, "pos": 9636 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ResourceUsage", "line": 250, "col": 18, "pos": 7256 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/hostnameResolver.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          {
+            "name": "resolveTenantFromHostname",
+            "line": 97,
+            "col": 17,
+            "pos": 3315
+          },
+          { "name": "default", "line": 141, "col": 16, "pos": 4525 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 141, "col": 16, "pos": 4525 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/publicApiKeyAuth.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "publicApiKeyAuth", "line": 77, "col": 17, "pos": 2619 },
+          { "name": "default", "line": 107, "col": 16, "pos": 3570 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 107, "col": 16, "pos": 3570 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/readOnlyGuard.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "readOnlyGuard", "line": 14, "col": 17, "pos": 444 },
+          { "name": "default", "line": 26, "col": 16, "pos": 788 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 26, "col": 16, "pos": 788 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/requireInternalToken.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          {
+            "name": "requireInternalToken",
+            "line": 42,
+            "col": 17,
+            "pos": 1448
+          },
+          { "name": "default", "line": 75, "col": 16, "pos": 2290 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 75, "col": 16, "pos": 2290 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/lib/email/email.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "_setTransporterForTest",
+          "line": 110,
+          "col": 17,
+          "pos": 3100
+        },
+        {
+          "name": "_resetTransporterForTest",
+          "line": 116,
+          "col": 17,
+          "pos": 3259
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/bulk/bulk.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [{ "name": "BULK_TYPES", "line": 3, "col": 14, "pos": 39 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "BulkType", "line": 9, "col": 13, "pos": 131 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/products/product.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "productBulkFields", "line": 129, "col": 3, "pos": 3693 },
+        {
+          "name": "productBulkHeaderMappings",
+          "line": 130,
+          "col": 3,
+          "pos": 3714
+        },
+        {
+          "name": "productBulkRequiredColumns",
+          "line": 131,
+          "col": 3,
+          "pos": 3743
+        },
+        { "name": "KNOWN_HEADER_FIELDS", "line": 132, "col": 3, "pos": 3773 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "GetAllProductsQueryDto",
+          "line": 112,
+          "col": 13,
+          "pos": 3134
+        },
+        {
+          "name": "GetProductByImsQueryDto",
+          "line": 113,
+          "col": 13,
+          "pos": 3214
+        },
+        {
+          "name": "DownloadProductsQueryDto",
+          "line": 116,
+          "col": 13,
+          "pos": 3300
+        },
+        { "name": "ExcelProductRow", "line": 134, "col": 15, "pos": 3842 },
+        { "name": "CreateProductTagDto", "line": 274, "col": 13, "pos": 8827 },
+        { "name": "UpdateProductTagDto", "line": 275, "col": 13, "pos": 8901 },
+        {
+          "name": "ListProductTagsQueryDto",
+          "line": 276,
+          "col": 13,
+          "pos": 8975
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/transfers/transfer.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "TransferStatusEnum", "line": 25, "col": 14, "pos": 844 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "TransferStatus", "line": 32, "col": 13, "pos": 963 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/permissions/permission.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PermissionRepository", "line": 28, "col": 14, "pos": 489 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "RoleRow", "line": 8, "col": 18, "pos": 178 },
+        { "name": "ResourceChainRow", "line": 14, "col": 18, "pos": 265 },
+        { "name": "OverwriteRow", "line": 20, "col": 18, "pos": 351 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/permissions/permission.cache.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PermissionCache", "line": 30, "col": 14, "pos": 756 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/permissions/permissions.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SubjectTypeEnum", "line": 102, "col": 14, "pos": 2514 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateRoleDto", "line": 34, "col": 13, "pos": 767 },
+        { "name": "UpdateRoleDto", "line": 67, "col": 13, "pos": 1604 },
+        { "name": "ListRolesQueryDto", "line": 90, "col": 13, "pos": 2149 },
+        { "name": "AssignUserToRoleDto", "line": 98, "col": 13, "pos": 2386 },
+        { "name": "SubjectType", "line": 103, "col": 13, "pos": 2570 },
+        {
+          "name": "UpsertPermissionOverwriteDto",
+          "line": 137,
+          "col": 13,
+          "pos": 3486
+        },
+        {
+          "name": "GetEffectivePermissionsQueryDto",
+          "line": 149,
+          "col": 13,
+          "pos": 3912
+        },
+        {
+          "name": "BulkResolvePermissionsDto",
+          "line": 159,
+          "col": 13,
+          "pos": 4214
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/lib/s3/publicUrl.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "normalizePublicUrlPrefix", "line": 3, "col": 17, "pos": 59 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/lib/s3/s3Key.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "S3_STORAGE_ENV_SEGMENTS",
+          "line": 13,
+          "col": 14,
+          "pos": 297
+        },
+        { "name": "assertValidStorageEnv", "line": 33, "col": 17, "pos": 1016 },
+        { "name": "extensionFromMime", "line": 47, "col": 17, "pos": 1438 },
+        { "name": "pickExtension", "line": 65, "col": 17, "pos": 1974 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "S3KeyEntity", "line": 10, "col": 13, "pos": 175 },
+        { "name": "S3StorageEnvSegment", "line": 14, "col": 13, "pos": 370 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/services/ai-replies/ai-reply.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "AiReplyService", "line": 66, "col": 14, "pos": 1886 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/activities/activity.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "activityServiceModule",
+          "name": "ActivityService",
+          "line": 9,
+          "col": 14,
+          "pos": 440
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/activities/activity.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "ActivityRepository", "line": 41, "col": 14, "pos": 1191 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateActivityData", "line": 29, "col": 18, "pos": 923 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/activities/activity.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "ACTIVITY_TYPES", "line": 3, "col": 14, "pos": 39 },
+        { "name": "ActivityTypeSchema", "line": 4, "col": 14, "pos": 108 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/analytics/analytics.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "analyticsServiceModule",
+          "name": "AnalyticsService",
+          "line": 43,
+          "col": 14,
+          "pos": 1252
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/analytics/analytics.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "AnalyticsRepository", "line": 7, "col": 14, "pos": 215 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/automation/automation.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "AutomationService", "line": 152, "col": 14, "pos": 4224 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "PublishAutomationDomainEventInput",
+          "line": 135,
+          "col": 18,
+          "pos": 3861
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/automation/automation.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "AutomationRepository", "line": 114, "col": 14, "pos": 3161 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "CreateAutomationRunStepInput",
+          "line": 52,
+          "col": 18,
+          "pos": 1429
+        },
+        { "name": "CreateWorkItemInput", "line": 63, "col": 18, "pos": 1799 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/automation/automation.runtime.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "processDueDelayedAutomationRuns",
+          "line": 1390,
+          "col": 23,
+          "pos": 39873
+        },
+        {
+          "name": "processDueAutomationEvents",
+          "line": 1954,
+          "col": 23,
+          "pos": 58318
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/automation/automation.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "CreateAutomationTriggerSchema",
+          "line": 18,
+          "col": 14,
+          "pos": 433
+        },
+        {
+          "name": "CreateAutomationStepSchema",
+          "line": 29,
+          "col": 14,
+          "pos": 693
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "BulkToggleAutomationDto",
+          "line": 245,
+          "col": 13,
+          "pos": 6935
+        },
+        {
+          "name": "TestAutomationDefinitionDto",
+          "line": 248,
+          "col": 13,
+          "pos": 7021
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/blog/blog.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "BlogRepository", "line": 48, "col": 14, "pos": 1185 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sites/sites.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SitesRepository", "line": 19, "col": 14, "pos": 600 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/bulk/bulk.controller.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "bulkController", "line": 98, "col": 10, "pos": 2906 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/business-profile/business-profile.controller.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "BusinessProfileController",
+          "line": 14,
+          "col": 14,
+          "pos": 528
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/companies/company.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "CompanyRepository", "line": 8, "col": 14, "pos": 159 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/contacts/contact.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "contactServiceModule",
+          "name": "ContactService",
+          "line": 52,
+          "col": 14,
+          "pos": 1473
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/crm/crm.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "crmServiceModule",
+          "name": "CrmService",
+          "line": 4,
+          "col": 14,
+          "pos": 91
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/crm/crm.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "CrmRepository", "line": 53, "col": 14, "pos": 1210 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "DashboardRawData", "line": 44, "col": 18, "pos": 908 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/dashboard/dashboard.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "DashboardService", "line": 10, "col": 14, "pos": 304 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/dashboard/dashboard.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "DashboardSuperAdminSummaryQuerySchema",
+          "line": 10,
+          "col": 14,
+          "pos": 301
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/deals/deal.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "DealRepository", "line": 77, "col": 14, "pos": 2243 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/internal/internal.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "InternalRepository", "line": 14, "col": 14, "pos": 409 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/inventory/inventory.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "InventoryRepository", "line": 26, "col": 14, "pos": 602 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "GetLocationInventoryParams",
+          "line": 18,
+          "col": 18,
+          "pos": 460
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/leads/lead.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "LeadRepository", "line": 58, "col": 14, "pos": 1241 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "LeadStatus", "line": 16, "col": 13, "pos": 259 },
+        { "name": "CreateLeadData", "line": 29, "col": 18, "pos": 647 },
+        { "name": "UpdateLeadData", "line": 42, "col": 18, "pos": 916 },
+        { "name": "FindAllLeadsParams", "line": 53, "col": 18, "pos": 1150 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/leads/lead.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "LEAD_STATUSES", "line": 3, "col": 14, "pos": 39 },
+        { "name": "LeadStatusSchema", "line": 11, "col": 14, "pos": 147 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/messaging/messaging.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "messagingServiceModule",
+          "name": "sanitizeMessageText",
+          "line": 25,
+          "col": 17,
+          "pos": 1025
+        },
+        {
+          "namespace": "messagingServiceModule",
+          "name": "resolveMessagingMediaUrlForStorage",
+          "line": 38,
+          "col": 17,
+          "pos": 1336
+        },
+        {
+          "namespace": "messagingServiceModule",
+          "name": "MessagingService",
+          "line": 168,
+          "col": 14,
+          "pos": 4568
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/nav-menus/nav-menus.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "NavMenusRepository", "line": 8, "col": 14, "pos": 190 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/notifications/notification.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "NotificationRepository", "line": 21, "col": 14, "pos": 449 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateNotificationData", "line": 4, "col": 18, "pos": 112 },
+        { "name": "NotificationListParams", "line": 13, "col": 18, "pos": 307 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/pages/pages.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "LAYOUT_VARIANTS", "line": 42, "col": 14, "pos": 938 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/pages/pages.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PagesRepository", "line": 36, "col": 14, "pos": 894 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/pipelines/pipeline.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "pipelineServiceModule",
+          "name": "PipelineService",
+          "line": 11,
+          "col": 14,
+          "pos": 374
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/pipelines/pipeline.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PipelineRepository", "line": 40, "col": 14, "pos": 965 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreatePipelineData", "line": 14, "col": 18, "pos": 457 },
+        { "name": "UpdatePipelineData", "line": 28, "col": 18, "pos": 733 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/platform-domains/platform-domains.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "hostnameSchema", "line": 10, "col": 14, "pos": 202 },
+        { "name": "appTypeSchema", "line": 18, "col": 14, "pos": 341 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ListTenantDomainsQuery", "line": 37, "col": 13, "pos": 954 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/products/bulkUpload.validation.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "KNOWN_HEADER_FIELDS", "line": 8, "col": 14, "pos": 253 },
+        { "name": "productBulkFields", "line": 174, "col": 14, "pos": 5183 },
+        {
+          "name": "productBulkHeaderMappings",
+          "line": 177,
+          "col": 14,
+          "pos": 5313
+        },
+        {
+          "name": "productBulkRequiredColumns",
+          "line": 202,
+          "col": 14,
+          "pos": 6103
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-api-keys/public-api-keys.controller.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PublicApiKeysController", "line": 13, "col": 14, "pos": 536 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-blog/public-blog.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PublicBlogRepository", "line": 62, "col": 14, "pos": 1397 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-orders/public-orders.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "CartItemSchema", "line": 16, "col": 14, "pos": 544 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CartItem", "line": 49, "col": 13, "pos": 1755 },
+        { "name": "CreateGuestOrderInput", "line": 50, "col": 13, "pos": 1810 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-pages/public-pages.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PublicPagesRepository", "line": 37, "col": 14, "pos": 790 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-site/public-site.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "BEST_SELLER_CAP", "line": 45, "col": 14, "pos": 2043 },
+        { "name": "RATING_SORT_CAP", "line": 53, "col": 14, "pos": 2328 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "PublicSiteProduct", "line": 80, "col": 18, "pos": 3368 },
+        {
+          "name": "PublicSiteVariationAttribute",
+          "line": 135,
+          "col": 18,
+          "pos": 5343
+        },
+        {
+          "name": "PublicSiteSubVariation",
+          "line": 143,
+          "col": 18,
+          "pos": 5488
+        },
+        { "name": "PublicSiteVariation", "line": 148, "col": 18, "pos": 5563 },
+        { "name": "PublicSiteFacets", "line": 166, "col": 18, "pos": 6111 },
+        {
+          "name": "PublicSiteProductDetail",
+          "line": 185,
+          "col": 18,
+          "pos": 6753
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-site/public-site.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PRODUCT_SORTS", "line": 13, "col": 14, "pos": 372 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "ProductSort", "line": 36, "col": 13, "pos": 1200 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/redirects/redirects.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "serviceModule",
+          "name": "detectCycle",
+          "line": 20,
+          "col": 17,
+          "pos": 637
+        },
+        {
+          "namespace": "serviceModule",
+          "name": "RedirectsService",
+          "line": 42,
+          "col": 14,
+          "pos": 1219
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/remarketing/remarketing.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "RemarketingService", "line": 17, "col": 14, "pos": 649 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/bulkUpload.validation.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "saleBulkFields", "line": 188, "col": 14, "pos": 5776 },
+        {
+          "name": "saleBulkHeaderMappings",
+          "line": 206,
+          "col": 14,
+          "pos": 6062
+        },
+        {
+          "name": "saleBulkRequiredColumns",
+          "line": 260,
+          "col": 14,
+          "pos": 7333
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/sale.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "saleService",
+          "name": "SaleService",
+          "line": 1540,
+          "col": 14,
+          "pos": 46750
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "saleService",
+          "name": "ProcessedItem",
+          "line": 68,
+          "col": 18,
+          "pos": 2222
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/site-layouts/site-layouts.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SiteLayoutsRepository", "line": 18, "col": 14, "pos": 493 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/config/tenantContext.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "getTenantContext", "line": 66, "col": 17, "pos": 2139 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/tasks/task.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "namespace": "taskServiceModule",
+          "name": "TaskService",
+          "line": 8,
+          "col": 14,
+          "pos": 378
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/trash/trash.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "TRASH_MODEL_KEYS", "line": 4, "col": 14, "pos": 131 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "TrashModelKey", "line": 21, "col": 13, "pos": 358 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/website-orders/website-orders.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "WebsiteOrdersRepository", "line": 36, "col": 14, "pos": 863 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/workflows/workflow.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "TaskDealLinkSchema", "line": 22, "col": 3, "pos": 631 },
+        { "name": "CreateTaskConfigSchema", "line": 23, "col": 3, "pos": 653 },
+        {
+          "name": "SendNotificationConfigSchema",
+          "line": 24,
+          "col": 3,
+          "pos": 679
+        },
+        { "name": "MoveStageConfigSchema", "line": 25, "col": 3, "pos": 711 },
+        { "name": "UPDATE_FIELD_ALLOWED", "line": 26, "col": 3, "pos": 736 },
+        { "name": "UpdateFieldConfigSchema", "line": 27, "col": 3, "pos": 760 },
+        {
+          "name": "CreateActivityConfigSchema",
+          "line": 28,
+          "col": 3,
+          "pos": 787
+        },
+        { "name": "CreateDealConfigSchema", "line": 29, "col": 3, "pos": 817 },
+        {
+          "name": "UPDATE_CONTACT_FIELD_ALLOWED",
+          "line": 30,
+          "col": 3,
+          "pos": 843
+        },
+        {
+          "name": "UpdateContactFieldConfigSchema",
+          "line": 31,
+          "col": 3,
+          "pos": 875
+        },
+        { "name": "ApplyTagConfigSchema", "line": 32, "col": 3, "pos": 909 },
+        { "name": "RemoveTagConfigSchema", "line": 33, "col": 3, "pos": 933 },
+        { "name": "WORKFLOW_TRIGGERS", "line": 48, "col": 14, "pos": 1241 },
+        { "name": "WORKFLOW_ACTIONS", "line": 49, "col": 14, "pos": 1299 },
+        { "name": "WorkflowTriggerSchema", "line": 51, "col": 14, "pos": 1356 },
+        { "name": "ActionConfigSchema", "line": 80, "col": 14, "pos": 2647 },
+        {
+          "name": "UpdateWorkflowRuleSchema",
+          "line": 129,
+          "col": 14,
+          "pos": 4133
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "TaskDealLink", "line": 36, "col": 3, "pos": 995 },
+        { "name": "SendNotificationConfig", "line": 38, "col": 3, "pos": 1031 },
+        { "name": "UpdateFieldConfig", "line": 40, "col": 3, "pos": 1076 },
+        { "name": "CreateActivityConfig", "line": 41, "col": 3, "pos": 1097 },
+        { "name": "CreateDealConfig", "line": 42, "col": 3, "pos": 1121 },
+        { "name": "ApplyTagConfig", "line": 44, "col": 3, "pos": 1169 },
+        { "name": "RemoveTagConfig", "line": 45, "col": 3, "pos": 1187 },
+        { "name": "WorkflowIdParamDto", "line": 199, "col": 13, "pos": 6376 },
+        {
+          "name": "WorkflowTemplateKeyParamDto",
+          "line": 200,
+          "col": 13,
+          "pos": 6448
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/lib/s3/s3Storage.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [{ "name": "getS3Client", "line": 16, "col": 17, "pos": 360 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/abandoned-carts/abandoned-carts.scheduler.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "stopAbandonedCartScheduler",
+          "line": 44,
+          "col": 17,
+          "pos": 1390
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/messaging/messaging.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "MessagingRepository", "line": 31, "col": 14, "pos": 699 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "MessageWithCreateRelations",
+          "line": 27,
+          "col": 13,
+          "pos": 585
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/shared/permissions/module-map.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "RESOURCE_TYPE_TO_MODULE",
+          "line": 72,
+          "col": 14,
+          "pos": 1314
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "ModuleId", "line": 64, "col": 13, "pos": 1207 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/config/redis.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "redis", "line": 59, "col": 14, "pos": 1583 },
+          { "name": "default", "line": 61, "col": 16, "pos": 1626 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [
+        { "name": "createRedisClient", "line": 20, "col": 17, "pos": 636 },
+        { "name": "redis", "line": 59, "col": 14, "pos": 1583 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/services/ai-replies/ai-reply.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "AiReplyRepository", "line": 6, "col": 14, "pos": 171 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/versions/versions.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "snapshotSiteLayout", "line": 97, "col": 23, "pos": 3181 },
+        {
+          "name": "listSiteLayoutVersions",
+          "line": 134,
+          "col": 23,
+          "pos": 4183
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "VersionResource", "line": 43, "col": 13, "pos": 1602 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/bulk/bulk.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [{ "name": "BulkService", "line": 3, "col": 14, "pos": 62 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/products/bulkUpload.discount.validation.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "discountBulkRowSchema", "line": 12, "col": 14, "pos": 347 },
+        {
+          "name": "discountBulkHeaderMappings",
+          "line": 74,
+          "col": 14,
+          "pos": 2238
+        },
+        {
+          "name": "discountBulkRequiredColumns",
+          "line": 91,
+          "col": 14,
+          "pos": 2844
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/collections/collections.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "CollectionsRepository", "line": 14, "col": 14, "pos": 441 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/crm-settings/crm-settings.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "CrmSettingsRepository", "line": 9, "col": 14, "pos": 196 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/dashboard/dashboard.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "DashboardRepository", "line": 43, "col": 14, "pos": 1075 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/pipeline-transitions/pipeline-transition.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "PipelineTransitionService",
+          "line": 25,
+          "col": 14,
+          "pos": 717
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/messaging-channels/messaging-channel.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "MessagingChannelRepository",
+          "line": 4,
+          "col": 14,
+          "pos": 119
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/users/password-reset.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PasswordResetRepository", "line": 12, "col": 14, "pos": 248 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/redirects/redirects.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "RedirectsRepository", "line": 11, "col": 14, "pos": 292 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/remarketing/remarketing.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "RemarketingRepository", "line": 4, "col": 14, "pos": 106 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/site-preview/preview-nonce.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [{ "name": "nonceKey", "line": 28, "col": 17, "pos": 1016 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/workflows/workflow.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "WorkflowRepository", "line": 75, "col": 14, "pos": 1653 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "InstallWorkflowTemplateOptions",
+          "line": 48,
+          "col": 18,
+          "pos": 1023
+        },
+        {
+          "name": "InstallWorkflowTemplateResult",
+          "line": 55,
+          "col": 18,
+          "pos": 1179
+        },
+        { "name": "CreateWorkflowRunData", "line": 60, "col": 18, "pos": 1315 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/requirePermission.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "assertPermission", "line": 39, "col": 23, "pos": 1538 },
+        {
+          "name": "assertOwnerOrPermission",
+          "line": 54,
+          "col": 23,
+          "pos": 2005
+        },
+        {
+          "name": "requireOwnerOrPermission",
+          "line": 125,
+          "col": 17,
+          "pos": 4202
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/config/multer.config.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "upload", "line": 57, "col": 14, "pos": 1660 },
+        { "name": "uploadAttachment", "line": 123, "col": 14, "pos": 3395 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/middlewares/rateLimitByApiKey.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [
+        [
+          { "name": "rateLimitByApiKey", "line": 16, "col": 14, "pos": 475 },
+          { "name": "default", "line": 34, "col": 16, "pos": 1183 }
+        ]
+      ],
+      "enumMembers": [],
+      "exports": [{ "name": "default", "line": 34, "col": 16, "pos": 1183 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sites/templates/_shared/factories.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [{ "name": "nextId", "line": 25, "col": 17, "pos": 622 }],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sites/templates/_shared/index.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "block", "line": 5, "col": 10, "pos": 57 },
+        { "name": "nextId", "line": 5, "col": 17, "pos": 64 },
+        { "name": "resetIdCounter", "line": 5, "col": 25, "pos": 72 },
+        { "name": "pdpColumns", "line": 6, "col": 10, "pos": 118 },
+        { "name": "cartLayout", "line": 9, "col": 10, "pos": 251 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CartLayoutOptions", "line": 9, "col": 27, "pos": 268 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/versions/versions.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "VERSION_CAP_PER_RECORD",
+          "line": 241,
+          "col": 14,
+          "pos": 6899
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "WriteVersionInput", "line": 34, "col": 18, "pos": 1226 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/receipt/constants.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "A5_WIDTH", "line": 8, "col": 14, "pos": 191 },
+        { "name": "A5_HEIGHT", "line": 9, "col": 14, "pos": 220 },
+        { "name": "FOOTER_HEIGHT", "line": 16, "col": 14, "pos": 445 },
+        { "name": "PAGE_BOTTOM", "line": 20, "col": 14, "pos": 611 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/messaging-channels/messaging-channel.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "MessagingChannelService",
+          "line": 41,
+          "col": 14,
+          "pos": 1405
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/review-workflow/review-workflow.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "ContentReviewStatus", "line": 220, "col": 10, "pos": 6061 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/snippets/snippets.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SnippetsService", "line": 34, "col": 14, "pos": 1087 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/block-comments/block-comments.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "RECORD_TYPES", "line": 7, "col": 14, "pos": 107 },
+        { "name": "RecordTypeSchema", "line": 8, "col": 14, "pos": 174 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-cart-pings/public-cart-pings.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "PingCartItemSchema", "line": 19, "col": 14, "pos": 698 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CartPingInput", "line": 39, "col": 13, "pos": 1422 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-page-preview/public-page-preview.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "PublicPagePreviewService",
+          "line": 37,
+          "col": 14,
+          "pos": 1168
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "DraftPagePreview", "line": 22, "col": 18, "pos": 878 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-site-preview/public-site-preview.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        {
+          "name": "PublicSitePreviewService",
+          "line": 91,
+          "col": 14,
+          "pos": 3156
+        }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "PublicBusinessProfile", "line": 32, "col": 18, "pos": 1685 },
+        { "name": "SitePreviewResponse", "line": 56, "col": 18, "pos": 2275 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/receipt/table.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "ITEMS_TABLE_COLUMNS", "line": 21, "col": 14, "pos": 574 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "TableColumn", "line": 13, "col": 18, "pos": 393 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/snippets/snippets.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SnippetsRepository", "line": 31, "col": 14, "pos": 617 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ListSnippetsParams", "line": 8, "col": 18, "pos": 194 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-api-keys/public-api-keys.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "serviceModule",
+          "name": "IssuedKey",
+          "line": 29,
+          "col": 18,
+          "pos": 1048
+        },
+        {
+          "namespace": "serviceModule",
+          "name": "PublicApiKeyView",
+          "line": 35,
+          "col": 18,
+          "pos": 1209
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/public-api-keys/public-api-keys.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateTenantApiKeyData", "line": 18, "col": 18, "pos": 630 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/audit/audit.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateAuditLogData", "line": 4, "col": 18, "pos": 102 },
+        { "name": "FindAuditLogsParams", "line": 22, "col": 18, "pos": 466 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/transfers/transfer.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateTransferRepoData", "line": 80, "col": 18, "pos": 2271 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sales/sale.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateSaleDto", "line": 70, "col": 13, "pos": 2088 },
+        { "name": "PreviewSaleDto", "line": 80, "col": 13, "pos": 2463 },
+        { "name": "AddPaymentDto", "line": 87, "col": 13, "pos": 2669 },
+        { "name": "GetAllSalesQueryDto", "line": 119, "col": 13, "pos": 3556 },
+        {
+          "name": "GetSalesSummaryQueryDto",
+          "line": 127,
+          "col": 13,
+          "pos": 3803
+        },
+        {
+          "name": "GetSalesByLocationQueryDto",
+          "line": 136,
+          "col": 13,
+          "pos": 4021
+        },
+        {
+          "name": "GetDailySalesQueryDto",
+          "line": 145,
+          "col": 13,
+          "pos": 4286
+        },
+        {
+          "name": "DownloadSalesQueryDto",
+          "line": 152,
+          "col": 13,
+          "pos": 4515
+        },
+        { "name": "GetMySalesQueryDto", "line": 182, "col": 13, "pos": 5339 },
+        { "name": "DeleteSaleDto", "line": 188, "col": 13, "pos": 5519 },
+        { "name": "EditSaleDto", "line": 204, "col": 13, "pos": 5936 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/trash/trash.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ListTrashQuery", "line": 49, "col": 13, "pos": 1176 },
+        { "name": "RestoreItemParams", "line": 62, "col": 13, "pos": 1575 },
+        {
+          "name": "PermanentlyDeleteParams",
+          "line": 63,
+          "col": 13,
+          "pos": 1648
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/promos/promo.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "PromoListQuery", "line": 104, "col": 13, "pos": 3212 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/shared/schemas/deleteBody.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "DeleteBodyDto", "line": 11, "col": 13, "pos": 228 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/auth/auth.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "JwtPayload", "line": 19, "col": 13, "pos": 627 },
+        { "name": "LoginDto", "line": 29, "col": 13, "pos": 931 },
+        { "name": "RegisterDto", "line": 37, "col": 13, "pos": 1218 },
+        { "name": "ChangePasswordDto", "line": 44, "col": 13, "pos": 1479 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/analytics/analytics.filters.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "AnalyticsFilterInput", "line": 9, "col": 18, "pos": 317 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/analytics/analytics.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "AnalyticsQueryDto", "line": 33, "col": 13, "pos": 867 },
+        { "name": "ExportAnalyticsQueryDto", "line": 34, "col": 13, "pos": 937 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/attribute-types/attribute-type.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "CreateAttributeTypeData",
+          "line": 15,
+          "col": 18,
+          "pos": 338
+        },
+        {
+          "name": "UpdateAttributeTypeData",
+          "line": 22,
+          "col": 18,
+          "pos": 460
+        },
+        {
+          "name": "CreateAttributeValueData",
+          "line": 28,
+          "col": 18,
+          "pos": 565
+        },
+        {
+          "name": "UpdateAttributeValueData",
+          "line": 35,
+          "col": 18,
+          "pos": 703
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/attribute-types/attribute-type.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "ListAttributeTypesQueryDto",
+          "line": 11,
+          "col": 13,
+          "pos": 315
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/audit/audit.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "AuditLogQueryDto", "line": 18, "col": 13, "pos": 438 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/auth/auth.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "authServiceModule",
+          "name": "LoginParams",
+          "line": 8,
+          "col": 18,
+          "pos": 299
+        },
+        {
+          "namespace": "authServiceModule",
+          "name": "LoginResult",
+          "line": 16,
+          "col": 18,
+          "pos": 432
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/bundles/bundle.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "BundleListQuery", "line": 90, "col": 13, "pos": 2846 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/collections/collections.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "SetCollectionProductsInput",
+          "line": 51,
+          "col": 13,
+          "pos": 1447
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/contacts/contact.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateTagDto", "line": 61, "col": 13, "pos": 1879 },
+        { "name": "UpdateTagDto", "line": 62, "col": 13, "pos": 1939 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/crm/crm.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CrmReportsQuery", "line": 14, "col": 13, "pos": 258 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/deals/discount-authority.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "DiscountAuthority", "line": 11, "col": 13, "pos": 286 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/gift-cards/gift-card.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "GiftCardListQuery", "line": 71, "col": 13, "pos": 1999 },
+        { "name": "RedeemGiftCardDto", "line": 72, "col": 13, "pos": 2072 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/error-reports/error-report.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "UpdateErrorReportStatusDto",
+          "line": 14,
+          "col": 13,
+          "pos": 453
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/error-reports/error-report.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateErrorReportData", "line": 10, "col": 18, "pos": 229 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/internal/internal.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "serviceModule",
+          "name": "DomainAllowedResult",
+          "line": 22,
+          "col": 13,
+          "pos": 897
+        },
+        {
+          "namespace": "serviceModule",
+          "name": "ResolveHostResult",
+          "line": 39,
+          "col": 13,
+          "pos": 1240
+        },
+        {
+          "namespace": "serviceModule",
+          "name": "DomainWithContext",
+          "line": 138,
+          "col": 15,
+          "pos": 4494
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/internal/internal.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "DomainAllowedQuery", "line": 34, "col": 13, "pos": 863 },
+        { "name": "ResolveHostQuery", "line": 35, "col": 13, "pos": 938 },
+        { "name": "GetRedirectsQuery", "line": 36, "col": 13, "pos": 1009 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/media/media.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ListMediaQueryDto", "line": 71, "col": 13, "pos": 2258 },
+        { "name": "MediaAssetIdParamsDto", "line": 95, "col": 13, "pos": 3049 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/members/member.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "memberServiceModule",
+          "name": "BulkUploadResult",
+          "line": 31,
+          "col": 18,
+          "pos": 853
+        },
+        {
+          "namespace": "memberServiceModule",
+          "name": "DownloadTemplateResult",
+          "line": 38,
+          "col": 18,
+          "pos": 1081
+        },
+        {
+          "namespace": "memberServiceModule",
+          "name": "DownloadMembersResult",
+          "line": 43,
+          "col": 18,
+          "pos": 1164
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/members/member.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateMemberRepoData", "line": 4, "col": 18, "pos": 110 },
+        { "name": "MemberStatusFilter", "line": 29, "col": 13, "pos": 841 },
+        { "name": "MemberOrderBy", "line": 45, "col": 13, "pos": 1364 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/messaging/messaging.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "AddReactionDto", "line": 51, "col": 13, "pos": 1753 },
+        { "name": "EditMessageDto", "line": 52, "col": 13, "pos": 1817 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/permissions/permissions.controller.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "IPermissionService", "line": 401, "col": 15, "pos": 12480 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/platform/platform.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "CreateTenantTransactionInput",
+          "line": 46,
+          "col": 18,
+          "pos": 1182
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/platform-domains/platform-domains.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CreateTenantDomainData", "line": 9, "col": 18, "pos": 307 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/products/product.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "productServiceModule",
+          "name": "CreateProductContext",
+          "line": 54,
+          "col": 18,
+          "pos": 1286
+        },
+        {
+          "namespace": "productServiceModule",
+          "name": "ProductListParams",
+          "line": 61,
+          "col": 18,
+          "pos": 1404
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/products/product.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "ProductCreateVariationInput",
+          "line": 27,
+          "col": 18,
+          "pos": 744
+        },
+        {
+          "name": "ProductCreateDiscountInput",
+          "line": 41,
+          "col": 18,
+          "pos": 1130
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/platform-websites/platform-websites.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "serviceModule",
+          "name": "SiteConfigWithTemplate",
+          "line": 14,
+          "col": 13,
+          "pos": 511
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/promos/promo.repository.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "ResolveTargetProductIdsParams",
+          "line": 55,
+          "col": 18,
+          "pos": 1193
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/website-orders/website-orders.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "serviceModule",
+          "name": "CartItemSnapshot",
+          "line": 44,
+          "col": 18,
+          "pos": 1861
+        },
+        {
+          "namespace": "serviceModule",
+          "name": "CreateOrderInput",
+          "line": 61,
+          "col": 18,
+          "pos": 2354
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/site-layouts/site-layouts.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ListSiteLayoutsQuery", "line": 56, "col": 13, "pos": 1664 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/sites/sites.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "AddBlockInput", "line": 199, "col": 13, "pos": 5866 },
+        { "name": "UpdateBlockInput", "line": 200, "col": 13, "pos": 5926 },
+        { "name": "ReorderBlocksInput", "line": 201, "col": 13, "pos": 5992 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/tasks/task.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "BulkIdsDto", "line": 34, "col": 13, "pos": 1113 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/transfers/transfer.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "transferServiceModule",
+          "name": "CreateTransferAuditContext",
+          "line": 17,
+          "col": 18,
+          "pos": 613
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/trash/trash.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "namespace": "trashServiceModule",
+          "name": "ListTrashParams",
+          "line": 17,
+          "col": 18,
+          "pos": 408
+        },
+        {
+          "namespace": "trashServiceModule",
+          "name": "ListTrashResult",
+          "line": 27,
+          "col": 18,
+          "pos": 580
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/shared/response/index.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "ApiSuccessResponse", "line": 3, "col": 13, "pos": 49 },
+        { "name": "ApiErrorResponse", "line": 4, "col": 13, "pos": 113 },
+        { "name": "ApiResponse", "line": 5, "col": 13, "pos": 181 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/business-profile/business-profile.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        {
+          "name": "UpdateBusinessProfileDto",
+          "line": 43,
+          "col": 13,
+          "pos": 1561
+        }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/providers/llm/llm-provider.interface.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "LlmChatMessage", "line": 1, "col": 18, "pos": 17 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/block-comments/block-comments.service.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "CommentRow", "line": 27, "col": 18, "pos": 822 },
+        { "name": "BlockComment", "line": 189, "col": 15, "pos": 5458 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/api/src/modules/ai-settings/ai-settings.schema.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "UpdateAiSettingsDto", "line": 11, "col": 13, "pos": 222 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    }
+  ]
+}

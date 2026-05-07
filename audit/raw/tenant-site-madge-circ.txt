@@ -1,0 +1,3 @@
+
+✖ Error: ENOENT: no such file or directory, stat '/Users/roshanpandey/PROJECTS/shaman/projectX/apps/tenant-site/src'
+

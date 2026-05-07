@@ -1,0 +1,68 @@
+Processed 219 files (1.9s) 
+
+1) blocks/accordion/catalog.ts > blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/accordion/index.ts
+2) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/account-bar/index.ts > blocks/account-bar/catalog.ts
+3) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/announcement-bar/index.ts > blocks/announcement-bar/catalog.ts
+4) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/bento-showcase/index.ts > blocks/bento-showcase/catalog.ts
+5) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/blog-list/index.ts > blocks/blog-list/catalog.ts
+6) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/breadcrumbs/index.ts > blocks/breadcrumbs/catalog.ts
+7) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/bundle-spotlight/index.ts > blocks/bundle-spotlight/catalog.ts
+8) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/button/index.ts > blocks/button/catalog.ts
+9) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/cart-line-items/index.ts > blocks/cart-line-items/catalog.ts
+10) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/category-tiles/index.ts > blocks/category-tiles/catalog.ts
+11) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/collection-cards/index.ts > blocks/collection-cards/catalog.ts
+12) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/columns/index.ts > blocks/columns/catalog.ts
+13) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/contact-block/index.ts > blocks/contact-block/catalog.ts
+14) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/copyright-bar/index.ts > blocks/copyright-bar/catalog.ts
+15) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/css-grid/index.ts > blocks/css-grid/catalog.ts
+16) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/custom-html/index.ts > blocks/custom-html/catalog.ts
+17) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/divider/index.ts > blocks/divider/catalog.ts
+18) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/embed/index.ts > blocks/embed/catalog.ts
+19) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/empty-state/index.ts > blocks/empty-state/catalog.ts
+20) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/faq/index.ts > blocks/faq/catalog.ts
+21) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/fbt/index.ts > blocks/fbt/catalog.ts
+22) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/footer-columns/index.ts > blocks/footer-columns/catalog.ts
+23) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/form/index.ts > blocks/form/catalog.ts
+24) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/gallery/index.ts > blocks/gallery/catalog.ts
+25) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/gift-card-redeem/index.ts > blocks/gift-card-redeem/catalog.ts
+26) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/heading/index.ts > blocks/heading/catalog.ts
+27) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/hero/index.ts > blocks/hero/catalog.ts
+28) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/image/index.ts > blocks/image/catalog.ts
+29) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/logo-cloud/index.ts > blocks/logo-cloud/catalog.ts
+30) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/logo-mark/index.ts > blocks/logo-mark/catalog.ts
+31) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/lookbook/index.ts > blocks/lookbook/catalog.ts
+32) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/markdown-body/index.ts > blocks/markdown-body/catalog.ts
+33) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/nav-bar/index.ts > blocks/nav-bar/catalog.ts
+34) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/newsletter/index.ts > blocks/newsletter/catalog.ts
+35) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/order-summary/index.ts > blocks/order-summary/catalog.ts
+36) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/payment-icons/index.ts > blocks/payment-icons/catalog.ts
+37) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/pdp-buybox/index.ts > blocks/pdp-buybox/catalog.ts
+38) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/pdp-details/index.ts > blocks/pdp-details/catalog.ts
+39) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/pdp-gallery/index.ts > blocks/pdp-gallery/catalog.ts
+40) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/pdp-related/index.ts > blocks/pdp-related/catalog.ts
+41) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/policy-strip/index.ts > blocks/policy-strip/catalog.ts
+42) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/price-tiers/index.ts > blocks/price-tiers/catalog.ts
+43) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/product-comparison/index.ts > blocks/product-comparison/catalog.ts
+44) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/product-filters/index.ts > blocks/product-filters/catalog.ts
+45) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/product-grid/index.ts > blocks/product-grid/catalog.ts
+46) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/product-listing/index.ts > blocks/product-listing/catalog.ts
+47) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/recently-viewed/index.ts > blocks/recently-viewed/catalog.ts
+48) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/reviews-list/index.ts > blocks/reviews-list/catalog.ts
+49) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/rich-text/index.ts > blocks/rich-text/catalog.ts
+50) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/row/index.ts > blocks/row/catalog.ts
+51) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/section/index.ts > blocks/section/catalog.ts
+52) site-schema/blocks.ts > blocks/index.ts > blocks/serialize.ts
+53) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/size-guide/index.ts > blocks/size-guide/catalog.ts
+54) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/snippet-ref/index.ts > blocks/snippet-ref/catalog.ts
+55) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/social-links/index.ts > blocks/social-links/catalog.ts
+56) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/spacer/index.ts > blocks/spacer/catalog.ts
+57) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/stats-band/index.ts > blocks/stats-band/catalog.ts
+58) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/story-split/index.ts > blocks/story-split/catalog.ts
+59) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/tabs/index.ts > blocks/tabs/catalog.ts
+60) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/testimonials/index.ts > blocks/testimonials/catalog.ts
+61) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/trust-strip/index.ts > blocks/trust-strip/catalog.ts
+62) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts
+63) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/utility-bar/index.ts > blocks/utility-bar/catalog.ts
+64) blocks/types.ts > site-schema/blocks.ts > blocks/index.ts > blocks/video/index.ts > blocks/video/catalog.ts
+65) site-schema/blocks.ts > blocks/index.ts
+

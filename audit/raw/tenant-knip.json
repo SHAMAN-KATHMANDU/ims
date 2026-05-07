@@ -1,0 +1,310 @@
+{
+  "issues": [
+    {
+      "file": "apps/tenant-site/lib/image.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [{ "name": "apps/tenant-site/lib/image.ts" }],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/templates/BoutiqueLayout.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/tenant-site/components/templates/BoutiqueLayout.tsx" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/templates/LuxuryLayout.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/tenant-site/components/templates/LuxuryLayout.tsx" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/templates/MinimalLayout.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/tenant-site/components/templates/MinimalLayout.tsx" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/templates/StandardLayout.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [
+        { "name": "apps/tenant-site/components/templates/StandardLayout.tsx" }
+      ],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/package.json",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [
+        { "name": "@tailwindcss/typography", "line": 17, "col": 6, "pos": 433 },
+        { "name": "zod", "line": 28, "col": 6, "pos": 770 }
+      ],
+      "devDependencies": [
+        { "name": "@repo/eslint-config", "line": 31, "col": 6, "pos": 819 }
+      ],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/lib/api.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "getPublicBundles", "line": 567, "col": 23, "pos": 15618 },
+        { "name": "getBusinessProfile", "line": 1030, "col": 23, "pos": 29514 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "PublicTemplate", "line": 81, "col": 18, "pos": 2234 },
+        {
+          "name": "PublicProductVariationAttribute",
+          "line": 169,
+          "col": 18,
+          "pos": 5052
+        },
+        { "name": "PublicProductReview", "line": 242, "col": 18, "pos": 7052 },
+        {
+          "name": "PublicProductFacetValue",
+          "line": 257,
+          "col": 18,
+          "pos": 7329
+        },
+        { "name": "PublicProductList", "line": 283, "col": 18, "pos": 7844 },
+        {
+          "name": "BundlePricingStrategy",
+          "line": 293,
+          "col": 13,
+          "pos": 8070
+        },
+        { "name": "PublicBundleSummary", "line": 295, "col": 18, "pos": 8146 },
+        { "name": "PublicBundleList", "line": 319, "col": 18, "pos": 8675 },
+        { "name": "PublicCollection", "line": 341, "col": 18, "pos": 9194 },
+        { "name": "PublicBlogCategory", "line": 355, "col": 18, "pos": 9425 },
+        { "name": "GuestOrderCartItem", "line": 673, "col": 13, "pos": 19294 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/templates/shared.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "BrandMark", "line": 85, "col": 17, "pos": 2776 },
+        { "name": "ProductCard", "line": 1199, "col": 10, "pos": 32833 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/lib/seo.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "blogPostMetadata", "line": 100, "col": 17, "pos": 2895 },
+        { "name": "breadcrumbJsonLd", "line": 199, "col": 17, "pos": 5868 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/lib/cart.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "STORAGE_KEY_PREFIX", "line": 194, "col": 14, "pos": 5736 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "Currency", "line": 15, "col": 13, "pos": 651 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/lib/format.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "FALLBACK_PRICE", "line": 35, "col": 14, "pos": 1402 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/search/SearchBar.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [
+        { "name": "SearchToggle", "line": 107, "col": 17, "pos": 2872 }
+      ],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/cart/CartProvider.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [{ "name": "CartLineRef", "line": 78, "col": 13, "pos": 2242 }],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/blocks/registry.ts",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "NavBarProps", "line": 21, "col": 3, "pos": 766 },
+        { "name": "LogoMarkProps", "line": 22, "col": 3, "pos": 781 },
+        { "name": "UtilityBarProps", "line": 23, "col": 3, "pos": 798 },
+        { "name": "FooterColumnsProps", "line": 26, "col": 3, "pos": 862 },
+        { "name": "SocialLinksProps", "line": 27, "col": 3, "pos": 884 },
+        { "name": "PaymentIconsProps", "line": 28, "col": 3, "pos": 904 },
+        { "name": "CopyrightBarProps", "line": 29, "col": 3, "pos": 925 },
+        { "name": "BlockComponent", "line": 141, "col": 13, "pos": 3915 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    },
+    {
+      "file": "apps/tenant-site/components/blocks/kinds/PdpBuyboxClient.tsx",
+      "binaries": [],
+      "catalog": [],
+      "dependencies": [],
+      "devDependencies": [],
+      "duplicates": [],
+      "enumMembers": [],
+      "exports": [],
+      "files": [],
+      "namespaceMembers": [],
+      "optionalPeerDependencies": [],
+      "types": [
+        { "name": "VariantDisplay", "line": 24, "col": 13, "pos": 769 }
+      ],
+      "unlisted": [],
+      "unresolved": []
+    }
+  ]
+}

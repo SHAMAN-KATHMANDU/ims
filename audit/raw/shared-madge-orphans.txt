@@ -1,0 +1,21 @@
+Processed 219 files (1.8s) 
+
+automation/automation-flow-graph.test.ts
+automation/automation-schemas.test.ts
+automation/automation-template-catalog.test.ts
+automation/automation-trigger-events.test.ts
+blocks/serialize.test.ts
+config/env-features.ts
+config/features.ts
+crm/contact-profile.ts
+crm/pipeline-templates.ts
+crm/workflow-templates.ts
+crm/workflow-ui-metadata.test.ts
+media/mimeFromExtension.ts
+permissions/catalog.ts
+site-schema/block-styles.test.ts
+site-schema/blocks.test.ts
+site-schema/index.ts
+types/user.ts
+utils/date.ts
+

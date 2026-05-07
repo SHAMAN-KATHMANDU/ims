@@ -1,0 +1,29 @@
+{
+  "threshold": 0,
+  "minTokens": 60,
+  "minLines": 8,
+  "reporters": ["json", "console"],
+  "output": "audit/raw/jscpd",
+  "format": ["typescript", "tsx"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/migrations/**",
+    "**/prisma/migrations/**",
+    "**/audit/**",
+    "**/.turbo/**",
+    "**/__snapshots__/**",
+    "**/e2e/**",
+    "apps/api/prisma/seeds/**",
+    "apps/api/src/modules/sites/templates/**"
+  ],
+  "absolute": true,
+  "gitignore": true
+}

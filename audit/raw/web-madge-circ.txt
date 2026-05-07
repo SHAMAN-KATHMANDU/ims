@@ -1,0 +1,9 @@
+Processed 1026 files (9.2s) (143 warnings)
+
+1) features/crm/hooks/use-contacts.ts > features/crm/hooks/use-deals.ts
+2) features/crm/hooks/use-contacts.ts > features/crm/hooks/use-deals.ts > features/crm/hooks/use-tasks.ts
+3) features/crm/hooks/use-deals.ts > features/crm/hooks/use-tasks.ts
+4) features/crm/hooks/use-deals.ts > features/crm/hooks/use-tasks.ts > features/crm/hooks/use-workflows.ts
+5) features/crm/hooks/use-tasks.ts > features/crm/hooks/use-workflows.ts
+6) features/settings/components/index.tsx > features/settings/index.ts
+
