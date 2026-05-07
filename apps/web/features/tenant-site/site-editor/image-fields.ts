@@ -31,6 +31,7 @@ const ALWAYS_IMAGE_FIELDS = new Set<string>([
   "thumbnailUrl",
   "coverImage",
   "heroImage",
+  "videoPoster",
 ]);
 
 /** Block kinds whose top-level `src` prop is an image URL. */

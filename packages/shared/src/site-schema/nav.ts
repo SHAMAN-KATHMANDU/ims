@@ -24,6 +24,7 @@ export const NAV_SLOTS = [
   "footer-1",
   "footer-2",
   "mobile-drawer",
+  "footer-config",
 ] as const;
 
 export type NavSlot = (typeof NAV_SLOTS)[number];
@@ -101,6 +102,13 @@ export interface NavConfig {
   items: NavItem[];
   /** Optional trailing CTA button. */
   cta?: { label: string; href: string; style: NavCtaStyle };
+  /**
+   * Optional logo override. When set, takes precedence over the
+   * TenantBusinessProfile logo so a template can ship its own brand mark
+   * and tenants can swap a logo per nav config without touching their
+   * business profile.
+   */
+  logo?: { url: string; alt?: string };
   /** Mobile drawer config. */
   mobile: {
     drawerStyle: NavMobileDrawerStyle;
@@ -201,6 +209,13 @@ export const NavConfigSchema: z.ZodType<NavConfig> = z
         label: labelField,
         href: hrefField,
         style: z.enum(["primary", "ghost", "outline"]),
+      })
+      .strict()
+      .optional(),
+    logo: z
+      .object({
+        url: z.string().trim().min(1).max(1000),
+        alt: z.string().trim().min(1).max(120).optional(),
       })
       .strict()
       .optional(),

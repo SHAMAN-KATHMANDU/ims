@@ -28,9 +28,14 @@ import Link from "next/link";
 import { CartBadge } from "@/components/cart/CartBadge";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { PdpBuyboxClient } from "@/components/blocks/kinds/PdpBuyboxClient";
-import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
+import {
+  loadHeaderNavConfig,
+  loadNavItems,
+  expandAutoItems,
+  loadFooterConfig,
+} from "@/lib/nav";
 import { formatPrice as formatPriceShared } from "@/lib/format";
-import type { NavConfig, NavItem } from "@repo/shared";
+import type { NavConfig, NavItem, FooterConfig } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
 import { QuickAddButton } from "@/components/cart/QuickAddButton";
@@ -82,12 +87,29 @@ const SOCIAL_ORDER: SocialKey[] = [
 // Brand + header
 // ============================================================================
 
-export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
-  // Prefer TenantBusinessProfile identity; fall back to legacy branding JSON.
+export function BrandMark({
+  site,
+  host,
+  navConfig,
+}: {
+  site: PublicSite;
+  host: string;
+  navConfig?: NavConfig;
+}) {
+  // Prefer navConfig logo first (tenant-authored), then TenantBusinessProfile,
+  // then legacy branding JSON.
   const bp = site.businessProfile;
   const name =
     bp?.displayName?.trim() || brandingDisplayName(site.branding, host);
-  const logo = bp?.logoUrl?.trim() || brandingLogoUrl(site.branding);
+
+  // Prefer navConfig.logo if it exists
+  let logo = navConfig?.logo?.url?.trim();
+  if (!logo) {
+    // Fall back to business profile logo
+    logo = bp?.logoUrl?.trim() || brandingLogoUrl(site.branding) || undefined;
+  }
+  const logoAlt = navConfig?.logo?.alt ?? "";
+
   if (logo) {
     return (
       <Link
@@ -102,8 +124,8 @@ export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={logo}
-          alt=""
-          aria-hidden="true"
+          alt={logoAlt}
+          aria-hidden={!logoAlt}
           // Responsive height: clamps between 28px (small phones) and 40px
           // (wide desktops). Fixed pixel heights blow up the header on
           // narrow viewports because `width: auto` keeps the aspect ratio.
@@ -490,7 +512,7 @@ function SiteHeaderFromConfig({
             gap: "0.75rem",
           }}
         >
-          <BrandMark site={site} host={host} />
+          <BrandMark site={site} host={host} navConfig={config} />
           <nav
             aria-label="Primary"
             className="tpl-nav"
@@ -532,7 +554,7 @@ function SiteHeaderFromConfig({
           >
             {renderNavList(left)}
           </nav>
-          <BrandMark site={site} host={host} />
+          <BrandMark site={site} host={host} navConfig={config} />
           <nav
             aria-label="Primary right"
             className="tpl-nav"
@@ -563,7 +585,7 @@ function SiteHeaderFromConfig({
             gap: "1rem",
           }}
         >
-          <BrandMark site={site} host={host} />
+          <BrandMark site={site} host={host} navConfig={config} />
           <div
             style={{
               display: "flex",
@@ -670,7 +692,7 @@ export async function SiteHeader({
             gap: "0.75rem",
           }}
         >
-          <BrandMark site={site} host={host} />
+          <BrandMark site={site} host={host} navConfig={undefined} />
           <nav
             aria-label="Primary"
             className="tpl-nav"
@@ -721,7 +743,7 @@ export async function SiteHeader({
               </Link>
             ))}
           </nav>
-          <BrandMark site={site} host={host} />
+          <BrandMark site={site} host={host} navConfig={undefined} />
           <nav
             aria-label="Primary right"
             className="tpl-nav"
@@ -1450,8 +1472,10 @@ function FooterColumn({
 
 function SocialsRow({
   socials,
+  mutedColor = "var(--color-muted)",
 }: {
   socials: Partial<Record<SocialKey, string>>;
+  mutedColor?: string;
 }) {
   const entries = SOCIAL_ORDER.filter(
     (k) => typeof socials[k] === "string" && (socials[k] as string).length > 0,
@@ -1482,8 +1506,8 @@ function SocialsRow({
               alignItems: "center",
               justifyContent: "center",
               borderRadius: "var(--radius)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-muted)",
+              border: `1px solid ${mutedColor}`,
+              color: mutedColor,
               transition: "color 0.2s, border-color 0.2s",
             }}
           >
@@ -1504,6 +1528,311 @@ export async function SiteFooter({
   host: string;
   navPages?: PublicNavPage[];
 }) {
+  // Try to load the full footer config; fall back to legacy behavior if absent.
+  const footerConfig = await loadFooterConfig();
+
+  if (footerConfig) {
+    return <ConfiguredFooter config={footerConfig} navPages={navPages} />;
+  }
+
+  // Fallback to legacy footer (existing hardcoded behavior).
+  return <LegacyFooter site={site} host={host} navPages={navPages} />;
+}
+
+/**
+ * Flatten a NavItem into the leaf links the footer can render. The footer
+ * only renders one column of links per FooterColumn, so dropdown / mega-column
+ * kinds (which the schema permits) get flattened to their child links.
+ * `link` and `cta` map to a single rendered link; `pages-auto` / `category-auto`
+ * should already have been expanded by expandAutoItems before reaching here.
+ */
+function flattenNavItemForFooter(
+  item: NavItem,
+): Array<{ label: string; href: string; external?: boolean }> {
+  if (item.kind === "link") {
+    return [
+      {
+        label: item.label,
+        href: item.href,
+        external: item.openInNewTab,
+      },
+    ];
+  }
+  if (item.kind === "cta") {
+    return [{ label: item.label, href: item.href }];
+  }
+  if (item.kind === "dropdown") {
+    return item.items.flatMap(flattenNavItemForFooter);
+  }
+  if (item.kind === "mega-column") {
+    return item.columns.flatMap((c) =>
+      c.items.flatMap(flattenNavItemForFooter),
+    );
+  }
+  // pages-auto / category-auto reach here only if expandAutoItems failed to
+  // expand them (e.g., empty navPages list). Skip — better to render nothing
+  // than a literal "Pages" placeholder link.
+  return [];
+}
+
+function ConfiguredFooter({
+  config,
+  navPages,
+}: {
+  config: FooterConfig;
+  navPages: PublicNavPage[];
+}) {
+  const bgMap: Record<FooterConfig["background"], string> = {
+    default: "var(--color-background)",
+    muted: "var(--color-surface)",
+    inverse: "var(--color-text)",
+  };
+
+  const textColorMap: Record<FooterConfig["background"], string> = {
+    default: "var(--color-text)",
+    muted: "var(--color-text)",
+    inverse: "var(--color-background)",
+  };
+
+  const bg = bgMap[config.background];
+  const textColor = textColorMap[config.background];
+  const mutedColor =
+    config.background === "inverse"
+      ? "rgba(255,255,255,0.6)"
+      : "var(--color-muted)";
+
+  const footerSocials: Partial<Record<SocialKey, string>> = Object.fromEntries(
+    config.socials
+      .map((s) => {
+        const key = s.network as SocialKey;
+        return [key, s.href] as const;
+      })
+      .filter(([, href]) => href),
+  );
+
+  return (
+    <footer
+      style={{
+        borderTop: "1px solid var(--color-border)",
+        padding: "4rem 0 2.5rem",
+        marginTop: "6rem",
+        background: bg,
+        color: textColor,
+      }}
+    >
+      <div
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "2.5rem",
+          marginBottom: "3rem",
+        }}
+      >
+        {/* Brand Section */}
+        {(config.brand.logoUrl ||
+          config.brand.name ||
+          config.brand.tagline ||
+          config.socials.length > 0) && (
+          <div style={{ maxWidth: 320 }}>
+            {config.brand.logoUrl && (
+              <img
+                src={config.brand.logoUrl}
+                alt={config.brand.logoAlt || "Logo"}
+                style={{
+                  maxHeight: "2.5rem",
+                  marginBottom: "1rem",
+                }}
+              />
+            )}
+            {config.brand.name && (
+              <div
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "1.25rem",
+                  fontWeight: 700,
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {config.brand.name}
+              </div>
+            )}
+            {config.brand.tagline && (
+              <p
+                style={{
+                  fontSize: "0.85rem",
+                  color: mutedColor,
+                  lineHeight: 1.5,
+                  marginBottom: "1rem",
+                }}
+              >
+                {config.brand.tagline}
+              </p>
+            )}
+            <SocialsRow socials={footerSocials} mutedColor={mutedColor} />
+          </div>
+        )}
+
+        {/* Columns — items go through expandAutoItems first to resolve
+            pages-auto / category-auto against the live page/category lists,
+            then flattenNavItemForFooter reduces dropdowns/mega-columns
+            (legal in the schema) to a single list of links. */}
+        {config.columns.map((col, idx) => {
+          const expanded = expandAutoItems(col.items, { navPages });
+          const links = expanded.flatMap(flattenNavItemForFooter);
+          if (links.length === 0) return null;
+          return (
+            <div key={idx}>
+              <h4
+                style={{
+                  fontSize: "0.72rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: mutedColor,
+                  marginBottom: "1rem",
+                  fontWeight: 600,
+                }}
+              >
+                {col.heading}
+              </h4>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {links.map((link, linkIdx) => (
+                  <li key={linkIdx} style={{ marginBottom: "0.5rem" }}>
+                    <Link
+                      href={link.href}
+                      {...(link.external
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                      className="tpl-footer-link"
+                      style={{
+                        color: textColor,
+                        fontSize: "0.9rem",
+                      }}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+
+        {/* Newsletter */}
+        {config.newsletter.enabled && (
+          <div>
+            {config.newsletter.heading && (
+              <h4
+                style={{
+                  fontSize: "0.72rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: mutedColor,
+                  marginBottom: "1rem",
+                  fontWeight: 600,
+                }}
+              >
+                {config.newsletter.heading}
+              </h4>
+            )}
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                type="email"
+                placeholder={config.newsletter.placeholder || "your@email.com"}
+                style={{
+                  flex: 1,
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "var(--radius)",
+                  border: `1px solid ${mutedColor}`,
+                  background: bg,
+                  color: textColor,
+                  fontSize: "0.9rem",
+                }}
+              />
+              <button
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "var(--radius)",
+                  background: textColor,
+                  color: bg,
+                  border: "none",
+                  fontWeight: 600,
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                }}
+              >
+                {config.newsletter.buttonLabel || "Subscribe"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Legal Footer */}
+      {(config.legal.copyrightText ||
+        config.legal.showYear ||
+        config.legal.links.length > 0) && (
+        <div
+          className="container"
+          style={{
+            borderTop: "1px solid var(--color-border)",
+            paddingTop: "1.5rem",
+            fontSize: "0.8rem",
+            color: mutedColor,
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <div>
+            {config.legal.copyrightText && (
+              <span>{config.legal.copyrightText}</span>
+            )}
+            {config.legal.showYear && (
+              <span>
+                {config.legal.copyrightText && " "} © {new Date().getFullYear()}
+              </span>
+            )}
+          </div>
+          {config.legal.links.length > 0 && (
+            <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
+              {config.legal.links.map((link, idx) => (
+                <Link
+                  key={idx}
+                  href={link.href}
+                  style={{
+                    color: mutedColor,
+                    textDecoration: "none",
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = textColor)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = mutedColor)
+                  }
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </footer>
+  );
+}
+
+async function LegacyFooter({
+  site,
+  host,
+  navPages,
+}: {
+  site: PublicSite;
+  host: string;
+  navPages: PublicNavPage[];
+}) {
   // Prefer TenantBusinessProfile identity + contact; fall back to legacy JSON.
   const bp = site.businessProfile;
   const name =
@@ -1515,15 +1844,11 @@ export async function SiteFooter({
     address?: string;
     socials?: Partial<Record<SocialKey, string>>;
   };
-  // Build a resolved address string from structured fields when available.
   const bpAddress = bp
     ? [bp.addressLine1, bp.city, bp.state, bp.postalCode]
         .filter(Boolean)
         .join(", ") || null
     : null;
-  // Merge BP socials (canonical) over legacy contact socials so a BP entry
-  // wins per-key but legacy keys (whatsapp, youtube) still surface when BP
-  // hasn't populated them.
   const bpSocials = (bp?.socials ?? null) as Partial<
     Record<SocialKey, string>
   > | null;

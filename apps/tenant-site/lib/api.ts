@@ -858,7 +858,8 @@ export type PublicNavSlot =
   | "header-primary"
   | "footer-1"
   | "footer-2"
-  | "mobile-drawer";
+  | "mobile-drawer"
+  | "footer-config";
 
 export interface PublicNavMenu {
   slot: PublicNavSlot | string;

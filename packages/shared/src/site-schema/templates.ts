@@ -9,6 +9,13 @@
 import { z } from "zod";
 import { BlockNodeSchema, type BlockNode } from "./blocks";
 import { ThemeTokensSchema, type ThemeTokens } from "./theme";
+import {
+  NavConfigSchema,
+  NavItemsSchema,
+  type NavConfig,
+  type NavItem,
+} from "./nav";
+import { FooterConfigSchema, type FooterConfig } from "./footer";
 
 // ---------------------------------------------------------------------------
 // Theme tokens (design system)
@@ -82,6 +89,17 @@ export interface TemplateBlueprint {
   slug: string;
   layouts?: Partial<Record<BlueprintScope, Array<BlockNode>>>;
   defaultThemeTokens?: ThemeTokens;
+  /**
+   * Optional nav/footer seed. When present, picking this template upserts
+   * the corresponding rows in `nav_menus` (slots: header-primary, footer-1,
+   * footer-2, mobile-drawer, footer-config). Existing tenant rows are
+   * preserved unless `resetBranding` is set on the pickTemplate call.
+   */
+  navConfig?: NavConfig;
+  mobileDrawerConfig?: NavConfig;
+  footerConfig?: FooterConfig;
+  footerPrimaryItems?: NavItem[];
+  footerSecondaryItems?: NavItem[];
 }
 
 export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
@@ -99,4 +117,9 @@ export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
     )
     .optional(),
   defaultThemeTokens: ThemeTokensSchema.optional(),
+  navConfig: NavConfigSchema.optional(),
+  mobileDrawerConfig: NavConfigSchema.optional(),
+  footerConfig: FooterConfigSchema.optional(),
+  footerPrimaryItems: NavItemsSchema.optional(),
+  footerSecondaryItems: NavItemsSchema.optional(),
 }) as unknown as z.ZodType<TemplateBlueprint>;

@@ -89,7 +89,11 @@ class SitesController {
     try {
       const tenantId = getAuthContext(req).tenantId;
       const body = PickTemplateSchema.parse(req.body);
-      const siteConfig = await service.pickTemplate(tenantId, body);
+      const siteConfig = await service.pickTemplate(
+        tenantId,
+        body,
+        req.requestId,
+      );
       return res.status(200).json({ message: "Template applied", siteConfig });
     } catch (error) {
       return (

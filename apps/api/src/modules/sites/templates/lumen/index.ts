@@ -7,13 +7,27 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { lumenHome } from "./home";
 import { lumenPdp } from "./pdp";
 import { lumenCart } from "./cart";
 
+const lumenNav = buildTemplateNavSeed({
+  brandName: "Lumen",
+  brandTagline: "Skin rituals for soft-lit days.",
+  headerLayout: "centered",
+  footerLayout: "centered",
+  enableNewsletter: true,
+  newsletterHeading: "10% off your first ritual",
+});
+
 export const lumenBlueprint: TemplateBlueprint = {
   slug: "lumen",
+  ...lumenNav,
   layouts: {
     home: lumenHome(),
     "products-index": (() => {

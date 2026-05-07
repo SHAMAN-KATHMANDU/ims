@@ -11,6 +11,7 @@ import { useS3DirectUpload } from "../hooks/use-s3-direct-upload";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { MediaLibraryPickerDialog } from "./MediaLibraryPickerDialog";
 import { ImageCropDialog } from "./ImageCropDialog";
+import type { MediaPurpose } from "../services/media.service";
 
 /**
  * Field that combines three ways to set a media URL:
@@ -35,6 +36,11 @@ export type MediaPickerFieldProps = {
   previewSize?: number;
   /** Optional help text shown under the controls. */
   helperText?: string;
+  /**
+   * Optional purpose to filter the library picker by. Used to constrain
+   * the library results to matching assets.
+   */
+  purpose?: MediaPurpose;
 };
 
 export function MediaPickerField({
@@ -46,6 +52,7 @@ export function MediaPickerField({
   accept = "image/*",
   previewSize = 64,
   helperText,
+  purpose,
 }: MediaPickerFieldProps) {
   const { toast } = useToast();
   const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
@@ -187,6 +194,7 @@ export function MediaPickerField({
               onChange(asset.publicUrl);
             }
           }}
+          purpose={purpose}
         />
       )}
 

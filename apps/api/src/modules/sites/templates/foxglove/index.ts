@@ -7,13 +7,27 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { foxgloveHome } from "./home";
 import { foxglovePdp } from "./pdp";
 import { foxgloveCart } from "./cart";
 
+const foxgloveNav = buildTemplateNavSeed({
+  brandName: "Foxglove & Co.",
+  brandTagline: "Books, papers, and things to write with.",
+  headerLayout: "centered",
+  footerLayout: "stacked",
+  enableNewsletter: true,
+  newsletterHeading: "A monthly reading list",
+});
+
 export const foxgloveBlueprint: TemplateBlueprint = {
   slug: "foxglove",
+  ...foxgloveNav,
   layouts: {
     home: foxgloveHome(),
     "products-index": (() => {

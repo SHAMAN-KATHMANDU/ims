@@ -7,13 +7,26 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { voltHome } from "./home";
 import { voltPdp } from "./pdp";
 import { voltCart } from "./cart";
 
+const voltNav = buildTemplateNavSeed({
+  brandName: "Volt",
+  brandTagline: "Hardware that hums.",
+  headerBehavior: "transparent-on-hero",
+  headerCta: { label: "Buy now", href: "/products", style: "primary" },
+  footerBackground: "inverse",
+});
+
 export const voltBlueprint: TemplateBlueprint = {
   slug: "volt",
+  ...voltNav,
   layouts: {
     home: voltHome(),
     "products-index": (() => {

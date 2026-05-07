@@ -61,7 +61,7 @@ import {
 import { getCatalogEntry } from "./block-catalog";
 import { ProductPickerField } from "./ProductPickerField";
 import { CategoryPickerField } from "./CategoryPickerField";
-import { MediaPickerField } from "@/features/media";
+import { MediaPickerField, type MediaPurpose } from "@/features/media";
 import { isImageFieldName } from "./image-fields";
 import {
   CUSTOM_INSPECTOR_KINDS,
@@ -77,6 +77,31 @@ import {
 import { getFieldOverride } from "./inspector-overrides";
 
 type InspectorTab = "content" | "design" | "advanced";
+
+const FIELD_NAME_TO_PURPOSE: Record<string, MediaPurpose> = {
+  logoUrl: "logo",
+  logoSrc: "logo",
+  brandLogoUrl: "logo",
+  faviconUrl: "favicon",
+  heroImage: "hero",
+  heroImageUrl: "hero",
+  coverImage: "cover",
+  coverImageUrl: "cover",
+  backgroundImage: "background",
+  bgImage: "background",
+};
+
+/**
+ * Derives a media purpose hint from a field name for library filtering.
+ * Returns a MediaPurpose value (e.g. "logo", "hero") for the picker dialog
+ * to constrain library results. Returns undefined if the field is generic.
+ * Uses exact-match map to avoid false positives on fields like "noLogoFallback".
+ */
+function derivePurposeFromFieldName(
+  fieldName: string,
+): MediaPurpose | undefined {
+  return FIELD_NAME_TO_PURPOSE[fieldName];
+}
 
 // ---------------------------------------------------------------------------
 // PseudoInspectorHeader — shared header bar for header/footer pseudo-panels
@@ -1370,6 +1395,7 @@ function FieldRenderer({
       );
     }
     if (isImageFieldName(field.name, { blockKind, parentField })) {
+      const purpose = derivePurposeFromFieldName(field.name);
       return (
         <div className="space-y-1">
           <FieldLabel />
@@ -1379,6 +1405,7 @@ function FieldRenderer({
             placeholder="https://… or pick from library"
             previewSize={56}
             helperText={override?.helpText}
+            purpose={purpose}
           />
         </div>
       );

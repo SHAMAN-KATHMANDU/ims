@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { NavConfig, NavSlot } from "@repo/shared";
+import type { NavConfig, NavSlot, FooterConfig } from "@repo/shared";
 import {
   listNavMenus,
   upsertNavMenu,
@@ -29,7 +29,7 @@ export function useUpsertNavMenu() {
       items,
     }: {
       slot: NavSlot;
-      items: NavConfig | { items: unknown[] };
+      items: NavConfig | { items: unknown[] } | FooterConfig;
     }) => upsertNavMenu(slot, items),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: navMenuKeys.all });

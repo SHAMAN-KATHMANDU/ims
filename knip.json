@@ -1,0 +1,107 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/api": {
+      "entry": [
+        "src/index.ts",
+        "src/instrumentation.ts",
+        "src/jobs/*.ts",
+        "src/queues/*.worker.ts",
+        "src/queues/queue.config.ts",
+        "src/config/router.config.ts",
+        "src/modules/sites/templates/index.ts",
+        "prisma/seed.ts",
+        "prisma/seeds/index.ts",
+        "prisma/seeds/**/*.ts",
+        "scripts/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "prisma/**/*.ts",
+        "scripts/**/*.ts",
+        "tests/**/*.ts"
+      ],
+      "ignore": [
+        "src/**/*.test.ts",
+        "src/**/*.spec.ts",
+        "tests/**/*",
+        "dist/**"
+      ],
+      "ignoreDependencies": [
+        "ts-node",
+        "tsc-alias",
+        "tsconfig-paths",
+        "nodemon"
+      ]
+    },
+    "apps/web": {
+      "entry": [
+        "next.config.{js,mjs,ts}",
+        "middleware.ts",
+        "instrumentation.ts",
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.{ts,tsx}",
+        "app/**/global-error.tsx",
+        "playwright.config.ts",
+        "vitest.config.ts"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+        "store/**/*.{ts,tsx}",
+        "types/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}",
+        "constants/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "views/**/*.{ts,tsx}"
+      ],
+      "ignore": [
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "e2e/**/*",
+        ".next/**"
+      ],
+      "next": true,
+      "tailwind": true,
+      "vitest": true,
+      "playwright": true,
+      "ignoreDependencies": [
+        "@tailwindcss/postcss",
+        "tailwindcss-animate",
+        "tw-animate-css"
+      ]
+    },
+    "apps/tenant-site": {
+      "entry": [
+        "next.config.{js,mjs,ts}",
+        "middleware.ts",
+        "instrumentation.ts",
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.{ts,tsx}",
+        "app/**/global-error.tsx",
+        "vitest.config.ts"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}"
+      ],
+      "ignore": ["**/*.test.{ts,tsx}", ".next/**"],
+      "next": true,
+      "tailwind": true,
+      "vitest": true
+    },
+    "packages/shared": {
+      "entry": ["src/index.ts", "src/blocks/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts", "dist/**"]
+    },
+    "packages/eslint-config": {
+      "entry": ["base.js", "next.js", "react-internal.js"],
+      "project": ["*.js"]
+    }
+  }
+}

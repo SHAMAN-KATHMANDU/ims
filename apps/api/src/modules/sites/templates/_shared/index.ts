@@ -7,3 +7,4 @@ export { pdpColumns } from "./pdp";
 export { offersLayout } from "./offers";
 export { productsIndexLayout } from "./products-index";
 export { cartLayout, type CartLayoutOptions } from "./cart";
+export { buildTemplateNavSeed, type TemplateNavSeed } from "./nav";

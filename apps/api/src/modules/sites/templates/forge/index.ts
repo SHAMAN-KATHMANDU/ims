@@ -7,13 +7,25 @@
 
 import type { TemplateBlueprint } from "@repo/shared";
 import { resetIdCounter } from "../_shared/factories";
-import { productsIndexLayout, offersLayout } from "../_shared";
+import {
+  productsIndexLayout,
+  offersLayout,
+  buildTemplateNavSeed,
+} from "../_shared";
 import { forgeHome } from "./home";
 import { forgePdp } from "./pdp";
 import { forgeCart } from "./cart";
 
+const forgeNav = buildTemplateNavSeed({
+  brandName: "Forge",
+  brandTagline: "Industrial supply for working teams.",
+  headerCta: { label: "Request a quote", href: "/contact", style: "primary" },
+  footerLayout: "stacked",
+});
+
 export const forgeBlueprint: TemplateBlueprint = {
   slug: "forge",
+  ...forgeNav,
   layouts: {
     home: forgeHome(),
     "products-index": (() => {
