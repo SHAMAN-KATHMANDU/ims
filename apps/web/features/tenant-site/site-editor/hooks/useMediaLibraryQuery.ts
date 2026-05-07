@@ -10,11 +10,13 @@ import {
   registerMediaAsset,
   deleteMediaAsset,
   updateMediaAsset,
-  type MediaAssetRow,
-  type PresignResponse,
-  type MediaPurpose,
-} from "@/features/media/services/media.service";
-import { presignMedia } from "@/features/media/services/media.service";
+  presignMedia,
+} from "@/features/media";
+import type {
+  MediaAssetRow,
+  MediaPurpose,
+  PresignResponse,
+} from "@/features/media";
 
 export type { MediaAssetRow, PresignResponse };
 

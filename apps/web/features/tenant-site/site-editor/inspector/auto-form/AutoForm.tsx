@@ -206,7 +206,7 @@ function detectPickerForFieldName(
  * Dispatch a field component based on the schema type and overrides.
  */
 const fieldDispatchers: Record<string, FieldDispatch> = {
-  string: (fieldName, mapping, values, onChange, override, blockKind) => {
+  string: (fieldName, mapping, values, onChange, override, _blockKind) => {
     // Check override widget first
     if (override?.widget) {
       switch (override.widget) {
@@ -448,22 +448,31 @@ const fieldDispatchers: Record<string, FieldDispatch> = {
   ),
 };
 
-const widgetRegistry: Record<string, React.ComponentType<any>> = {
-  NavMenuBuilder,
-  FooterColumnsBuilder,
-  FormFieldsBuilder,
-  GalleryBuilder,
-  LookbookPinsBuilder,
-  SizeGuideMatrixBuilder,
-  CollectionCardsBuilder,
-  PriceTiersBuilder,
-  AccordionItemsBuilder,
-  TabsItemsBuilder,
-  TestimonialsBuilder,
-  FaqBuilder,
-  BentoCellsBuilder,
-  StatsBuilder,
-  TrustStripIconsBuilder,
+// Each bespoke widget owns a strongly-typed `value` shape (e.g. NavMenuItem[]).
+// The registry stores them under a loose signature so AutoForm can dispatch by
+// string key — the per-widget sub-form re-narrows the type at the boundary.
+type LooseWidget = React.ComponentType<{
+  value: unknown;
+  onChange: (val: unknown) => void;
+  label?: string;
+}>;
+
+const widgetRegistry: Record<string, LooseWidget> = {
+  NavMenuBuilder: NavMenuBuilder as unknown as LooseWidget,
+  FooterColumnsBuilder: FooterColumnsBuilder as unknown as LooseWidget,
+  FormFieldsBuilder: FormFieldsBuilder as unknown as LooseWidget,
+  GalleryBuilder: GalleryBuilder as unknown as LooseWidget,
+  LookbookPinsBuilder: LookbookPinsBuilder as unknown as LooseWidget,
+  SizeGuideMatrixBuilder: SizeGuideMatrixBuilder as unknown as LooseWidget,
+  CollectionCardsBuilder: CollectionCardsBuilder as unknown as LooseWidget,
+  PriceTiersBuilder: PriceTiersBuilder as unknown as LooseWidget,
+  AccordionItemsBuilder: AccordionItemsBuilder as unknown as LooseWidget,
+  TabsItemsBuilder: TabsItemsBuilder as unknown as LooseWidget,
+  TestimonialsBuilder: TestimonialsBuilder as unknown as LooseWidget,
+  FaqBuilder: FaqBuilder as unknown as LooseWidget,
+  BentoCellsBuilder: BentoCellsBuilder as unknown as LooseWidget,
+  StatsBuilder: StatsBuilder as unknown as LooseWidget,
+  TrustStripIconsBuilder: TrustStripIconsBuilder as unknown as LooseWidget,
 };
 
 export function AutoForm({

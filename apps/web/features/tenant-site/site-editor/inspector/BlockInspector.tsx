@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { BlockPropsSchemas } from "@repo/shared";
 import type { BlockNode } from "@repo/shared";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,

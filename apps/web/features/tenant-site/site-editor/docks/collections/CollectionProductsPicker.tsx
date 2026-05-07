@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,7 @@ export function CollectionProductsPicker({
           </div>
 
           <div className="border rounded max-h-64 overflow-y-auto space-y-2 p-2">
-            {products.map((product: any) => (
+            {products.map((product: { id: string; name: string }) => (
               <div
                 key={product.id}
                 className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded"

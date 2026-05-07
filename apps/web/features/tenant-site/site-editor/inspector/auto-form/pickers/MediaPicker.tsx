@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +23,7 @@ export function MediaPicker({
   label,
   helpText,
 }: MediaPickerProps) {
-  const [hasAltText, setHasAltText] = useState(!!value && value.includes("|"));
+  const hasAltText = !!value && value.includes("|");
 
   return (
     <div className="space-y-1.5">

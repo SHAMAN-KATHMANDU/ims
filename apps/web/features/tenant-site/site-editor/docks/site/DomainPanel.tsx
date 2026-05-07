@@ -112,7 +112,7 @@ export function DomainPanel() {
             <DialogHeader>
               <DialogTitle>Add domain</DialogTitle>
               <DialogDescription>
-                Enter your domain name. You'll verify DNS ownership next.
+                Enter your domain name. You&apos;ll verify DNS ownership next.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">

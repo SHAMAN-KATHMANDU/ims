@@ -48,9 +48,17 @@ export function BlockTile({ catalog }: BlockTileProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       className="p-3 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 cursor-grab active:cursor-grabbing transition-colors group"
     >
       <div className="flex items-center gap-2 mb-1.5">

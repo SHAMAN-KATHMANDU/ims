@@ -34,7 +34,7 @@ export function DangerZonePanel() {
   const unpublishMutation = useUnpublishSite();
   const resetMutation = useResetToTemplate();
   const templatesQuery = useTemplatesQuery();
-  const siteQuery = useSiteConfig();
+  const _siteQuery = useSiteConfig();
 
   const handleUnpublish = async () => {
     try {

@@ -65,6 +65,8 @@ export function MediaUploadDropZone() {
 
   return (
     <div
+      role="region"
+      aria-label="File upload drop zone"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}

@@ -46,7 +46,9 @@ export function ApplyTemplateConfirm({
     <AlertDialog open onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Apply "{template.name}"?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Apply &quot;{template.name}&quot;?
+          </AlertDialogTitle>
           <AlertDialogDescription>
             This will reset the layout and theme tokens. Your branding (logo,
             name) and products are preserved.

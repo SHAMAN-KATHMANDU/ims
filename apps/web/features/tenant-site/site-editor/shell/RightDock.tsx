@@ -12,7 +12,7 @@ interface RightDockProps {
 }
 
 export const RightDock = React.forwardRef<HTMLDivElement, RightDockProps>(
-  ({ selectedBlockId, onClose }, ref) => {
+  ({ selectedBlockId, onClose: _onClose }, ref) => {
     if (!selectedBlockId) {
       return (
         <div

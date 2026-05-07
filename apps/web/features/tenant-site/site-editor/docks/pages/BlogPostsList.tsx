@@ -6,7 +6,7 @@ interface BlogPostsListProps {
   search: string;
 }
 
-export function BlogPostsList({ search }: BlogPostsListProps) {
+export function BlogPostsList({ search: _search }: BlogPostsListProps) {
   // TODO: Wire useBlogPostsQuery hook to list blog posts
   // For now, show empty state with inline create action
 

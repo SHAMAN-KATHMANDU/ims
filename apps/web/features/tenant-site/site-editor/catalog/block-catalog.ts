@@ -29,7 +29,7 @@ export function getCatalogEntry(kind: BlockKind): CatalogEntry | undefined {
 export function listForScope(scope?: string): readonly CatalogEntry[] {
   if (!scope) return BLOCK_CATALOG;
   return BLOCK_CATALOG.filter(
-    (e) => !e.scopes || e.scopes.includes(scope as any),
+    (e) => !e.scopes || (e.scopes as readonly string[]).includes(scope),
   );
 }
 

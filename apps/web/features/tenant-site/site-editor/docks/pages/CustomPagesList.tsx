@@ -6,7 +6,7 @@ interface CustomPagesListProps {
   search: string;
 }
 
-export function CustomPagesList({ search }: CustomPagesListProps) {
+export function CustomPagesList({ search: _search }: CustomPagesListProps) {
   // TODO: Wire usePagesQuery hook to list custom pages
   // For now, show empty state with inline create action
 

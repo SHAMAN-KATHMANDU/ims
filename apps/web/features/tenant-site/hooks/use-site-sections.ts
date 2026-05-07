@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSiteConfig, useUpdateSiteConfig } from "./use-tenant-site";
 
 export function useSiteSections() {

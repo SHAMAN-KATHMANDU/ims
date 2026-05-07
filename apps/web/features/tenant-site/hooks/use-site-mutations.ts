@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   unpublishSite,
   pickSiteTemplate,
-  type SiteConfig,
 } from "../services/tenant-site.service";
 
 export function useUnpublishSite() {

@@ -23,8 +23,11 @@ export function usePaletteDrag() {
       e.dataTransfer.effectAllowed = "copy";
       e.dataTransfer.setData("application/json", JSON.stringify(block));
 
-      // Store metadata for drop zone resolution
-      (e.dataTransfer as any).__siteEditorMetadata = {
+      // Store metadata for drop zone resolution. Cast through unknown to attach
+      // the editor-specific marker without polluting the DataTransfer type.
+      (
+        e.dataTransfer as unknown as { __siteEditorMetadata: unknown }
+      ).__siteEditorMetadata = {
         source: "palette",
         blockKind: block.kind,
       };
@@ -44,7 +47,10 @@ export function usePaletteDrag() {
         return;
       }
 
-      if (zone === "inside" && CONTAINER_KINDS.includes(block.kind as any)) {
+      if (
+        zone === "inside" &&
+        (CONTAINER_KINDS as readonly string[]).includes(block.kind)
+      ) {
         insertChildOf(targetId, block);
       } else if (zone === "before" || zone === "after") {
         insertSiblingOf(

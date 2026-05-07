@@ -25,6 +25,7 @@ export function MediaItemCard({ asset, onSelect }: MediaItemCardProps) {
           <Play className="w-8 h-8 text-white" />
         </div>
       ) : (
+        /* eslint-disable-next-line @next/next/no-img-element -- thumbnail grid renders many small images; next/image's per-thumb optimisation adds overhead without LCP benefit here */
         <img
           src={asset.publicUrl}
           alt={asset.fileName}
