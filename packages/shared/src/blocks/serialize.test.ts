@@ -141,12 +141,12 @@ describe("blocksToMarkdown", () => {
         block({
           id: "p-1",
           kind: "product-grid" as BlockNode["kind"],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           props: {
             source: "featured",
             limit: 4,
             columns: 4,
             cardVariant: "bordered",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
         }),
       ]),

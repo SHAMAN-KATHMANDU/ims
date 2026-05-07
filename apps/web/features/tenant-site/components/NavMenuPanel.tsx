@@ -782,7 +782,7 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
 
 function MenuItemRow({
   item,
-  idx,
+  idx: _idx,
   selected,
   onSelect,
   onUpdate,

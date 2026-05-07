@@ -38,14 +38,6 @@ export interface CommentRow {
   updatedAt: Date;
 }
 
-const RECORD_DELEGATE_NAME: Record<
-  CommentRecordType,
-  "blogPost" | "tenantPage"
-> = {
-  BLOG_POST: "blogPost",
-  TENANT_PAGE: "tenantPage",
-};
-
 /**
  * Confirm the parent BlogPost / TenantPage exists for this tenant.
  * Throws 404 when not — keeps cross-tenant comment writes impossible.

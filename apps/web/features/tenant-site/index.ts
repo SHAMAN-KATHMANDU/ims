@@ -5,6 +5,7 @@ export { CollectionsPage } from "./components/CollectionsPage";
 export { SiteBrandingForm } from "./components/SiteBrandingForm";
 export { SiteSeoForm } from "./components/SiteSeoForm";
 export { SiteTemplatePicker } from "./components/SiteTemplatePicker";
+export { FooterPanel } from "./components/FooterPanel";
 
 export {
   useSiteConfig,

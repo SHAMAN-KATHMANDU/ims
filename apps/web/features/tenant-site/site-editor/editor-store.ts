@@ -213,11 +213,11 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     setSelected: (id) => {
       if (
         typeof window !== "undefined" &&
-        window.localStorage?.getItem("site-editor:debug") === "1"
+        typeof window.localStorage?.getItem === "function" &&
+        window.localStorage.getItem("site-editor:debug") === "1"
       ) {
         const present = get().present.blocks;
         const found = id ? findPath(present, id) : null;
-        // eslint-disable-next-line no-console
         console.log("[site-editor:store] setSelected", {
           id,
           treeSize: present.length,

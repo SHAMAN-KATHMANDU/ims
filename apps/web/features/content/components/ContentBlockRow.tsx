@@ -140,7 +140,11 @@ export function ContentBlockRow({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="px-3 py-3"
+        onClick={(e) => e.stopPropagation()}
+        role="presentation"
+      >
         <Inline
           blockId={block.id}
           props={block.props as unknown}
