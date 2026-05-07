@@ -27,6 +27,8 @@ import {
   type BlockMenuState,
 } from "./canvas/BlockContextMenu";
 import { PdpProductPicker } from "./canvas/PdpProductPicker";
+import { ContentView } from "./content/ContentView";
+import type { EditorMode } from "./shell/EditorTopBar";
 
 interface SiteEditorPageProps {
   tenantId: string;
@@ -41,6 +43,7 @@ export function SiteEditorPage({
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">(
     "desktop",
   );
+  const [mode, setMode] = useState<EditorMode>("design");
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -119,62 +122,67 @@ export function SiteEditorPage({
         onScopeChange={setScope}
         device={device}
         onDeviceChange={setDevice}
-        workspace={tenantId}
+        mode={mode}
+        onModeChange={setMode}
         onPublishClick={() => setShowPublishModal(true)}
       />
 
       <DraftRecoveryBanner recovery={draftRecovery} />
 
-      {/* Main layout */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left dock */}
-        <LeftDock scope={scope} onScopeChange={setScope} workspace={tenantId} />
+      {/* Content mode replaces the canvas+inspector with a focused
+          Pages/Blog management view. Design mode keeps the dock + canvas
+          + inspector layout. */}
+      {mode === "content" ? (
+        <ContentView />
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          <LeftDock
+            scope={scope}
+            onScopeChange={setScope}
+            workspace={tenantId}
+          />
 
-        {/* Canvas area. The wrapper's onContextMenu picks up right-clicks
-            that land on the editor chrome around the iframe (the iframe
-            itself stays cross-origin and routes context menus via the
-            preview message bus — wired separately in Fix 8.4). */}
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- canvas wrapper handles right-click for the BlockContextMenu; iframe-side support is wired separately via the preview message bus */}
-        <div
-          className="flex-1 flex flex-col relative overflow-hidden"
-          onContextMenu={(e) => {
-            if (!selectedId) return;
-            e.preventDefault();
-            setContextMenu({
-              blockId: selectedId,
-              x: e.clientX,
-              y: e.clientY,
-            });
-          }}
-        >
-          {scope === "product-detail" && (
-            <PdpProductPicker
-              productId={pdpProductId}
-              onProductIdChange={setPdpProductId}
-            />
-          )}
-          <div ref={canvasRef} className="flex-1 relative">
-            <CanvasFrame
-              scope={scope}
-              device={device}
-              zoom={1}
-              pageId={
-                scope === "product-detail"
-                  ? (pdpProductId ?? undefined)
-                  : undefined
-              }
-              refreshKey={previewRefreshKey}
-              onRefresh={() => setPreviewRefreshKey((k) => k + 1)}
-            />
-            <div ref={overlayRef} className="absolute inset-0">
-              <CanvasOverlay />
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- canvas wrapper handles right-click for the BlockContextMenu; iframe-side support is wired separately via the preview message bus */}
+          <div
+            className="flex-1 flex flex-col relative overflow-hidden"
+            onContextMenu={(e) => {
+              if (!selectedId) return;
+              e.preventDefault();
+              setContextMenu({
+                blockId: selectedId,
+                x: e.clientX,
+                y: e.clientY,
+              });
+            }}
+          >
+            {scope === "product-detail" && (
+              <PdpProductPicker
+                productId={pdpProductId}
+                onProductIdChange={setPdpProductId}
+              />
+            )}
+            <div ref={canvasRef} className="flex-1 relative">
+              <CanvasFrame
+                scope={scope}
+                device={device}
+                zoom={1}
+                pageId={
+                  scope === "product-detail"
+                    ? (pdpProductId ?? undefined)
+                    : undefined
+                }
+                refreshKey={previewRefreshKey}
+                onRefresh={() => setPreviewRefreshKey((k) => k + 1)}
+              />
+              <div ref={overlayRef} className="absolute inset-0">
+                <CanvasOverlay />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right dock (inspector) */}
-        <RightDock selectedBlockId={selectedId} onClose={() => {}} />
-      </div>
+          <RightDock selectedBlockId={selectedId} onClose={() => {}} />
+        </div>
+      )}
 
       {/* Modals */}
       <KeyboardShortcutsModal
