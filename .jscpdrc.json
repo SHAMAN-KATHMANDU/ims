@@ -22,7 +22,9 @@
     "**/__snapshots__/**",
     "**/e2e/**",
     "apps/api/prisma/seeds/**",
-    "apps/api/src/modules/sites/templates/**"
+    "apps/api/src/modules/sites/templates/*/home.ts",
+    "apps/api/src/modules/sites/templates/*/pdp.ts",
+    "apps/api/src/modules/sites/templates/*/cart.ts"
   ],
   "absolute": true,
   "gitignore": true
