@@ -218,6 +218,22 @@ export async function deleteMyDomain(domainId: string): Promise<void> {
   }
 }
 
+export async function updateMyDomain(
+  domainId: string,
+  data: { isPrimary?: boolean },
+): Promise<TenantDomain> {
+  if (!domainId?.trim()) throw new Error("Domain ID is required");
+  try {
+    const response = await api.patch<{ domain: TenantDomain }>(
+      `/tenants/me/domains/${domainId}`,
+      data,
+    );
+    return response.data.domain;
+  } catch (error) {
+    handleApiError(error, `update my domain "${domainId}"`);
+  }
+}
+
 export async function getMyDomainVerificationInstructions(
   domainId: string,
 ): Promise<DomainVerificationInstructions> {

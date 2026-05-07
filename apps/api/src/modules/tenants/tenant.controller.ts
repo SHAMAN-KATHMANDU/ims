@@ -12,6 +12,7 @@ import platformDomainsService from "@/modules/platform-domains/platform-domains.
 import {
   CreateTenantDomainSchema,
   ListTenantDomainsQuerySchema,
+  UpdateTenantDomainSchema,
 } from "@/modules/platform-domains/platform-domains.schema";
 
 function handleError(
@@ -106,6 +107,32 @@ class TenantController {
       return res.status(200).json({ message: "OK", ...instructions });
     } catch (error) {
       return handleError(req, res, error, "getMyDomainVerification");
+    }
+  };
+
+  /**
+   * PATCH /tenants/me/domains/:domainId
+   * Update a domain belonging to the calling tenant. Currently only
+   * `isPrimary` is settable from this surface — `appType` changes still
+   * require platform-admin (where domain re-routing is reviewed).
+   */
+  updateMyDomain = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const domainId = req.params.domainId ?? "";
+      const body = UpdateTenantDomainSchema.parse(req.body);
+      const domains = await platformDomainsService.listTenantDomains(tenantId);
+      if (!domains.find((d) => d.id === domainId)) {
+        return res.status(404).json({ message: "Domain not found" });
+      }
+      // Tenants can only flip the primary flag; appType stays platform-admin
+      // territory to avoid surprise app-type swaps.
+      const domain = await platformDomainsService.updateDomain(domainId, {
+        isPrimary: body.isPrimary,
+      });
+      return res.status(200).json({ message: "Domain updated", domain });
+    } catch (error) {
+      return handleError(req, res, error, "updateMyDomain");
     }
   };
 
