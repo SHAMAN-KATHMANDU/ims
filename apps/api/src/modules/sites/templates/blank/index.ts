@@ -11,7 +11,7 @@ import { buildTemplateNavSeed } from "../_shared";
 const blankNav = buildTemplateNavSeed({
   brandName: "Your Store",
   brandTagline: "",
-  headerLayout: "left-logo",
+  headerLayout: "standard",
   enableNewsletter: false,
 });
 
@@ -46,11 +46,14 @@ export const blankBlueprint: TemplateBlueprint = {
       ring: "#3b82f6",
     },
     typography: {
-      heading: "Inter",
-      body: "Inter",
-      display: "Inter",
+      heading: { family: "Inter, system-ui, sans-serif" },
+      body: { family: "Inter, system-ui, sans-serif" },
+      display: { family: "Inter, system-ui, sans-serif" },
       scaleRatio: 1.2,
-      baseFontSize: 16,
+      baseSize: 16,
     },
+    spacing: { unit: 4, section: "balanced", container: 1280 },
+    shape: { radius: "soft", buttonStyle: "solid" },
+    motion: { enableAnimations: true, duration: 200 },
   },
 };
