@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Video props — youtube, vimeo, or direct mp4.
+ * posterUrl accepts either a string URL (legacy) or an ImageRef object.
  */
 export interface VideoProps {
   source: "youtube" | "vimeo" | "mp4";
@@ -14,7 +16,7 @@ export interface VideoProps {
   loop?: boolean;
   muted?: boolean;
   caption?: string;
-  posterUrl?: string;
+  posterUrl?: string | { assetId: string } | { url: string };
   rounded?: boolean;
 }
 
@@ -30,7 +32,7 @@ export const VideoSchema = z
     loop: z.boolean().optional(),
     muted: z.boolean().optional(),
     caption: optStr(300),
-    posterUrl: optStr(1000),
+    posterUrl: z.union([str(1000), ImageRefSchema]).optional(),
     rounded: z.boolean().optional(),
   })
   .strict();

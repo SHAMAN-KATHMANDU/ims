@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GalleryProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
+import { normalizeImageRef } from "@/lib/image";
 
 export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
@@ -64,7 +65,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={current?.src}
+            src={normalizeImageRef(current?.src)}
             alt={current?.alt ?? ""}
             style={{
               width: "100%",
@@ -172,7 +173,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={img.src}
+                src={normalizeImageRef(img.src)}
                 alt={img.alt}
                 loading="lazy"
                 style={{
@@ -221,7 +222,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={props.images[lightboxIdx]?.src}
+            src={normalizeImageRef(props.images[lightboxIdx]?.src)}
             alt={props.images[lightboxIdx]?.alt ?? ""}
             onClick={(e) => e.stopPropagation()}
             style={{

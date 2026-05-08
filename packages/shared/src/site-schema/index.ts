@@ -11,3 +11,4 @@ export * from "./nav";
 export * from "./footer";
 export * from "./theme";
 export * from "./templates";
+export * from "./media";

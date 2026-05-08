@@ -31,6 +31,7 @@ import type {
 import Link from "next/link";
 import type { PublicProduct } from "@/lib/api";
 import type { BlockComponentProps } from "../registry";
+import { normalizeImageRef } from "@/lib/image";
 import { NewsletterModal } from "./NewsletterModal";
 import { AnnouncementModal } from "./AnnouncementModal";
 import { getSiteFormatOptions } from "@/lib/format";
@@ -221,7 +222,7 @@ function CollectionCard({
       {hasImage && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={card.imageUrl}
+          src={normalizeImageRef(card.imageUrl)}
           alt=""
           aria-hidden="true"
           loading="lazy"
@@ -618,7 +619,7 @@ export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={l.src}
+              src={normalizeImageRef(l.src)}
               alt={l.alt}
               style={{
                 height,

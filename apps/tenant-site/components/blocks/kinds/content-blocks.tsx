@@ -22,6 +22,7 @@ import type {
   SpacerProps,
 } from "@repo/shared";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
+import { normalizeImageRef } from "@/lib/image";
 import type { BlockComponentProps } from "../registry";
 
 // ---------- section ---------------------------------------------------------
@@ -235,10 +236,11 @@ export function ImageBlock({ props }: BlockComponentProps<ImageProps>) {
       : props.hoverEffect === "lift"
         ? "tpl-img-lift"
         : "";
+  const src = normalizeImageRef(props.src);
   const body = (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={props.src}
+      src={src}
       alt={props.alt}
       loading="lazy"
       className={hoverClass || undefined}

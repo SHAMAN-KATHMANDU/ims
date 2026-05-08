@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Lookbook — shoppable pinned image.
+ * Scene imageUrl accepts either a string URL (legacy) or an ImageRef object.
  */
 export interface LookbookPin {
   x: number;
@@ -14,7 +16,7 @@ export interface LookbookPin {
 }
 
 export interface LookbookScene {
-  imageUrl: string;
+  imageUrl: string | { assetId: string } | { url: string };
   alt?: string;
   caption?: string;
   pins: LookbookPin[];
@@ -38,7 +40,7 @@ export const LookbookSchema = z
       .array(
         z
           .object({
-            imageUrl: str(1000),
+            imageUrl: z.union([str(1000), ImageRefSchema]),
             alt: optStr(200),
             caption: optStr(300),
             pins: z
