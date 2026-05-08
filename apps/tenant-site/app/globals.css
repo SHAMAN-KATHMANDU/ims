@@ -6,7 +6,14 @@
  * Templates that have not yet been rewritten to consume the new tokens
  * still work because the Phase-A aliases (--primary, --accent, --bg,
  * --text) are preserved alongside the new --color-* names.
+ *
+ * Tailwind utility classes used by block components (HeaderBlocks etc.)
+ * resolve via the import below. Without it, classes like `hidden md:flex
+ * gap-6` render as no-op and the browser falls back to default block/
+ * inline display, producing concatenated nav items.
  */
+
+@import "tailwindcss";
 
 :root {
   /* ---------- Colors (9 design tokens) ---------- */

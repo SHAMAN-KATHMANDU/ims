@@ -11,6 +11,11 @@ import {
   productsIndexLayout,
   offersLayout,
   buildTemplateNavSeed,
+  blogIndexLayout,
+  blogPostLayout,
+  contactLayout,
+  pageLayout,
+  notFoundLayout,
 } from "../_shared";
 import { verdantHome } from "./home";
 import { verdantPdp } from "./pdp";
@@ -38,6 +43,26 @@ export const verdantBlueprint: TemplateBlueprint = {
       return offersLayout();
     })(),
     cart: verdantCart(),
+    "blog-index": (() => {
+      resetIdCounter();
+      return blogIndexLayout();
+    })(),
+    "blog-post": (() => {
+      resetIdCounter();
+      return blogPostLayout();
+    })(),
+    contact: (() => {
+      resetIdCounter();
+      return contactLayout();
+    })(),
+    page: (() => {
+      resetIdCounter();
+      return pageLayout();
+    })(),
+    "404": (() => {
+      resetIdCounter();
+      return notFoundLayout();
+    })(),
   },
   defaultThemeTokens: {
     mode: "dark",

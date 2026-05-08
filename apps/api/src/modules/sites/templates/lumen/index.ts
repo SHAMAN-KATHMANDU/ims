@@ -11,6 +11,11 @@ import {
   productsIndexLayout,
   offersLayout,
   buildTemplateNavSeed,
+  blogIndexLayout,
+  blogPostLayout,
+  contactLayout,
+  pageLayout,
+  notFoundLayout,
 } from "../_shared";
 import { lumenHome } from "./home";
 import { lumenPdp } from "./pdp";
@@ -40,6 +45,26 @@ export const lumenBlueprint: TemplateBlueprint = {
       return offersLayout();
     })(),
     cart: lumenCart(),
+    "blog-index": (() => {
+      resetIdCounter();
+      return blogIndexLayout();
+    })(),
+    "blog-post": (() => {
+      resetIdCounter();
+      return blogPostLayout();
+    })(),
+    contact: (() => {
+      resetIdCounter();
+      return contactLayout();
+    })(),
+    page: (() => {
+      resetIdCounter();
+      return pageLayout();
+    })(),
+    "404": (() => {
+      resetIdCounter();
+      return notFoundLayout();
+    })(),
   },
   defaultThemeTokens: {
     mode: "light",

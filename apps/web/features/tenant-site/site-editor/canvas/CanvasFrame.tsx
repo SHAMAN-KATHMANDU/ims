@@ -53,6 +53,23 @@ export const CanvasFrame = React.forwardRef<HTMLDivElement, CanvasFrameProps>(
       setErrored(false);
     }, [url, refreshKey]);
 
+    // Force a hard reload when a template is picked — usePickSiteTemplate
+    // emits this event after the server overwrites every layout, so the
+    // iframe needs to drop its cached HTML and refetch the new draft.
+    useEffect(() => {
+      const handler = (): void => {
+        previewQuery.refetch();
+        if (iframeRef.current && url) {
+          iframeRef.current.src = url;
+        }
+        onRefresh?.();
+      };
+      window.addEventListener("site-template-picked", handler);
+      return () => {
+        window.removeEventListener("site-template-picked", handler);
+      };
+    }, [url, previewQuery, onRefresh]);
+
     // Live block sync: post the current draft tree to the iframe whenever
     // the editor store changes (debounced 300 ms). The iframe-side listener
     // applies the new tree without a full reload, so edits surface ~instantly
@@ -106,10 +123,13 @@ export const CanvasFrame = React.forwardRef<HTMLDivElement, CanvasFrameProps>(
           </div>
         </div>
 
-        {/* Canvas */}
+        {/* Canvas — outer scrolls; inner is sized to the device frame and
+            the iframe gets a tall fixed height so its OWN content scrolls
+            (avoids the previous bug where h-full clipped the preview to
+            the viewport and hid the scrollbar). */}
         <div className="flex-1 overflow-auto p-4 flex items-start justify-center">
           <div
-            className="relative h-full"
+            className="relative"
             style={{
               width: DEVICE_WIDTHS[device],
               transform: `scale(${zoom})`,
@@ -124,7 +144,8 @@ export const CanvasFrame = React.forwardRef<HTMLDivElement, CanvasFrameProps>(
                 src={url}
                 onLoad={handleLoad}
                 onError={handleError}
-                className="w-full h-full bg-white border border-gray-200 shadow-md"
+                className="w-full bg-white border border-gray-200 shadow-md"
+                style={{ height: "calc(100vh - 9rem)", minHeight: 720 }}
                 title={`Site preview - ${scope}`}
               />
             )}

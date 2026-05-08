@@ -27,10 +27,6 @@ import {
   ListChecks,
   ShoppingBag,
   Globe,
-  LayoutGrid,
-  FileText,
-  ImageIcon,
-  Newspaper,
   Sparkles,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
@@ -322,63 +318,12 @@ export const dashboardNavSections: NavSection[] = [
       },
     ],
   },
-  {
-    // CONTENT — the CMS surface. Bundles every content-shaped route
-    // (pages, blog, products, media, ...) under one navigable group so
-    // tenants who think "manage content" find one place. The visual
-    // builder lives in the (editor) shell and is reachable via the
-    // top-bar mode switcher.
-    title: "CONTENT",
-    items: [
-      {
-        path: "content",
-        label: "Content hub",
-        icon: LayoutGrid,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.TENANT_WEBSITES,
-        tenantFeature: "websiteEnabled",
-        permModule: "WEBSITE" as const,
-      },
-      {
-        path: "content/pages",
-        label: "Pages",
-        icon: FileText,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.TENANT_WEBSITES,
-        tenantFeature: "websiteEnabled",
-        permModule: "WEBSITE" as const,
-      },
-      {
-        path: "content/blog",
-        label: "Blog",
-        icon: Newspaper,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.TENANT_WEBSITES,
-        tenantFeature: "websiteEnabled",
-        permModule: "WEBSITE" as const,
-      },
-      {
-        path: "content/snippets",
-        label: "Snippets",
-        icon: Sparkles,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.TENANT_WEBSITES,
-        tenantFeature: "websiteEnabled",
-        permModule: "WEBSITE" as const,
-      },
-      // Products + Catalog Settings live under INVENTORY — duplicating them
-      // here split the active-state and confused the "where is X?" mental
-      // model. Products are reachable from the Content Hub landing tile.
-      {
-        path: "media",
-        label: "Media library",
-        icon: ImageIcon,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.MEDIA_UPLOAD,
-        permModule: "INVENTORY" as const,
-      },
-    ],
-  },
+  // CONTENT group removed — the new Notion-style CMS shell at
+  // /[workspace]/site (sidebar item "Website CMS", gated on SITE_CMS_V2)
+  // surfaces Pages, Blog, Snippets, Media, Collections, Offers, Navigation,
+  // Design, Domains, SEO and Settings as siblings inside its own shell.
+  // Routes at /[workspace]/content/* still exist as fallbacks but are no
+  // longer linked from the main sidebar.
   {
     title: "REPORTS",
     items: [
