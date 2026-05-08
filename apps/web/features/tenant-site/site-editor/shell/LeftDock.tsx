@@ -207,7 +207,7 @@ export const LeftDock = React.forwardRef<HTMLDivElement, LeftDockProps>(
               workspace={workspace}
             />
           )}
-          {activeTab === "blocks" && <BlocksPanel />}
+          {activeTab === "blocks" && <BlocksPanel scope={scope} />}
           {activeTab === "theme" && theme && (
             <ThemePanel theme={theme} onThemeChange={onThemeChange} />
           )}

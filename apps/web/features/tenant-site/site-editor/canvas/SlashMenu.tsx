@@ -3,31 +3,39 @@
  * Opens when "/" is typed in a text field.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import type { SiteLayoutScope } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
 import { selectInsertSiblingOf } from "../store/selectors";
-import { BLOCK_CATALOG } from "../catalog/block-catalog";
+import { listForScope } from "../catalog/block-catalog";
 import type { CatalogEntry } from "@repo/shared";
 
 interface SlashMenuProps {
   isOpen: boolean;
   onClose: () => void;
   anchorId?: string;
+  scope?: SiteLayoutScope;
 }
 
 export const SlashMenu = React.forwardRef<HTMLDivElement, SlashMenuProps>(
-  ({ isOpen, onClose, anchorId }, ref) => {
+  ({ isOpen, onClose, anchorId, scope }, ref) => {
     const [query, setQuery] = useState("");
     const [selectedIndex, setSelectedIndex] = useState(0);
     const insertSiblingOf = useEditorStore(selectInsertSiblingOf);
 
-    const filtered: readonly CatalogEntry[] = query
-      ? BLOCK_CATALOG.filter(
-          (e) =>
-            e.label.toLowerCase().includes(query.toLowerCase()) ||
-            e.description.toLowerCase().includes(query.toLowerCase()),
-        )
-      : BLOCK_CATALOG;
+    const scopedCatalog = useMemo(() => listForScope(scope), [scope]);
+
+    const filtered: readonly CatalogEntry[] = useMemo(
+      () =>
+        query
+          ? scopedCatalog.filter(
+              (e) =>
+                e.label.toLowerCase().includes(query.toLowerCase()) ||
+                e.description.toLowerCase().includes(query.toLowerCase()),
+            )
+          : scopedCatalog,
+      [query, scopedCatalog],
+    );
 
     const handleSelect = useCallback(
       (entry: CatalogEntry) => {

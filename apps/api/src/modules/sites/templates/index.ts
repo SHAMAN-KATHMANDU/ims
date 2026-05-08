@@ -17,6 +17,7 @@ import { pantryBlueprint } from "./pantry";
 import { ridgeBlueprint } from "./ridge";
 import { verdantBlueprint } from "./verdant";
 import { foxgloveBlueprint } from "./foxglove";
+import { blankBlueprint } from "./blank";
 
 // ---------------------------------------------------------------------------
 // Type definitions — single source of truth lives in @repo/shared
@@ -30,6 +31,7 @@ export { BLUEPRINT_SCOPES } from "@repo/shared";
 // ---------------------------------------------------------------------------
 
 export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
+  blank: blankBlueprint,
   maison: maisonBlueprint,
   fold: foldBlueprint,
   forge: forgeBlueprint,

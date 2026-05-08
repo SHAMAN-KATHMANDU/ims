@@ -205,6 +205,7 @@ export function SiteEditorPage({
         isOpen={slashMenuOpen}
         onClose={() => setSlashMenuOpen(false)}
         anchorId={selectedId ?? undefined}
+        scope={scope}
       />
       <BlockContextMenu
         state={contextMenu}

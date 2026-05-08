@@ -2,31 +2,38 @@
 
 import React, { useState, useMemo } from "react";
 import { Search } from "lucide-react";
-import { BLOCK_CATALOG } from "../../catalog/block-catalog";
+import type { SiteLayoutScope } from "@repo/shared";
+import { listForScope } from "../../catalog/block-catalog";
 import { BlockCategoryTabs } from "./BlockCategoryTabs";
 import { RecentBlocks } from "./RecentBlocks";
 import { BlockTile } from "./BlockTile";
 import type { CatalogCategory } from "../../catalog/block-catalog";
 
-export function BlocksPanel() {
+interface BlocksPanelProps {
+  scope?: SiteLayoutScope;
+}
+
+export function BlocksPanel({ scope }: BlocksPanelProps) {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CatalogCategory | "all">(
     "all",
   );
+
+  const scopedCatalog = useMemo(() => listForScope(scope), [scope]);
 
   // Get unique categories
   const categories = useMemo(
     () =>
       [
         "all",
-        ...Array.from(new Set(BLOCK_CATALOG.map((b) => b.category))),
+        ...Array.from(new Set(scopedCatalog.map((b) => b.category))),
       ] as const,
-    [],
+    [scopedCatalog],
   );
 
   // Filter blocks by search and category
   const filteredBlocks = useMemo(() => {
-    let result = BLOCK_CATALOG;
+    let result = scopedCatalog;
 
     if (activeCategory !== "all") {
       result = result.filter((b) => b.category === activeCategory);
@@ -42,7 +49,7 @@ export function BlocksPanel() {
     }
 
     return result;
-  }, [activeCategory, search]);
+  }, [activeCategory, search, scopedCatalog]);
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
@@ -68,7 +75,7 @@ export function BlocksPanel() {
       />
 
       {/* Recent blocks (show only when "all" and no search) */}
-      {activeCategory === "all" && !search && <RecentBlocks />}
+      {activeCategory === "all" && !search && <RecentBlocks scope={scope} />}
 
       {/* Block grid */}
       <div className="flex-1 overflow-y-auto p-3">

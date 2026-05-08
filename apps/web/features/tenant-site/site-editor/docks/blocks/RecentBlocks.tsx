@@ -1,10 +1,17 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { BLOCK_CATALOG } from "../../catalog/block-catalog";
+import type { SiteLayoutScope } from "@repo/shared";
+import { listForScope } from "../../catalog/block-catalog";
 import { BlockTile } from "./BlockTile";
 
-export function RecentBlocks() {
+interface RecentBlocksProps {
+  scope?: SiteLayoutScope;
+}
+
+export function RecentBlocks({ scope }: RecentBlocksProps) {
+  const scopedCatalog = useMemo(() => listForScope(scope), [scope]);
+
   const recentKinds = useMemo(() => {
     const stored = localStorage.getItem("siteEditor.recentBlocks");
     return (stored ? JSON.parse(stored) : []) as string[];
@@ -15,8 +22,8 @@ export function RecentBlocks() {
   }
 
   const recentBlocks = recentKinds
-    .map((kind) => BLOCK_CATALOG.find((b) => b.kind === kind))
-    .filter((b): b is (typeof BLOCK_CATALOG)[number] => b !== undefined);
+    .map((kind) => scopedCatalog.find((b) => b.kind === kind))
+    .filter((b): b is (typeof scopedCatalog)[number] => b !== undefined);
 
   if (recentBlocks.length === 0) {
     return null;
