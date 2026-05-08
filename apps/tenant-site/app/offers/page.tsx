@@ -17,8 +17,6 @@ import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { brandingDisplayName } from "@/lib/theme";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
-import { pickTemplate } from "@/components/templates/pickTemplate";
-import { readSections } from "@/lib/sections";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
