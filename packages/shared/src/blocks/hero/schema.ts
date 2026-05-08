@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Hero props — top-of-page brand hero with CTA.
+ * imageUrl, videoUrl, and videoPoster accept either string URLs (legacy) or ImageRef objects.
  */
 export interface HeroProps {
   variant:
@@ -19,12 +21,12 @@ export interface HeroProps {
   subtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
-  imageUrl?: string;
+  imageUrl?: string | { assetId: string } | { url: string };
   heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
   /** video variant only: mp4/webm source. Required when variant = "video". */
   videoUrl?: string;
   /** video variant only: poster image shown before playback. */
-  videoPoster?: string;
+  videoPoster?: string | { assetId: string } | { url: string };
   /**
    * shoppable variant only: product IDs to render as a compact shelf
    * beneath the hero copy. Order is preserved; unknown IDs skipped.
@@ -50,12 +52,12 @@ export const HeroSchema = z
     subtitle: optStr(400),
     ctaLabel: optStr(60),
     ctaHref: optStr(1000),
-    imageUrl: optStr(1000),
+    imageUrl: z.union([str(1000), ImageRefSchema]).optional(),
     heroLayout: z
       .enum(["centered", "split-left", "split-right", "overlay"])
       .optional(),
     videoUrl: optStr(2000),
-    videoPoster: optStr(1000),
+    videoPoster: z.union([str(1000), ImageRefSchema]).optional(),
     shoppableProductIds: z.array(z.string().max(80)).max(8).optional(),
   })
   .strict();

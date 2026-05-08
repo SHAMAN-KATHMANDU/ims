@@ -33,12 +33,21 @@ export function ImageInline({
   onChange,
   disabled,
 }: InlineEditorProps<ImageProps>) {
+  const srcDisplay =
+    typeof props.src === "string"
+      ? props.src
+      : props.src && "url" in props.src
+        ? props.src.url
+        : props.src && "assetId" in props.src
+          ? `asset:${props.src.assetId}`
+          : "";
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">Image URL</Label>
         <Input
-          value={props.src ?? ""}
+          value={srcDisplay}
           onChange={(e) => onChange({ ...props, src: e.target.value })}
           placeholder="https://… or media-asset URL"
           disabled={disabled}

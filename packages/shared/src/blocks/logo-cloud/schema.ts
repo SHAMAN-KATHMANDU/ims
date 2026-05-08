@@ -1,14 +1,16 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Logo cloud props — press / partners grid.
+ * Logo src accepts either a string URL (legacy) or an ImageRef object.
  */
 export interface LogoCloudProps {
   heading?: string;
-  logos: { src: string; alt: string }[];
+  logos: { src: string | { assetId: string } | { url: string }; alt: string }[];
   logoHeight?: number;
   grayscale?: boolean;
   columns?: 3 | 4 | 5 | 6;
@@ -21,7 +23,11 @@ export const LogoCloudSchema = z
   .object({
     heading: optStr(200),
     logos: z
-      .array(z.object({ src: str(1000), alt: str(200) }).strict())
+      .array(
+        z
+          .object({ src: z.union([str(1000), ImageRefSchema]), alt: str(200) })
+          .strict(),
+      )
       .max(24),
     logoHeight: z.number().int().min(16).max(200).optional(),
     grayscale: z.boolean().optional(),

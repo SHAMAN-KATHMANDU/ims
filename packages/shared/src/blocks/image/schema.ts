@@ -1,13 +1,15 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Image props — responsive image with optional caption.
+ * src accepts either a string URL (legacy) or an ImageRef ({ assetId } or { url }).
  */
 export interface ImageProps {
-  src: string;
+  src: string | { assetId: string } | { url: string };
   alt: string;
   aspectRatio?: "1/1" | "4/3" | "16/9" | "3/4" | "auto";
   rounded?: boolean;
@@ -22,7 +24,7 @@ export interface ImageProps {
  */
 export const ImageSchema = z
   .object({
-    src: str(1000),
+    src: z.union([str(1000), ImageRefSchema]),
     alt: str(200),
     aspectRatio: z.enum(["1/1", "4/3", "16/9", "3/4", "auto"]).optional(),
     rounded: z.boolean().optional(),

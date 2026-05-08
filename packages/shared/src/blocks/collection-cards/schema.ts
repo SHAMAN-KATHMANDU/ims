@@ -1,15 +1,17 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Collection card item.
+ * imageUrl accepts either a string URL (legacy) or an ImageRef object.
  */
 export interface CollectionCardItem {
   title: string;
   subtitle?: string;
-  imageUrl?: string;
+  imageUrl?: string | { assetId: string } | { url: string };
   ctaLabel?: string;
   ctaHref?: string;
 }
@@ -39,7 +41,7 @@ export const CollectionCardsSchema = z
           .object({
             title: str(120),
             subtitle: optStr(200),
-            imageUrl: optStr(1000),
+            imageUrl: z.union([str(1000), ImageRefSchema]).optional(),
             ctaLabel: optStr(60),
             ctaHref: optStr(1000),
           })

@@ -1,13 +1,19 @@
 import { z } from "zod";
+import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
 const optStr = (max: number) => str(max).optional();
 
 /**
  * Gallery — grid, masonry, or slideshow with optional lightbox.
+ * Image src accepts either a string URL (legacy) or an ImageRef object.
  */
 export interface GalleryProps {
-  images: { src: string; alt: string; caption?: string }[];
+  images: {
+    src: string | { assetId: string } | { url: string };
+    alt: string;
+    caption?: string;
+  }[];
   layout: "grid" | "masonry" | "slideshow";
   columns: 2 | 3 | 4;
   lightbox?: boolean;
@@ -26,7 +32,7 @@ export const GallerySchema = z
       .array(
         z
           .object({
-            src: str(2000),
+            src: z.union([str(2000), ImageRefSchema]),
             alt: str(200),
             caption: optStr(300),
           })
