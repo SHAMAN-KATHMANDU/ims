@@ -9,12 +9,9 @@ import {
   exportCrmReports,
 } from "../services/crm.service";
 
-export const crmKeys = {
-  /** Prefix for all CRM overview / reports queries — use for invalidation after mutations. */
-  all: ["crm"] as const,
-  dashboard: () => ["crm", "dashboard"] as const,
-  reports: (year?: number) => ["crm", "reports", year] as const,
-};
+import { crmKeys } from "./_query-keys";
+
+export { crmKeys };
 
 export function useCrmDashboard() {
   const crmEnabled = useEnvFeatureFlag(EnvFeature.CRM);

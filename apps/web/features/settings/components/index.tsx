@@ -37,8 +37,8 @@ import {
 import {
   useTenantPaymentMethods,
   useUpdateTenantPaymentMethods,
-  type TenantPaymentMethodConfig,
-} from "..";
+} from "../hooks/use-payment-methods";
+import type { TenantPaymentMethodConfig } from "../services";
 
 // Zod schema for password change validation
 const passwordSchema = z

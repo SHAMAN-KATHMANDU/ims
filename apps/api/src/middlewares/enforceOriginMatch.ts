@@ -59,5 +59,3 @@ export function enforceOriginMatch(
 
   return next();
 }
-
-export default enforceOriginMatch;

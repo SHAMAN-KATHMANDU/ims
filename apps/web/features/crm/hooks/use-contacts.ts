@@ -27,21 +27,9 @@ import {
 } from "../services/contact.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { useS3DirectUpload } from "@/features/media";
-import { crmKeys } from "./use-crm";
-import { taskKeys } from "./use-tasks";
-import { dealKeys } from "./use-deals";
+import { crmKeys, taskKeys, dealKeys, contactKeys } from "./_query-keys";
 
-export const contactKeys = {
-  all: ["contacts"] as const,
-  lists: () => [...contactKeys.all, "list"] as const,
-  list: (params: ContactListParams) =>
-    [...contactKeys.lists(), params] as const,
-  details: () => [...contactKeys.all, "detail"] as const,
-  detail: (id: string) => [...contactKeys.details(), id] as const,
-  tags: (params?: GetContactTagsParams) =>
-    [...contactKeys.all, "tags", params] as const,
-  tagsAll: () => [...contactKeys.all, "tags"] as const,
-};
+export { contactKeys };
 
 export function useContactsPaginated(
   params: ContactListParams = {},

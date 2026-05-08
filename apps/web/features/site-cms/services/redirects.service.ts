@@ -25,18 +25,18 @@ export interface CreateRedirectData {
 
 export type UpdateRedirectData = Partial<CreateRedirectData>;
 
-export interface ListRedirectsResponse {
-  redirects: Redirect[];
+interface ListRedirectsEnvelope {
+  data: { redirects: Redirect[] };
 }
 
-export interface RedirectResponse {
-  redirect: Redirect;
+interface RedirectEnvelope {
+  data: { redirect: Redirect };
 }
 
 export async function listRedirects(): Promise<Redirect[]> {
   try {
-    const response = await api.get<ListRedirectsResponse>("/sites/redirects");
-    return response.data.redirects;
+    const response = await api.get<ListRedirectsEnvelope>("/sites/redirects");
+    return response.data.data.redirects;
   } catch (error) {
     handleApiError(error, "list redirects");
   }
@@ -44,8 +44,8 @@ export async function listRedirects(): Promise<Redirect[]> {
 
 export async function getRedirect(id: string): Promise<Redirect> {
   try {
-    const response = await api.get<RedirectResponse>(`/sites/redirects/${id}`);
-    return response.data.redirect;
+    const response = await api.get<RedirectEnvelope>(`/sites/redirects/${id}`);
+    return response.data.data.redirect;
   } catch (error) {
     handleApiError(error, `get redirect "${id}"`);
   }
@@ -55,8 +55,8 @@ export async function createRedirect(
   data: CreateRedirectData,
 ): Promise<Redirect> {
   try {
-    const response = await api.post<RedirectResponse>("/sites/redirects", data);
-    return response.data.redirect;
+    const response = await api.post<RedirectEnvelope>("/sites/redirects", data);
+    return response.data.data.redirect;
   } catch (error) {
     handleApiError(error, "create redirect");
   }
@@ -67,11 +67,11 @@ export async function updateRedirect(
   data: UpdateRedirectData,
 ): Promise<Redirect> {
   try {
-    const response = await api.put<RedirectResponse>(
+    const response = await api.put<RedirectEnvelope>(
       `/sites/redirects/${id}`,
       data,
     );
-    return response.data.redirect;
+    return response.data.data.redirect;
   } catch (error) {
     handleApiError(error, `update redirect "${id}"`);
   }

@@ -103,5 +103,3 @@ export function publicApiKeyAuth(options: Options = {}) {
     }
   };
 }
-
-export default publicApiKeyAuth;

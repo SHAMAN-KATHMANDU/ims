@@ -17,18 +17,15 @@ import {
   type UpdateTaskData,
 } from "../services/task.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
-import { contactKeys } from "./use-contacts";
-import { dealKeys } from "./use-deals";
-import { crmKeys } from "./use-crm";
-import { workflowKeys } from "./use-workflows";
+import {
+  contactKeys,
+  dealKeys,
+  crmKeys,
+  workflowKeys,
+  taskKeys,
+} from "./_query-keys";
 
-export const taskKeys = {
-  all: ["tasks"] as const,
-  lists: () => [...taskKeys.all, "list"] as const,
-  list: (params: TaskListParams) => [...taskKeys.lists(), params] as const,
-  details: () => [...taskKeys.all, "detail"] as const,
-  detail: (id: string) => [...taskKeys.details(), id] as const,
-};
+export { taskKeys };
 
 export function useTasksPaginated(
   params: TaskListParams = {},
