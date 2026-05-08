@@ -15,6 +15,7 @@ import {
   type UpdateSiteConfigData,
   type SiteAnalytics,
 } from "../services/tenant-site.service";
+import { siteLayoutKeys } from "./use-site-layouts";
 
 export type { SiteConfig, SiteTemplate, UpdateSiteConfigData, SiteAnalytics };
 
@@ -62,7 +63,17 @@ export function usePickSiteTemplate() {
       resetBranding: boolean;
     }) => pickSiteTemplate(templateSlug, resetBranding),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tenantSiteKeys.config() });
+      // Picking a template overwrites every scope's draft+published layout
+      // server-side, so invalidating only the config query left the editor
+      // (and the preview iframe it owns) showing stale block trees and a
+      // stale theme. Invalidate everything tenant-site related so the next
+      // render fetches fresh data, and emit a window event the canvas can
+      // listen to for forcing an iframe reload.
+      queryClient.invalidateQueries({ queryKey: tenantSiteKeys.all });
+      queryClient.invalidateQueries({ queryKey: siteLayoutKeys.all });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("site-template-picked"));
+      }
     },
   });
 }
