@@ -17,7 +17,6 @@ import { cache } from "react";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { EditorPreviewShell } from "@/components/blocks/EditorPreviewShell";
 import { EditorBridge } from "@/components/editor-bridge";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import { ThemeTokensSchema, type BlockNode } from "@repo/shared";
 import { brandingToCssVars, brandingTheme } from "@/lib/theme";
@@ -279,12 +278,6 @@ export default async function SitePreviewRoute({
        * the parent window — enables cross-origin click-to-select.
        */}
       {isEditorMode && <EditorBridge />}
-      <SiteHeader
-        site={site}
-        host={dataContext.host}
-        categories={result.categories}
-        navPages={result.navPages}
-      />
       <main>
         {blocks.length > 0 ? (
           isEditorMode ? (
@@ -305,11 +298,6 @@ export default async function SitePreviewRoute({
           <EmptyState scope={scope} />
         )}
       </main>
-      <SiteFooter
-        site={site}
-        host={dataContext.host}
-        navPages={result.navPages}
-      />
     </div>
   );
 }

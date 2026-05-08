@@ -2,14 +2,9 @@
  * Custom 404 page — renders a block-based layout when a SiteLayout row
  * exists for scope "404", otherwise falls back to a branded default.
  *
- * IMPORTANT: This page must NOT render SiteHeader/SiteFooter when there's
- * no tenant context (CartProvider isn't in the tree when the middleware
- * returned 404 for an unknown host). The guard at line ~28 returns early
- * with a plain DefaultNotFound when headers are missing.
- *
- * When tenant context IS available (the middleware resolved the host but
- * the page slug didn't match), we render the full branded 404 with
- * header/footer.
+ * Uses scope-aware BlockRenderer pattern with header/footer chrome.
+ * When there's no tenant context (middleware returned 404 for an unknown host),
+ * the guard at line ~28 returns early with a plain DefaultNotFound.
  */
 
 import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
@@ -28,46 +23,46 @@ export default async function NotFound() {
       return <DefaultNotFound />;
     }
 
-    const [site, layout, categories, navPages] = await Promise.all([
-      getSite(host, tenantId).catch(() => null),
-      getSiteLayout(host, tenantId, "404").catch(() => null),
-      getCategories(host, tenantId).catch(() => []),
-      getNavPages(host, tenantId).catch(() => []),
-    ]);
+    const [site, headerLayout, layout, footerLayout, categories, navPages] =
+      await Promise.all([
+        getSite(host, tenantId).catch(() => null),
+        getSiteLayout(host, tenantId, "header").catch(() => null),
+        getSiteLayout(host, tenantId, "404").catch(() => null),
+        getSiteLayout(host, tenantId, "footer").catch(() => null),
+        getCategories(host, tenantId).catch(() => []),
+        getNavPages(host, tenantId).catch(() => []),
+      ]);
 
     if (!site) {
       return <DefaultNotFound />;
     }
 
-    // If the tenant has a custom 404 block layout, render it.
-    // We import SiteHeader/SiteFooter lazily to avoid the useCart crash
-    // when this module is loaded outside CartProvider.
-    const hasCustomLayout =
-      layout && Array.isArray(layout.blocks) && layout.blocks.length > 0;
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(layout?.blocks) ? (layout.blocks as BlockNode[]) : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
 
-    const { SiteHeader, SiteFooter } =
-      await import("@/components/templates/shared");
+    const dataContext: BlockDataContext = {
+      site,
+      host,
+      tenantId,
+      categories,
+      navPages,
+      products: [],
+      featuredBlogPosts: [],
+    };
 
-    if (hasCustomLayout) {
-      const dataContext: BlockDataContext = {
-        site,
-        host,
-        tenantId,
-        categories,
-        navPages,
-        products: [],
-        featuredBlogPosts: [],
-      };
-
-      return (
-        <>
-          <SiteHeader
-            site={site}
-            host={host}
-            categories={categories}
-            navPages={navPages}
-          />
-          <main>
+    return (
+      <>
+        <main>
+          {blocks.length > 0 ? (
+            <BlockRenderer nodes={blocks} dataContext={dataContext} />
+          ) : (
             <div
               style={{
                 maxWidth: "var(--container-width, 1200px)",
@@ -75,28 +70,10 @@ export default async function NotFound() {
                 padding: "0 1rem",
               }}
             >
-              <BlockRenderer
-                nodes={layout.blocks as BlockNode[]}
-                dataContext={dataContext}
-              />
+              <DefaultNotFound />
             </div>
-          </main>
-          <SiteFooter site={site} host={host} navPages={navPages} />
-        </>
-      );
-    }
-
-    // Branded default 404 with header/footer
-    return (
-      <>
-        <SiteHeader
-          site={site}
-          host={host}
-          categories={categories}
-          navPages={navPages}
-        />
-        <DefaultNotFound />
-        <SiteFooter site={site} host={host} navPages={navPages} />
+          )}
+        </main>
       </>
     );
   } catch {

@@ -1,6 +1,6 @@
 /**
  * Slug-level 404 page — rendered when notFound() is called inside
- * [...slug]/page.tsx. Uses SiteLayout scope "not-found" for custom blocks.
+ * [...slug]/page.tsx. Uses SiteLayout scope "404" for custom blocks.
  */
 
 import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
@@ -19,43 +19,46 @@ export default async function SlugNotFound() {
       return <DefaultNotFound />;
     }
 
-    const [site, layout, categories, navPages] = await Promise.all([
-      getSite(host, tenantId).catch(() => null),
-      getSiteLayout(host, tenantId, "not-found").catch(() => null),
-      getCategories(host, tenantId).catch(() => []),
-      getNavPages(host, tenantId).catch(() => []),
-    ]);
+    const [site, headerLayout, layout, footerLayout, categories, navPages] =
+      await Promise.all([
+        getSite(host, tenantId).catch(() => null),
+        getSiteLayout(host, tenantId, "header").catch(() => null),
+        getSiteLayout(host, tenantId, "404").catch(() => null),
+        getSiteLayout(host, tenantId, "footer").catch(() => null),
+        getCategories(host, tenantId).catch(() => []),
+        getNavPages(host, tenantId).catch(() => []),
+      ]);
 
     if (!site) {
       return <DefaultNotFound />;
     }
 
-    const { SiteHeader, SiteFooter } =
-      await import("@/components/templates/shared");
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(layout?.blocks) ? (layout.blocks as BlockNode[]) : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
 
-    const hasCustomLayout =
-      layout && Array.isArray(layout.blocks) && layout.blocks.length > 0;
+    const dataContext: BlockDataContext = {
+      site,
+      host,
+      tenantId,
+      categories,
+      navPages,
+      products: [],
+      featuredBlogPosts: [],
+    };
 
-    if (hasCustomLayout) {
-      const dataContext: BlockDataContext = {
-        site,
-        host,
-        tenantId,
-        categories,
-        navPages,
-        products: [],
-        featuredBlogPosts: [],
-      };
-
-      return (
-        <>
-          <SiteHeader
-            site={site}
-            host={host}
-            categories={categories}
-            navPages={navPages}
-          />
-          <main>
+    return (
+      <>
+        <main>
+          {blocks.length > 0 ? (
+            <BlockRenderer nodes={blocks} dataContext={dataContext} />
+          ) : (
             <div
               style={{
                 maxWidth: "var(--container-width, 1200px)",
@@ -63,27 +66,10 @@ export default async function SlugNotFound() {
                 padding: "0 1rem",
               }}
             >
-              <BlockRenderer
-                nodes={layout.blocks as BlockNode[]}
-                dataContext={dataContext}
-              />
+              <DefaultNotFound />
             </div>
-          </main>
-          <SiteFooter site={site} host={host} navPages={navPages} />
-        </>
-      );
-    }
-
-    return (
-      <>
-        <SiteHeader
-          site={site}
-          host={host}
-          categories={categories}
-          navPages={navPages}
-        />
-        <DefaultNotFound />
-        <SiteFooter site={site} host={host} navPages={navPages} />
+          )}
+        </main>
       </>
     );
   } catch {

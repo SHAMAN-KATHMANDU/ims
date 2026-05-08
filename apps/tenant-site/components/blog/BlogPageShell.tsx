@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getCategories, getNavPages } from "@/lib/api";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
+import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
+import { BlockRenderer } from "@/components/blocks/BlockRenderer";
+import type { BlockDataContext } from "@/components/blocks/data-context";
+import type { BlockNode } from "@repo/shared";
 import { notFound } from "next/navigation";
 
 /**
- * Shell for every blog page — reuses the same SiteHeader/SiteFooter as the
- * template layouts so a visitor arriving at /blog sees the same chrome they
- * saw on the homepage, regardless of which template the tenant has picked.
+ * Shell for every blog page — renders scope-aware chrome (header/footer)
+ * via BlockRenderer so a visitor arriving at /blog sees the same chrome
+ * they saw on the homepage, regardless of which template the tenant has picked.
  */
 export async function BlogPageShell({
   children,
@@ -22,21 +24,38 @@ export async function BlogPageShell({
   cover?: ReactNode;
 }) {
   const ctx = await getTenantContext();
-  const [site, categories, navPages] = await Promise.all([
-    getSite(ctx.host, ctx.tenantId),
-    getCategories(ctx.host, ctx.tenantId),
-    getNavPages(ctx.host, ctx.tenantId),
-  ]);
+  const [site, categories, navPages, headerLayout, footerLayout] =
+    await Promise.all([
+      getSite(ctx.host, ctx.tenantId),
+      getCategories(ctx.host, ctx.tenantId),
+      getNavPages(ctx.host, ctx.tenantId),
+      getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+      getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+    ]);
   if (!site) notFound();
+
+  const blocks = [
+    ...(Array.isArray(headerLayout?.blocks)
+      ? (headerLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(footerLayout?.blocks)
+      ? (footerLayout.blocks as BlockNode[])
+      : []),
+  ];
+
+  const dataContext: BlockDataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: [],
+    featuredBlogPosts: [],
+  };
 
   return (
     <div data-page="blog">
-      <SiteHeader
-        site={site}
-        host={ctx.host}
-        categories={categories}
-        navPages={navPages}
-      />
+      <BlockRenderer nodes={blocks} dataContext={dataContext} />
       {cover}
       <main
         className="container"
@@ -44,7 +63,6 @@ export async function BlogPageShell({
       >
         {children}
       </main>
-      <SiteFooter site={site} host={ctx.host} navPages={navPages} />
     </div>
   );
 }

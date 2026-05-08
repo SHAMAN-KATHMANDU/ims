@@ -808,6 +808,7 @@ export type PublicSiteLayoutScope =
   | "products-index"
   | "product-detail"
   | "offers"
+  | "cart"
   | "blog-index"
   | "blog-post"
   | "page"
