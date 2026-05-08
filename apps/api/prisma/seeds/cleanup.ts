@@ -51,6 +51,10 @@ export async function deleteTenantBySlug(
           .then((r) => r.map((v) => v.id))
       : [];
   if (variationIds.length > 0) {
+    // InventorySignal.variation_id references product_variations with onDelete: Restrict (Phase 9 FK drift fix)
+    await prisma.inventorySignal.deleteMany({
+      where: { variationId: { in: variationIds } },
+    });
     await prisma.variationPhoto.deleteMany({
       where: { variationId: { in: variationIds } },
     });
@@ -153,6 +157,13 @@ export async function deleteTenantBySlug(
   await prisma.tenantPayment.deleteMany({ where: { tenantId: tid } });
   await prisma.subscription.deleteMany({ where: { tenantId: tid } });
   await prisma.passwordResetRequest.deleteMany({ where: { tenantId: tid } });
+
+  // Phase 9 seed cleanup drift fix: Handle remaining RESTRICT FKs before deleting users.
+  // These tables have tenantId and user FKs that must be cleared in order.
+  await prisma.automationDefinition.deleteMany({ where: { tenantId: tid } });
+  await prisma.blockComment.deleteMany({ where: { tenantId: tid } });
+  await prisma.mediaAsset.deleteMany({ where: { tenantId: tid } });
+
   await prisma.user.deleteMany({ where: { tenantId: tid } });
   await prisma.tenant.delete({ where: { id: tid } });
 }
