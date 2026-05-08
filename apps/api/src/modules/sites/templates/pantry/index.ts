@@ -23,16 +23,8 @@ import { pantryCart } from "./cart";
 import { pantryHeader } from "./header";
 import { pantryFooter } from "./footer";
 
-const pantryNav = buildTemplateNavSeed({
-  brandName: "Pantry & Co.",
-  brandTagline: "Small-batch larder essentials.",
-  enableNewsletter: true,
-  newsletterHeading: "Recipes & restocks, monthly",
-});
-
 export const pantryBlueprint: TemplateBlueprint = {
   slug: "pantry",
-  ...pantryNav,
   layouts: {
     header: pantryHeader(),
     home: pantryHome(),

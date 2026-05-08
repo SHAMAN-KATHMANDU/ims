@@ -98,9 +98,8 @@ model Tenant {
   // Custom tenant pages (About, FAQ, Lookbook, ...)
   tenantPages TenantPage[]
 
-  // Block-based layouts + nav menus (Phase 1 of template overhaul)
+  // Block-based layouts (Phase 1 of template overhaul; nav menus dropped Phase 9)
   siteLayouts SiteLayout[]
-  navMenus    NavMenu[]
   // Reusable BlockNode[] sub-trees referenced via `snippet-ref` blocks (Phase 5)
   siteSnippets SiteSnippet[]
   // Inline comments on blog posts / pages (Phase 6 review workflow)
@@ -702,20 +701,6 @@ model ProductCollection {
 ///   "header-primary" | "footer-1" | "footer-2" | "mobile-drawer"
 /// `items` is a NavItem[] (see packages/shared/src/site-schema) — a
 /// recursive structure supporting links, CTAs, dropdowns and mega-menus.
-model NavMenu {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  slot      String   @db.VarChar(40)
-  items     Json
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, slot])
-  @@map("nav_menus")
-}
-
 /// Form submissions from the tenant-site form block. Each row stores the
 /// field values as JSON. When `submitTo = "crm-lead"`, a Lead row is also
 /// created in the CRM module.

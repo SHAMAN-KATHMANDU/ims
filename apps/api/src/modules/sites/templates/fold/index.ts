@@ -23,16 +23,8 @@ import { foldCart } from "./cart";
 import { foldHeader } from "./header";
 import { foldFooter } from "./footer";
 
-const foldNav = buildTemplateNavSeed({
-  brandName: "Fold",
-  brandTagline: "Apparel without ornament.",
-  headerLayout: "minimal",
-  footerLayout: "minimal",
-});
-
 export const foldBlueprint: TemplateBlueprint = {
   slug: "fold",
-  ...foldNav,
   layouts: {
     header: foldHeader(),
     home: foldHome(),
