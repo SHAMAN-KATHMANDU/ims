@@ -31,7 +31,6 @@ const ridgeNav = buildTemplateNavSeed({
 
 export const ridgeBlueprint: TemplateBlueprint = {
   slug: "ridge",
-  ...ridgeNav,
   layouts: {
     header: ridgeHeader(),
     home: ridgeHome(),

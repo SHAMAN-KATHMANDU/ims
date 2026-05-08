@@ -46,11 +46,6 @@ import {
   type NavItem,
   type NavMobileDrawerStyle,
 } from "@repo/shared";
-import {
-  useNavMenus,
-  useUpsertNavMenu,
-  pickMenuForSlot,
-} from "../hooks/use-nav-menus";
 
 type EditableKind = "link" | "cta" | "pages-auto";
 
@@ -82,18 +77,9 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
   const { toast } = useToast();
   const { allowed: canUpdate } = useCan("WEBSITE.NAV_MENUS.UPDATE");
   const isDisabled = disabled || !canUpdate;
-  const menusQuery = useNavMenus();
-  const upsert = useUpsertNavMenu();
 
-  const headerRow = useMemo(
-    () => pickMenuForSlot(menusQuery.data, "header-primary"),
-    [menusQuery.data],
-  );
-
-  const mobileDrawerRow = useMemo(
-    () => pickMenuForSlot(menusQuery.data, "mobile-drawer"),
-    [menusQuery.data],
-  );
+  const headerRow = null;
+  const mobileDrawerRow = null;
 
   const [config, setConfig] = useState<NavConfig>(defaultHeaderNavConfig);
   const [mobileDrawerItems, setMobileDrawerItems] = useState<NavItem[]>([]);
@@ -105,22 +91,18 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
   );
 
   useEffect(() => {
-    if (menusQuery.isLoading) return;
-    const next = headerRow
-      ? coerceHeaderConfig(headerRow.items)
-      : defaultHeaderNavConfig();
+    const next = defaultHeaderNavConfig();
     setConfig(next);
     setDirty(false);
     setSelectedIdx(null);
-  }, [headerRow, menusQuery.isLoading]);
+  }, []);
 
   useEffect(() => {
-    if (menusQuery.isLoading) return;
-    const next = coerceMobileDrawerItems(mobileDrawerRow?.items ?? null);
+    const next: NavItem[] = [];
     setMobileDrawerItems(next);
     setDirtyMobileDrawer(false);
     setSelectedMobileIdx(null);
-  }, [mobileDrawerRow, menusQuery.isLoading]);
+  }, []);
 
   const update = (patch: Partial<NavConfig>) => {
     setConfig((c) => ({ ...c, ...patch }));
@@ -211,57 +193,21 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
   };
 
   const handleSaveHeader = async () => {
-    const parsed = NavConfigSchema.safeParse(config);
-    if (!parsed.success) {
-      toast({
-        title: "Nav menu invalid",
-        description: parsed.error.issues[0]?.message ?? "Check your fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      await upsert.mutateAsync({
-        slot: "header-primary",
-        items: parsed.data,
-      });
-      toast({ title: "Header menu saved" });
-      setDirty(false);
-    } catch (error) {
-      toast({
-        title: "Save failed",
-        description:
-          error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Nav menu saving not available",
+      description:
+        "Navigation is now managed through the site editor using template blocks.",
+      variant: "default",
+    });
   };
 
   const handleSaveMobileDrawer = async () => {
-    const parsed = NavItemsOnlySchema.safeParse({ items: mobileDrawerItems });
-    if (!parsed.success) {
-      toast({
-        title: "Mobile drawer invalid",
-        description: parsed.error.issues[0]?.message ?? "Check your fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      await upsert.mutateAsync({
-        slot: "mobile-drawer",
-        items: parsed.data,
-      });
-      toast({ title: "Mobile drawer saved" });
-      setDirtyMobileDrawer(false);
-    } catch (error) {
-      toast({
-        title: "Save failed",
-        description:
-          error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Mobile drawer saving not available",
+      description:
+        "Navigation is now managed through the site editor using template blocks.",
+      variant: "default",
+    });
   };
 
   const handleReset = () => {
@@ -669,9 +615,9 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
               <Button
                 type="button"
                 onClick={handleSaveHeader}
-                disabled={isDisabled || !dirty || upsert.isPending}
+                disabled={isDisabled || !dirty}
               >
-                {upsert.isPending ? "Saving…" : "Save header"}
+                Save header
               </Button>
             </div>
           </div>
@@ -768,9 +714,9 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
               <Button
                 type="button"
                 onClick={handleSaveMobileDrawer}
-                disabled={isDisabled || !dirtyMobileDrawer || upsert.isPending}
+                disabled={isDisabled || !dirtyMobileDrawer}
               >
-                {upsert.isPending ? "Saving…" : "Save drawer"}
+                Save drawer
               </Button>
             </div>
           </div>

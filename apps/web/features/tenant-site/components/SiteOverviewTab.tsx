@@ -34,7 +34,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavMenus } from "../hooks/use-nav-menus";
 import { useSiteLayouts } from "../hooks/use-site-layouts";
 import { useTenantPages } from "@/features/tenant-pages";
 import type { SiteConfig } from "../hooks/use-tenant-site";
@@ -48,21 +47,10 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
   const pathname = usePathname();
   const workspaceSlug = pathname.split("/")[1] ?? "";
   const editorHref = `/${workspaceSlug}/site-editor`;
-  const navMenusQuery = useNavMenus();
   const layoutsQuery = useSiteLayouts();
   const pagesQuery = useTenantPages({ limit: 100 });
 
-  // Nav item count for the header-primary slot. The items payload can be
-  // a full NavConfig OR a NavItemsOnly — grab the array either way.
-  const headerMenu = (navMenusQuery.data ?? []).find(
-    (m) => m.slot === "header-primary",
-  );
-  const headerItemCount = (() => {
-    if (!headerMenu) return 0;
-    const raw = headerMenu.items as { items?: unknown[] } | undefined;
-    const items = Array.isArray(raw?.items) ? raw.items : [];
-    return items.length;
-  })();
+  const headerItemCount = 0;
 
   const layoutCount = layoutsQuery.data?.length ?? 0;
   const pagesCount = pagesQuery.data?.pages.length ?? 0;
@@ -138,8 +126,8 @@ export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
         <StatTile
           icon={<NavIcon className="h-4 w-4" />}
           label="Nav items"
-          value={navMenusQuery.isLoading ? "…" : String(headerItemCount)}
-          muted={headerItemCount === 0}
+          value="—"
+          muted
           onClick={() => onGoToTab("navigation")}
         />
         <StatTile

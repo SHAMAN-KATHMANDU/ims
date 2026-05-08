@@ -25,20 +25,13 @@ import type {
 import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
-import navMenusRepo from "@/modules/nav-menus/nav-menus.repository";
-import { revalidateNavMenu } from "@/modules/nav-menus/nav-menus.revalidate";
 import {
   getTemplateBlueprint,
   BLUEPRINT_SCOPES,
   type TemplateBlueprint,
 } from "./templates";
-import type { BlockNode, BlockTree, NavItem } from "@repo/shared";
-import {
-  BlockTreeSchema,
-  NavConfigSchema,
-  NavItemsOnlySchema,
-  FooterConfigSchema,
-} from "@repo/shared";
+import type { BlockNode, BlockTree } from "@repo/shared";
+import { BlockTreeSchema } from "@repo/shared";
 import {
   synthesizeHeaderBlocks,
   synthesizeFooterBlocks,
@@ -200,12 +193,6 @@ export class SitesService {
         blueprint,
         input.resetBranding === true,
       );
-      await this.seedNavMenusFromBlueprint(
-        tenantId,
-        blueprint,
-        input.resetBranding === true,
-        requestId,
-      );
     }
 
     await this.revalidate(tenantId);
@@ -265,125 +252,6 @@ export class SitesService {
       }
 
       await revalidateSiteLayout(tenantId, scope);
-    }
-  }
-
-  /**
-   * Seed NavMenu rows from the template blueprint. Five slots may be
-   * populated: header-primary, mobile-drawer, footer-1, footer-2,
-   * footer-config. Existing tenant rows are PRESERVED unless `replaceExisting`
-   * is true (set when the tenant explicitly resets to defaults), so a tenant
-   * who has customized their nav doesn't lose work on a re-pick of the same
-   * template.
-   *
-   * Implementation note (Approach A): Each upsert call is idempotent and
-   * runs its own internal transaction. We collect the slots that were
-   * seeded, then revalidate them all after the loop. This avoids calling
-   * revalidateNavMenu (HTTP/ISR webhooks) inside a DB transaction, which
-   * could deadlock or leak resources. The risk of partial writes is low
-   * since each upsert is idempotent and can be retried on re-pick.
-   */
-  private async seedNavMenusFromBlueprint(
-    tenantId: string,
-    blueprint: TemplateBlueprint,
-    replaceExisting: boolean,
-    requestId?: string,
-  ): Promise<void> {
-    const seeds: Array<{ slot: string; items: unknown }> = [];
-    if (blueprint.navConfig) {
-      seeds.push({ slot: "header-primary", items: blueprint.navConfig });
-    }
-    if (blueprint.mobileDrawerConfig) {
-      seeds.push({
-        slot: "mobile-drawer",
-        items: blueprint.mobileDrawerConfig,
-      });
-    }
-    if (blueprint.footerConfig) {
-      seeds.push({ slot: "footer-config", items: blueprint.footerConfig });
-    }
-    if (blueprint.footerPrimaryItems) {
-      seeds.push({
-        slot: "footer-1",
-        items: { items: blueprint.footerPrimaryItems satisfies NavItem[] },
-      });
-    }
-    if (blueprint.footerSecondaryItems) {
-      seeds.push({
-        slot: "footer-2",
-        items: { items: blueprint.footerSecondaryItems satisfies NavItem[] },
-      });
-    }
-
-    // Hoist validation (#1 fix): validate all seeds before any upserts
-    for (const seed of seeds) {
-      if (seed.slot === "header-primary" || seed.slot === "mobile-drawer") {
-        const parsed = NavConfigSchema.safeParse(seed.items);
-        if (!parsed.success) {
-          throw createError(
-            `Template "${blueprint.slug}" nav config for slot "${seed.slot}" failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
-            500,
-          );
-        }
-      } else if (seed.slot === "footer-config") {
-        const parsed = FooterConfigSchema.safeParse(seed.items);
-        if (!parsed.success) {
-          throw createError(
-            `Template "${blueprint.slug}" footer-config failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
-            500,
-          );
-        }
-      } else if (seed.slot === "footer-1" || seed.slot === "footer-2") {
-        const parsed = NavItemsOnlySchema.safeParse(seed.items);
-        if (!parsed.success) {
-          throw createError(
-            `Template "${blueprint.slug}" footer items for slot "${seed.slot}" failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
-            500,
-          );
-        }
-      }
-    }
-
-    // Cleaner loop (#2 fix): filter existing slots and collect seeded ones
-    const seededSlots: string[] = [];
-    for (const seed of seeds) {
-      if (!replaceExisting) {
-        const existing = await navMenusRepo.findBySlot(tenantId, seed.slot);
-        if (existing) continue;
-      }
-
-      await navMenusRepo.upsert(
-        tenantId,
-        seed.slot,
-        seed.items as Prisma.InputJsonValue,
-      );
-      seededSlots.push(seed.slot);
-    }
-
-    // Revalidate all seeded slots after the loop (outside any transaction).
-    // ISR/webhook calls must not live inside a DB transaction.
-    // Use Promise.allSettled to tolerate individual revalidation failures (#5 fix)
-    const results = await Promise.allSettled(
-      seededSlots.map((slot) => revalidateNavMenu(tenantId, slot)),
-    );
-
-    // Log any rejections without throwing (#3 fix: thread requestId for context)
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      if (result.status === "rejected") {
-        logger.warn(
-          `Revalidate nav menu slot "${seededSlots[i]}" failed`,
-          requestId,
-          {
-            tenantId,
-            slot: seededSlots[i],
-            error:
-              result.reason instanceof Error
-                ? result.reason.message
-                : String(result.reason),
-          },
-        );
-      }
     }
   }
 
@@ -671,51 +539,22 @@ export class SitesService {
 
     const blueprint = getTemplateBlueprint(template.slug);
 
-    // Load NavMenu rows for synthesis
-    const navConfigRow = await navMenusRepo.findBySlot(
-      tenantId,
-      "header-primary",
-    );
-    const mobileDrawerRow = await navMenusRepo.findBySlot(
-      tenantId,
-      "mobile-drawer",
-    );
-    const footerConfigRow = await navMenusRepo.findBySlot(
-      tenantId,
-      "footer-config",
-    );
-    const footerPrimaryRow = await navMenusRepo.findBySlot(
-      tenantId,
-      "footer-1",
-    );
-    const footerSecondaryRow = await navMenusRepo.findBySlot(
-      tenantId,
-      "footer-2",
-    );
-
-    // Extract the config objects from JSON payloads
-    const navConfig = navConfigRow?.items as any | null;
-    const mobileDrawerConfig = mobileDrawerRow?.items as any | null;
-    const footerConfig = footerConfigRow?.items as any | null;
-    const footerPrimaryItems = (footerPrimaryRow?.items as any)?.items ?? null;
-    const footerSecondaryItems =
-      (footerSecondaryRow?.items as any)?.items ?? null;
-
-    // Synthesize the blocks
+    // NavMenu table is no longer the source of truth (dropped in Phase 9).
+    // Synthesize blocks from template blueprint only.
     let blocks: BlockNode[];
     if (scope === "header") {
       blocks = synthesizeHeaderBlocks({
-        navConfig,
-        mobileDrawerConfig,
-        footerConfig,
+        navConfig: null,
+        mobileDrawerConfig: null,
+        footerConfig: null,
         templateHeaderFallback: blueprint?.layouts?.header,
       });
     } else {
       // scope === "footer"
       blocks = synthesizeFooterBlocks({
-        footerConfig,
-        footerPrimaryItems,
-        footerSecondaryItems,
+        footerConfig: null,
+        footerPrimaryItems: null,
+        footerSecondaryItems: null,
         templateFooterFallback: blueprint?.layouts?.footer,
       });
     }

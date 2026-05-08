@@ -23,18 +23,8 @@ import { foxgloveCart } from "./cart";
 import { foxgloveHeader } from "./header";
 import { foxgloveFooter } from "./footer";
 
-const foxgloveNav = buildTemplateNavSeed({
-  brandName: "Foxglove & Co.",
-  brandTagline: "Books, papers, and things to write with.",
-  headerLayout: "centered",
-  footerLayout: "stacked",
-  enableNewsletter: true,
-  newsletterHeading: "A monthly reading list",
-});
-
 export const foxgloveBlueprint: TemplateBlueprint = {
   slug: "foxglove",
-  ...foxgloveNav,
   layouts: {
     header: foxgloveHeader(),
     home: foxgloveHome(),

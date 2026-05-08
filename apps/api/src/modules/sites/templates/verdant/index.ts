@@ -23,16 +23,8 @@ import { verdantCart } from "./cart";
 import { verdantHeader } from "./header";
 import { verdantFooter } from "./footer";
 
-const verdantNav = buildTemplateNavSeed({
-  brandName: "Verdant",
-  brandTagline: "Living things, grown well.",
-  enableNewsletter: true,
-  newsletterHeading: "Care notes from the greenhouse",
-});
-
 export const verdantBlueprint: TemplateBlueprint = {
   slug: "verdant",
-  ...verdantNav,
   layouts: {
     header: verdantHeader(),
     home: verdantHome(),

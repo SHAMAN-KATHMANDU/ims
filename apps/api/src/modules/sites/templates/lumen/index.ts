@@ -23,18 +23,8 @@ import { lumenCart } from "./cart";
 import { lumenHeader } from "./header";
 import { lumenFooter } from "./footer";
 
-const lumenNav = buildTemplateNavSeed({
-  brandName: "Lumen",
-  brandTagline: "Skin rituals for soft-lit days.",
-  headerLayout: "centered",
-  footerLayout: "centered",
-  enableNewsletter: true,
-  newsletterHeading: "10% off your first ritual",
-});
-
 export const lumenBlueprint: TemplateBlueprint = {
   slug: "lumen",
-  ...lumenNav,
   layouts: {
     header: lumenHeader(),
     home: lumenHome(),

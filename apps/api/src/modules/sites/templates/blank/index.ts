@@ -6,18 +6,9 @@
  */
 
 import type { TemplateBlueprint } from "@repo/shared";
-import { buildTemplateNavSeed } from "../_shared";
-
-const blankNav = buildTemplateNavSeed({
-  brandName: "Your Store",
-  brandTagline: "",
-  headerLayout: "standard",
-  enableNewsletter: false,
-});
 
 export const blankBlueprint: TemplateBlueprint = {
   slug: "blank",
-  ...blankNav,
   layouts: {
     header: [],
     home: [],

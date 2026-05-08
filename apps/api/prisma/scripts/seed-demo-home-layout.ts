@@ -2,20 +2,15 @@
  * Seed a realistic demo home-page block tree for local development.
  *
  * Target: the tenant with slug "demo". Ensures the tenant has a SiteConfig
- * (websiteEnabled + isPublished), a default header NavMenu, and a
- * home-scope SiteLayout composed of the Phase 3 block library. Idempotent
- * — re-running updates the existing rows.
+ * (websiteEnabled + isPublished) and a home-scope SiteLayout composed of
+ * the Phase 3 block library. Idempotent — re-running updates the existing rows.
  *
  * Usage:
  *   cd apps/api && npx tsx prisma/scripts/seed-demo-home-layout.ts
  */
 
 import { PrismaClient, type Prisma } from "@prisma/client";
-import {
-  defaultHeaderNavConfig,
-  type BlockNode,
-  type BlockPropsMap,
-} from "@repo/shared";
+import { type BlockNode, type BlockPropsMap } from "@repo/shared";
 
 const DEMO_TENANT_SLUG = "demo";
 
@@ -179,23 +174,7 @@ async function main() {
       console.log("[seed-demo-home-layout] enabled + published SiteConfig");
     }
 
-    // 2. Ensure header-primary NavMenu exists.
-    const existingNav = await prisma.navMenu.findFirst({
-      where: { tenantId: tenant.id, slot: "header-primary" },
-      select: { id: true },
-    });
-    if (!existingNav) {
-      await prisma.navMenu.create({
-        data: {
-          tenantId: tenant.id,
-          slot: "header-primary",
-          items: defaultHeaderNavConfig() as unknown as Prisma.InputJsonValue,
-        },
-      });
-      console.log("[seed-demo-home-layout] created header NavMenu");
-    }
-
-    // 3. Seed the home SiteLayout (upsert into `blocks`, NOT draftBlocks,
+    // 2. Seed the home SiteLayout (upsert into `blocks`, NOT draftBlocks,
     // so the public preview shows it immediately).
     const blocks = buildHomeBlocks();
     const existingLayout = await prisma.siteLayout.findFirst({

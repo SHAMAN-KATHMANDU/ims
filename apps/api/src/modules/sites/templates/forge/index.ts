@@ -32,7 +32,6 @@ const forgeNav = buildTemplateNavSeed({
 
 export const forgeBlueprint: TemplateBlueprint = {
   slug: "forge",
-  ...forgeNav,
   layouts: {
     header: forgeHeader(),
     home: forgeHome(),

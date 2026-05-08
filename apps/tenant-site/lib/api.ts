@@ -852,36 +852,11 @@ export async function getSiteLayout(
 }
 
 // ============================================================================
-// Nav menus (Phase 2 — customizable header/footer/drawer)
+// Nav menus (DEPRECATED: Phase 9 — dropped in favor of block-based layouts)
 // ============================================================================
-
-export type PublicNavSlot =
-  | "header-primary"
-  | "footer-1"
-  | "footer-2"
-  | "mobile-drawer"
-  | "footer-config";
-
-export interface PublicNavMenu {
-  slot: PublicNavSlot | string;
-  /** Either a full NavConfig (header) or { items } (footer/drawer) — the
-   *  renderer decodes based on the slot. */
-  items: unknown;
-  updatedAt: string;
-}
-
-export async function getNavMenu(
-  host: string,
-  tenantId: string,
-  slot: PublicNavSlot,
-): Promise<PublicNavMenu | null> {
-  const tags = [`tenant:${tenantId}:site`, `tenant:${tenantId}:nav:${slot}`];
-  const resp = await publicFetch<{ menu: PublicNavMenu }>(
-    `/public/nav-menus/${slot}`,
-    { host, tenantId, tags },
-  );
-  return resp?.menu ?? null;
-}
+// The /public/nav-menus/* endpoints no longer exist. Layouts are now
+// purely block-based from SiteLayout rows. These types/functions are
+// retained for reference but are no longer functional.
 
 export async function getTenantPageBySlug(
   host: string,

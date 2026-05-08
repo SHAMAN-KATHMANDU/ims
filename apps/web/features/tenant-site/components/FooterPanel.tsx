@@ -43,11 +43,6 @@ import {
   type NavItem,
   type NavCtaStyle,
 } from "@repo/shared";
-import {
-  useNavMenus,
-  useUpsertNavMenu,
-  pickMenuForSlot,
-} from "../hooks/use-nav-menus";
 
 function coerceFooterConfig(raw: unknown): FooterConfig {
   const parsed = FooterConfigSchema.safeParse(raw);
@@ -67,13 +62,8 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
   const { toast } = useToast();
   const { allowed: canUpdate } = useCan("WEBSITE.NAV_MENUS.UPDATE");
   const isDisabled = disabled || !canUpdate;
-  const menusQuery = useNavMenus();
-  const upsert = useUpsertNavMenu();
 
-  const footerRow = useMemo(
-    () => pickMenuForSlot(menusQuery.data, "footer-config"),
-    [menusQuery.data],
-  );
+  const footerRow = null;
 
   const [config, setConfig] = useState<FooterConfig>(defaultFooterConfig);
   const [dirty, setDirty] = useState(false);
@@ -85,15 +75,12 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
   );
 
   useEffect(() => {
-    if (menusQuery.isLoading) return;
-    const next = footerRow
-      ? coerceFooterConfig(footerRow.items)
-      : defaultFooterConfig();
+    const next = defaultFooterConfig();
     setConfig(next);
     setDirty(false);
     setSelectedColumnIdx(null);
     setSelectedSocialIdx(null);
-  }, [footerRow, menusQuery.isLoading]);
+  }, []);
 
   const update = (patch: Partial<FooterConfig>) => {
     setConfig((c) => ({ ...c, ...patch }));
@@ -172,30 +159,12 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
   };
 
   const handleSave = async () => {
-    const parsed = FooterConfigSchema.safeParse(config);
-    if (!parsed.success) {
-      toast({
-        title: "Footer config invalid",
-        description: parsed.error.issues[0]?.message ?? "Check your fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      await upsert.mutateAsync({
-        slot: "footer-config",
-        items: parsed.data,
-      });
-      toast({ title: "Footer saved" });
-      setDirty(false);
-    } catch (error) {
-      toast({
-        title: "Save failed",
-        description:
-          error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Footer saving not available",
+      description:
+        "Footer configuration is managed through the site editor blocks.",
+      variant: "default",
+    });
   };
 
   const handleReset = () => {
@@ -814,21 +783,13 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
         </Card>
       </TabsContent>
 
-      {/* Save/Reset Bar */}
-      {dirty && (
-        <div className="sticky bottom-0 z-10 flex gap-2 border-t bg-background px-6 py-4">
-          <SubmitButton
-            onClick={handleSave}
-            disabled={isDisabled}
-            isLoading={upsert.isPending}
-            label="Save changes"
-            loadingLabel="Saving…"
-          />
-          <Button onClick={handleReset} variant="outline" disabled={isDisabled}>
-            Reset
-          </Button>
-        </div>
-      )}
+      {/* Info notice */}
+      <div className="rounded border border-border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
+          Footer configuration is now managed through the site editor using
+          blocks. Visit the design editor to customize your footer.
+        </p>
+      </div>
     </Tabs>
   );
 }

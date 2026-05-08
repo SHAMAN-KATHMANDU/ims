@@ -23,18 +23,8 @@ import { auricCart } from "./cart";
 import { auricHeader } from "./header";
 import { auricFooter } from "./footer";
 
-const auricNav = buildTemplateNavSeed({
-  brandName: "Auric",
-  brandTagline: "Quiet luxury, kept close.",
-  headerLayout: "centered",
-  footerLayout: "centered",
-  enableNewsletter: true,
-  newsletterHeading: "Atelier dispatches",
-});
-
 export const auricBlueprint: TemplateBlueprint = {
   slug: "auric",
-  ...auricNav,
   layouts: {
     header: auricHeader(),
     home: auricHome(),

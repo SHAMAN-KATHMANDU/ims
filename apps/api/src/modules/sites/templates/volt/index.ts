@@ -33,7 +33,6 @@ const voltNav = buildTemplateNavSeed({
 
 export const voltBlueprint: TemplateBlueprint = {
   slug: "volt",
-  ...voltNav,
   layouts: {
     header: voltHeader(),
     home: voltHome(),

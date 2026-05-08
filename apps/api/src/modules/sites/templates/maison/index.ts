@@ -23,17 +23,8 @@ import { maisonCart } from "./cart";
 import { maisonHeader } from "./header";
 import { maisonFooter } from "./footer";
 
-const maisonNav = buildTemplateNavSeed({
-  brandName: "Maison",
-  brandTagline: "Heirloom interiors, made to live with.",
-  headerLayout: "centered",
-  enableNewsletter: true,
-  newsletterHeading: "Join the studio list",
-});
-
 export const maisonBlueprint: TemplateBlueprint = {
   slug: "maison",
-  ...maisonNav,
   layouts: {
     header: maisonHeader(),
     home: maisonHome(),

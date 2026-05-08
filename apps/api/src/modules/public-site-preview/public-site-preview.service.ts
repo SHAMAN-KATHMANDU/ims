@@ -21,7 +21,6 @@ import publicSiteRepo from "@/modules/public-site/public-site.repository";
 import publicPagesRepo from "@/modules/public-pages/public-pages.repository";
 import publicBlogRepo from "@/modules/public-blog/public-blog.repository";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
-import navMenusRepo from "@/modules/nav-menus/nav-menus.repository";
 import businessProfileRepo from "@/modules/business-profile/business-profile.repository";
 
 /**
@@ -74,11 +73,6 @@ export interface SitePreviewResponse {
     seo: unknown;
     template: unknown;
     businessProfile: PublicBusinessProfile | null;
-  };
-  navMenus: {
-    headerPrimary: unknown | null;
-    footer1: unknown | null;
-    footer2: unknown | null;
   };
   categories: unknown[];
   products: unknown[];
@@ -135,25 +129,14 @@ export class PublicSitePreviewService {
       : null;
 
     // Common data — everything a block tree might need in a preview render.
-    const [
-      headerNav,
-      footer1,
-      footer2,
-      categories,
-      productsResult,
-      navPages,
-      featured,
-      businessProfile,
-    ] = await Promise.all([
-      navMenusRepo.findBySlot(tenantId, "header-primary"),
-      navMenusRepo.findBySlot(tenantId, "footer-1"),
-      navMenusRepo.findBySlot(tenantId, "footer-2"),
-      publicSiteRepo.listCategories(tenantId),
-      publicSiteRepo.listProducts(tenantId, { page: 1, limit: 24 }),
-      publicPagesRepo.listPages(tenantId, { navOnly: true }),
-      publicBlogRepo.listFeatured(tenantId, 3).catch(() => []),
-      businessProfileRepo.getByTenant(tenantId).catch(() => null),
-    ]);
+    const [categories, productsResult, navPages, featured, businessProfile] =
+      await Promise.all([
+        publicSiteRepo.listCategories(tenantId),
+        publicSiteRepo.listProducts(tenantId, { page: 1, limit: 24 }),
+        publicPagesRepo.listPages(tenantId, { navOnly: true }),
+        publicBlogRepo.listFeatured(tenantId, 3).catch(() => []),
+        businessProfileRepo.getByTenant(tenantId).catch(() => null),
+      ]);
 
     const [products] = productsResult;
 
@@ -207,11 +190,6 @@ export class PublicSitePreviewService {
         seo: config.seo,
         template: null,
         businessProfile: publicProfile,
-      },
-      navMenus: {
-        headerPrimary: headerNav?.items ?? null,
-        footer1: footer1?.items ?? null,
-        footer2: footer2?.items ?? null,
       },
       categories,
       products,
