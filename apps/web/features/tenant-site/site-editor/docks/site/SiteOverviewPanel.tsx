@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavMenus } from "../../../hooks/use-nav-menus";
 import { useSiteLayouts } from "../../../hooks/use-site-layouts";
 import { useTenantPages } from "@/features/tenant-pages";
 import { useSiteConfig } from "../../../hooks/use-tenant-site";
@@ -24,20 +23,10 @@ interface SiteOverviewPanelProps {
 export function SiteOverviewPanel({ onSelectPanel }: SiteOverviewPanelProps) {
   const siteQuery = useSiteConfig();
   const config = siteQuery.data;
-  const navMenusQuery = useNavMenus();
   const layoutsQuery = useSiteLayouts();
   const pagesQuery = useTenantPages({ limit: 100 });
 
-  const headerMenu = useMemo(() => {
-    return (navMenusQuery.data ?? []).find((m) => m.slot === "header-primary");
-  }, [navMenusQuery.data]);
-
-  const headerItemCount = useMemo(() => {
-    if (!headerMenu) return 0;
-    const raw = headerMenu.items as { items?: unknown[] } | undefined;
-    const items = Array.isArray(raw?.items) ? raw.items : [];
-    return items.length;
-  }, [headerMenu]);
+  const headerItemCount = 0;
 
   const layoutCount = layoutsQuery.data?.length ?? 0;
   const pagesCount = pagesQuery.data?.pages.length ?? 0;
@@ -124,8 +113,8 @@ export function SiteOverviewPanel({ onSelectPanel }: SiteOverviewPanelProps) {
           <StatTile
             icon={<NavIcon className="h-4 w-4" />}
             label="Nav items"
-            value={navMenusQuery.isLoading ? "…" : String(headerItemCount)}
-            muted={headerItemCount === 0}
+            value="—"
+            muted
             onClick={() => onSelectPanel("nav")}
           />
           <StatTile
