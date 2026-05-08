@@ -17,6 +17,8 @@ import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { brandingDisplayName } from "@/lib/theme";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
+import { pickTemplate } from "@/components/templates/pickTemplate";
+import { readSections } from "@/lib/sections";
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -86,19 +88,12 @@ export default async function OffersPage({ searchParams }: PageProps) {
     };
     return (
       <>
-        <SiteHeader
-          site={site}
-          host={ctx.host}
-          categories={categories}
-          navPages={navPages}
-        />
         <main>
           <BlockRenderer
             nodes={layout.blocks as BlockNode[]}
             dataContext={dataContext}
           />
         </main>
-        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
       </>
     );
   }

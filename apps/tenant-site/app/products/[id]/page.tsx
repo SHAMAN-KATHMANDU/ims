@@ -11,7 +11,6 @@ import { pickTemplate } from "@/components/templates/pickTemplate";
 import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 import { productMetadata, productJsonLd } from "@/lib/seo";
@@ -81,12 +80,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
     };
     return (
       <>
-        <SiteHeader
-          site={site}
-          host={ctx.host}
-          categories={categories}
-          navPages={navPages}
-        />
         <main id="main-content">
           <div className="mx-auto max-w-7xl px-4 md:px-8">
             <BlockRenderer
@@ -95,7 +88,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
             />
           </div>
         </main>
-        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLd }}
