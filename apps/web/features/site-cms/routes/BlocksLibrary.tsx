@@ -8,6 +8,12 @@ import type { CatalogEntry, CatalogCategory } from "@repo/shared";
 import { Btn, Card } from "../components/ui";
 import { Plus, Sparkles } from "lucide-react";
 
+/**
+ * BlocksLibrary is a site-wide reference (not scoped). It shows all blocks
+ * so platform admins and users can see the full catalog. Scope filtering
+ * happens in the editor (SlashMenu, BlocksPanel, etc.).
+ */
+
 interface BlockPreviewProps {
   blockId: string;
 }

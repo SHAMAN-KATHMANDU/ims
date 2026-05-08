@@ -8,7 +8,7 @@
  * (scope, undo/redo, device, publish) hide when mode === "content".
  */
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ChevronDown,
   Undo2,
@@ -37,11 +37,21 @@ interface EditorTopBarProps {
   onPublishClick?: () => void;
 }
 
+const SCOPE_OPTIONS: readonly SiteLayoutScope[] = [
+  "home",
+  "products-index",
+  "product-detail",
+  "offers",
+  "header",
+  "page",
+  "footer",
+];
+
 export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
   (
     {
       scope,
-      onScopeChange: _onScopeChange,
+      onScopeChange,
       device,
       onDeviceChange,
       mode,
@@ -50,12 +60,31 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
     },
     ref,
   ) => {
+    const [showScopeMenu, setShowScopeMenu] = useState(false);
+    const scopeMenuRef = useRef<HTMLDivElement>(null);
     const canUndo = useEditorStore(selectCanUndo);
     const canRedo = useEditorStore(selectCanRedo);
     const undo = useEditorStore(selectUndo);
     const redo = useEditorStore(selectRedo);
 
     const isDesign = mode === "design";
+
+    useEffect(() => {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (
+          scopeMenuRef.current &&
+          !scopeMenuRef.current.contains(e.target as Node)
+        ) {
+          setShowScopeMenu(false);
+        }
+      };
+
+      if (showScopeMenu) {
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+          document.removeEventListener("mousedown", handleClickOutside);
+      }
+    }, [showScopeMenu]);
 
     return (
       <div
@@ -66,10 +95,35 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
         <div className="flex items-center gap-4">
           <ModeSwitcher mode={mode} onModeChange={onModeChange} />
           {isDesign && (
-            <button className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors">
-              <span className="text-sm font-medium capitalize">{scope}</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
+            <div ref={scopeMenuRef} className="relative">
+              <button
+                onClick={() => setShowScopeMenu(!showScopeMenu)}
+                className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 transition-colors"
+              >
+                <span className="text-sm font-medium capitalize">{scope}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {showScopeMenu && (
+                <div className="absolute top-full mt-1 left-0 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] z-50">
+                  {SCOPE_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => {
+                        onScopeChange(option);
+                        setShowScopeMenu(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm capitalize hover:bg-gray-50 transition-colors ${
+                        option === scope
+                          ? "bg-blue-50 text-blue-700 font-medium"
+                          : ""
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
