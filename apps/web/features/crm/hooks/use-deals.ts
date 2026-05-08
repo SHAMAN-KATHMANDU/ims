@@ -22,28 +22,20 @@ import {
   type AddDealLineItemData,
 } from "../services/deal.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
-import { contactKeys } from "./use-contacts";
-import { crmKeys } from "./use-crm";
-import { taskKeys } from "./use-tasks";
-import { workflowKeys } from "./use-workflows";
+import {
+  contactKeys,
+  crmKeys,
+  taskKeys,
+  workflowKeys,
+  dealKeys,
+} from "./_query-keys";
+
+export { dealKeys };
 
 type DealsKanbanData = {
   pipeline: unknown;
   stages: Array<{ stage: string; deals: Deal[] }>;
   deals: Deal[];
-};
-
-export const dealKeys = {
-  all: ["deals"] as const,
-  lists: () => [...dealKeys.all, "list"] as const,
-  list: (params: DealListParams) => [...dealKeys.lists(), params] as const,
-  kanbans: () => [...dealKeys.all, "kanban"] as const,
-  kanban: (pipelineId?: string) =>
-    pipelineId
-      ? ([...dealKeys.kanbans(), pipelineId] as const)
-      : dealKeys.kanbans(),
-  details: () => [...dealKeys.all, "detail"] as const,
-  detail: (id: string) => [...dealKeys.details(), id] as const,
 };
 
 export function useDealsPaginated(

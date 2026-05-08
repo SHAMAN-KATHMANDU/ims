@@ -3,9 +3,6 @@
  *
  * Every token emitted by lib/theme.ts has a safe default here so a tenant
  * with a partially configured branding payload still renders cleanly.
- * Templates that have not yet been rewritten to consume the new tokens
- * still work because the Phase-A aliases (--primary, --accent, --bg,
- * --text) are preserved alongside the new --color-* names.
  *
  * Tailwind utility classes used by block components (HeaderBlocks etc.)
  * resolve via the import below. Without it, classes like `hidden md:flex
@@ -36,14 +33,6 @@
   --color-success: #16a34a;
   --color-warning: #c2410c;
 
-  /* ---------- Phase-A back-compat aliases ----------
-     These short names are still read by MinimalLayout / StandardLayout /
-     LuxuryLayout / BoutiqueLayout until they are rewritten in Phase C.3. */
-  --primary: var(--color-primary);
-  --accent: var(--color-accent);
-  --bg: var(--color-background);
-  --text: var(--color-text);
-
   /* ---------- Typography ---------- */
   --font-heading: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-body: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -67,8 +56,6 @@
   --color-text: #f5f5f5;
   --color-muted: #9ca3af;
   --color-border: #2a2a2a;
-  --bg: var(--color-background);
-  --text: var(--color-text);
 }
 
 * {

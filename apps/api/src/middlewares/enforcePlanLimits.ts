@@ -325,5 +325,3 @@ export async function getTenantUsage(
     products: { used: productsUsed, limit: getLimit("products") },
   };
 }
-
-export default enforcePlanLimits;

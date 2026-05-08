@@ -137,5 +137,3 @@ export function resolveTenantFromHostname(options: Options = {}) {
     }
   };
 }
-
-export default resolveTenantFromHostname;

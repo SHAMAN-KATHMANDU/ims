@@ -16,21 +16,11 @@ import {
   type InstallWorkflowTemplateInput,
 } from "../services/workflow.service";
 import { useToast } from "@/hooks/useToast";
-import { crmKeys } from "./use-crm";
-import { dealKeys } from "./use-deals";
-import { taskKeys } from "./use-tasks";
+import { crmKeys, dealKeys, taskKeys, workflowKeys } from "./_query-keys";
+
+export { workflowKeys };
 
 import type { GetWorkflowsParams } from "../services/workflow.service";
-
-export const workflowKeys = {
-  all: ["workflows"] as const,
-  lists: (params?: GetWorkflowsParams) =>
-    [...workflowKeys.all, "list", params] as const,
-  templates: () => [...workflowKeys.all, "templates"] as const,
-  detail: (id: string) => [...workflowKeys.all, "detail", id] as const,
-  runs: (id: string, limit?: number) =>
-    [...workflowKeys.detail(id), "runs", limit] as const,
-};
 
 export function useWorkflows(
   params?: GetWorkflowsParams,

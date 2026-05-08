@@ -71,5 +71,3 @@ export function requireInternalToken(
 
   return next();
 }
-
-export default requireInternalToken;
