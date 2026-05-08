@@ -11,31 +11,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function ridgeHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Train hard. Free returns within 30 days.",
-      marquee: true,
-      tone: "default",
-      items: [
-        "Train hard. Returns 30 days.",
-        "Free shipping over ₹3,500",
-        "Drop 12 — live now",
-      ],
-    }),
-    block("nav-bar", {
-      brand: "RIDGE//",
-      brandStyle: "sans",
-      items: [
-        { label: "Run", href: "/products?category=run" },
-        { label: "Train", href: "/products?category=train" },
-        { label: "Outdoor", href: "/products?category=outdoor" },
-        { label: "Drops", href: "/offers" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "minimal",
       heroLayout: "split-left",
@@ -92,38 +67,6 @@ export function ridgeHome(): BlockNode[] {
       imageSide: "right",
       ctaLabel: "Read the field log",
       ctaHref: "/blog",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "RIDGE//",
-      tagline: "Performance gear for the next attempt.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Run", href: "/products?category=run" },
-            { label: "Train", href: "/products?category=train" },
-            { label: "Outdoor", href: "/products?category=outdoor" },
-            { label: "Drops", href: "/offers" },
-          ],
-        },
-        {
-          title: "Field",
-          links: [
-            { label: "Field log", href: "/blog" },
-            { label: "Athletes", href: "/about" },
-            { label: "Sustainability", href: "/about" },
-          ],
-        },
-        {
-          title: "Service",
-          links: [
-            { label: "Returns", href: "/about" },
-            { label: "Sizing", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

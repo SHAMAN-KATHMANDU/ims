@@ -20,6 +20,8 @@ import {
 import { pantryHome } from "./home";
 import { pantryPdp } from "./pdp";
 import { pantryCart } from "./cart";
+import { pantryHeader } from "./header";
+import { pantryFooter } from "./footer";
 
 const pantryNav = buildTemplateNavSeed({
   brandName: "Pantry & Co.",
@@ -32,7 +34,9 @@ export const pantryBlueprint: TemplateBlueprint = {
   slug: "pantry",
   ...pantryNav,
   layouts: {
+    header: pantryHeader(),
     home: pantryHome(),
+    footer: pantryFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

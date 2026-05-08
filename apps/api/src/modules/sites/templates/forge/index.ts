@@ -20,6 +20,8 @@ import {
 import { forgeHome } from "./home";
 import { forgePdp } from "./pdp";
 import { forgeCart } from "./cart";
+import { forgeHeader } from "./header";
+import { forgeFooter } from "./footer";
 
 const forgeNav = buildTemplateNavSeed({
   brandName: "Forge",
@@ -32,7 +34,9 @@ export const forgeBlueprint: TemplateBlueprint = {
   slug: "forge",
   ...forgeNav,
   layouts: {
+    header: forgeHeader(),
     home: forgeHome(),
+    footer: forgeFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

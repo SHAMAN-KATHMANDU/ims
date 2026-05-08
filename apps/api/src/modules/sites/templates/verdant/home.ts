@@ -11,26 +11,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function verdantHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Plants ship in eco-friendly packaging · Free care guide with every order",
-      marquee: false,
-      tone: "muted",
-    }),
-    block("nav-bar", {
-      brand: "Verdant",
-      brandStyle: "serif",
-      items: [
-        { label: "Indoor", href: "/products?category=indoor" },
-        { label: "Outdoor", href: "/products?category=outdoor" },
-        { label: "Pots & vessels", href: "/products?category=pots" },
-        { label: "Care guide", href: "/blog" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "editorial",
       heroLayout: "split-right",
@@ -102,37 +82,6 @@ export function verdantHome(): BlockNode[] {
         "A monthly note on what to water, what to pot up, and what's about to flower.",
       cta: "Subscribe",
       variant: "card",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "Verdant",
-      tagline: "Hand-grown plants from a working nursery north of Pune.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Indoor", href: "/products?category=indoor" },
-            { label: "Outdoor", href: "/products?category=outdoor" },
-            { label: "Pots & vessels", href: "/products?category=pots" },
-          ],
-        },
-        {
-          title: "Garden",
-          links: [
-            { label: "Care guide", href: "/blog" },
-            { label: "Nursery", href: "/about" },
-            { label: "Workshops", href: "/contact" },
-          ],
-        },
-        {
-          title: "Care",
-          links: [
-            { label: "Plant guarantee", href: "/about" },
-            { label: "Shipping", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

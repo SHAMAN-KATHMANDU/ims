@@ -20,6 +20,8 @@ import {
 import { verdantHome } from "./home";
 import { verdantPdp } from "./pdp";
 import { verdantCart } from "./cart";
+import { verdantHeader } from "./header";
+import { verdantFooter } from "./footer";
 
 const verdantNav = buildTemplateNavSeed({
   brandName: "Verdant",
@@ -32,7 +34,9 @@ export const verdantBlueprint: TemplateBlueprint = {
   slug: "verdant",
   ...verdantNav,
   layouts: {
+    header: verdantHeader(),
     home: verdantHome(),
+    footer: verdantFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

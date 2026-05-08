@@ -5,6 +5,7 @@ export const utilityBarCatalog: CatalogEntry<"utility-bar"> = {
   label: "Utility bar",
   description: "Top strip with small links.",
   category: "marketing",
+  scopes: ["header"] as const,
   createDefaultProps: () => ({
     align: "between",
     items: [

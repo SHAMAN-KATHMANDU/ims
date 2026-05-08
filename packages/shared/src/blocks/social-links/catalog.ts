@@ -5,6 +5,7 @@ export const socialLinksCatalog: CatalogEntry<"social-links"> = {
   label: "Social links",
   description: "Instagram, Pinterest, TikTok, etc.",
   category: "marketing",
+  scopes: ["header", "footer"] as const,
   createDefaultProps: () => ({
     variant: "text",
     align: "start",

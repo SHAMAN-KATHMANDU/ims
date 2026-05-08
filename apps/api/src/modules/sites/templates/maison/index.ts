@@ -20,6 +20,8 @@ import {
 import { maisonHome } from "./home";
 import { maisonPdp } from "./pdp";
 import { maisonCart } from "./cart";
+import { maisonHeader } from "./header";
+import { maisonFooter } from "./footer";
 
 const maisonNav = buildTemplateNavSeed({
   brandName: "Maison",
@@ -33,7 +35,9 @@ export const maisonBlueprint: TemplateBlueprint = {
   slug: "maison",
   ...maisonNav,
   layouts: {
+    header: maisonHeader(),
     home: maisonHome(),
+    footer: maisonFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

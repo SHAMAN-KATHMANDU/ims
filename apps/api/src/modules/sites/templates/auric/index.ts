@@ -20,6 +20,8 @@ import {
 import { auricHome } from "./home";
 import { auricPdp } from "./pdp";
 import { auricCart } from "./cart";
+import { auricHeader } from "./header";
+import { auricFooter } from "./footer";
 
 const auricNav = buildTemplateNavSeed({
   brandName: "Auric",
@@ -34,7 +36,9 @@ export const auricBlueprint: TemplateBlueprint = {
   slug: "auric",
   ...auricNav,
   layouts: {
+    header: auricHeader(),
     home: auricHome(),
+    footer: auricFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

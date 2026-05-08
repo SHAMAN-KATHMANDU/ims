@@ -5,6 +5,7 @@ export const logoMarkCatalog: CatalogEntry<"logo-mark"> = {
   label: "Logo mark",
   description: "Standalone brand mark.",
   category: "marketing",
+  scopes: ["header", "footer"] as const,
   createDefaultProps: () => ({
     brand: "Brand",
     subtitle: "Tagline",

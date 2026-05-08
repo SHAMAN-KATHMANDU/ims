@@ -12,27 +12,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function maisonHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Free white-glove delivery on orders over ₹120,000 · Trade pricing for designers",
-      marquee: false,
-      tone: "default",
-    }),
-    block("nav-bar", {
-      brand: "Maison",
-      brandStyle: "serif",
-      items: [
-        { label: "Living", href: "/products?category=living" },
-        { label: "Dining", href: "/products?category=dining" },
-        { label: "Bedroom", href: "/products?category=bedroom" },
-        { label: "Outdoor", href: "/products?category=outdoor" },
-        { label: "Lighting", href: "/products?category=lighting" },
-      ],
-      showSearch: true,
-      showAccount: true,
-      showCart: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "editorial",
       heroLayout: "split-right",
@@ -102,42 +81,6 @@ export function maisonHome(): BlockNode[] {
       subtitle: "A note from the workshop, every other Sunday.",
       cta: "Subscribe",
       variant: "inline",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "Maison",
-      tagline:
-        "Furniture for quiet rooms. Designed in Brooklyn, made in High Point, NC. Since 1998.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Living", href: "/products?category=living" },
-            { label: "Dining", href: "/products?category=dining" },
-            { label: "Bedroom", href: "/products?category=bedroom" },
-            { label: "Outdoor", href: "/products?category=outdoor" },
-            { label: "Lighting", href: "/products?category=lighting" },
-          ],
-        },
-        {
-          title: "The House",
-          links: [
-            { label: "Our makers", href: "/about" },
-            { label: "Showrooms", href: "/contact" },
-            { label: "Trade program", href: "/contact" },
-            { label: "Journal", href: "/blog" },
-          ],
-        },
-        {
-          title: "Service",
-          links: [
-            { label: "Delivery & assembly", href: "/about" },
-            { label: "Care guides", href: "/blog" },
-            { label: "Returns", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

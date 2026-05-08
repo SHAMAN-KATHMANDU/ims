@@ -19,36 +19,11 @@ import { verdantBlueprint } from "./verdant";
 import { foxgloveBlueprint } from "./foxglove";
 
 // ---------------------------------------------------------------------------
-// Type definitions
+// Type definitions — single source of truth lives in @repo/shared
 // ---------------------------------------------------------------------------
 
-export type BlueprintScope =
-  | "home"
-  | "products-index"
-  | "product-detail"
-  | "offers"
-  | "cart"
-  | "blog-index"
-  | "blog-post"
-  | "contact"
-  | "page"
-  | "404";
-
-export const BLUEPRINT_SCOPES = [
-  "home",
-  "products-index",
-  "product-detail",
-  "offers",
-  "cart",
-  "blog-index",
-  "blog-post",
-  "contact",
-  "page",
-  "404",
-] as const satisfies readonly BlueprintScope[];
-
-// Re-export the interface for external consumers
-export type { TemplateBlueprint } from "@repo/shared";
+export type { BlueprintScope, TemplateBlueprint } from "@repo/shared";
+export { BLUEPRINT_SCOPES } from "@repo/shared";
 
 // ---------------------------------------------------------------------------
 // Blueprint Registry

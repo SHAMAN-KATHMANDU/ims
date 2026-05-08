@@ -5,6 +5,7 @@ export const navBarCatalog: CatalogEntry<"nav-bar"> = {
   label: "Nav bar",
   description: "Logo · menu · search · cart (header global).",
   category: "marketing",
+  scopes: ["header"] as const,
   createDefaultProps: () => ({
     brand: "Brand",
     brandHref: "/",
