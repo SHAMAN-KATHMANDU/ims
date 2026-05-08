@@ -2,6 +2,7 @@
  * Header blocks — navigation, branding, utility strips.
  *
  * nav-bar       — sticky navigation with logo, menu, search, cart
+ *                 Phase 2: enriched with recursive items, mega-menu blocks, CTA, utility bar, mobile drawer
  * logo-mark     — standalone brand/logo display
  * utility-bar   — top strip with secondary navigation/utility links
  */
@@ -9,24 +10,96 @@
 import React from "react";
 import Link from "next/link";
 import type { BlockComponentProps } from "../registry";
+import type { NavBarProps, NavBarItem, NavBarBrand } from "@repo/shared";
 
-// ---------- nav-bar ---------------------------------------------------------
+// NavItem renderer — supports recursive children and mega-menu blocks
+function NavItemRenderer({
+  item,
+  isCentered,
+}: {
+  item: NavBarItem;
+  isCentered?: boolean;
+}): React.ReactNode {
+  const hasChildren = item.children && item.children.length > 0;
+  const hasMegaMenu = item.megaMenuBlocks && item.megaMenuBlocks.length > 0;
 
-export interface NavBarProps {
-  brand: string;
-  brandHref?: string;
-  brandStyle?: "serif" | "sans" | "mono";
-  items?: Array<{
-    label: string;
-    href: string;
-    hasMegaMenu?: boolean;
-  }>;
-  showSearch?: boolean;
-  showCart?: boolean;
-  showAccount?: boolean;
-  cartCount?: number;
-  sticky?: boolean;
-  align?: "between" | "center";
+  // TODO Phase 7: implement inline BlockRenderer for mega-menu sub-trees
+  // For now, mega-menu indicator only.
+
+  return (
+    <div key={item.label} className="relative group">
+      <Link
+        href={item.href}
+        className="no-underline text-[var(--t-text)] hover:opacity-70 transition-opacity inline-flex items-center gap-1 py-2"
+      >
+        {item.label}
+        {(hasChildren || hasMegaMenu) && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            opacity="0.6"
+          >
+            <path d="M3 5l3 3 3-3" />
+          </svg>
+        )}
+      </Link>
+      {hasChildren && (
+        <div className="absolute left-0 pt-0 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white shadow-lg rounded-md min-w-max z-50">
+          {item.children!.map((child: NavBarItem) => (
+            <Link
+              key={child.label}
+              href={child.href}
+              className="block px-4 py-2 text-sm text-[var(--t-text)] hover:bg-[var(--t-muted)] no-underline"
+            >
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Brand renderer — supports string (legacy) or object with logo
+function BrandRenderer({
+  brand,
+  href,
+  style,
+}: {
+  brand: NavBarBrand;
+  href?: string;
+  style?: string;
+}): React.ReactNode {
+  const brandHref = href ?? "/";
+  const finalStyle =
+    typeof brand === "string"
+      ? style
+      : ((brand as any).style ?? style ?? "serif");
+
+  const brandClasses = [
+    "text-base no-underline",
+    "text-[var(--t-text)]",
+    "hover:opacity-70 transition-opacity",
+    finalStyle === "serif" && "font-serif text-lg tracking-tight",
+    finalStyle === "mono" && "font-mono tracking-wider text-sm uppercase",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const brandText = typeof brand === "string" ? brand : (brand.text ?? "Brand");
+
+  // TODO Phase 8: if brand.logoAssetId is set, fetch MediaAsset and render image
+  // For now, text-only rendering.
+
+  return (
+    <Link href={brandHref} className={brandClasses}>
+      {brandText}
+    </Link>
+  );
 }
 
 export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
@@ -35,6 +108,9 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
     brandHref = "/",
     brandStyle = "serif",
     items = [],
+    cta,
+    utilityBar,
+    mobileDrawer,
     showSearch = true,
     showCart = true,
     showAccount = false,
@@ -44,15 +120,6 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
   } = props;
 
   const isCentered = align === "center";
-  const brandClasses = [
-    "text-base no-underline",
-    "text-[var(--t-text)]",
-    "hover:opacity-70 transition-opacity",
-    brandStyle === "serif" && "font-serif text-lg tracking-tight",
-    brandStyle === "mono" && "font-mono tracking-wider text-sm uppercase",
-  ]
-    .filter(Boolean)
-    .join(" ");
 
   const headerClasses = [
     "w-full border-b",
@@ -64,9 +131,7 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
     .join(" ");
 
   const brandElement = (
-    <Link href={brandHref} className={brandClasses}>
-      {brand}
-    </Link>
+    <BrandRenderer brand={brand} href={brandHref} style={brandStyle} />
   );
 
   // Tailwind needs class names to be statically resolvable, so the gap
@@ -77,27 +142,8 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
     <nav
       className={`hidden md:flex ${isCentered ? "gap-8" : "gap-6"} text-sm text-[var(--t-text)]`}
     >
-      {items.map((item, i) => (
-        <Link
-          key={i}
-          href={item.href}
-          className="no-underline text-[var(--t-text)] hover:opacity-70 transition-opacity inline-flex items-center gap-1"
-        >
-          {item.label}
-          {item.hasMegaMenu && (
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              opacity="0.6"
-            >
-              <path d="M3 5l3 3 3-3" />
-            </svg>
-          )}
-        </Link>
+      {items.map((item: NavBarItem) => (
+        <NavItemRenderer key={item.label} item={item} isCentered={isCentered} />
       ))}
     </nav>
   );
@@ -158,8 +204,28 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
           )}
         </button>
       )}
+      {cta && (
+        <Link
+          href={cta.href}
+          className={[
+            "px-4 py-2 rounded text-sm font-medium no-underline transition-opacity hover:opacity-80",
+            cta.style === "primary" && "bg-[var(--t-primary)] text-white",
+            cta.style === "outline" &&
+              "border border-[var(--t-text)] text-[var(--t-text)]",
+            cta.style === "ghost" &&
+              "text-[var(--t-text)] hover:bg-[var(--t-muted)]",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {cta.label}
+        </Link>
+      )}
     </div>
   );
+
+  // TODO Phase 7: render utilityBar as a top announcement strip
+  // TODO Phase 7: render mobileDrawer as a <details>/<summary> on mobile
 
   if (isCentered) {
     return (

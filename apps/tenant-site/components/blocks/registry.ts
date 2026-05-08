@@ -17,11 +17,8 @@ import type { BlockKind, BlockNode } from "@repo/shared";
 import type { BlockDataContext } from "./data-context";
 
 // Export block prop types for use in block implementations
-export type {
-  NavBarProps,
-  LogoMarkProps,
-  UtilityBarProps,
-} from "./kinds/HeaderBlocks";
+export type { NavBarProps } from "@repo/shared";
+export type { LogoMarkProps, UtilityBarProps } from "./kinds/HeaderBlocks";
 export type {
   FooterColumnsProps,
   SocialLinksProps,
