@@ -11,7 +11,6 @@ import { pickTemplate } from "@/components/templates/pickTemplate";
 import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 import { homeMetadata, organizationJsonLd } from "@/lib/seo";
@@ -61,19 +60,12 @@ export default async function HomePage() {
     };
     return (
       <>
-        <SiteHeader
-          site={site}
-          host={ctx.host}
-          categories={categories}
-          navPages={navPages}
-        />
         <main>
           <BlockRenderer
             nodes={layout.blocks as BlockNode[]}
             dataContext={dataContext}
           />
         </main>
-        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

@@ -8,7 +8,6 @@ import {
   getSiteLayout,
 } from "@/lib/api";
 import { getTenantContext } from "@/lib/tenant";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockNode } from "@repo/shared";
@@ -92,12 +91,6 @@ export default async function TenantCustomPage({ params }: Props) {
 
   return (
     <div data-page="tenant-custom">
-      <SiteHeader
-        site={site}
-        host={ctx.host}
-        categories={categories}
-        navPages={navPages}
-      />
       {/* Phase 8 — full-bleed cover spans the viewport above the page chrome. */}
       {page.coverImageUrl && (
         /* eslint-disable-next-line @next/next/no-img-element */
@@ -164,7 +157,6 @@ export default async function TenantCustomPage({ params }: Props) {
           )}
         </article>
       </main>
-      <SiteFooter site={site} host={ctx.host} navPages={navPages} />
     </div>
   );
 }

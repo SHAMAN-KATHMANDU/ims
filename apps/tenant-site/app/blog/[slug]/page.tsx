@@ -11,7 +11,6 @@ import {
 import { BlogPageShell } from "@/components/blog/BlogPageShell";
 import { BlogArticle } from "@/components/blog/BlogArticle";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 
@@ -74,19 +73,12 @@ export default async function BlogPostPage({ params }: Props) {
     };
     return (
       <>
-        <SiteHeader
-          site={site}
-          host={ctx.host}
-          categories={categories}
-          navPages={navPages}
-        />
         <main>
           <BlockRenderer
             nodes={layout.blocks as BlockNode[]}
             dataContext={dataContext}
           />
         </main>
-        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
       </>
     );
   }

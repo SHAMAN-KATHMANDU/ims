@@ -11,7 +11,6 @@ import {
 import { BlogPageShell } from "@/components/blog/BlogPageShell";
 import { BlogList } from "@/components/blog/BlogList";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 
@@ -59,19 +58,12 @@ export default async function BlogIndexPage({
     };
     return (
       <>
-        <SiteHeader
-          site={site}
-          host={ctx.host}
-          categories={siteCategories}
-          navPages={navPages}
-        />
         <main>
           <BlockRenderer
             nodes={layout.blocks as BlockNode[]}
             dataContext={dataContext}
           />
         </main>
-        <SiteFooter site={site} host={ctx.host} navPages={navPages} />
       </>
     );
   }
