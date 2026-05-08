@@ -15,6 +15,7 @@ import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
 import { sendControllerError } from "@/utils/controllerError";
 import { ensurePublishedSite } from "@/modules/public-site/ensurePublished";
+import sitesService from "@/modules/sites/sites.service";
 import defaultRepo from "./site-layouts.repository";
 import { SiteLayoutScopeEnum } from "./site-layouts.schema";
 
@@ -61,6 +62,14 @@ router.get(
         typeof rawPageId === "string" && rawPageId.length > 0
           ? rawPageId
           : null;
+
+      // Phase 5.b: existing tenants don't have header/footer rows seeded.
+      // Eagerly synthesize them from the tenant's NavMenu + template
+      // blueprint on first public read so the renderer never gets a 404
+      // for chrome scopes. Idempotent — no-op if a row already exists.
+      if ((scope === "header" || scope === "footer") && pageId === null) {
+        await sitesService.ensureChromeSynthesized(tenantId, scope);
+      }
 
       const row = await defaultRepo.findByKey(tenantId, { scope, pageId });
       if (!row) return res.status(404).json({ message: "Not found" });
