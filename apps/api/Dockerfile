@@ -33,12 +33,15 @@ RUN pnpm --filter api prisma:generate
 RUN pnpm turbo build
 
 # Clean up source files only (keep node_modules with Prisma client)
+# Keep apps/api/src and tsconfig.json for ts-node at seed runtime
 RUN find apps/api -type f \
     -not -path 'apps/api/dist/*' \
     -not -path 'apps/api/prisma/*' \
+    -not -path 'apps/api/src/*' \
     -not -path 'apps/api/node_modules/*' \
     -not -name 'package.json' \
-    -delete && rm -rf apps/api/test apps/api/src
+    -not -name 'tsconfig.json' \
+    -delete && rm -rf apps/api/test
 
 # Remove dev-only packages from node_modules to reduce size.
 # prisma is in dependencies (not devDependencies) so it survives this prune —
