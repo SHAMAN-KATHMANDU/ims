@@ -5,11 +5,8 @@ import {
   getCategories,
   getNavPages,
   getSiteLayout,
-  getFeaturedBlogPosts,
   type ProductSort,
 } from "@/lib/api";
-import { pickTemplate } from "@/components/templates/pickTemplate";
-import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { brandingDisplayName } from "@/lib/theme";
@@ -120,76 +117,37 @@ export default async function ProductsPage({ searchParams }: PageProps) {
 
   if (!site) notFound();
 
-  // Block-first: if there's a "products-index" SiteLayout, compose it via
-  // BlockRenderer with optional header/footer chrome. The product-listing block
-  // reads pagination/sort state from dataContext.searchParams and
-  // dataContext.productsPage/Total.
-  if (
-    pageLayout &&
-    Array.isArray(pageLayout.blocks) &&
-    pageLayout.blocks.length > 0
-  ) {
-    const blocks = [
-      ...(Array.isArray(headerLayout?.blocks)
-        ? (headerLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(pageLayout.blocks)
-        ? (pageLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(footerLayout?.blocks)
-        ? (footerLayout.blocks as BlockNode[])
-        : []),
-    ];
+  const blocks = [
+    ...(Array.isArray(headerLayout?.blocks)
+      ? (headerLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(pageLayout?.blocks)
+      ? (pageLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(footerLayout?.blocks)
+      ? (footerLayout.blocks as BlockNode[])
+      : []),
+  ];
 
-    const dataContext: BlockDataContext = {
-      site,
-      host: ctx.host,
-      tenantId: ctx.tenantId,
-      categories,
-      navPages,
-      products: productList?.products ?? [],
-      featuredBlogPosts: [],
-      productsPage: productList?.page,
-      productsTotal: productList?.total,
-      searchParams: params,
-      productFacets: productList?.facets,
-    };
-    return (
-      <>
-        <main>
-          <BlockRenderer nodes={blocks} dataContext={dataContext} />
-        </main>
-      </>
-    );
-  }
+  const dataContext: BlockDataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: productList?.products ?? [],
+    featuredBlogPosts: [],
+    productsPage: productList?.page,
+    productsTotal: productList?.total,
+    searchParams: params,
+    productFacets: productList?.facets,
+  };
 
-  // featuredBlogPosts needed by the legacy template signature for `home`,
-  // but the products page doesn't use them — pass an empty array.
-  const featuredBlogPosts = await getFeaturedBlogPosts(
-    ctx.host,
-    ctx.tenantId,
-    0,
-  ).catch(() => []);
-
-  const TemplateLayout = pickTemplate(site.template?.slug ?? null);
   return (
-    <TemplateLayout
-      page="products"
-      site={site}
-      products={productList?.products ?? []}
-      categories={categories}
-      featuredBlogPosts={featuredBlogPosts}
-      navPages={navPages}
-      sections={readSections(site.features)}
-      pagination={
-        productList
-          ? {
-              page: productList.page,
-              total: productList.total,
-              limit: productList.limit,
-            }
-          : undefined
-      }
-    />
+    <>
+      <main>
+        <BlockRenderer nodes={blocks} dataContext={dataContext} />
+      </main>
+    </>
   );
 }

@@ -7,8 +7,6 @@ import {
   getNavPages,
   getSiteLayout,
 } from "@/lib/api";
-import { pickTemplate } from "@/components/templates/pickTemplate";
-import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
@@ -55,62 +53,33 @@ export default async function HomePage() {
 
   if (!site) notFound();
 
-  // Phase 4+: if the tenant has a `home` SiteLayout, render it via the
-  // block pipeline with optional header/footer chrome. Otherwise fall through
-  // to the legacy pickTemplate path so existing tenants keep working.
-  if (
-    pageLayout &&
-    Array.isArray(pageLayout.blocks) &&
-    pageLayout.blocks.length > 0
-  ) {
-    const blocks = [
-      ...(Array.isArray(headerLayout?.blocks)
-        ? (headerLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(pageLayout.blocks)
-        ? (pageLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(footerLayout?.blocks)
-        ? (footerLayout.blocks as BlockNode[])
-        : []),
-    ];
+  const blocks = [
+    ...(Array.isArray(headerLayout?.blocks)
+      ? (headerLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(pageLayout?.blocks)
+      ? (pageLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(footerLayout?.blocks)
+      ? (footerLayout.blocks as BlockNode[])
+      : []),
+  ];
 
-    const dataContext: BlockDataContext = {
-      site,
-      host: ctx.host,
-      tenantId: ctx.tenantId,
-      categories,
-      navPages,
-      products: productList?.products ?? [],
-      featuredBlogPosts,
-    };
-    return (
-      <>
-        <main>
-          <BlockRenderer nodes={blocks} dataContext={dataContext} />
-        </main>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: organizationJsonLd(site, ctx.host),
-          }}
-        />
-      </>
-    );
-  }
+  const dataContext: BlockDataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: productList?.products ?? [],
+    featuredBlogPosts,
+  };
 
-  const TemplateLayout = pickTemplate(site.template?.slug ?? null);
   return (
     <>
-      <TemplateLayout
-        page="home"
-        site={site}
-        products={productList?.products ?? []}
-        categories={categories}
-        featuredBlogPosts={featuredBlogPosts}
-        navPages={navPages}
-        sections={readSections(site.features)}
-      />
+      <main>
+        <BlockRenderer nodes={blocks} dataContext={dataContext} />
+      </main>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

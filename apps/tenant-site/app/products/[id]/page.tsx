@@ -7,8 +7,6 @@ import {
   getNavPages,
   getSiteLayout,
 } from "@/lib/api";
-import { pickTemplate } from "@/components/templates/pickTemplate";
-import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
@@ -75,62 +73,37 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const jsonLd = productJsonLd(product, ctx.host);
 
-  // Block-first rendering for PDP with optional header/footer chrome.
-  if (
-    pageLayout &&
-    Array.isArray(pageLayout.blocks) &&
-    pageLayout.blocks.length > 0
-  ) {
-    const blocks = [
-      ...(Array.isArray(headerLayout?.blocks)
-        ? (headerLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(pageLayout.blocks)
-        ? (pageLayout.blocks as BlockNode[])
-        : []),
-      ...(Array.isArray(footerLayout?.blocks)
-        ? (footerLayout.blocks as BlockNode[])
-        : []),
-    ];
+  const blocks = [
+    ...(Array.isArray(headerLayout?.blocks)
+      ? (headerLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(pageLayout?.blocks)
+      ? (pageLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(footerLayout?.blocks)
+      ? (footerLayout.blocks as BlockNode[])
+      : []),
+  ];
 
-    const dataContext: BlockDataContext = {
-      site,
-      host: ctx.host,
-      tenantId: ctx.tenantId,
-      categories,
-      navPages,
-      products: [product],
-      featuredBlogPosts: [],
-      activeProduct: product,
-      relatedProducts,
-    };
-    return (
-      <>
-        <main id="main-content">
-          <div className="mx-auto max-w-7xl px-4 md:px-8">
-            <BlockRenderer nodes={blocks} dataContext={dataContext} />
-          </div>
-        </main>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd }}
-        />
-      </>
-    );
-  }
+  const dataContext: BlockDataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: [product],
+    featuredBlogPosts: [],
+    activeProduct: product,
+    relatedProducts,
+  };
 
-  const TemplateLayout = pickTemplate(site.template?.slug ?? null);
   return (
     <>
-      <TemplateLayout
-        page="product"
-        site={site}
-        products={[product]}
-        categories={categories}
-        navPages={navPages}
-        sections={readSections(site.features)}
-        activeProduct={product}
-      />
+      <main id="main-content">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
+        </div>
+      </main>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd }}
