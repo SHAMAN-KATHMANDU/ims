@@ -94,6 +94,11 @@ export enum EnvFeature {
    * extra states confuse single-author workflows.
    */
   CMS_REVIEW_WORKFLOW = "CMS_REVIEW_WORKFLOW",
+  /**
+   * New Notion-style CMS shell at /site/* — Phase 1: shell + sidebar + topbar + ⌘K + dashboard.
+   * Mirrors the Claude.ai Site design.
+   */
+  SITE_CMS_V2 = "SITE_CMS_V2",
 }
 
 /**
@@ -145,6 +150,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
+    SITE_CMS_V2: true,
   },
   staging: {
     CRM: true,
@@ -190,6 +196,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
+    SITE_CMS_V2: true,
   },
   "staging-production": {
     CRM: true,
@@ -235,6 +242,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PUBLIC_DATA_API: true,
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
+    SITE_CMS_V2: true,
   },
   production: {
     CRM: true,
@@ -280,6 +288,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PUBLIC_DATA_API: false,
     NOTION_STYLE_EDITOR: false,
     CMS_REVIEW_WORKFLOW: false,
+    SITE_CMS_V2: false,
   },
 };
 

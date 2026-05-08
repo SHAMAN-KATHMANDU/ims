@@ -1,0 +1,39 @@
+/* Site CMS — Builder dock token overrides.
+ * When the embedded block editor mounts inside the CMS shell builder route,
+ * remap shadcn theme vars to the CMS design tokens so docks/inspector
+ * inherit the warm-paper aesthetic without touching the existing editor
+ * source. Scope is [data-cms-shell] [data-cms-builder] so the standalone
+ * /site-editor route is unaffected.
+ */
+[data-cms-shell] [data-cms-builder] {
+  --background: var(--bg-elev);
+  --foreground: var(--ink);
+  --card: var(--bg-elev);
+  --card-foreground: var(--ink);
+  --popover: var(--bg-elev);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-ink);
+  --secondary: var(--bg-sunken);
+  --secondary-foreground: var(--ink);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--accent-soft);
+  --accent-foreground: var(--accent);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--accent);
+  --radius: 5px;
+
+  font-family: var(--font-sans);
+  letter-spacing: -0.005em;
+}
+
+/* Density tweaks to match the design's tighter spec. */
+[data-cms-shell] [data-cms-builder] [class*="rounded-md"] {
+  border-radius: 5px;
+}
+[data-cms-shell] [data-cms-builder] [class*="text-sm"] {
+  font-size: 12.5px;
+  line-height: 1.5;
+}

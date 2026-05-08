@@ -308,6 +308,18 @@ export const dashboardNavSections: NavSection[] = [
         openInNewTab: true,
         permModule: "WEBSITE" as const,
       },
+      {
+        // Notion-style CMS shell at /[workspace]/site — Phase 5 of the
+        // editor rebuild. Coexists with the existing /site-editor block
+        // builder; tenants can use either while SITE_CMS_V2 is dev/staging.
+        path: "site",
+        label: "Website CMS",
+        icon: Sparkles,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.SITE_CMS_V2,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
     ],
   },
   {

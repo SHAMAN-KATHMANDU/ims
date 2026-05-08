@@ -33,11 +33,13 @@ import type { EditorMode } from "./shell/EditorTopBar";
 interface SiteEditorPageProps {
   tenantId: string;
   initialScope?: SiteLayoutScope;
+  embedded?: boolean;
 }
 
 export function SiteEditorPage({
   tenantId,
   initialScope = "home",
+  embedded = false,
 }: SiteEditorPageProps) {
   const [scope, setScope] = useState<SiteLayoutScope>(initialScope);
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">(
@@ -117,15 +119,17 @@ export function SiteEditorPage({
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Top bar */}
-      <EditorTopBar
-        scope={scope}
-        onScopeChange={setScope}
-        device={device}
-        onDeviceChange={setDevice}
-        mode={mode}
-        onModeChange={setMode}
-        onPublishClick={() => setShowPublishModal(true)}
-      />
+      {!embedded && (
+        <EditorTopBar
+          scope={scope}
+          onScopeChange={setScope}
+          device={device}
+          onDeviceChange={setDevice}
+          mode={mode}
+          onModeChange={setMode}
+          onPublishClick={() => setShowPublishModal(true)}
+        />
+      )}
 
       <DraftRecoveryBanner recovery={draftRecovery} />
 
