@@ -629,7 +629,7 @@ export class SitesService {
    * This is called on first access to header/footer layouts to populate
    * the database. Subsequent accesses use the upserted rows.
    */
-  private async ensureChromeSynthesized(
+  async ensureChromeSynthesized(
     tenantId: string,
     scope: "header" | "footer",
   ): Promise<void> {
@@ -697,8 +697,7 @@ export class SitesService {
     const navConfig = navConfigRow?.items as any | null;
     const mobileDrawerConfig = mobileDrawerRow?.items as any | null;
     const footerConfig = footerConfigRow?.items as any | null;
-    const footerPrimaryItems =
-      (footerPrimaryRow?.items as any)?.items ?? null;
+    const footerPrimaryItems = (footerPrimaryRow?.items as any)?.items ?? null;
     const footerSecondaryItems =
       (footerSecondaryRow?.items as any)?.items ?? null;
 
@@ -732,11 +731,7 @@ export class SitesService {
 
     // Upsert both draft and published to the database
     const json = validation.data as unknown as Prisma.InputJsonValue;
-    await siteLayoutsRepo.upsertDraft(
-      tenantId,
-      { scope, pageId: null },
-      json,
-    );
+    await siteLayoutsRepo.upsertDraft(tenantId, { scope, pageId: null }, json);
     // Mark as published so it appears on the live site
     await siteLayoutsRepo.publishDraft(tenantId, { scope, pageId: null });
 
