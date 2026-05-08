@@ -107,7 +107,8 @@ describe("synthesizeHeaderBlocks", () => {
     const input: ChromeSynthesisInput = { navConfig };
     const result = synthesizeHeaderBlocks(input);
 
-    expect(result[0]?.props.sticky).toBe(false);
+    const navBarProps = result[0]?.props as NavBarProps | undefined;
+    expect(navBarProps?.sticky).toBe(false);
   });
 
   it("includes CTA when present", () => {

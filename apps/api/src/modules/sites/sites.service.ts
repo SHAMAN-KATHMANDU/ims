@@ -694,13 +694,13 @@ export class SitesService {
     );
 
     // Extract the config objects from JSON payloads
-    const navConfig = navConfigRow?.config as any | null;
-    const mobileDrawerConfig = mobileDrawerRow?.config as any | null;
-    const footerConfig = footerConfigRow?.config as any | null;
+    const navConfig = navConfigRow?.items as any | null;
+    const mobileDrawerConfig = mobileDrawerRow?.items as any | null;
+    const footerConfig = footerConfigRow?.items as any | null;
     const footerPrimaryItems =
-      (footerPrimaryRow?.config as any)?.items ?? null;
+      (footerPrimaryRow?.items as any)?.items ?? null;
     const footerSecondaryItems =
-      (footerSecondaryRow?.config as any)?.items ?? null;
+      (footerSecondaryRow?.items as any)?.items ?? null;
 
     // Synthesize the blocks
     let blocks: BlockNode[];
