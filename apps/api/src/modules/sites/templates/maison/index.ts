@@ -11,6 +11,11 @@ import {
   productsIndexLayout,
   offersLayout,
   buildTemplateNavSeed,
+  blogIndexLayout,
+  blogPostLayout,
+  contactLayout,
+  pageLayout,
+  notFoundLayout,
 } from "../_shared";
 import { maisonHome } from "./home";
 import { maisonPdp } from "./pdp";
@@ -39,6 +44,26 @@ export const maisonBlueprint: TemplateBlueprint = {
       return offersLayout();
     })(),
     cart: maisonCart(),
+    "blog-index": (() => {
+      resetIdCounter();
+      return blogIndexLayout();
+    })(),
+    "blog-post": (() => {
+      resetIdCounter();
+      return blogPostLayout();
+    })(),
+    contact: (() => {
+      resetIdCounter();
+      return contactLayout();
+    })(),
+    page: (() => {
+      resetIdCounter();
+      return pageLayout();
+    })(),
+    "404": (() => {
+      resetIdCounter();
+      return notFoundLayout();
+    })(),
   },
   defaultThemeTokens: {
     mode: "light",

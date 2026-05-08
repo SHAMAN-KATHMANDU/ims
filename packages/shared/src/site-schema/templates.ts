@@ -64,7 +64,12 @@ export type BlueprintScope =
   | "products-index"
   | "product-detail"
   | "offers"
-  | "cart";
+  | "cart"
+  | "blog-index"
+  | "blog-post"
+  | "contact"
+  | "page"
+  | "404";
 
 export const BLUEPRINT_SCOPES = [
   "home",
@@ -72,6 +77,11 @@ export const BLUEPRINT_SCOPES = [
   "product-detail",
   "offers",
   "cart",
+  "blog-index",
+  "blog-post",
+  "contact",
+  "page",
+  "404",
 ] as const satisfies readonly BlueprintScope[];
 
 /**
@@ -112,6 +122,11 @@ export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
         "product-detail",
         "offers",
         "cart",
+        "blog-index",
+        "blog-post",
+        "contact",
+        "page",
+        "404",
       ] as const),
       z.array(BlockNodeSchema),
     )

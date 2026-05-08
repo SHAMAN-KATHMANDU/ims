@@ -320,7 +320,7 @@ export function BlocksLibrary(): JSX.Element {
       >
         {filtered.map((b) => (
           <Card
-            key={b.kind}
+            key={(b as unknown as { id?: string }).id || b.kind}
             style={{
               padding: 0,
               overflow: "hidden",
