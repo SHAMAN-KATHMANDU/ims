@@ -19,6 +19,17 @@ export {
 
 export { siteLayoutKeys } from "./hooks/use-site-layouts";
 
+export {
+  useCollections,
+  useCollection,
+  useCreateCollection,
+  useUpdateCollection,
+  useDeleteCollection,
+  collectionKeys,
+} from "./hooks/use-collections";
+
+export type { Collection, CollectionDetail } from "./hooks/use-collections";
+
 export type {
   SiteConfig,
   SiteTemplate,

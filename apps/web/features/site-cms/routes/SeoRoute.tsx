@@ -160,12 +160,14 @@ export function SeoRoute(): JSX.Element {
             style={{
               padding: "8px 12px",
               marginBottom: -1,
+              borderLeft: "none",
+              borderRight: "none",
+              borderTop: "none",
               borderBottom: `2px solid ${tab === key ? "var(--ink)" : "transparent"}`,
               color: tab === key ? "var(--ink)" : "var(--ink-3)",
               fontSize: 12.5,
               fontWeight: tab === key ? 600 : 450,
               background: "transparent",
-              border: "none",
               cursor: "pointer",
             }}
           >
