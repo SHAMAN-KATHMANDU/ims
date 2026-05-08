@@ -39,6 +39,10 @@ import {
   NavItemsOnlySchema,
   FooterConfigSchema,
 } from "@repo/shared";
+import {
+  synthesizeHeaderBlocks,
+  synthesizeFooterBlocks,
+} from "./migrations/synthesize-chrome-layout";
 
 type Repo = typeof defaultRepo;
 type Revalidate = (tenantId: string) => Promise<void>;
@@ -612,11 +616,143 @@ export class SitesService {
     return updated;
   }
 
+  // ——— CHROME SYNTHESIS (Phase 5) ———
+
+  /**
+   * Eagerly synthesize header/footer SiteLayouts from NavMenu rows when
+   * an existing tenant (pre-Phase 3) first requests chrome. Idempotent:
+   * re-running on a tenant that already has header/footer rows is a no-op.
+   *
+   * Loads NavMenu rows, reads the template blueprint, and synthesizes
+   * BlockNode arrays via synthesizeHeaderBlocks / synthesizeFooterBlocks.
+   *
+   * This is called on first access to header/footer layouts to populate
+   * the database. Subsequent accesses use the upserted rows.
+   */
+  private async ensureChromeSynthesized(
+    tenantId: string,
+    scope: "header" | "footer",
+  ): Promise<void> {
+    // Check if the row already exists
+    const existing = await siteLayoutsRepo.findByKey(tenantId, {
+      scope,
+      pageId: null,
+    });
+    if (existing) {
+      return; // Already synthesized or manually created
+    }
+
+    // Load the tenant's site config to get the template slug
+    const config = await this.repo.findConfig(tenantId);
+    if (!config || !config.templateId) {
+      // No template assigned — fall back to empty layout
+      const emptyBlocks: BlockNode[] = [];
+      const json = emptyBlocks as unknown as Prisma.InputJsonValue;
+      await siteLayoutsRepo.upsertDraft(
+        tenantId,
+        { scope, pageId: null },
+        json,
+      );
+      return;
+    }
+
+    // Get the template blueprint for fallback blocks
+    const template = config.template as SiteTemplate | null;
+    if (!template) {
+      const emptyBlocks: BlockNode[] = [];
+      const json = emptyBlocks as unknown as Prisma.InputJsonValue;
+      await siteLayoutsRepo.upsertDraft(
+        tenantId,
+        { scope, pageId: null },
+        json,
+      );
+      return;
+    }
+
+    const blueprint = getTemplateBlueprint(template.slug);
+
+    // Load NavMenu rows for synthesis
+    const navConfigRow = await navMenusRepo.findBySlot(
+      tenantId,
+      "header-primary",
+    );
+    const mobileDrawerRow = await navMenusRepo.findBySlot(
+      tenantId,
+      "mobile-drawer",
+    );
+    const footerConfigRow = await navMenusRepo.findBySlot(
+      tenantId,
+      "footer-config",
+    );
+    const footerPrimaryRow = await navMenusRepo.findBySlot(
+      tenantId,
+      "footer-1",
+    );
+    const footerSecondaryRow = await navMenusRepo.findBySlot(
+      tenantId,
+      "footer-2",
+    );
+
+    // Extract the config objects from JSON payloads
+    const navConfig = navConfigRow?.items as any | null;
+    const mobileDrawerConfig = mobileDrawerRow?.items as any | null;
+    const footerConfig = footerConfigRow?.items as any | null;
+    const footerPrimaryItems =
+      (footerPrimaryRow?.items as any)?.items ?? null;
+    const footerSecondaryItems =
+      (footerSecondaryRow?.items as any)?.items ?? null;
+
+    // Synthesize the blocks
+    let blocks: BlockNode[];
+    if (scope === "header") {
+      blocks = synthesizeHeaderBlocks({
+        navConfig,
+        mobileDrawerConfig,
+        footerConfig,
+        templateHeaderFallback: blueprint?.layouts?.header,
+      });
+    } else {
+      // scope === "footer"
+      blocks = synthesizeFooterBlocks({
+        footerConfig,
+        footerPrimaryItems,
+        footerSecondaryItems,
+        templateFooterFallback: blueprint?.layouts?.footer,
+      });
+    }
+
+    // Validate the synthesized blocks
+    const validation = BlockTreeSchema.safeParse(blocks);
+    if (!validation.success) {
+      throw createError(
+        `Failed to synthesize ${scope} layout: ${validation.error.issues[0]?.message ?? "unknown"}`,
+        500,
+      );
+    }
+
+    // Upsert both draft and published to the database
+    const json = validation.data as unknown as Prisma.InputJsonValue;
+    await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope, pageId: null },
+      json,
+    );
+    // Mark as published so it appears on the live site
+    await siteLayoutsRepo.publishDraft(tenantId, { scope, pageId: null });
+
+    // Revalidate the layout
+    await revalidateSiteLayout(tenantId, scope);
+  }
+
   // ——— GLOBALS (Header/Footer) ———
 
   async getGlobals(tenantId: string) {
     const config = await this.repo.findConfig(tenantId);
     assertEnabled(config);
+
+    // Trigger eager synthesis for header and footer if they don't exist
+    await this.ensureChromeSynthesized(tenantId, "header");
+    await this.ensureChromeSynthesized(tenantId, "footer");
 
     const headerLayout = await siteLayoutsRepo.findByKey(tenantId, {
       scope: "header",
