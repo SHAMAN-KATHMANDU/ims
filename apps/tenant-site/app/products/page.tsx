@@ -90,7 +90,15 @@ export default async function ProductsPage({ searchParams }: PageProps) {
   const attr = parseAttrFilter(params);
 
   const ctx = await getTenantContext();
-  const [site, productList, categories, navPages, layout] = await Promise.all([
+  const [
+    site,
+    productList,
+    categories,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getProducts(ctx.host, ctx.tenantId, {
       page,
@@ -105,15 +113,34 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
     getSiteLayout(ctx.host, ctx.tenantId, "products-index").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
   ]);
 
   if (!site) notFound();
 
   // Block-first: if there's a "products-index" SiteLayout, compose it via
-  // BlockRenderer. The product-listing block reads pagination/sort state
-  // from dataContext.searchParams and dataContext.productsPage/Total.
-  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+  // BlockRenderer with optional header/footer chrome. The product-listing block
+  // reads pagination/sort state from dataContext.searchParams and
+  // dataContext.productsPage/Total.
+  if (
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
+  ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -130,10 +157,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
       </>
     );

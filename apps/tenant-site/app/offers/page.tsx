@@ -61,19 +61,46 @@ export default async function OffersPage({ searchParams }: PageProps) {
   const page = Number(getOne(params.page) ?? "1") || 1;
 
   const ctx = await getTenantContext();
-  const [site, offersList, categories, navPages, layout] = await Promise.all([
+  const [
+    site,
+    offersList,
+    categories,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getOffers(ctx.host, ctx.tenantId, { page, limit: 24 }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
     getSiteLayout(ctx.host, ctx.tenantId, "offers").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
   ]);
 
   if (!site) notFound();
 
   // Block-first: if a tenant has built a custom "offers" layout in the site
-  // editor, use BlockRenderer. Falls back to the hardcoded grid below.
-  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+  // editor, use BlockRenderer with optional header/footer chrome. Falls back
+  // to the hardcoded grid below.
+  if (
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
+  ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -89,10 +116,7 @@ export default async function OffersPage({ searchParams }: PageProps) {
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
       </>
     );

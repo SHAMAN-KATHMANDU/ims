@@ -20,16 +20,35 @@ export const metadata: Metadata = {
 
 export default async function ContactPage() {
   const ctx = await getTenantContext();
-  const [site, categories, navPages, layout] = await Promise.all([
-    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
-    getCategories(ctx.host, ctx.tenantId),
-    getNavPages(ctx.host, ctx.tenantId),
-    getSiteLayout(ctx.host, ctx.tenantId, "contact").catch(() => null),
-  ]);
+  const [site, categories, navPages, headerLayout, pageLayout, footerLayout] =
+    await Promise.all([
+      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
+      getCategories(ctx.host, ctx.tenantId),
+      getNavPages(ctx.host, ctx.tenantId),
+      getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+      getSiteLayout(ctx.host, ctx.tenantId, "contact").catch(() => null),
+      getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+    ]);
 
   if (!site) notFound();
 
-  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+  if (
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
+  ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -42,10 +61,7 @@ export default async function ContactPage() {
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
       </>
     );

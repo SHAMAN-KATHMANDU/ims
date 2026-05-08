@@ -68,10 +68,9 @@ export default async function TenantCustomPage({ params }: Props) {
 
   if (!site || !page) notFound();
 
-  // Phase 1 block-renderer fallback: if a SiteLayout row exists for this
-  // page, render its block tree instead of the flat markdown body. When no
-  // layout row exists (the default for every existing tenant) we keep the
-  // legacy markdown path unchanged.
+  // Phase 4: if a SiteLayout row exists for this page, render its block tree
+  // instead of the flat markdown body. When no layout row exists (the default
+  // for every existing tenant) we keep the legacy markdown path unchanged.
   const layout = await getSiteLayout(ctx.host, ctx.tenantId, "page", page.id);
 
   const maxWidth = columnWidth(page.layoutVariant);
