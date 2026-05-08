@@ -31,22 +31,44 @@ export default async function BlogIndexPage({
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const limit = 12;
 
-  const [list, categories, site, siteCategories, navPages, layout] =
-    await Promise.all([
-      getBlogPosts(ctx.host, ctx.tenantId, { page, limit }),
-      getBlogCategories(ctx.host, ctx.tenantId),
-      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
-      getCategories(ctx.host, ctx.tenantId),
-      getNavPages(ctx.host, ctx.tenantId),
-      getSiteLayout(ctx.host, ctx.tenantId, "blog-index").catch(() => null),
-    ]);
+  const [
+    list,
+    categories,
+    site,
+    siteCategories,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
+    getBlogPosts(ctx.host, ctx.tenantId, { page, limit }),
+    getBlogCategories(ctx.host, ctx.tenantId),
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
+    getCategories(ctx.host, ctx.tenantId),
+    getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "blog-index").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+  ]);
 
   if (
     site &&
-    layout &&
-    Array.isArray(layout.blocks) &&
-    layout.blocks.length > 0
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
   ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -59,10 +81,7 @@ export default async function BlogIndexPage({
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
       </>
     );

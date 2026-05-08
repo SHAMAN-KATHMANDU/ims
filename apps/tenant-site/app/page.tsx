@@ -33,22 +33,48 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const ctx = await getTenantContext();
-  const [site, productList, categories, featuredBlogPosts, navPages, layout] =
-    await Promise.all([
-      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
-      getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 50 }),
-      getCategories(ctx.host, ctx.tenantId),
-      getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
-      getNavPages(ctx.host, ctx.tenantId),
-      getSiteLayout(ctx.host, ctx.tenantId, "home").catch(() => null),
-    ]);
+  const [
+    site,
+    productList,
+    categories,
+    featuredBlogPosts,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
+    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
+    getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 50 }),
+    getCategories(ctx.host, ctx.tenantId),
+    getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
+    getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "home").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+  ]);
 
   if (!site) notFound();
 
-  // Phase 3+: if the tenant has a `home` SiteLayout, render it via the
-  // block pipeline. Otherwise fall through to the legacy pickTemplate path
-  // so existing tenants keep working.
-  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+  // Phase 4+: if the tenant has a `home` SiteLayout, render it via the
+  // block pipeline with optional header/footer chrome. Otherwise fall through
+  // to the legacy pickTemplate path so existing tenants keep working.
+  if (
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
+  ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -61,10 +87,7 @@ export default async function HomePage() {
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
         <script
           type="application/ld+json"

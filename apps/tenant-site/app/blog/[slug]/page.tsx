@@ -46,22 +46,44 @@ export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const ctx = await getTenantContext();
 
-  const [result, site, categories, navPages, layout] = await Promise.all([
+  const [
+    result,
+    site,
+    categories,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
     getBlogPostBySlug(ctx.host, ctx.tenantId, slug),
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
     getSiteLayout(ctx.host, ctx.tenantId, "blog-post").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
   ]);
 
   if (!result) notFound();
 
   if (
     site &&
-    layout &&
-    Array.isArray(layout.blocks) &&
-    layout.blocks.length > 0
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
   ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -74,10 +96,7 @@ export default async function BlogPostPage({ params }: Props) {
     return (
       <>
         <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
+          <BlockRenderer nodes={blocks} dataContext={dataContext} />
         </main>
       </>
     );

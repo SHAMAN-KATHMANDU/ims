@@ -41,12 +41,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const { id } = await params;
   const ctx = await getTenantContext();
 
-  const [site, product, categories, navPages, layout] = await Promise.all([
+  const [
+    site,
+    product,
+    categories,
+    navPages,
+    headerLayout,
+    pageLayout,
+    footerLayout,
+  ] = await Promise.all([
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getProduct(ctx.host, ctx.tenantId, id),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
     getSiteLayout(ctx.host, ctx.tenantId, "product-detail").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
   ]);
 
   if (!site || !product) notFound();
@@ -65,8 +75,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const jsonLd = productJsonLd(product, ctx.host);
 
-  // Block-first rendering for PDP.
-  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+  // Block-first rendering for PDP with optional header/footer chrome.
+  if (
+    pageLayout &&
+    Array.isArray(pageLayout.blocks) &&
+    pageLayout.blocks.length > 0
+  ) {
+    const blocks = [
+      ...(Array.isArray(headerLayout?.blocks)
+        ? (headerLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(pageLayout.blocks)
+        ? (pageLayout.blocks as BlockNode[])
+        : []),
+      ...(Array.isArray(footerLayout?.blocks)
+        ? (footerLayout.blocks as BlockNode[])
+        : []),
+    ];
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -82,10 +108,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <>
         <main id="main-content">
           <div className="mx-auto max-w-7xl px-4 md:px-8">
-            <BlockRenderer
-              nodes={layout.blocks as BlockNode[]}
-              dataContext={dataContext}
-            />
+            <BlockRenderer nodes={blocks} dataContext={dataContext} />
           </div>
         </main>
         <script
