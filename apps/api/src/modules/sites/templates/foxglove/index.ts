@@ -20,6 +20,8 @@ import {
 import { foxgloveHome } from "./home";
 import { foxglovePdp } from "./pdp";
 import { foxgloveCart } from "./cart";
+import { foxgloveHeader } from "./header";
+import { foxgloveFooter } from "./footer";
 
 const foxgloveNav = buildTemplateNavSeed({
   brandName: "Foxglove & Co.",
@@ -34,7 +36,9 @@ export const foxgloveBlueprint: TemplateBlueprint = {
   slug: "foxglove",
   ...foxgloveNav,
   layouts: {
+    header: foxgloveHeader(),
     home: foxgloveHome(),
+    footer: foxgloveFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

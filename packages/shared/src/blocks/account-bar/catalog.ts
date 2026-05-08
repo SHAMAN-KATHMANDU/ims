@@ -6,6 +6,7 @@ export const accountBarCatalog: CatalogEntry<"account-bar"> = {
   description:
     "Slim B2B bar with account number, tier badge, and PO reference. Hides for guests unless guest copy is set.",
   category: "commerce",
+  scopes: ["header"] as const,
   createDefaultProps: () => ({
     showAccountNumber: true,
     showTier: true,

@@ -214,6 +214,12 @@ export class SitesService {
    * the blueprint is written straight to `blocks` so the site reflects
    * the new template on next page load; otherwise it lands in
    * `draftBlocks` and the tenant has to hit Publish in the editor.
+   *
+   * For each scope in BLUEPRINT_SCOPES, if the blueprint provides a layout,
+   * it is validated and seeded. If the blueprint omits the scope, an empty
+   * layout ([]) is seeded instead. This ensures all scopes have consistent
+   * rows in the database, even during the Phase 3 transition when some
+   * templates may not yet provide header/footer layouts.
    */
   private async seedLayoutsFromBlueprint(
     tenantId: string,
@@ -221,8 +227,8 @@ export class SitesService {
     publishNow: boolean,
   ): Promise<void> {
     for (const scope of BLUEPRINT_SCOPES) {
-      const blocks = blueprint.layouts?.[scope];
-      if (!blocks || blocks.length === 0) continue;
+      // Use blueprint's layout if provided; fall back to empty array for missing scopes.
+      const blocks = blueprint.layouts?.[scope] ?? [];
 
       // Validate before write — the editor save path also validates, so an
       // invalid template would round-trip through the DB and surface as a

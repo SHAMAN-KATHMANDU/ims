@@ -5,6 +5,7 @@ export const copyrightBarCatalog: CatalogEntry<"copyright-bar"> = {
   label: "Copyright bar",
   description: "Bottom © line + links.",
   category: "marketing",
+  scopes: ["footer"] as const,
   createDefaultProps: () => ({
     copy: "© 2026. All rights reserved.",
     showLinks: true,

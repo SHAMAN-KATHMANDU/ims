@@ -20,6 +20,8 @@ import {
 import { ridgeHome } from "./home";
 import { ridgePdp } from "./pdp";
 import { ridgeCart } from "./cart";
+import { ridgeHeader } from "./header";
+import { ridgeFooter } from "./footer";
 
 const ridgeNav = buildTemplateNavSeed({
   brandName: "Ridge//",
@@ -31,7 +33,9 @@ export const ridgeBlueprint: TemplateBlueprint = {
   slug: "ridge",
   ...ridgeNav,
   layouts: {
+    header: ridgeHeader(),
     home: ridgeHome(),
+    footer: ridgeFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

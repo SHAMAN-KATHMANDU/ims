@@ -20,6 +20,8 @@ import {
 import { lumenHome } from "./home";
 import { lumenPdp } from "./pdp";
 import { lumenCart } from "./cart";
+import { lumenHeader } from "./header";
+import { lumenFooter } from "./footer";
 
 const lumenNav = buildTemplateNavSeed({
   brandName: "Lumen",
@@ -34,7 +36,9 @@ export const lumenBlueprint: TemplateBlueprint = {
   slug: "lumen",
   ...lumenNav,
   layouts: {
+    header: lumenHeader(),
     home: lumenHome(),
+    footer: lumenFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

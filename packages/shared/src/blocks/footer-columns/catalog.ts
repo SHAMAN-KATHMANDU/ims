@@ -5,6 +5,7 @@ export const footerColumnsCatalog: CatalogEntry<"footer-columns"> = {
   label: "Footer columns",
   description: "2–6 link columns + brand.",
   category: "marketing",
+  scopes: ["footer"] as const,
   createDefaultProps: () => ({
     showBrand: true,
     brand: "Brand",

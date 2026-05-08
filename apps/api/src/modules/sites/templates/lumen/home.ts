@@ -10,26 +10,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function lumenHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Free samples with every order · Complimentary returns",
-      marquee: false,
-      tone: "muted",
-    }),
-    block("nav-bar", {
-      brand: "Lumen",
-      brandStyle: "serif",
-      items: [
-        { label: "Skincare", href: "/products?category=skincare" },
-        { label: "Makeup", href: "/products?category=makeup" },
-        { label: "Bath & body", href: "/products?category=bath" },
-        { label: "Rituals", href: "/blog" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "center",
-    }),
     block("hero", {
       variant: "boutique",
       heroLayout: "centered",
@@ -92,38 +72,6 @@ export function lumenHome(): BlockNode[] {
         "A monthly letter on actives, formulation, and skin in real life.",
       cta: "Sign up",
       variant: "card",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "Lumen",
-      tagline: "Slow skincare. Made in small batches in Lisbon.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Skincare", href: "/products?category=skincare" },
-            { label: "Makeup", href: "/products?category=makeup" },
-            { label: "Bath & body", href: "/products?category=bath" },
-            { label: "Sets", href: "/products?category=sets" },
-          ],
-        },
-        {
-          title: "Rituals",
-          links: [
-            { label: "Journal", href: "/blog" },
-            { label: "Ingredient index", href: "/about" },
-            { label: "Quiz", href: "/about" },
-          ],
-        },
-        {
-          title: "Care",
-          links: [
-            { label: "Sample policy", href: "/about" },
-            { label: "Returns", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

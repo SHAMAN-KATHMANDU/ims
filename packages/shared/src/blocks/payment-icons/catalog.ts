@@ -5,6 +5,7 @@ export const paymentIconsCatalog: CatalogEntry<"payment-icons"> = {
   label: "Payment icons",
   description: "Visa, MC, PayPal, Apple Pay, etc.",
   category: "marketing",
+  scopes: ["footer"] as const,
   createDefaultProps: () => ({
     align: "end",
     variant: "flat",

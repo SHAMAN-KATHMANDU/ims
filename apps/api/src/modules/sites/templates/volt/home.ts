@@ -11,26 +11,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function voltHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "▲ NEW: Volt Pro · Free 2-day shipping in metro cities",
-      marquee: false,
-      tone: "accent",
-    }),
-    block("nav-bar", {
-      brand: "▲ VOLT",
-      brandStyle: "mono",
-      items: [
-        { label: "Audio", href: "/products?category=audio" },
-        { label: "Wearables", href: "/products?category=wearables" },
-        { label: "Charging", href: "/products?category=charging" },
-        { label: "Compare", href: "/products" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "shoppable",
       heroLayout: "split-right",
@@ -88,38 +68,6 @@ export function voltHome(): BlockNode[] {
       dark: true,
       alignment: "center",
       valueSize: "xl",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "▲ VOLT",
-      tagline: "Audio gear, engineered tight.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Audio", href: "/products?category=audio" },
-            { label: "Wearables", href: "/products?category=wearables" },
-            { label: "Charging", href: "/products?category=charging" },
-            { label: "Compare", href: "/products" },
-          ],
-        },
-        {
-          title: "Engineering",
-          links: [
-            { label: "Spec sheets", href: "/blog" },
-            { label: "Engineering log", href: "/blog" },
-            { label: "Sustainability", href: "/about" },
-          ],
-        },
-        {
-          title: "Support",
-          links: [
-            { label: "Warranty", href: "/about" },
-            { label: "Returns", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

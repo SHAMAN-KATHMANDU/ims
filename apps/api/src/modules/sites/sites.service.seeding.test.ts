@@ -33,11 +33,18 @@ vi.mock("@/modules/nav-menus/nav-menus.revalidate", () => ({
 vi.mock("./templates", () => ({
   getTemplateBlueprint: vi.fn(),
   BLUEPRINT_SCOPES: [
+    "header",
+    "footer",
     "home",
     "products-index",
     "product-detail",
     "offers",
     "cart",
+    "blog-index",
+    "blog-post",
+    "contact",
+    "page",
+    "404",
   ],
 }));
 
@@ -129,11 +136,18 @@ describe("SitesService — pickTemplate nav/footer seeding", () => {
     const maisonBlueprint: TemplateBlueprint = {
       slug: "maison",
       layouts: {
+        header: [dummyBlock],
+        footer: [dummyBlock],
         home: [dummyBlock],
         "products-index": [dummyBlock],
         "product-detail": [dummyBlock],
         offers: [dummyBlock],
         cart: [dummyBlock],
+        "blog-index": [dummyBlock],
+        "blog-post": [dummyBlock],
+        contact: [dummyBlock],
+        page: [dummyBlock],
+        "404": [dummyBlock],
       },
       navConfig: {
         layout: "centered",
@@ -192,7 +206,7 @@ describe("SitesService — pickTemplate nav/footer seeding", () => {
     expect(slotsSeeded).toHaveLength(5);
   });
 
-  it("seeds SiteLayout rows for the home/products-index/product-detail/offers/cart scopes", async () => {
+  it("seeds SiteLayout rows for all 12 scopes including header and footer", async () => {
     await service.pickTemplate("t1", {
       templateSlug: "maison",
       resetBranding: false,
@@ -203,13 +217,21 @@ describe("SitesService — pickTemplate nav/footer seeding", () => {
     );
     expect(scopesSeeded).toEqual(
       expect.arrayContaining([
+        "header",
+        "footer",
         "home",
         "products-index",
         "product-detail",
         "offers",
         "cart",
+        "blog-index",
+        "blog-post",
+        "contact",
+        "page",
+        "404",
       ]),
     );
+    expect(scopesSeeded).toHaveLength(12);
   });
 
   it("preserves existing NavMenu rows when resetBranding=false", async () => {
@@ -305,9 +327,10 @@ describe("SitesService — pickTemplate nav/footer seeding", () => {
     expect(mockNavRepo.upsert).not.toHaveBeenCalled();
   });
 
-  it("seeds NavMenu but not SiteLayout when blueprint has only nav fields (no layouts)", async () => {
-    // Backwards-compat test: blueprint with nav fields but no layouts.
-    // NavMenu upserts should happen; SiteLayout upserts should NOT.
+  it("seeds NavMenu and all 12 empty SiteLayout scopes when blueprint has only nav fields (no layouts)", async () => {
+    // Phase 3 test: blueprint with nav fields but no layouts.
+    // NavMenu upserts should happen; SiteLayout upserts should happen too
+    // with empty arrays for all 12 scopes (to maintain consistent state).
     // This proves nav and layout seeding paths are independent.
     const navOnlyBlueprint: TemplateBlueprint = {
       slug: "nav-only",
@@ -362,7 +385,99 @@ describe("SitesService — pickTemplate nav/footer seeding", () => {
         "footer-2",
       ]),
     );
-    // SiteLayout rows should NOT be upserted because blueprint has no layouts
-    expect(mockLayoutsRepo.upsertDraft).not.toHaveBeenCalled();
+    // SiteLayout rows should be upserted for all 12 scopes with empty arrays
+    // since the blueprint has no layouts
+    const scopesSeeded = mockLayoutsRepo.upsertDraft.mock.calls.map(
+      (c: unknown[]) => (c[1] as { scope: string }).scope,
+    );
+    expect(scopesSeeded).toHaveLength(12);
+    expect(scopesSeeded).toEqual(
+      expect.arrayContaining([
+        "header",
+        "footer",
+        "home",
+        "products-index",
+        "product-detail",
+        "offers",
+        "cart",
+        "blog-index",
+        "blog-post",
+        "contact",
+        "page",
+        "404",
+      ]),
+    );
+  });
+
+  it("seeds all 12 SiteLayout scopes with empty arrays when blueprint omits some scopes (Phase 3 transition)", async () => {
+    // Phase 3 test: blueprint provides only old scopes (home, products-index, etc.),
+    // but the templates agent hasn't yet added header/footer layouts.
+    // All 12 scopes should be seeded: provided scopes with their blocks,
+    // missing scopes with empty [] arrays. This ensures the database is in a
+    // consistent state even during the transition.
+    const dummyBlock: BlockNode = {
+      id: "blk1",
+      kind: "section",
+      props: { background: "default" },
+      children: [],
+    };
+    const partialBlueprint: TemplateBlueprint = {
+      slug: "partial-phase3",
+      layouts: {
+        // Only provide old scopes; omit header and footer
+        home: [dummyBlock],
+        "products-index": [dummyBlock],
+      },
+    };
+
+    (getTemplateBlueprint as ReturnType<typeof vi.fn>).mockReturnValue(
+      partialBlueprint,
+    );
+    (mockRepo.findTemplateBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(
+      templateRow("partial-phase3"),
+    );
+
+    mockLayoutsRepo.upsertDraft.mockClear();
+
+    await service.pickTemplate("t1", {
+      templateSlug: "partial-phase3",
+      resetBranding: false,
+    });
+
+    // All 12 scopes should have been seeded
+    const scopesSeeded = mockLayoutsRepo.upsertDraft.mock.calls.map(
+      (c: unknown[]) => (c[1] as { scope: string }).scope,
+    );
+    expect(scopesSeeded).toHaveLength(12);
+    expect(scopesSeeded).toEqual(
+      expect.arrayContaining([
+        "header",
+        "footer",
+        "home",
+        "products-index",
+        "product-detail",
+        "offers",
+        "cart",
+        "blog-index",
+        "blog-post",
+        "contact",
+        "page",
+        "404",
+      ]),
+    );
+
+    // The home and products-index scopes should have the provided block
+    const homeCall = mockLayoutsRepo.upsertDraft.mock.calls.find(
+      (c: unknown[]) => (c[1] as { scope: string }).scope === "home",
+    );
+    expect(homeCall).toBeDefined();
+    expect(homeCall![2] as unknown[]).toHaveLength(1); // One block
+
+    // The header and footer scopes should have empty arrays
+    const headerCall = mockLayoutsRepo.upsertDraft.mock.calls.find(
+      (c: unknown[]) => (c[1] as { scope: string }).scope === "header",
+    );
+    expect(headerCall).toBeDefined();
+    expect(headerCall![2] as unknown[]).toHaveLength(0); // Empty array
   });
 });

@@ -11,25 +11,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function auricHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Complimentary engraving on rings & pendants",
-      marquee: false,
-      tone: "muted",
-    }),
-    block("nav-bar", {
-      brand: "Auric",
-      brandStyle: "serif",
-      items: [
-        { label: "Rings", href: "/products?category=rings" },
-        { label: "Necklaces", href: "/products?category=necklaces" },
-        { label: "Earrings", href: "/products?category=earrings" },
-        { label: "The Atelier", href: "/about" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      align: "center",
-    }),
     block("hero", {
       variant: "luxury",
       heroLayout: "centered",
@@ -89,39 +70,6 @@ export function auricHome(): BlockNode[] {
       ],
       layout: "grid",
       columns: 2,
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "Auric",
-      tagline:
-        "Hand-finished gold pieces. Bench-made in Jaipur, designed in Bombay.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Rings", href: "/products?category=rings" },
-            { label: "Necklaces", href: "/products?category=necklaces" },
-            { label: "Earrings", href: "/products?category=earrings" },
-            { label: "Bridal", href: "/products?category=bridal" },
-          ],
-        },
-        {
-          title: "The Atelier",
-          links: [
-            { label: "Our craft", href: "/about" },
-            { label: "Materials", href: "/about" },
-            { label: "Bespoke", href: "/contact" },
-          ],
-        },
-        {
-          title: "Care",
-          links: [
-            { label: "Engraving", href: "/about" },
-            { label: "Lifetime polishing", href: "/about" },
-            { label: "Returns", href: "/about" },
-          ],
-        },
-      ],
     }),
   ];
 }

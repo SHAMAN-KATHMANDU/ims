@@ -60,6 +60,8 @@ export const BrandingConfigSchema: z.ZodType<BrandingConfig> = z
 // ---------------------------------------------------------------------------
 
 export type BlueprintScope =
+  | "header"
+  | "footer"
   | "home"
   | "products-index"
   | "product-detail"
@@ -72,6 +74,8 @@ export type BlueprintScope =
   | "404";
 
 export const BLUEPRINT_SCOPES = [
+  "header",
+  "footer",
   "home",
   "products-index",
   "product-detail",
@@ -117,6 +121,8 @@ export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
   layouts: z
     .record(
       z.enum([
+        "header",
+        "footer",
         "home",
         "products-index",
         "product-detail",

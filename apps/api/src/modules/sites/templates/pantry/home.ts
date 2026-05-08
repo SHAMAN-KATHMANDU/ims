@@ -10,26 +10,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function pantryHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("announcement-bar", {
-      text: "Free shipping on orders over ₹2,500 · Pantry restocks weekly",
-      marquee: false,
-      tone: "default",
-    }),
-    block("nav-bar", {
-      brand: "Pantry & Co.",
-      brandStyle: "serif",
-      items: [
-        { label: "Oils & vinegars", href: "/products?category=oils" },
-        { label: "Spices", href: "/products?category=spices" },
-        { label: "Pantry tins", href: "/products?category=tins" },
-        { label: "Recipes", href: "/blog" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "boutique",
       heroLayout: "split-left",
@@ -101,38 +81,6 @@ export function pantryHome(): BlockNode[] {
       subtitle: "A new recipe and a single-origin spotlight, every other week.",
       cta: "Subscribe",
       variant: "card",
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "Pantry & Co.",
-      tagline: "A modern pantry, stocked with intention.",
-      columns: [
-        {
-          title: "Shop",
-          links: [
-            { label: "Oils & vinegars", href: "/products?category=oils" },
-            { label: "Spices", href: "/products?category=spices" },
-            { label: "Pantry tins", href: "/products?category=tins" },
-            { label: "Sweets & ferments", href: "/products?category=sweets" },
-          ],
-        },
-        {
-          title: "Eat",
-          links: [
-            { label: "Recipes", href: "/blog" },
-            { label: "Producers", href: "/about" },
-            { label: "Pairings", href: "/blog" },
-          ],
-        },
-        {
-          title: "Care",
-          links: [
-            { label: "Shipping", href: "/about" },
-            { label: "Returns", href: "/about" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

@@ -11,34 +11,6 @@ import { block, resetIdCounter } from "../_shared/factories";
 export function forgeHome(): BlockNode[] {
   resetIdCounter();
   return [
-    block("account-bar", {
-      showAccountNumber: true,
-      showTier: true,
-      showPo: true,
-      alignment: "between",
-      tone: "default",
-      guestText: "Sign in for wholesale pricing",
-    }),
-    block("announcement-bar", {
-      text: "Net-30 terms · Bulk discounts · 24h order processing",
-      marquee: false,
-      tone: "default",
-    }),
-    block("nav-bar", {
-      brand: "FORGE / B2B",
-      brandStyle: "mono",
-      items: [
-        { label: "Catalogue", href: "/products" },
-        { label: "Quick order", href: "/products" },
-        { label: "Tier pricing", href: "/about" },
-        { label: "Account", href: "/contact" },
-      ],
-      showSearch: true,
-      showCart: true,
-      showAccount: true,
-      sticky: true,
-      align: "between",
-    }),
     block("hero", {
       variant: "minimal",
       heroLayout: "split-left",
@@ -114,39 +86,6 @@ export function forgeHome(): BlockNode[] {
       layout: "grid",
       columns: 4,
       dark: true,
-    }),
-    block("footer-columns", {
-      showBrand: true,
-      brand: "FORGE / B2B",
-      tagline:
-        "Industrial supply, priced by the pallet. Distribution since 2002.",
-      columns: [
-        {
-          title: "Catalogue",
-          links: [
-            { label: "Fasteners", href: "/products?category=fasteners" },
-            { label: "Fittings", href: "/products?category=fittings" },
-            { label: "Power tools", href: "/products?category=tools" },
-            { label: "Adhesives", href: "/products?category=adhesives" },
-          ],
-        },
-        {
-          title: "Trade",
-          links: [
-            { label: "Tier pricing", href: "/about" },
-            { label: "Account managers", href: "/contact" },
-            { label: "Net-30 terms", href: "/about" },
-          ],
-        },
-        {
-          title: "Support",
-          links: [
-            { label: "Returns", href: "/about" },
-            { label: "Spec sheets", href: "/blog" },
-            { label: "Contact", href: "/contact" },
-          ],
-        },
-      ],
     }),
   ];
 }

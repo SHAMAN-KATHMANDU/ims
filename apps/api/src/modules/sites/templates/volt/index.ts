@@ -20,6 +20,8 @@ import {
 import { voltHome } from "./home";
 import { voltPdp } from "./pdp";
 import { voltCart } from "./cart";
+import { voltHeader } from "./header";
+import { voltFooter } from "./footer";
 
 const voltNav = buildTemplateNavSeed({
   brandName: "Volt",
@@ -33,7 +35,9 @@ export const voltBlueprint: TemplateBlueprint = {
   slug: "volt",
   ...voltNav,
   layouts: {
+    header: voltHeader(),
     home: voltHome(),
+    footer: voltFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();

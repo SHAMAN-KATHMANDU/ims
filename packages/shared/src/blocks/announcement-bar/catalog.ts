@@ -6,6 +6,7 @@ export const announcementBarCatalog: CatalogEntry<"announcement-bar"> = {
   description:
     "Top-of-page strip (shipping, launch, promo) — static or scrolling marquee.",
   category: "marketing",
+  scopes: ["header"] as const,
   createDefaultProps: () => ({
     text: "Free shipping across Nepal · Cash on delivery available",
     marquee: true,

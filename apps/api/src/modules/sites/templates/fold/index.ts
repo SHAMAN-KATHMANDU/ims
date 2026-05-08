@@ -20,6 +20,8 @@ import {
 import { foldHome } from "./home";
 import { foldPdp } from "./pdp";
 import { foldCart } from "./cart";
+import { foldHeader } from "./header";
+import { foldFooter } from "./footer";
 
 const foldNav = buildTemplateNavSeed({
   brandName: "Fold",
@@ -32,7 +34,9 @@ export const foldBlueprint: TemplateBlueprint = {
   slug: "fold",
   ...foldNav,
   layouts: {
+    header: foldHeader(),
     home: foldHome(),
+    footer: foldFooter(),
     "products-index": (() => {
       resetIdCounter();
       return productsIndexLayout();
