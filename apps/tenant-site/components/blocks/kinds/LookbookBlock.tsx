@@ -10,6 +10,7 @@
 import Link from "next/link";
 import type { LookbookProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
+import { normalizeImageRef } from "@/lib/image";
 
 export function LookbookBlock({
   node,
@@ -75,7 +76,7 @@ export function LookbookBlock({
               <div style={{ position: "relative", aspectRatio }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={scene.imageUrl}
+                  src={normalizeImageRef(scene.imageUrl)}
                   alt={scene.alt ?? ""}
                   loading="lazy"
                   style={{

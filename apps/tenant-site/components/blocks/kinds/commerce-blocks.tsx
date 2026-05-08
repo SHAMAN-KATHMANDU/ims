@@ -23,6 +23,7 @@ import type {
 import type { PublicProduct } from "@/lib/api";
 import { getCollection, getOffers } from "@/lib/api";
 import { getSiteFormatOptions } from "@/lib/format";
+import { normalizeImageRef } from "@/lib/image";
 import type { BlockComponentProps } from "../registry";
 import { ProductCarousel } from "./ProductCarousel";
 import { BlockGridSkeleton } from "./BlockSkeletons";
@@ -52,10 +53,10 @@ export function HeroBlock({
       ctaLabel={props.ctaLabel ?? "Shop the collection"}
       title={props.title}
       subtitle={props.subtitle}
-      imageUrl={props.imageUrl}
+      imageUrl={normalizeImageRef(props.imageUrl)}
       heroLayout={props.heroLayout}
       videoUrl={props.videoUrl}
-      videoPoster={props.videoPoster}
+      videoPoster={normalizeImageRef(props.videoPoster)}
       shoppableProducts={shoppableProducts}
     />
   );

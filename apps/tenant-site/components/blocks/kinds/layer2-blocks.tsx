@@ -14,6 +14,7 @@ import type {
   VideoProps,
 } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
+import { normalizeImageRef } from "@/lib/image";
 
 // ---------- embed -----------------------------------------------------------
 
@@ -88,7 +89,7 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
           loop={props.loop}
           muted={props.muted}
           playsInline
-          poster={props.posterUrl}
+          poster={normalizeImageRef(props.posterUrl)}
           style={{
             width: "100%",
             aspectRatio: ar,
