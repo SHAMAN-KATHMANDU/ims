@@ -15,6 +15,14 @@
 
 export type { CatalogCategory, CatalogScope, CatalogEntry } from "./types";
 export { blocksToMarkdown, blockToMarkdown } from "./serialize";
+export type {
+  NavBarProps,
+  NavBarItem,
+  NavBarBrand,
+  NavBarCta,
+  NavBarUtilityBar,
+  NavBarMobileDrawer,
+} from "./nav-bar";
 
 import type { BlockKind } from "../site-schema/blocks";
 import type { CatalogEntry } from "./types";
