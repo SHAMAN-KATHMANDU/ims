@@ -14,12 +14,12 @@ import {
   getCategories,
   getNavPages,
   getCollection,
+  getSiteLayout,
 } from "@/lib/api";
-import {
-  SiteHeader,
-  SiteFooter,
-  ProductGrid,
-} from "@/components/templates/shared";
+import { ProductGrid } from "@/components/templates/shared";
+import { BlockRenderer } from "@/components/blocks/BlockRenderer";
+import type { BlockDataContext } from "@/components/blocks/data-context";
+import type { BlockNode } from "@repo/shared";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -45,11 +45,20 @@ export async function generateMetadata({
 export default async function CollectionPage({ params }: PageProps) {
   const { slug } = await params;
   const ctx = await getTenantContext();
-  const [site, categories, navPages, collectionRes] = await Promise.all([
+  const [
+    site,
+    categories,
+    navPages,
+    collectionRes,
+    headerLayout,
+    footerLayout,
+  ] = await Promise.all([
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
     getCollection(ctx.host, ctx.tenantId, slug, 48),
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
   ]);
 
   if (!site) notFound();
@@ -58,14 +67,28 @@ export default async function CollectionPage({ params }: PageProps) {
     "collection" in collectionRes ? collectionRes.collection : collectionRes;
   if (!collection) notFound();
 
+  const blocks = [
+    ...(Array.isArray(headerLayout?.blocks)
+      ? (headerLayout.blocks as BlockNode[])
+      : []),
+    ...(Array.isArray(footerLayout?.blocks)
+      ? (footerLayout.blocks as BlockNode[])
+      : []),
+  ];
+
+  const dataContext: BlockDataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: [],
+    featuredBlogPosts: [],
+  };
+
   return (
     <>
-      <SiteHeader
-        site={site}
-        host={ctx.host}
-        categories={categories}
-        navPages={navPages}
-      />
+      <BlockRenderer nodes={blocks} dataContext={dataContext} />
       <main>
         <section style={{ padding: "var(--section-padding) 0" }}>
           <div className="container">
@@ -111,7 +134,6 @@ export default async function CollectionPage({ params }: PageProps) {
           </div>
         </section>
       </main>
-      <SiteFooter site={site} host={ctx.host} navPages={navPages} />
     </>
   );
 }
