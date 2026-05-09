@@ -4,18 +4,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectTenant } from "@/store/auth-store";
 import {
-  platformDomainsService,
+  listMyDomains,
+  createMyDomain,
+  updateMyDomain,
+  deleteMyDomain,
+  verifyMyDomain,
+  getMyDomainVerificationInstructions,
   type CreateDomainData,
   type UpdateDomainData,
-} from "../services/platform-domains.service";
+} from "../domains/services/domains.service";
 
 export type {
   TenantDomain,
   CreateDomainData,
   UpdateDomainData,
   DomainVerificationInstructions,
-  VerificationResult,
-} from "../services/platform-domains.service";
+} from "../domains/services/domains.service";
 
 export const domainKeys = {
   all: ["domains"] as const,
@@ -31,7 +35,7 @@ export function useDomains() {
 
   return useQuery({
     queryKey: domainKeys.list(tenantId),
-    queryFn: () => platformDomainsService.listDomains(tenantId),
+    queryFn: listMyDomains,
     enabled: !!tenantId,
     staleTime: 2 * 60 * 1000,
   });
@@ -44,9 +48,7 @@ export function useDomain(id: string) {
   return useQuery({
     queryKey: domainKeys.detail(id),
     queryFn: () =>
-      platformDomainsService
-        .listDomains(tenantId)
-        .then((domains) => domains.find((d) => d.id === id)),
+      listMyDomains().then((domains) => domains.find((d) => d.id === id)),
     enabled: !!tenantId && !!id,
   });
 }
@@ -58,8 +60,7 @@ export function useCreateDomain() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (payload: CreateDomainData) =>
-      platformDomainsService.createDomain(tenantId, payload),
+    mutationFn: (payload: CreateDomainData) => createMyDomain(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: domainKeys.list(tenantId) });
       toast({ title: "Domain added" });
@@ -82,7 +83,7 @@ export function useUpdateDomain() {
 
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateDomainData }) =>
-      platformDomainsService.updateDomain(id, payload),
+      updateMyDomain(id, payload),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: domainKeys.list(tenantId) });
       qc.invalidateQueries({ queryKey: domainKeys.detail(id) });
@@ -105,7 +106,7 @@ export function useDeleteDomain() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => platformDomainsService.deleteDomain(id),
+    mutationFn: (id: string) => deleteMyDomain(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: domainKeys.list(tenantId) });
       toast({ title: "Domain deleted" });
@@ -125,7 +126,7 @@ export function useVerifyDomain() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => platformDomainsService.verifyDomain(id),
+    mutationFn: (id: string) => verifyMyDomain(id),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: domainKeys.detail(id) });
       toast({ title: "Domain verified" });
@@ -143,8 +144,7 @@ export function useVerifyDomain() {
 export function useDomainVerificationInstructions(domainId: string) {
   return useQuery({
     queryKey: domainKeys.verification(domainId),
-    queryFn: () =>
-      platformDomainsService.getDomainVerificationInstructions(domainId),
+    queryFn: () => getMyDomainVerificationInstructions(domainId),
     enabled: !!domainId,
   });
 }
