@@ -122,12 +122,15 @@ export function MediaDetailDialog({
               <label className="text-sm font-medium text-ink block mb-2">
                 Folder
               </label>
-              <Select value={folderValue} onValueChange={setFolderValue}>
+              <Select
+                value={folderValue || "__none__"}
+                onValueChange={(v) => setFolderValue(v === "__none__" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="No folder" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No folder</SelectItem>
+                  <SelectItem value="__none__">No folder</SelectItem>
                   {folders.map((f) => (
                     <SelectItem key={f} value={f}>
                       {f}

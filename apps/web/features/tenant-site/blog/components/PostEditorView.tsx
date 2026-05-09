@@ -365,13 +365,14 @@ export function PostEditorView({ postId }: { postId: string }) {
                   Category
                 </Label>
                 <Select
-                  value={post.categoryId || ""}
-                  onValueChange={(v) => {
-                    updateField("categoryId", v || null);
+                  value={post.categoryId || "__none__"}
+                  onValueChange={(raw) => {
+                    const v = raw === "__none__" ? null : raw;
+                    updateField("categoryId", v);
                     if (post.id) {
                       updatePost.mutate({
                         id: post.id,
-                        payload: { categoryId: v || null },
+                        payload: { categoryId: v },
                       });
                     }
                   }}
@@ -380,7 +381,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No category</SelectItem>
+                    <SelectItem value="__none__">No category</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}

@@ -43,7 +43,7 @@ export interface DomainListResponse {
 
 export async function listMyDomains(): Promise<TenantDomain[]> {
   try {
-    const response = await api.get<DomainListResponse>("/tenant/domains");
+    const response = await api.get<DomainListResponse>("/tenants/me/domains");
     return response.data.domains;
   } catch (error) {
     handleApiError(error, "list domains");
@@ -53,7 +53,7 @@ export async function listMyDomains(): Promise<TenantDomain[]> {
 export async function getMyDomain(domainId: string): Promise<TenantDomain> {
   try {
     const response = await api.get<{ domain: TenantDomain }>(
-      `/tenant/domains/${domainId}`,
+      `/tenants/me/domains/${domainId}`,
     );
     return response.data.domain;
   } catch (error) {
@@ -66,7 +66,7 @@ export async function createMyDomain(
 ): Promise<TenantDomain> {
   try {
     const response = await api.post<{ domain: TenantDomain }>(
-      "/tenant/domains",
+      "/tenants/me/domains",
       data,
     );
     return response.data.domain;
@@ -81,7 +81,7 @@ export async function updateMyDomain(
 ): Promise<TenantDomain> {
   try {
     const response = await api.patch<{ domain: TenantDomain }>(
-      `/tenant/domains/${domainId}`,
+      `/tenants/me/domains/${domainId}`,
       data,
     );
     return response.data.domain;
@@ -92,7 +92,7 @@ export async function updateMyDomain(
 
 export async function deleteMyDomain(domainId: string): Promise<void> {
   try {
-    await api.delete(`/tenant/domains/${domainId}`);
+    await api.delete(`/tenants/me/domains/${domainId}`);
   } catch (error) {
     handleApiError(error, "delete domain");
   }
@@ -101,7 +101,7 @@ export async function deleteMyDomain(domainId: string): Promise<void> {
 export async function verifyMyDomain(domainId: string): Promise<TenantDomain> {
   try {
     const response = await api.post<{ domain: TenantDomain }>(
-      `/tenant/domains/${domainId}/verify`,
+      `/tenants/me/domains/${domainId}/verification`,
     );
     return response.data.domain;
   } catch (error) {
@@ -115,7 +115,7 @@ export async function getMyDomainVerificationInstructions(
   try {
     const response = await api.get<{
       instructions: DomainVerificationInstructions;
-    }>(`/tenant/domains/${domainId}/verify-instructions`);
+    }>(`/tenants/me/domains/${domainId}/verification`);
     return response.data.instructions;
   } catch (error) {
     handleApiError(error, "get verification instructions");
