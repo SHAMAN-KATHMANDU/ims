@@ -140,6 +140,28 @@ promoRouter.get(
 
 /**
  * @swagger
+ * /promos/analytics:
+ *   get:
+ *     summary: Stub — promo redemption / discount analytics
+ *     description: |
+ *       Returns an empty totals + per-code breakdown until the analytics
+ *       feature ships. Frontend renders the analytics widget in empty state
+ *       instead of toasting 404.
+ *     tags: [Promos]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Empty analytics payload }
+ */
+// Must come before `GET /:id` so Express doesn't treat "analytics" as a UUID.
+promoRouter.get("/analytics", (_req, res) =>
+  res.status(200).json({
+    success: true,
+    data: { totals: { redemptions: 0, totalDiscount: 0 }, perCode: [] },
+  }),
+);
+
+/**
+ * @swagger
  * /promos/{id}:
  *   get:
  *     summary: Get promo code by ID

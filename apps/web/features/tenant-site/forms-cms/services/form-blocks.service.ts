@@ -33,9 +33,10 @@ async function getFormSubmissions(
   params?: { page?: number; limit?: number; from?: string; to?: string },
 ): Promise<FormSubmissionsResponse> {
   try {
-    const res = await api.get<FormSubmissionsResponse>("/form-submissions", {
-      params: { formId, ...params },
-    });
+    const res = await api.get<FormSubmissionsResponse>(
+      `/forms/${formId}/submissions`,
+      { params },
+    );
     return res.data;
   } catch (error) {
     handleApiError(error, "fetch form submissions");
