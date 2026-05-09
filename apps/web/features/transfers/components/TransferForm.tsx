@@ -66,8 +66,10 @@ interface PaginatedInventoryResponse {
   pagination?: {
     totalItems: number;
     totalPages: number;
-    page: number;
-    limit: number;
+    currentPage: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
   };
 }
 
@@ -119,8 +121,10 @@ export function TransferForm({
   const [completeNow, setCompleteNow] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [sortBy, setSortBy] = useState<"name" | "price" | "createdAt">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  // The sort dropdown encodes both axis + direction in one value (e.g.
+  // "name", "name_desc"). `getSortParams` splits it back into the API's
+  // sortBy/sortOrder pair, so we don't need a separate sortOrder state.
+  const [sortBy, setSortBy] = useState<string>("name");
   /** Cache of inventory items added to the transfer, for display when search results change */
   const addedItemsCacheRef = useRef<InventoryItem[]>([]);
 
@@ -219,7 +223,6 @@ export function TransferForm({
       setCurrentPage(1);
       setTotalPages(1);
       setSortBy("name");
-      setSortOrder("asc");
       addedItemsCacheRef.current = [];
     }
   }, [open, inline, form]);
@@ -535,7 +538,7 @@ export function TransferForm({
                     <Select
                       value={sortBy}
                       onValueChange={(value) => {
-                        setSortBy(value as "name" | "price" | "createdAt");
+                        setSortBy(value);
                         setCurrentPage(1);
                       }}
                     >

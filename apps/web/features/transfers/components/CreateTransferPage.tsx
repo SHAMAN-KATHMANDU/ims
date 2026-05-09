@@ -144,7 +144,7 @@ export function CreateTransferPage() {
             startTransitMutation.isPending ||
             completeTransferMutation.isPending
           }
-          getLocationInventory={fetchLocationInventory as any}
+          getLocationInventory={fetchLocationInventory}
           inline
         />
       )}
