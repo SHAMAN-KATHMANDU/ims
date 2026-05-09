@@ -166,12 +166,15 @@ export function BlogListView() {
           </div>
 
           {/* Category filter */}
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select
+            value={selectedCategory || "__all__"}
+            onValueChange={(v) => setSelectedCategory(v === "__all__" ? "" : v)}
+          >
             <SelectTrigger className="w-40 h-8 text-xs">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
+              <SelectItem value="__all__">All categories</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}

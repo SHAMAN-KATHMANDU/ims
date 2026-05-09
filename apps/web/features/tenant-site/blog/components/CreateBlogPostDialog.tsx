@@ -140,8 +140,10 @@ export function CreateBlogPostDialog({
                 <FormItem>
                   <FormLabel>Category (optional)</FormLabel>
                   <Select
-                    value={field.value || ""}
-                    onValueChange={field.onChange}
+                    value={field.value || "__none__"}
+                    onValueChange={(raw) =>
+                      field.onChange(raw === "__none__" ? "" : raw)
+                    }
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -149,7 +151,7 @@ export function CreateBlogPostDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No category</SelectItem>
+                      <SelectItem value="__none__">No category</SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name}
