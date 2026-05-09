@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Palette,
-  Zap,
-  Layout,
-  Type,
-  RotateCcw,
-  Check,
-  Copy,
-} from "lucide-react";
+import { Palette, Zap, Layout, Type, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -198,7 +189,7 @@ export function DesignThemeView() {
 
             <div className="space-y-2">
               {colorKeys.map((colorKey) => {
-                const color = currentTheme.colors[colorKey];
+                const color = currentTheme.colors[colorKey] ?? "#000000";
                 const contrastRatio = getContrastRatioString(
                   color,
                   currentTheme.colors.background || "#ffffff",

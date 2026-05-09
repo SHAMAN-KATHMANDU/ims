@@ -1,11 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getThemeTokens,
-  updateThemeTokens,
-  type ThemeTokens,
-} from "../services/theme.service";
+import type { ThemeTokens } from "@repo/shared";
+import { getThemeTokens, updateThemeTokens } from "../services/theme.service";
 
 const themeKeys = {
   all: ["theme"] as const,
