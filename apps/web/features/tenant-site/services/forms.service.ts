@@ -60,8 +60,8 @@ export interface FormSubmissionsResponse {
 export const formsService = {
   async listForms(): Promise<ListFormsResponse> {
     try {
-      const { data: response } = await api.get("/forms");
-      return response.data as ListFormsResponse;
+      const { data } = await api.get<ListFormsResponse>("/forms");
+      return data;
     } catch (error) {
       throw handleApiError(error, "listForms");
     }
@@ -69,8 +69,8 @@ export const formsService = {
 
   async getForm(id: string): Promise<GetFormResponse> {
     try {
-      const { data: response } = await api.get(`/forms/${id}`);
-      return response.data as GetFormResponse;
+      const { data } = await api.get<GetFormResponse>(`/forms/${id}`);
+      return data;
     } catch (error) {
       throw handleApiError(error, "getForm");
     }
@@ -78,8 +78,8 @@ export const formsService = {
 
   async createForm(payload: CreateFormData): Promise<GetFormResponse> {
     try {
-      const { data: response } = await api.post("/forms", payload);
-      return response.data as GetFormResponse;
+      const { data } = await api.post<GetFormResponse>("/forms", payload);
+      return data;
     } catch (error) {
       throw handleApiError(error, "createForm");
     }
@@ -90,8 +90,11 @@ export const formsService = {
     payload: UpdateFormData,
   ): Promise<GetFormResponse> {
     try {
-      const { data: response } = await api.patch(`/forms/${id}`, payload);
-      return response.data as GetFormResponse;
+      const { data } = await api.patch<GetFormResponse>(
+        `/forms/${id}`,
+        payload,
+      );
+      return data;
     } catch (error) {
       throw handleApiError(error, "updateForm");
     }
@@ -111,10 +114,11 @@ export const formsService = {
     offset: number = 0,
   ): Promise<FormSubmissionsResponse> {
     try {
-      const { data: response } = await api.get(`/forms/${formId}/submissions`, {
-        params: { limit, offset },
-      });
-      return response.data as FormSubmissionsResponse;
+      const { data } = await api.get<FormSubmissionsResponse>(
+        `/forms/${formId}/submissions`,
+        { params: { limit, offset } },
+      );
+      return data;
     } catch (error) {
       throw handleApiError(error, "listFormSubmissions");
     }

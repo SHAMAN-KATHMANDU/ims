@@ -85,9 +85,31 @@ api.interceptors.request.use(
 // Guard against multiple concurrent 401s all triggering logout + redirect.
 let isHandling401 = false;
 
-// Response interceptor: Handle 401 globally; show toast for all other API errors
+// Response interceptor: auto-unwrap the {success: true, data: T} envelope
+// produced by apps/api/src/shared/response/ok(), then handle 401 globally
+// and surface other errors via toast.
+//
+// Why: backend controllers are split between raw `res.json({ ... })` and
+// `ok(res, { ... })` (which wraps in {success, data}). Unwrapping here gives
+// every frontend service a single consistent shape (`response.data` is the
+// payload), eliminating the bug class where services mistakenly read
+// `data.<key>` on a wrapped response and got undefined.
+//
+// Raw responses (no `success`/`data` envelope) pass through unchanged.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const body = response.data;
+    if (
+      body &&
+      typeof body === "object" &&
+      "success" in body &&
+      (body as { success: unknown }).success === true &&
+      "data" in body
+    ) {
+      response.data = (body as { data: unknown }).data;
+    }
+    return response;
+  },
   (error) => {
     const status = error.response?.status;
     const requestUrl = error.config?.url || "";
