@@ -72,8 +72,10 @@ export async function generateMetadata() {
       twitter: {} as Record<string, unknown>,
     };
 
+    // Emit network-specific meta tags only if enabled
     const social = seo.social ?? {};
 
+    // Twitter
     if (social.twitter?.enabled) {
       (metadata.twitter as Record<string, unknown>).card =
         social.twitter.cardType ?? "summary_large_image";
@@ -83,6 +85,7 @@ export async function generateMetadata() {
       }
     }
 
+    // Facebook & OG (emitted by default, facebook-specific config optional)
     if (social.facebook?.enabled) {
       (metadata.openGraph as Record<string, unknown>).type = "website";
       if (social.facebook.pageUrl) {
@@ -91,6 +94,7 @@ export async function generateMetadata() {
       }
     }
 
+    // LinkedIn (no specific meta tag; uses og:* tags)
     if (social.linkedin?.enabled) {
       (metadata.openGraph as Record<string, unknown>).type = "website";
       if (social.linkedin.pageUrl) {
@@ -98,6 +102,10 @@ export async function generateMetadata() {
           social.linkedin.pageUrl;
       }
     }
+
+    // WhatsApp (uses og:* and og:image)
+    // Pinterest (uses og:* and og:image)
+    // Both are handled via OG tags and require og:image to be set at the page level
 
     return metadata;
   } catch {

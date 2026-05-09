@@ -5,7 +5,6 @@ import { Palette, Zap, Layout, Type, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -15,7 +14,17 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
 import { useSiteConfig, useUpdateSiteConfig } from "../hooks/use-design";
+import { getContrastRatioString } from "../lib/contrast-ratio";
 import type { ThemeTokens } from "@repo/shared";
+
+const FONT_FAMILIES = [
+  { label: "Inter", value: "Inter, system-ui, sans-serif" },
+  { label: "Playfair Display", value: "'Playfair Display', serif" },
+  { label: "Merriweather", value: "Merriweather, serif" },
+  { label: "Fraunces", value: "Fraunces, serif" },
+  { label: "Space Mono", value: "'Space Mono', monospace" },
+  { label: "System UI", value: "system-ui, sans-serif" },
+];
 
 export function DesignThemeView() {
   const configQuery = useSiteConfig();
@@ -175,28 +184,43 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Colors</h3>
+              <h3 className="font-semibold text-sm">Brand Colors</h3>
             </div>
 
             <div className="space-y-2">
-              {colorKeys.map((colorKey) => (
-                <div key={colorKey} className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={currentTheme.colors[colorKey]}
-                    onChange={(e) =>
-                      handleColorChange(colorKey, e.target.value)
-                    }
-                    className="h-8 w-8 rounded border border-border cursor-pointer"
-                  />
-                  <Label className="min-w-20 text-sm capitalize">
-                    {colorKey}
-                  </Label>
-                  <code className="text-xs text-muted-foreground font-mono flex-1">
-                    {currentTheme.colors[colorKey]}
-                  </code>
-                </div>
-              ))}
+              {colorKeys.map((colorKey) => {
+                const color = currentTheme.colors[colorKey] ?? "#000000";
+                const contrastRatio = getContrastRatioString(
+                  color,
+                  currentTheme.colors.background || "#ffffff",
+                );
+                return (
+                  <div
+                    key={colorKey}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-muted/30"
+                  >
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) =>
+                        handleColorChange(colorKey, e.target.value)
+                      }
+                      className="h-8 w-8 rounded border border-border cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label className="text-sm capitalize font-medium block">
+                        {colorKey}
+                      </Label>
+                      <code className="text-xs text-muted-foreground font-mono">
+                        {color}
+                      </code>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-right whitespace-nowrap">
+                      Contrast: {contrastRatio}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -210,40 +234,62 @@ export function DesignThemeView() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm">Heading font</Label>
-                <Input
+                <Select
                   value={currentTheme.typography.heading.family}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     handleTypographyChange("heading", {
                       ...currentTheme.typography.heading,
-                      family: e.target.value,
+                      family: value,
                     })
                   }
-                  placeholder="e.g., Georgia, serif"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Body font</Label>
-                <Input
+                <Select
                   value={currentTheme.typography.body.family}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     handleTypographyChange("body", {
                       ...currentTheme.typography.body,
-                      family: e.target.value,
+                      family: value,
                     })
                   }
-                  placeholder="e.g., system-ui, sans-serif"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm">Scale ratio</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="1"
-                    max="2"
+              <div className="space-y-2">
+                <Label className="text-sm">
+                  Heading Scale Ratio: {currentTheme.typography.scaleRatio}
+                </Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="1.1"
+                    max="1.5"
+                    step="0.025"
                     value={currentTheme.typography.scaleRatio}
                     onChange={(e) =>
                       handleTypographyChange(
@@ -251,24 +297,51 @@ export function DesignThemeView() {
                         parseFloat(e.target.value),
                       )
                     }
+                    className="flex-1"
                   />
                 </div>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.125)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.125
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.2)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.2
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.25)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.25
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.333)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.333
+                  </button>
+                </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label className="text-sm">Base size (px)</Label>
-                  <Input
-                    type="number"
-                    min="12"
-                    max="24"
-                    value={currentTheme.typography.baseSize}
-                    onChange={(e) =>
-                      handleTypographyChange(
-                        "baseSize",
-                        parseInt(e.target.value),
-                      )
-                    }
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label className="text-sm">
+                  Base font size: {currentTheme.typography.baseSize}px
+                </Label>
+                <input
+                  type="range"
+                  min="12"
+                  max="24"
+                  value={currentTheme.typography.baseSize}
+                  onChange={(e) =>
+                    handleTypographyChange("baseSize", parseInt(e.target.value))
+                  }
+                  className="w-full"
+                />
               </div>
             </div>
           </div>
@@ -277,61 +350,67 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Layout className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Spacing</h3>
+              <h3 className="font-semibold text-sm">Spacing & Layout</h3>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-sm">Unit (px)</Label>
-                <Input
-                  type="number"
+                <Label className="text-sm">
+                  Base unit: {currentTheme.spacing.unit}px
+                </Label>
+                <input
+                  type="range"
                   min="2"
                   max="16"
                   value={currentTheme.spacing.unit}
                   onChange={(e) =>
                     handleSpacingChange("unit", parseInt(e.target.value))
                   }
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">
+                  Container width: {currentTheme.spacing.container}px
+                </Label>
+                <input
+                  type="range"
+                  min="640"
+                  max="1600"
+                  step="16"
+                  value={currentTheme.spacing.container}
+                  onChange={(e) =>
+                    handleSpacingChange("container", parseInt(e.target.value))
+                  }
+                  className="w-full"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Section spacing</Label>
-                <Select
-                  value={currentTheme.spacing.section}
-                  onValueChange={(v) =>
-                    handleSpacingChange(
-                      "section",
-                      v as "compact" | "balanced" | "spacious",
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compact">Compact</SelectItem>
-                    <SelectItem value="balanced">Balanced</SelectItem>
-                    <SelectItem value="spacious">Spacious</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Container width (px)</Label>
-                <Input
-                  type="number"
-                  min="640"
-                  max="1600"
-                  value={currentTheme.spacing.container}
-                  onChange={(e) =>
-                    handleSpacingChange("container", parseInt(e.target.value))
-                  }
-                />
+                <div className="flex gap-2">
+                  {(["compact", "balanced", "spacious"] as const).map(
+                    (value) => (
+                      <button
+                        key={value}
+                        onClick={() => handleSpacingChange("section", value)}
+                        className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                          currentTheme.spacing.section === value
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {value.charAt(0).toUpperCase() + value.slice(1)}
+                      </button>
+                    ),
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Shape */}
+          {/* Shape & Radius */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-muted-foreground" />
@@ -341,48 +420,45 @@ export function DesignThemeView() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm">Border radius</Label>
-                <Select
-                  value={
-                    typeof currentTheme.shape.radius === "number"
-                      ? currentTheme.shape.radius.toString()
-                      : currentTheme.shape.radius
-                  }
-                  onValueChange={(v) => {
-                    const num = parseInt(v);
-                    handleShapeChange("radius", isNaN(num) ? v : num);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sharp">Sharp</SelectItem>
-                    <SelectItem value="soft">Soft</SelectItem>
-                    <SelectItem value="rounded">Rounded</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2 flex-wrap">
+                  {(["sharp", "soft", "rounded"] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => handleShapeChange("radius", value)}
+                      className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                        currentTheme.shape.radius === value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      {value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Button style</Label>
-                <Select
-                  value={currentTheme.shape.buttonStyle}
-                  onValueChange={(v) =>
-                    handleShapeChange(
-                      "buttonStyle",
-                      v as "solid" | "outline" | "pill",
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="solid">Solid</SelectItem>
-                    <SelectItem value="outline">Outline</SelectItem>
-                    <SelectItem value="pill">Pill</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  {(["solid", "outline", "pill"] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() =>
+                        handleShapeChange(
+                          "buttonStyle",
+                          value as "solid" | "outline" | "pill",
+                        )
+                      }
+                      className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                        currentTheme.shape.buttonStyle === value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      {value.charAt(0).toUpperCase() + value.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -391,7 +467,7 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Motion</h3>
+              <h3 className="font-semibold text-sm">Motion & Animation</h3>
             </div>
 
             <div className="space-y-3">
@@ -404,19 +480,24 @@ export function DesignThemeView() {
                   }
                   className="h-4 w-4"
                 />
-                <span className="text-sm">Enable animations</span>
+                <span className="text-sm font-medium">Enable animations</span>
               </label>
 
               <div className="space-y-2">
-                <Label className="text-sm">Duration (ms)</Label>
-                <Input
-                  type="number"
+                <Label className="text-sm">
+                  Animation duration: {currentTheme.motion.duration}ms
+                </Label>
+                <input
+                  type="range"
                   min="0"
                   max="1000"
+                  step="50"
                   value={currentTheme.motion.duration}
                   onChange={(e) =>
                     handleMotionChange("duration", parseInt(e.target.value))
                   }
+                  className="w-full"
+                  disabled={!currentTheme.motion.enableAnimations}
                 />
               </div>
             </div>
