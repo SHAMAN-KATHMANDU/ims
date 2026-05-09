@@ -26,6 +26,7 @@ export function NavigationView() {
     navigation || null,
   );
 
+  // Update local config when data changes
   if (navigation !== undefined && config === null) {
     setConfig(
       navigation || {
@@ -132,6 +133,7 @@ export function NavigationView() {
         </div>
       )}
 
+      {/* Tab navigation */}
       <div className="flex gap-2 border-b border-line">
         {(["primary", "utility", "footer"] as const).map((tab) => (
           <button
@@ -148,6 +150,7 @@ export function NavigationView() {
         ))}
       </div>
 
+      {/* Primary nav */}
       {activeTab === "primary" && (
         <div className="space-y-4">
           <div>
@@ -215,6 +218,7 @@ export function NavigationView() {
         </div>
       )}
 
+      {/* Utility nav */}
       {activeTab === "utility" && (
         <div className="space-y-4">
           <div>
@@ -262,6 +266,7 @@ export function NavigationView() {
         </div>
       )}
 
+      {/* Footer nav */}
       {activeTab === "footer" && (
         <div className="space-y-4">
           <div>
@@ -279,6 +284,7 @@ export function NavigationView() {
                     key={column.id}
                     className="border border-line rounded p-4 space-y-3"
                   >
+                    {/* Column title */}
                     <input
                       type="text"
                       value={column.title}
@@ -296,6 +302,7 @@ export function NavigationView() {
                       className="w-full px-3 py-2 border border-line rounded text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-accent"
                     />
 
+                    {/* Column items */}
                     <div className="space-y-2 pl-4 border-l border-line-2">
                       {column.items.length === 0 ? (
                         <div className="text-xs text-ink-4 italic">
@@ -343,6 +350,7 @@ export function NavigationView() {
                       )}
                     </div>
 
+                    {/* Add item to column */}
                     <Button
                       size="sm"
                       variant="outline"
@@ -353,6 +361,7 @@ export function NavigationView() {
                       Add link
                     </Button>
 
+                    {/* Delete column */}
                     <button
                       onClick={() => {
                         handleConfigChange({

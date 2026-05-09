@@ -41,7 +41,8 @@ export function useUpdateNavigation() {
   });
 }
 
-// Debounced save hook — useRef so the timer survives re-renders.
+// Debounced save hook — useRef so the timer survives re-renders (a fresh
+// object per render would defeat debouncing entirely).
 export function useDebouncedNavigationSave() {
   const mutation = useUpdateNavigation();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);

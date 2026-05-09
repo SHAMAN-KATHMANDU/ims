@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { usePromosQuery } from "../../hooks/use-promos";
 import {
   useCreatePromo,
   useUpdatePromo,
@@ -48,6 +49,13 @@ export function OfferEditorDialog({
   const createPromo = useCreatePromo();
   const updatePromo = useUpdatePromo();
   const deletePromo = useDeletePromo();
+  const promosQuery = usePromosQuery();
+  const [promoSearch, setPromoSearch] = useState("");
+
+  const allPromos = promosQuery.data?.promos ?? [];
+  const filteredPromos = allPromos.filter((p) =>
+    p.code.toLowerCase().includes(promoSearch.toLowerCase()),
+  );
 
   const form = useForm<CreateOfferInput>({
     resolver: zodResolver(CreateOfferSchema),
@@ -62,6 +70,7 @@ export function OfferEditorDialog({
       endDate: "",
       maxUses: "",
       perCustomerLimit: "",
+      promoCodeIds: [],
     },
   });
 
@@ -82,6 +91,7 @@ export function OfferEditorDialog({
           : "",
         maxUses: promo.usageLimit?.toString() ?? "",
         perCustomerLimit: "",
+        promoCodeIds: [],
       });
     } else {
       form.reset({
@@ -95,6 +105,7 @@ export function OfferEditorDialog({
         endDate: "",
         maxUses: "",
         perCustomerLimit: "",
+        promoCodeIds: [],
       });
     }
   }, [promo, form]);
@@ -117,6 +128,7 @@ export function OfferEditorDialog({
           : undefined,
         applyToAll: values.appliesToAll,
         productIds: values.appliesTo,
+        promoCodeIds: values.promoCodeIds || [],
       };
 
       if (promo) {
@@ -260,6 +272,86 @@ export function OfferEditorDialog({
               {...form.register("maxUses")}
               disabled={isSubmitting}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="promoSearch">Link promo codes</Label>
+            <Input
+              id="promoSearch"
+              placeholder="Search promo codes..."
+              value={promoSearch}
+              onChange={(e) => setPromoSearch(e.target.value)}
+              disabled={isSubmitting || promosQuery.isLoading}
+            />
+            {promosQuery.isLoading && (
+              <div className="text-xs text-muted-foreground">
+                Loading promos...
+              </div>
+            )}
+            {filteredPromos.length > 0 && (
+              <div className="border rounded-md max-h-48 overflow-y-auto bg-white">
+                {filteredPromos.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      const currentIds = form.getValues("promoCodeIds") || [];
+                      if (!currentIds.includes(p.id)) {
+                        form.setValue("promoCodeIds", [...currentIds, p.id]);
+                        setPromoSearch("");
+                      }
+                    }}
+                    disabled={
+                      isSubmitting ||
+                      (form.getValues("promoCodeIds") || []).includes(p.id)
+                    }
+                    className="w-full text-left px-3 py-2 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed text-sm border-b last:border-b-0"
+                  >
+                    <div className="font-mono text-xs">{p.code}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {p.value}% {p.valueType === "PERCENTAGE" ? "off" : ""}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {promoSearch &&
+              filteredPromos.length === 0 &&
+              !promosQuery.isLoading && (
+                <div className="text-xs text-muted-foreground text-center py-2">
+                  No matching promos
+                </div>
+              )}
+            {(form.getValues("promoCodeIds") || []).length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {(form.getValues("promoCodeIds") || [])
+                  .map((id) => allPromos.find((p) => p.id === id))
+                  .filter(Boolean)
+                  .map((p) => (
+                    <div
+                      key={p!.id}
+                      className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 rounded px-2 py-1 text-xs"
+                    >
+                      <span className="font-mono">{p!.code}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentIds =
+                            form.getValues("promoCodeIds") || [];
+                          form.setValue(
+                            "promoCodeIds",
+                            currentIds.filter((id) => id !== p!.id),
+                          );
+                        }}
+                        disabled={isSubmitting}
+                        className="hover:text-blue-900"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">
