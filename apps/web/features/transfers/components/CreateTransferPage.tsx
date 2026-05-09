@@ -34,15 +34,15 @@ export function CreateTransferPage() {
   const completeTransferMutation = useCompleteTransfer();
 
   const fetchLocationInventory = useCallback(
-    async (
-      locationId: string,
-      params?: { search?: string; limit?: number },
-    ) => {
+    async (locationId: string, params?: Record<string, unknown>) => {
       const response = await getLocationInventory(locationId, {
-        limit: params?.limit ?? 50,
-        search: params?.search ?? "",
+        limit: (params?.limit ?? 50) as number,
+        search: (params?.search ?? "") as string,
+        page: params?.page as number | undefined,
+        sortBy: params?.sortBy as "name" | "price" | "createdAt" | undefined,
+        sortOrder: params?.sortOrder as "asc" | "desc" | undefined,
       });
-      return response.data;
+      return response;
     },
     [],
   );

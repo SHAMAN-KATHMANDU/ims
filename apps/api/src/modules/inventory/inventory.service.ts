@@ -17,6 +17,15 @@ export class InventoryService {
     const tenantId = getTenantId();
     const { page, limit, search } = getPaginationParams(rawQuery);
     const categoryId = rawQuery.categoryId as string | undefined;
+    const rawSortBy = (rawQuery.sortBy as string | undefined) || "name";
+    const rawSortOrder = (rawQuery.sortOrder as string | undefined) || "asc";
+
+    const sortBy = (
+      ["name", "price", "createdAt"].includes(rawSortBy) ? rawSortBy : "name"
+    ) as "name" | "price" | "createdAt";
+    const sortOrder = (rawSortOrder === "desc" ? "desc" : "asc") as
+      | "asc"
+      | "desc";
 
     const location = await inventoryRepository.findLocationById(locationId);
     if (!location) throw createError("Location not found", 404);
@@ -28,6 +37,8 @@ export class InventoryService {
         limit,
         search: search || undefined,
         categoryId,
+        sortBy,
+        sortOrder,
       });
 
     const result = createPaginationResult(inventory, totalItems, page, limit);
