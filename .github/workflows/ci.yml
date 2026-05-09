@@ -102,8 +102,7 @@ jobs:
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -130,8 +129,7 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -165,8 +163,7 @@ jobs:
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup and setup-node cache omitted — Node 20 + pnpm are pre-installed
-      # on the self-hosted runner and wired into PATH via ~/actions-runner/.env.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -212,8 +209,7 @@ jobs:
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -232,8 +228,7 @@ jobs:
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -252,8 +247,7 @@ jobs:
     if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -283,8 +277,7 @@ jobs:
     if: needs.changes.outputs.shared == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -305,8 +298,7 @@ jobs:
     if: needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -350,8 +342,7 @@ jobs:
       NODE_ENV: development
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -430,8 +421,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      # pnpm/action-setup omitted — pnpm pre-installed on self-hosted runner.
-      # Restore `- uses: pnpm/action-setup@v4` if switching to ubuntu-latest.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
