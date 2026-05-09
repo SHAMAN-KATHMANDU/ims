@@ -20,6 +20,7 @@ import {
   Command,
   Gauge,
   LayoutTemplate,
+  Eye,
 } from "lucide-react";
 
 const icons = {
@@ -43,6 +44,7 @@ const icons = {
   plus: Plus,
   cmd: Command,
   gauge: Gauge,
+  preview: Eye,
 } as const;
 
 export type IconName = keyof typeof icons;

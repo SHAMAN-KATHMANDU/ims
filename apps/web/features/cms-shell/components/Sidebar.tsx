@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Moon, Sun } from "lucide-react";
+import { listMyDomains } from "@/features/tenant-site/domains/services/domains.service";
 import {
   useThemeStore,
   selectTheme,
@@ -24,6 +26,10 @@ interface NavItem {
   icon: IconName;
   href: string;
   count?: number;
+  /** Render as <a target="_blank"> instead of an internal Next.js Link. */
+  external?: boolean;
+  /** Tooltip when the item is rendered disabled (e.g. preview without a domain). */
+  disabledTitle?: string;
 }
 
 interface NavGroup {
@@ -101,7 +107,29 @@ export function Sidebar() {
     isLoading: countsLoading,
   } = useSidebarCounts();
 
+  // Live preview link — wires the sidebar's "Preview" entry to the tenant's
+  // primary custom domain when one exists. Without a domain we still render
+  // the entry but in a disabled state with an explanatory tooltip.
+  const { data: domains } = useQuery({
+    queryKey: ["my-domains"],
+    queryFn: listMyDomains,
+    staleTime: 2 * 60 * 1000,
+  });
+  const primaryDomain =
+    domains?.find((d) => d.isPrimary) ?? domains?.[0] ?? null;
+  const previewHref = primaryDomain ? `https://${primaryDomain.hostname}` : "";
+
   const baseGroups = getBaseNavGroups();
+  const overview = baseGroups[0];
+  if (overview) {
+    overview.items.push({
+      label: "Preview",
+      icon: "preview",
+      href: previewHref,
+      external: true,
+      disabledTitle: "Add a custom domain in Site → Domains to enable preview",
+    });
+  }
   const navGroups: NavGroup[] = baseGroups.map((group) => {
     if (group.label === "Content") {
       return {
@@ -292,45 +320,46 @@ export function Sidebar() {
             </div>
             <nav className="space-y-1">
               {group.items.map((item) => {
-                const active = isActive(item.href);
+                const active = !item.external && isActive(item.href);
+                const isDisabled = !!item.external && !item.href;
                 const count =
                   item.count !== undefined
                     ? countsLoading
                       ? undefined
                       : item.count
                     : undefined;
-                return (
-                  <Link
-                    key={item.href}
-                    href={buildHref(item.href)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "8px 12px",
-                      marginLeft: "4px",
-                      marginRight: "4px",
-                      borderRadius: "6px",
-                      backgroundColor: active
-                        ? "var(--bg-active)"
-                        : "transparent",
-                      color: active ? "var(--ink)" : "var(--ink-2)",
-                      fontSize: "13px",
-                      textDecoration: "none",
-                      transition: "background-color 150ms ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor =
-                          "var(--bg-hover)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }
-                    }}
-                  >
+                const sharedStyle = {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "8px 12px",
+                  marginLeft: "4px",
+                  marginRight: "4px",
+                  borderRadius: "6px",
+                  backgroundColor: active ? "var(--bg-active)" : "transparent",
+                  color: isDisabled
+                    ? "var(--ink-4)"
+                    : active
+                      ? "var(--ink)"
+                      : "var(--ink-2)",
+                  fontSize: "13px",
+                  textDecoration: "none",
+                  transition: "background-color 150ms ease",
+                  cursor: isDisabled ? "not-allowed" : "pointer",
+                  opacity: isDisabled ? 0.6 : 1,
+                } as const;
+                const onEnter = (e: React.MouseEvent<HTMLElement>) => {
+                  if (!active && !isDisabled) {
+                    e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+                  }
+                };
+                const onLeave = (e: React.MouseEvent<HTMLElement>) => {
+                  if (!active) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }
+                };
+                const inner = (
+                  <>
                     <Icon name={item.icon} size={14} />
                     <span className="flex-1">{item.label}</span>
                     {count !== undefined && (
@@ -347,6 +376,40 @@ export function Sidebar() {
                         {count}
                       </span>
                     )}
+                    {item.external && <Icon name="external" size={12} />}
+                  </>
+                );
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.label}
+                      href={item.href || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={
+                        isDisabled ? item.disabledTitle : `Open ${item.label}`
+                      }
+                      aria-disabled={isDisabled}
+                      onClick={(e) => {
+                        if (isDisabled) e.preventDefault();
+                      }}
+                      style={sharedStyle}
+                      onMouseEnter={onEnter}
+                      onMouseLeave={onLeave}
+                    >
+                      {inner}
+                    </a>
+                  );
+                }
+                return (
+                  <Link
+                    key={item.href}
+                    href={buildHref(item.href)}
+                    style={sharedStyle}
+                    onMouseEnter={onEnter}
+                    onMouseLeave={onLeave}
+                  >
+                    {inner}
                   </Link>
                 );
               })}
