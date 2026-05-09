@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useTopbarActionsStore } from "@/store/topbar-actions-store";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -58,6 +58,7 @@ const selectSetActions = (s: TopbarStore) => s.setActions;
 
 export function PagesListView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams();
   const workspace = params.workspace as string | undefined;
   const wsString = workspace ?? "";
@@ -71,6 +72,14 @@ export function PagesListView() {
   const [selected, setSelected] = useState(new Set<string>());
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  // The Dashboard's "+ New page" CTA links here with `?new=1`. Auto-open the
+  // create dialog so the user lands directly in the create flow.
+  useEffect(() => {
+    if (searchParams?.get("new") === "1") {
+      setShowCreateDialog(true);
+    }
+  }, [searchParams]);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -553,10 +562,17 @@ export function PagesListView() {
       {/* Create Page Dialog */}
       <CreatePageDialog
         open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        onOpenChange={(next) => {
+          setShowCreateDialog(next);
+          // Drop the `?new=1` flag once the dialog closes so navigating back
+          // to /content/pages doesn't keep popping the dialog open.
+          if (!next && searchParams?.get("new") === "1") {
+            router.replace(`/${wsString}/content/pages`);
+          }
+        }}
         onCreated={(newPageId) => {
           setShowCreateDialog(false);
-          window.open(`/${wsString}/content/builder/${newPageId}`, "_blank");
+          router.push(`/${wsString}/content/builder/${newPageId}`);
         }}
       />
 

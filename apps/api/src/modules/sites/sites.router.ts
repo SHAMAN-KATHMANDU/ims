@@ -659,4 +659,70 @@ router.put("/seo", requireUpdate, asyncHandler(controller.updateSeo));
 // Redirect rules — sub-router handles its own WEBSITE.SITE.UPDATE gates.
 router.use("/redirects", redirectsRouter);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Stubs for endpoints the frontend calls but the API hasn't implemented yet.
+// These return empty/identity payloads so the CMS UI renders without error
+// toasts. Replace with real implementations as the features land.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /sites/publish-history:
+ *   get:
+ *     summary: Stub — list of past publishes for this tenant
+ *     description: Returns an empty history list. Real implementation pending.
+ *     tags: [Sites]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Empty history }
+ */
+router.get("/publish-history", (_req, res) =>
+  res.status(200).json({ success: true, data: { history: [] } }),
+);
+
+/**
+ * @swagger
+ * /sites/publish-rollback:
+ *   post:
+ *     summary: Stub — rollback to a prior publish version
+ *     description: No-op. Real implementation pending.
+ *     tags: [Sites]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Acknowledged }
+ */
+router.post("/publish-rollback", (_req, res) =>
+  res.status(200).json({ success: true, data: { ok: true } }),
+);
+
+/**
+ * @swagger
+ * /sites/analytics:
+ *   get:
+ *     summary: Stub — site analytics (GA4, GTM, Meta Pixel) settings
+ *     description: Returns an empty config until the analytics module ships.
+ *     tags: [Sites]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Empty analytics config }
+ */
+router.get("/analytics", (_req, res) =>
+  res.status(200).json({ success: true, data: { analytics: {} } }),
+);
+
+/**
+ * @swagger
+ * /sites/analytics:
+ *   put:
+ *     summary: Stub — update site analytics settings
+ *     description: Echoes the input back. Real implementation pending.
+ *     tags: [Sites]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Updated }
+ */
+router.put("/analytics", (req, res) =>
+  res.status(200).json({ success: true, data: { analytics: req.body ?? {} } }),
+);
+
 export default router;
