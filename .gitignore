@@ -1,3 +1,5 @@
 apps/tenant-site/next-env.d.ts
 ShamanIMSFULL.zip
 apps/web/.turbo/
+apps/web/playwright-report/
+apps/web/test-results/
