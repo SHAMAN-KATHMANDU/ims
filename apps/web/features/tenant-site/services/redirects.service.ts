@@ -33,10 +33,10 @@ export interface UpdateRedirectData {
 export const redirectsService = {
   async listAll(): Promise<TenantRedirect[]> {
     try {
-      const res = await api.get<{ data: { redirects: TenantRedirect[] } }>(
+      const res = await api.get<{ redirects: TenantRedirect[] }>(
         "/sites/redirects",
       );
-      return res.data.data?.redirects ?? [];
+      return res.data.redirects ?? [];
     } catch (error) {
       handleApiError(error, "fetch redirects");
       return [];
@@ -45,11 +45,11 @@ export const redirectsService = {
 
   async create(data: CreateRedirectData): Promise<TenantRedirect> {
     try {
-      const res = await api.post<{ data: { redirect: TenantRedirect } }>(
+      const res = await api.post<{ redirect: TenantRedirect }>(
         "/sites/redirects",
         data,
       );
-      return res.data.data.redirect;
+      return res.data.redirect;
     } catch (error) {
       handleApiError(error, "create redirect");
       throw error;
@@ -58,11 +58,11 @@ export const redirectsService = {
 
   async update(id: string, data: UpdateRedirectData): Promise<TenantRedirect> {
     try {
-      const res = await api.put<{ data: { redirect: TenantRedirect } }>(
+      const res = await api.put<{ redirect: TenantRedirect }>(
         `/sites/redirects/${id}`,
         data,
       );
-      return res.data.data.redirect;
+      return res.data.redirect;
     } catch (error) {
       handleApiError(error, "update redirect");
       throw error;

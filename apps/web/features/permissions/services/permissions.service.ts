@@ -2,6 +2,9 @@
  * Permissions Service — REST client for /api/v1/permissions/*
  *
  * Jointly owned by ui-perm-core (extending) and ui-role-mgmt (bootstrap).
+ *
+ * Note: api.* response.data is the unwrapped payload from the {success,data}
+ * envelope (handled by the global axios interceptor in apps/web/lib/axios.ts).
  */
 
 import api from "@/lib/axios";
@@ -28,12 +31,11 @@ export async function getRoles(
   qs.set("limit", String(limit));
   if (search) qs.set("search", search);
   try {
-    const { data } = await api.get<{
-      success: true;
-      data: PaginatedRolesResponse;
-    }>(`/permissions/roles?${qs.toString()}`);
+    const { data } = await api.get<PaginatedRolesResponse>(
+      `/permissions/roles?${qs.toString()}`,
+    );
     return (
-      data.data ?? {
+      data ?? {
         roles: [],
         pagination: {
           currentPage: 1,
@@ -52,11 +54,10 @@ export async function getRoles(
 
 export async function getRoleById(roleId: string): Promise<Role> {
   try {
-    const { data } = await api.get<{
-      success: true;
-      data: { role: Role };
-    }>(`/permissions/roles/${roleId}`);
-    return data.data.role;
+    const { data } = await api.get<{ role: Role }>(
+      `/permissions/roles/${roleId}`,
+    );
+    return data.role;
   } catch (error) {
     handleApiError(error, "fetch role");
   }
@@ -64,11 +65,8 @@ export async function getRoleById(roleId: string): Promise<Role> {
 
 export async function createRole(body: CreateRoleData): Promise<Role> {
   try {
-    const { data } = await api.post<{
-      success: true;
-      data: { role: Role };
-    }>("/permissions/roles", body);
-    return data.data.role;
+    const { data } = await api.post<{ role: Role }>("/permissions/roles", body);
+    return data.role;
   } catch (error) {
     handleApiError(error, "create role");
   }
@@ -79,11 +77,11 @@ export async function updateRole(
   body: UpdateRoleData,
 ): Promise<Role> {
   try {
-    const { data } = await api.patch<{
-      success: true;
-      data: { role: Role };
-    }>(`/permissions/roles/${roleId}`, body);
-    return data.data.role;
+    const { data } = await api.patch<{ role: Role }>(
+      `/permissions/roles/${roleId}`,
+      body,
+    );
+    return data.role;
   } catch (error) {
     handleApiError(error, "update role");
   }
@@ -101,11 +99,10 @@ export async function deleteRole(roleId: string): Promise<void> {
 
 export async function getRoleMembers(roleId: string): Promise<RoleMember[]> {
   try {
-    const { data } = await api.get<{
-      success: true;
-      data: { members: RoleMember[] };
-    }>(`/permissions/roles/${roleId}/members`);
-    return data.data.members ?? [];
+    const { data } = await api.get<{ members: RoleMember[] }>(
+      `/permissions/roles/${roleId}/members`,
+    );
+    return data.members ?? [];
   } catch (error) {
     handleApiError(error, "fetch role members");
   }
@@ -139,11 +136,10 @@ export async function getOverwrites(
   resourceId: string,
 ): Promise<PermissionOverwrite[]> {
   try {
-    const { data } = await api.get<{
-      success: true;
-      data: { overwrites: PermissionOverwrite[] };
-    }>(`/permissions/resources/${resourceId}/overwrites`);
-    return data.data.overwrites ?? [];
+    const { data } = await api.get<{ overwrites: PermissionOverwrite[] }>(
+      `/permissions/resources/${resourceId}/overwrites`,
+    );
+    return data.overwrites ?? [];
   } catch (error) {
     handleApiError(error, "fetch overwrites");
   }
@@ -154,11 +150,11 @@ export async function upsertOverwrite(
   body: UpsertOverwriteData,
 ): Promise<PermissionOverwrite> {
   try {
-    const { data } = await api.put<{
-      success: true;
-      data: { overwrite: PermissionOverwrite };
-    }>(`/permissions/resources/${resourceId}/overwrites`, body);
-    return data.data.overwrite;
+    const { data } = await api.put<{ overwrite: PermissionOverwrite }>(
+      `/permissions/resources/${resourceId}/overwrites`,
+      body,
+    );
+    return data.overwrite;
   } catch (error) {
     handleApiError(error, "upsert overwrite");
   }
@@ -189,16 +185,16 @@ export async function getEffectivePermissions(
   resourceId?: string,
 ): Promise<EffectivePermissionsResponse> {
   try {
-    const { data } = await api.get<{
-      success: true;
-      data: EffectivePermissionsResponse;
-    }>(`/permissions/me/effective`, {
-      // Omit resourceId entirely when undefined; backend resolves the tenant's
-      // WORKSPACE Resource. Sending the literal "workspace" would fail UUID
-      // validation on the backend Zod schema.
-      params: resourceId ? { resourceId } : {},
-    });
-    return data.data;
+    const { data } = await api.get<EffectivePermissionsResponse>(
+      `/permissions/me/effective`,
+      {
+        // Omit resourceId entirely when undefined; backend resolves the tenant's
+        // WORKSPACE Resource. Sending the literal "workspace" would fail UUID
+        // validation on the backend Zod schema.
+        params: resourceId ? { resourceId } : {},
+      },
+    );
+    return data;
   } catch (error) {
     handleApiError(error, "fetch effective permissions");
   }
@@ -208,11 +204,11 @@ export async function bulkResolvePermissions(
   resourceIds: string[],
 ): Promise<Record<string, string>> {
   try {
-    const { data } = await api.post<{
-      success: true;
-      data: Record<string, string>;
-    }>(`/permissions/me/bulk-resolve`, { resourceIds });
-    return data.data ?? {};
+    const { data } = await api.post<Record<string, string>>(
+      `/permissions/me/bulk-resolve`,
+      { resourceIds },
+    );
+    return data ?? {};
   } catch (error) {
     handleApiError(error, "bulk resolve permissions");
   }
