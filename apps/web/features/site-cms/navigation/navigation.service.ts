@@ -17,7 +17,7 @@ export const navigationService = {
       const { data } = await axios.get<SiteConfigResponse>(API_BASE);
       return data.data?.navigation || null;
     } catch (error) {
-      throw handleApiError(error);
+      throw handleApiError(error, "fetch navigation");
     }
   },
 
@@ -27,7 +27,7 @@ export const navigationService = {
         navigation,
       });
     } catch (error) {
-      throw handleApiError(error);
+      throw handleApiError(error, "update navigation");
     }
   },
 };
