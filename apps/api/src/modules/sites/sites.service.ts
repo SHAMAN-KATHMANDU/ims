@@ -25,6 +25,7 @@ import type {
 import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
+import pagesRepo from "@/modules/pages/pages.repository";
 import {
   getTemplateBlueprint,
   BLUEPRINT_SCOPES,
@@ -53,6 +54,27 @@ const BRANDING_IDENTITY_KEYS = [
 ] as const;
 
 /**
+ * Convert a BlueprintScope to a human-readable title for the Pages list.
+ */
+function humanizeScope(scope: string): string {
+  const scopeNames: Record<string, string> = {
+    header: "Header",
+    footer: "Footer",
+    home: "Home",
+    "products-index": "Products",
+    "product-detail": "Product detail",
+    offers: "Offers",
+    cart: "Cart",
+    "blog-index": "Blog",
+    "blog-post": "Blog post",
+    contact: "Contact",
+    page: "Page",
+    "404": "Not found",
+  };
+  return scopeNames[scope] || scope;
+}
+
+/**
  * Strip identity fields from a raw branding JSON object before it is written
  * to SiteConfig. Handles null safely (returns null).
  */
@@ -68,39 +90,51 @@ function stripIdentityFromBranding(
   return result;
 }
 
-function assertEnabled(config: SiteConfigWithTemplate | null): asserts config {
-  if (!config) {
-    throw createError(
-      "Website feature is not enabled for this tenant. Contact your platform administrator.",
-      403,
-    );
-  }
-  if (!config.websiteEnabled) {
-    throw createError(
-      "Website feature is disabled for this tenant. Contact your platform administrator.",
-      403,
-    );
-  }
-}
-
 export class SitesService {
   constructor(
     private readonly repo: Repo = defaultRepo,
     private readonly revalidate: Revalidate = defaultRevalidate,
   ) {}
 
-  async getConfig(tenantId: string): Promise<SiteConfigWithTemplate> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+  /**
+   * Assert that the website feature is enabled for the tenant.
+   * If SiteConfig doesn't exist, auto-create it with websiteEnabled=true.
+   * If websiteEnabled is explicitly false, throw 403.
+   */
+  private async assertEnabled(
+    tenantId: string,
+  ): Promise<SiteConfigWithTemplate> {
+    let config = await this.repo.findConfig(tenantId);
+
+    // Auto-create if missing
+    if (!config) {
+      logger.info(`Auto-creating SiteConfig for tenant ${tenantId} (missing)`);
+      config = await this.repo.upsertConfig(tenantId, {
+        websiteEnabled: true,
+      });
+      return config;
+    }
+
+    // Throw if explicitly disabled
+    if (!config.websiteEnabled) {
+      throw createError(
+        "Website feature is disabled for this tenant. Contact your platform administrator.",
+        403,
+      );
+    }
+
     return config;
+  }
+
+  async getConfig(tenantId: string): Promise<SiteConfigWithTemplate> {
+    return this.assertEnabled(tenantId);
   }
 
   async updateConfig(
     tenantId: string,
     input: UpdateSiteConfigInput,
   ): Promise<SiteConfigWithTemplate> {
-    const current = await this.repo.findConfig(tenantId);
-    assertEnabled(current);
+    await this.assertEnabled(tenantId);
 
     const toJson = (
       v: Record<string, unknown> | null | undefined,
@@ -127,8 +161,7 @@ export class SitesService {
   async listTemplates(tenantId: string): Promise<SiteTemplate[]> {
     // Gate the template catalog on the feature flag too, so tenants who can't
     // use the website feature don't see templates they can't apply.
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    await this.assertEnabled(tenantId);
     return this.repo.listActiveTemplates();
   }
 
@@ -137,12 +170,17 @@ export class SitesService {
     input: PickTemplateInput,
     requestId?: string,
   ): Promise<SiteConfigWithTemplate> {
-    const current = await this.repo.findConfig(tenantId);
-    assertEnabled(current);
+    const current = await this.assertEnabled(tenantId);
 
     const template = await this.repo.findTemplateBySlug(input.templateSlug);
     if (!template) throw createError("Template not found", 404);
     if (!template.isActive) throw createError("Template is not active", 400);
+
+    // Check for a tenant fork of this template
+    const tenantFork = await this.repo.findTenantForkOfTemplate(
+      tenantId,
+      template.id,
+    );
 
     const data: Prisma.SiteConfigUpdateInput = {
       template: { connect: { id: template.id } },
@@ -164,7 +202,11 @@ export class SitesService {
           : (template.defaultSections as Prisma.InputJsonValue);
     }
 
-    const blueprint = getTemplateBlueprint(input.templateSlug);
+    // Resolve blueprint with fork-awareness: prefer tenant fork's layouts/tokens
+    const blueprint = getTemplateBlueprint(input.templateSlug, {
+      tenantFork,
+      canonicalTemplate: template,
+    });
     if (blueprint?.defaultThemeTokens) {
       const existingTokens = current?.themeTokens as Record<
         string,
@@ -189,6 +231,12 @@ export class SitesService {
     // because it's the strongest "I want a clean slate" signal).
     if (blueprint) {
       await this.seedLayoutsFromBlueprint(
+        tenantId,
+        blueprint,
+        input.resetBranding === true,
+      );
+      // Phase 10H — seed custom pages from defaultPages
+      await this.seedCustomPagesFromBlueprint(
         tenantId,
         blueprint,
         input.resetBranding === true,
@@ -251,13 +299,94 @@ export class SitesService {
         );
       }
 
+      // Phase 5 — Upsert scope page so it appears in the Pages list
+      await pagesRepo.upsertScopePage(tenantId, scope, {
+        title: humanizeScope(scope),
+        slug: scope,
+      });
+
       await revalidateSiteLayout(tenantId, scope);
     }
   }
 
+  /**
+   * Seed custom pages (kind="page") from a template's defaultPages array.
+   * Idempotent: each page is upserted by (tenantId, kind, slug).
+   *
+   * When overwriteExisting=true (e.g., resetBranding=true), the page and layout
+   * are updated to match the template's current blocks. Otherwise, existing user
+   * edits are preserved (first apply only seeds new pages).
+   */
+  private async seedCustomPagesFromBlueprint(
+    tenantId: string,
+    blueprint: TemplateBlueprint,
+    overwriteExisting: boolean,
+  ): Promise<void> {
+    if (!blueprint.defaultPages || blueprint.defaultPages.length === 0) {
+      return; // No custom pages to seed
+    }
+
+    for (const pageDef of blueprint.defaultPages) {
+      // Validate the page definition
+      if (!pageDef.slug || !pageDef.title) {
+        logger.warn(
+          `Skipping invalid custom page in blueprint "${blueprint.slug}": missing slug or title`,
+        );
+        continue;
+      }
+
+      // Upsert the TenantPage row
+      const page = await pagesRepo.upsertCustomPage(
+        tenantId,
+        {
+          slug: pageDef.slug,
+          title: pageDef.title,
+          navOrder: pageDef.navOrder,
+          description: pageDef.description,
+          seoTitle: pageDef.meta?.seoTitle,
+          seoDescription: pageDef.meta?.seoDescription,
+        },
+        overwriteExisting,
+      );
+
+      // Seed the SiteLayout for this custom page
+      const blocks = pageDef.blocks ?? [];
+      const parsed = BlockTreeSchema.safeParse(blocks);
+      if (!parsed.success) {
+        throw createError(
+          `Template "${blueprint.slug}" custom page "${pageDef.slug}" failed schema validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
+          500,
+        );
+      }
+      const json = parsed.data as unknown as Prisma.InputJsonValue;
+
+      if (overwriteExisting) {
+        // Update both draft and published for full reset
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope: "page", pageId: page.id },
+          json,
+        );
+        // Only publish if explicitly resetting
+        await siteLayoutsRepo.publishDraft(tenantId, {
+          scope: "page",
+          pageId: page.id,
+        });
+      } else {
+        // Idempotent: only seed draft on first apply
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope: "page", pageId: page.id },
+          json,
+        );
+      }
+
+      await revalidateSiteLayout(tenantId, "page");
+    }
+  }
+
   async publish(tenantId: string): Promise<SiteConfigWithTemplate> {
-    const current = await this.repo.findConfig(tenantId);
-    assertEnabled(current);
+    const current = await this.assertEnabled(tenantId);
 
     if (!current.templateId) {
       throw createError("Pick a template before publishing your site.", 400);
@@ -270,8 +399,7 @@ export class SitesService {
   }
 
   async unpublish(tenantId: string): Promise<SiteConfigWithTemplate> {
-    const current = await this.repo.findConfig(tenantId);
-    assertEnabled(current);
+    const current = await this.assertEnabled(tenantId);
     const result = await this.repo.updateConfig(tenantId, {
       isPublished: false,
     });
@@ -282,36 +410,31 @@ export class SitesService {
   // ——— PAGES ———
 
   async listPages(tenantId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     // For now, pages are accessed via SiteLayout rows where pageId is not null.
     // Future implementation can add a dedicated SitePage table if needed.
     return [];
   }
 
   async getPage(tenantId: string, _pageId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     // Placeholder: fetch page metadata and blocks from SiteLayout
     throw createError("Not implemented", 501);
   }
 
   async createPage(tenantId: string, _input: CreatePageInput) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     // Placeholder: create a custom page and seed SiteLayout with empty blocks
     throw createError("Not implemented", 501);
   }
 
   async updatePage(tenantId: string, _pageId: string, _input: UpdatePageInput) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     throw createError("Not implemented", 501);
   }
 
   async deletePage(tenantId: string, _pageId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     throw createError("Not implemented", 501);
   }
 
@@ -321,8 +444,7 @@ export class SitesService {
     tenantId: string,
     input: UpsertBlocksInput,
   ): Promise<BlockTree> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const scope = input.scope || "home";
     const blocks = input.blocks as unknown as Prisma.InputJsonValue;
@@ -343,8 +465,7 @@ export class SitesService {
       block: BlockNode;
     },
   ): Promise<BlockTree> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const layout = await siteLayoutsRepo.findByKey(tenantId, {
       scope: input.scope,
@@ -375,8 +496,7 @@ export class SitesService {
       visibility?: Record<string, unknown>;
     },
   ): Promise<BlockTree> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const layout = await siteLayoutsRepo.findByKey(tenantId, {
       scope: input.scope,
@@ -417,8 +537,7 @@ export class SitesService {
       blockId: string;
     },
   ): Promise<BlockTree> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const layout = await siteLayoutsRepo.findByKey(tenantId, {
       scope: input.scope,
@@ -448,8 +567,7 @@ export class SitesService {
       blockIds: string[];
     },
   ): Promise<BlockTree> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const layout = await siteLayoutsRepo.findByKey(tenantId, {
       scope: input.scope,
@@ -537,7 +655,17 @@ export class SitesService {
       return;
     }
 
-    const blueprint = getTemplateBlueprint(template.slug);
+    // Check for a tenant fork of this template
+    const tenantFork = await this.repo.findTenantForkOfTemplate(
+      tenantId,
+      template.id,
+    );
+
+    // Resolve blueprint with fork-awareness: prefer tenant fork's layouts/tokens
+    const blueprint = getTemplateBlueprint(template.slug, {
+      tenantFork,
+      canonicalTemplate: template,
+    });
 
     // NavMenu table is no longer the source of truth (dropped in Phase 9).
     // Synthesize blocks from template blueprint only.
@@ -581,8 +709,7 @@ export class SitesService {
   // ——— GLOBALS (Header/Footer) ———
 
   async getGlobals(tenantId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     // Trigger eager synthesis for header and footer if they don't exist
     await this.ensureChromeSynthesized(tenantId, "header");
@@ -608,8 +735,7 @@ export class SitesService {
   }
 
   async updateGlobals(tenantId: string, input: UpdateGlobalsInput) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     if (input.header !== undefined) {
       await siteLayoutsRepo.upsertDraft(
@@ -635,14 +761,12 @@ export class SitesService {
   // ——— THEME ———
 
   async getTheme(tenantId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     return config.themeTokens ?? {};
   }
 
   async updateTheme(tenantId: string, input: UpdateThemeInput) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const current = (config.themeTokens ?? {}) as Record<string, unknown>;
     const merged = {
@@ -670,14 +794,12 @@ export class SitesService {
   // ——— SEO ———
 
   async getSeo(tenantId: string) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     return config.seo ?? {};
   }
 
   async updateSeo(tenantId: string, input: UpdateSeoInput) {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const current = (config.seo ?? {}) as Record<string, unknown>;
     const merged = {
@@ -700,8 +822,7 @@ export class SitesService {
   // ——— ANALYTICS ———
 
   async getAnalytics(tenantId: string): Promise<Record<string, unknown>> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
     return (config.analytics ?? {}) as Record<string, unknown>;
   }
 
@@ -709,8 +830,7 @@ export class SitesService {
     tenantId: string,
     input: AnalyticsInput,
   ): Promise<Record<string, unknown>> {
-    const config = await this.repo.findConfig(tenantId);
-    assertEnabled(config);
+    const config = await this.assertEnabled(tenantId);
 
     const current = (config.analytics ?? {}) as Record<string, unknown>;
     const merged: Record<string, unknown> = { ...current };

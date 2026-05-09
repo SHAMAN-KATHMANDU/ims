@@ -107,6 +107,7 @@ class MediaController {
         cursorId: q.cursor,
         purpose: q.purpose,
         mimePrefix: q.mimePrefix,
+        folder: q.folder,
       });
       return ok(res, { items, nextCursor });
     } catch (error: unknown) {
@@ -114,6 +115,16 @@ class MediaController {
         return fail(res, mapZodError(error), 400);
       }
       return sendControllerError(req, res, error, "media list");
+    }
+  }
+
+  async listFolders(req: Request, res: Response) {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const folders = await service.listFolders(tenantId);
+      return ok(res, { folders });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "media folders");
     }
   }
 

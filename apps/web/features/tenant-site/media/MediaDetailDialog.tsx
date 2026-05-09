@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Dialog,
@@ -10,12 +10,23 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useMediaFolders } from "./use-media";
 import type { MediaAsset } from "./types";
 
 interface MediaDetailDialogProps {
   asset: MediaAsset | null;
   onClose: () => void;
-  onUpdate: (id: string, updates: { altText?: string; name?: string }) => void;
+  onUpdate: (
+    id: string,
+    updates: { altText?: string | null; name?: string; folder?: string | null },
+  ) => void;
   isUpdating?: boolean;
 }
 
@@ -25,7 +36,18 @@ export function MediaDetailDialog({
   onUpdate,
   isUpdating,
 }: MediaDetailDialogProps) {
-  const [altText, setAltText] = useState(asset?.name || "");
+  const [name, setName] = useState("");
+  const [altText, setAltText] = useState("");
+  const [folderValue, setFolderValue] = useState<string>("");
+  const { data: folders = [] } = useMediaFolders();
+
+  useEffect(() => {
+    if (asset) {
+      setName(asset.name || "");
+      setAltText(asset.altText || "");
+      setFolderValue(asset.folder || "");
+    }
+  }, [asset]);
 
   if (!asset) return null;
 
@@ -38,7 +60,12 @@ export function MediaDetailDialog({
   };
 
   const handleSave = () => {
-    onUpdate(asset.id, { altText });
+    onUpdate(asset.id, {
+      name: name !== asset.name ? name : undefined,
+      altText: altText !== (asset.altText || "") ? altText || null : undefined,
+      folder:
+        folderValue !== (asset.folder || "") ? folderValue || null : undefined,
+    });
     onClose();
   };
 
@@ -73,9 +100,11 @@ export function MediaDetailDialog({
               <label className="text-sm font-medium text-ink block mb-2">
                 Filename
               </label>
-              <div className="font-mono text-sm text-ink-3 px-3 py-2 rounded bg-bg-sunken">
-                {asset.name}
-              </div>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Filename"
+              />
             </div>
 
             <div>
@@ -87,6 +116,25 @@ export function MediaDetailDialog({
                 onChange={(e) => setAltText(e.target.value)}
                 placeholder="Describe the image for accessibility"
               />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-ink block mb-2">
+                Folder
+              </label>
+              <Select value={folderValue} onValueChange={setFolderValue}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No folder</SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

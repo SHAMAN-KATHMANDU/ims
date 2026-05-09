@@ -5,7 +5,8 @@ export interface MediaAsset {
   size: number;
   width?: number;
   height?: number;
-  folder: string;
+  folder?: string | null;
+  altText?: string | null;
   mimeType: string;
   uploadedAt: string;
 }

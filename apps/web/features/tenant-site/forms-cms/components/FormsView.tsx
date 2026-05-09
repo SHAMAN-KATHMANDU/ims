@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { useToast } from "@/hooks/useToast";
-import { useFormBlocks, useFormSubmissions } from "../hooks/use-form-blocks";
+import { useFormsQuery, useFormSubmissionsQuery } from "../../hooks/use-forms";
 import { FormEditorDialog } from "./FormEditorDialog";
 
 export function FormsView() {
@@ -14,12 +14,15 @@ export function FormsView() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
-  const forms = useFormBlocks();
-  const { data: submissionsData } = useFormSubmissions(selectedFormId ?? "");
+  const { data: formsData } = useFormsQuery();
+  const { data: submissionsData } = useFormSubmissionsQuery(
+    selectedFormId ?? "",
+  );
 
-  const selectedForm = forms.find((f) => f.formId === selectedFormId);
+  const forms = formsData?.forms ?? [];
+  const selectedForm = forms.find((f) => f.id === selectedFormId);
   const formSubmissions = submissionsData?.submissions ?? [];
-  const totalSubmissions = submissionsData?.total ?? 0;
+  const totalSubmissions = submissionsData?.pagination?.total ?? 0;
 
   const handleExportCsv = () => {
     // TODO: implement CSV export endpoint
@@ -66,10 +69,10 @@ export function FormsView() {
             </div>
             {forms.map((form) => (
               <button
-                key={form.formId}
-                onClick={() => setSelectedFormId(form.formId)}
+                key={form.id}
+                onClick={() => setSelectedFormId(form.id)}
                 className={`w-full text-left px-4 py-3 border-b text-sm transition-colors ${
-                  selectedFormId === form.formId
+                  selectedFormId === form.id
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-muted/50"
                 }`}
@@ -78,8 +81,8 @@ export function FormsView() {
                   <span className="font-medium">{form.name}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {form.scope}
-                  {form.pageId && ` · ${form.pageId}`}
+                  {form.submissionCount} submission
+                  {form.submissionCount !== 1 ? "s" : ""}
                 </div>
               </button>
             ))}
@@ -104,7 +107,9 @@ export function FormsView() {
             ) : (
               <div className="divide-y">
                 {formSubmissions.map((submission) => {
-                  const firstField = submission.fields[0];
+                  const firstField = (
+                    submission.fields as Array<{ label: string; value: string }>
+                  )[0];
                   return (
                     <div
                       key={submission.id}

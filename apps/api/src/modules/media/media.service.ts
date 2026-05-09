@@ -382,6 +382,7 @@ export class MediaService {
       cursorId?: string;
       purpose?: string;
       mimePrefix?: string;
+      folder?: string;
     },
   ): Promise<{ items: MediaAsset[]; nextCursor: string | null }> {
     const pageSize = opts.take;
@@ -391,11 +392,16 @@ export class MediaService {
       cursorId: opts.cursorId,
       purpose: opts.purpose,
       mimePrefix: opts.mimePrefix,
+      folder: opts.folder,
     });
     const hasMore = rows.length > pageSize;
     const items = hasMore ? rows.slice(0, pageSize) : rows;
     const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null;
     return { items, nextCursor };
+  }
+
+  async listFolders(tenantId: string): Promise<string[]> {
+    return this.repo.listDistinctFoldersForTenant(tenantId);
   }
 
   /**
@@ -460,24 +466,40 @@ export class MediaService {
       throw createError("Media asset not found", 404);
     }
 
-    const nextName = dto.fileName;
-    if (current.fileName === nextName) {
+    const updateData: {
+      fileName?: string;
+      altText?: string | null;
+      folder?: string | null;
+    } = {};
+
+    if (dto.fileName !== undefined && dto.fileName !== current.fileName) {
+      const conflict = await this.repo.findByFileNameForTenantExcludingId(
+        tenantId,
+        dto.fileName,
+        assetId,
+      );
+      if (conflict) {
+        throw createError("Media asset name already exists", 409);
+      }
+      updateData.fileName = dto.fileName;
+    }
+
+    if (dto.altText !== undefined) {
+      updateData.altText = dto.altText === "" ? null : dto.altText;
+    }
+
+    if (dto.folder !== undefined) {
+      updateData.folder = dto.folder === "" ? null : dto.folder;
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return current;
     }
 
-    const conflict = await this.repo.findByFileNameForTenantExcludingId(
-      tenantId,
-      nextName,
-      assetId,
-    );
-    if (conflict) {
-      throw createError("Media asset name already exists", 409);
-    }
-
-    const updated = await this.repo.updateFileNameForTenant(
+    const updated = await this.repo.updateAssetFields(
       assetId,
       tenantId,
-      nextName,
+      updateData,
     );
     if (!updated) {
       throw createError("Media asset not found", 404);

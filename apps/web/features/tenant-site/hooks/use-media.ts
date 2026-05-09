@@ -16,6 +16,7 @@ export const mediaKeys = {
   list: (params?: MediaListParams) =>
     [...mediaKeys.all, "list", params] as const,
   asset: (id: string) => [...mediaKeys.all, "asset", id] as const,
+  folders: () => [...mediaKeys.all, "folders"] as const,
 };
 
 export function useMediaList(params?: MediaListParams) {
@@ -72,11 +73,23 @@ export function useUpdateMediaAsset() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ id, fileName }: { id: string; fileName: string }) =>
-      mediaService.updateAsset(id, { fileName }),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({
+      id,
+      fileName,
+      altText,
+      folder,
+    }: {
+      id: string;
+      fileName?: string;
+      altText?: string | null;
+      folder?: string | null;
+    }) => mediaService.updateAsset(id, { fileName, altText, folder }),
+    onSuccess: (_, { id, folder }) => {
       qc.invalidateQueries({ queryKey: mediaKeys.list() });
       qc.invalidateQueries({ queryKey: mediaKeys.asset(id) });
+      if (folder !== undefined) {
+        qc.invalidateQueries({ queryKey: mediaKeys.folders() });
+      }
       toast({ title: "Asset updated" });
     },
     onError: (error: Error) => {
@@ -86,6 +99,14 @@ export function useUpdateMediaAsset() {
         variant: "destructive",
       });
     },
+  });
+}
+
+export function useMediaFolders() {
+  return useQuery({
+    queryKey: mediaKeys.folders(),
+    queryFn: () => mediaService.listFolders(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

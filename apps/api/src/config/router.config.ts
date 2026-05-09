@@ -82,6 +82,11 @@ import tenantRouter from "@/modules/tenants/tenant.router";
 import businessProfileRouter from "@/modules/business-profile/business-profile.router";
 import publicApiKeysRouter from "@/modules/public-api-keys/public-api-keys.router";
 import publicDataApiRouter from "@/modules/public-data-api/public-data-api.router";
+import formsRouter from "@/modules/forms/forms.router";
+import {
+  siteTemplatesRouter,
+  siteTemplatesPlatformRouter,
+} from "@/modules/site-templates/site-templates.router";
 
 const router = Router();
 
@@ -147,6 +152,7 @@ router.use("/internal", internalRouter);
 router.use(verifyToken, resolveTenant, checkSubscription);
 
 router.use("/platform", platformRouter);
+router.use("/platform/site-templates", siteTemplatesPlatformRouter);
 router.use("/users", userRouter);
 router.use("/products", productRouter);
 router.use("/categories", categoryRouter);
@@ -181,9 +187,11 @@ router.use("/pages", pagesRouter);
 router.use("/snippets", snippetsRouter);
 router.use("/block-comments", blockCommentsRouter);
 router.use("/site-layouts", siteLayoutsRouter);
+router.use("/site-templates", siteTemplatesRouter);
 router.use("/collections", collectionsRouter);
 router.use("/reviews", reviewsRouter);
 router.use("/website-orders", websiteOrdersRouter);
+router.use("/forms", formsRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);
 router.use("/trash", trashRouter);

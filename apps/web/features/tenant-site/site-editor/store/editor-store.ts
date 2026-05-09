@@ -147,251 +147,264 @@ function makeDefaultRow(children: BlockNode[]): BlockNode {
 const EMPTY_SNAPSHOT: EditorSnapshot = { blocks: [] };
 const HISTORY_LIMIT = 50;
 
-export const useEditorStore = create<EditorState>()((set, get) => {
-  function commit(next: EditorSnapshot) {
-    const { past, present } = get();
-    const nextPast: EditorSnapshot[] = [
-      ...past,
-      { blocks: cloneTree(present.blocks) },
-    ];
-    if (nextPast.length > HISTORY_LIMIT) nextPast.shift();
-    set({
-      past: nextPast,
-      present: { blocks: cloneTree(next.blocks) },
-      future: [],
-      dirty: true,
-    });
-  }
-
-  return {
-    past: [],
-    present: EMPTY_SNAPSHOT,
-    future: [],
-    selectedId: null,
-    dirty: false,
-    hoveredBlockId: null,
-    hoveredBlockRect: null,
-    selectedBlockRect: null,
-    device: "desktop",
-    lastSaveTime: null,
-    slashMenuAnchor: null,
-
-    load: (blocks) =>
-      set({
-        past: [],
-        present: { blocks: cloneTree(blocks) },
-        future: [],
-        selectedId: null,
-        dirty: false,
-      }),
-
-    markClean: () => set({ dirty: false }),
-
-    setSelected: (id) => set({ selectedId: id }),
-    setHoveredBlockId: (id) => set({ hoveredBlockId: id }),
-    setHoveredBlockRect: (rect) => set({ hoveredBlockRect: rect }),
-    setSelectedBlockRect: (rect) => set({ selectedBlockRect: rect }),
-
-    setDevice: (device) => set({ device }),
-    setLastSaveTime: (time) => set({ lastSaveTime: time }),
-    setSlashMenuAnchor: (anchor) => set({ slashMenuAnchor: anchor }),
-
-    addBlock: (block, atIndex) => {
-      const { present } = get();
-      const blocks = [...present.blocks];
-      const idx =
-        atIndex !== undefined && atIndex >= 0 && atIndex <= blocks.length
-          ? atIndex
-          : blocks.length;
-      blocks.splice(idx, 0, block);
-      commit({ blocks });
-      set({ selectedId: block.id });
-    },
-
-    removeBlock: (id) => {
-      const { present, selectedId } = get();
-      const path = findPath(present.blocks, id);
-      if (!path) return;
-
-      const { tree: newBlocks } = (() => {
-        const parentPath = path.slice(0, -1);
-        const slot = path[path.length - 1]!;
-        if (parentPath.length === 0) {
-          return {
-            tree: [
-              ...present.blocks.slice(0, slot),
-              ...present.blocks.slice(slot + 1),
-            ],
-          };
-        }
-
-        const parent = nodeAt(present.blocks, parentPath);
-        if (!parent || !parent.children) return { tree: present.blocks };
-
-        const nextChildren = [
-          ...parent.children.slice(0, slot),
-          ...parent.children.slice(slot + 1),
-        ];
-
-        function rebuild(nodes: BlockNode[], depth: number): BlockNode[] {
-          return nodes.map((n, i) => {
-            if (i !== parentPath[depth]) return n;
-            if (depth === parentPath.length - 1) {
-              return { ...n, children: nextChildren };
-            }
-            return {
-              ...n,
-              children: rebuild(n.children ?? [], depth + 1),
-            };
-          });
-        }
-
-        return { tree: rebuild(present.blocks, 0) };
-      })();
-
-      commit({ blocks: newBlocks });
-      if (selectedId === id) set({ selectedId: null });
-    },
-
-    moveBlock: (id, delta) => {
-      const { present } = get();
-      const path = findPath(present.blocks, id);
-      if (!path) return;
-
-      const slot = path[path.length - 1]!;
-      const parentPath = path.slice(0, -1);
-      const parentChildren =
-        parentPath.length === 0
-          ? present.blocks
-          : (nodeAt(present.blocks, parentPath)?.children ?? []);
-
-      const target = slot + delta;
-      if (target < 0 || target >= parentChildren.length) return;
-
-      const blocks = moveInTree(
-        present.blocks,
-        path,
-        delta > 0 ? [...parentPath, target + 1] : [...parentPath, target],
-      );
-      commit({ blocks });
-    },
-
-    moveBlockToPath: (fromPath, toPath) => {
-      const { present } = get();
-      const moved = moveInTree(present.blocks, fromPath, toPath);
-      const cleaned = unwrapEmpty(moved);
-      commit({ blocks: cleaned });
-    },
-
-    insertSiblingOf: (anchorId, where, block) => {
-      const { present } = get();
-      const blocks = insertSiblingTree(present.blocks, anchorId, where, block);
-      commit({ blocks });
-      set({ selectedId: block.id });
-    },
-
-    insertChildOf: (parentId, block, index = -1) => {
-      const { present } = get();
-      const blocks = insertChildTree(present.blocks, parentId, block, index);
-      commit({ blocks });
-      set({ selectedId: block.id });
-    },
-
-    wrapInRowAt: (anchorId, side, block) => {
-      const { present } = get();
-      const blocks = wrapInRowTree(
-        present.blocks,
-        anchorId,
-        side,
-        block,
-        makeDefaultRow,
-      );
-      commit({ blocks });
-      set({ selectedId: block.id });
-    },
-
-    duplicateBlock: (id) => {
-      const { present } = get();
-      const path = findPath(present.blocks, id);
-      if (!path) return;
-      const source = nodeAt(present.blocks, path);
-      if (!source) return;
-      const newId = `${source.kind}-${crypto.randomUUID().slice(0, 8)}`;
-      const clone = JSON.parse(JSON.stringify(source)) as BlockNode;
-      clone.id = newId;
-      const blocks = insertSiblingTree(present.blocks, id, "after", clone);
-      commit({ blocks });
-      set({ selectedId: newId });
-    },
-
-    updateBlockId: (id, newId) => {
-      if (!newId || newId === id) return;
-      const { present, selectedId } = get();
-      const blocks = mapBlocks(present.blocks, id, (b) => ({
-        ...b,
-        id: newId,
-      }));
-      commit({ blocks });
-      if (selectedId === id) set({ selectedId: newId });
-    },
-
-    updateBlockProps: (id, props) => {
-      const { present } = get();
-      const blocks = mapBlocks(present.blocks, id, (b) => ({
-        ...b,
-        props: {
-          ...(b.props as Record<string, unknown>),
-          ...props,
-        } as unknown as BlockNode["props"],
-      }));
-      commit({ blocks });
-    },
-
-    updateBlockVisibility: (id, visibility) => {
-      const { present } = get();
-      const blocks = mapBlocks(present.blocks, id, (b) => ({
-        ...b,
-        visibility: { ...(b.visibility ?? {}), ...visibility },
-      }));
-      commit({ blocks });
-    },
-
-    updateBlockStyle: (id, style) => {
-      const { present } = get();
-      const blocks = mapBlocks(present.blocks, id, (b) => ({
-        ...b,
-        style: { ...(b.style ?? {}), ...style },
-      }));
-      commit({ blocks });
-    },
-
-    undo: () => {
-      const { past, present, future } = get();
-      if (past.length === 0) return;
-      const previous = past[past.length - 1]!;
-      const nextPast = past.slice(0, -1);
+function createEditorStoreInner() {
+  return create<EditorState>()((set, get) => {
+    function commit(next: EditorSnapshot) {
+      const { past, present } = get();
+      const nextPast: EditorSnapshot[] = [
+        ...past,
+        { blocks: cloneTree(present.blocks) },
+      ];
+      if (nextPast.length > HISTORY_LIMIT) nextPast.shift();
       set({
         past: nextPast,
-        present: previous,
-        future: [{ blocks: cloneTree(present.blocks) }, ...future],
+        present: { blocks: cloneTree(next.blocks) },
+        future: [],
         dirty: true,
       });
-    },
+    }
 
-    redo: () => {
-      const { past, present, future } = get();
-      if (future.length === 0) return;
-      const next = future[0]!;
-      const nextFuture = future.slice(1);
-      set({
-        past: [...past, { blocks: cloneTree(present.blocks) }],
-        present: next,
-        future: nextFuture,
-        dirty: true,
-      });
-    },
-  };
-});
+    return {
+      past: [],
+      present: EMPTY_SNAPSHOT,
+      future: [],
+      selectedId: null,
+      dirty: false,
+      hoveredBlockId: null,
+      hoveredBlockRect: null,
+      selectedBlockRect: null,
+      device: "desktop",
+      lastSaveTime: null,
+      slashMenuAnchor: null,
+
+      load: (blocks) =>
+        set({
+          past: [],
+          present: { blocks: cloneTree(blocks) },
+          future: [],
+          selectedId: null,
+          dirty: false,
+        }),
+
+      markClean: () => set({ dirty: false }),
+
+      setSelected: (id) => set({ selectedId: id }),
+      setHoveredBlockId: (id) => set({ hoveredBlockId: id }),
+      setHoveredBlockRect: (rect) => set({ hoveredBlockRect: rect }),
+      setSelectedBlockRect: (rect) => set({ selectedBlockRect: rect }),
+
+      setDevice: (device) => set({ device }),
+      setLastSaveTime: (time) => set({ lastSaveTime: time }),
+      setSlashMenuAnchor: (anchor) => set({ slashMenuAnchor: anchor }),
+
+      addBlock: (block, atIndex) => {
+        const { present } = get();
+        const blocks = [...present.blocks];
+        const idx =
+          atIndex !== undefined && atIndex >= 0 && atIndex <= blocks.length
+            ? atIndex
+            : blocks.length;
+        blocks.splice(idx, 0, block);
+        commit({ blocks });
+        set({ selectedId: block.id });
+      },
+
+      removeBlock: (id) => {
+        const { present, selectedId } = get();
+        const path = findPath(present.blocks, id);
+        if (!path) return;
+
+        const { tree: newBlocks } = (() => {
+          const parentPath = path.slice(0, -1);
+          const slot = path[path.length - 1]!;
+          if (parentPath.length === 0) {
+            return {
+              tree: [
+                ...present.blocks.slice(0, slot),
+                ...present.blocks.slice(slot + 1),
+              ],
+            };
+          }
+
+          const parent = nodeAt(present.blocks, parentPath);
+          if (!parent || !parent.children) return { tree: present.blocks };
+
+          const nextChildren = [
+            ...parent.children.slice(0, slot),
+            ...parent.children.slice(slot + 1),
+          ];
+
+          function rebuild(nodes: BlockNode[], depth: number): BlockNode[] {
+            return nodes.map((n, i) => {
+              if (i !== parentPath[depth]) return n;
+              if (depth === parentPath.length - 1) {
+                return { ...n, children: nextChildren };
+              }
+              return {
+                ...n,
+                children: rebuild(n.children ?? [], depth + 1),
+              };
+            });
+          }
+
+          return { tree: rebuild(present.blocks, 0) };
+        })();
+
+        commit({ blocks: newBlocks });
+        if (selectedId === id) set({ selectedId: null });
+      },
+
+      moveBlock: (id, delta) => {
+        const { present } = get();
+        const path = findPath(present.blocks, id);
+        if (!path) return;
+
+        const slot = path[path.length - 1]!;
+        const parentPath = path.slice(0, -1);
+        const parentChildren =
+          parentPath.length === 0
+            ? present.blocks
+            : (nodeAt(present.blocks, parentPath)?.children ?? []);
+
+        const target = slot + delta;
+        if (target < 0 || target >= parentChildren.length) return;
+
+        const blocks = moveInTree(
+          present.blocks,
+          path,
+          delta > 0 ? [...parentPath, target + 1] : [...parentPath, target],
+        );
+        commit({ blocks });
+      },
+
+      moveBlockToPath: (fromPath, toPath) => {
+        const { present } = get();
+        const moved = moveInTree(present.blocks, fromPath, toPath);
+        const cleaned = unwrapEmpty(moved);
+        commit({ blocks: cleaned });
+      },
+
+      insertSiblingOf: (anchorId, where, block) => {
+        const { present } = get();
+        const blocks = insertSiblingTree(
+          present.blocks,
+          anchorId,
+          where,
+          block,
+        );
+        commit({ blocks });
+        set({ selectedId: block.id });
+      },
+
+      insertChildOf: (parentId, block, index = -1) => {
+        const { present } = get();
+        const blocks = insertChildTree(present.blocks, parentId, block, index);
+        commit({ blocks });
+        set({ selectedId: block.id });
+      },
+
+      wrapInRowAt: (anchorId, side, block) => {
+        const { present } = get();
+        const blocks = wrapInRowTree(
+          present.blocks,
+          anchorId,
+          side,
+          block,
+          makeDefaultRow,
+        );
+        commit({ blocks });
+        set({ selectedId: block.id });
+      },
+
+      duplicateBlock: (id) => {
+        const { present } = get();
+        const path = findPath(present.blocks, id);
+        if (!path) return;
+        const source = nodeAt(present.blocks, path);
+        if (!source) return;
+        const newId = `${source.kind}-${crypto.randomUUID().slice(0, 8)}`;
+        const clone = JSON.parse(JSON.stringify(source)) as BlockNode;
+        clone.id = newId;
+        const blocks = insertSiblingTree(present.blocks, id, "after", clone);
+        commit({ blocks });
+        set({ selectedId: newId });
+      },
+
+      updateBlockId: (id, newId) => {
+        if (!newId || newId === id) return;
+        const { present, selectedId } = get();
+        const blocks = mapBlocks(present.blocks, id, (b) => ({
+          ...b,
+          id: newId,
+        }));
+        commit({ blocks });
+        if (selectedId === id) set({ selectedId: newId });
+      },
+
+      updateBlockProps: (id, props) => {
+        const { present } = get();
+        const blocks = mapBlocks(present.blocks, id, (b) => ({
+          ...b,
+          props: {
+            ...(b.props as Record<string, unknown>),
+            ...props,
+          } as unknown as BlockNode["props"],
+        }));
+        commit({ blocks });
+      },
+
+      updateBlockVisibility: (id, visibility) => {
+        const { present } = get();
+        const blocks = mapBlocks(present.blocks, id, (b) => ({
+          ...b,
+          visibility: { ...(b.visibility ?? {}), ...visibility },
+        }));
+        commit({ blocks });
+      },
+
+      updateBlockStyle: (id, style) => {
+        const { present } = get();
+        const blocks = mapBlocks(present.blocks, id, (b) => ({
+          ...b,
+          style: { ...(b.style ?? {}), ...style },
+        }));
+        commit({ blocks });
+      },
+
+      undo: () => {
+        const { past, present, future } = get();
+        if (past.length === 0) return;
+        const previous = past[past.length - 1]!;
+        const nextPast = past.slice(0, -1);
+        set({
+          past: nextPast,
+          present: previous,
+          future: [{ blocks: cloneTree(present.blocks) }, ...future],
+          dirty: true,
+        });
+      },
+
+      redo: () => {
+        const { past, present, future } = get();
+        if (future.length === 0) return;
+        const next = future[0]!;
+        const nextFuture = future.slice(1);
+        set({
+          past: [...past, { blocks: cloneTree(present.blocks) }],
+          present: next,
+          future: nextFuture,
+          dirty: true,
+        });
+      },
+    };
+  });
+}
+
+export const useEditorStore = createEditorStoreInner();
+
+export function createEditorStore() {
+  return createEditorStoreInner();
+}
 
 // Re-export named selectors so consumers can import both the store hook and
 // selectors from a single module: `import { useEditorStore, selectFoo } from "./store/editor-store"`.

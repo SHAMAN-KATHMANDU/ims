@@ -1,23 +1,31 @@
+import { SITE_LAYOUT_SCOPES, type SiteLayoutScope } from "@repo/shared";
+import { SiteEditorPage } from "@/features/tenant-site/site-editor";
+
 export const metadata = { title: "Page Builder — CMS" };
 
-interface PageProps {
-  params: Promise<{
-    pageId: string;
-  }>;
+interface BuilderPageProps {
+  params: Promise<{ workspace: string; pageId: string }>;
+  searchParams: Promise<{ scope?: string }>;
 }
 
-export default async function BuilderPage({ params }: PageProps) {
-  const { pageId } = await params;
+function narrowScope(scope: string | undefined): SiteLayoutScope {
+  if (scope && (SITE_LAYOUT_SCOPES as readonly string[]).includes(scope)) {
+    return scope as SiteLayoutScope;
+  }
+  return "home";
+}
 
+export default async function BuilderPage({
+  params,
+  searchParams,
+}: BuilderPageProps) {
+  const { workspace, pageId } = await params;
+  const { scope } = await searchParams;
   return (
-    <div
-      className="flex h-full items-center justify-center"
-      style={{ color: "var(--ink-3)" }}
-    >
-      <div className="text-center">
-        <p className="serif text-xl">Page Builder {pageId}</p>
-        <p className="mt-2 text-sm">Coming soon — owned by Task #5</p>
-      </div>
-    </div>
+    <SiteEditorPage
+      workspace={workspace}
+      pageId={pageId}
+      scope={narrowScope(scope)}
+    />
   );
 }

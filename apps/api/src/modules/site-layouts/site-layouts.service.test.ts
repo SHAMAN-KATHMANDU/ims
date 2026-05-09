@@ -273,6 +273,7 @@ describe("SiteLayoutsService", () => {
         findConfig: vi
           .fn()
           .mockResolvedValue({ websiteEnabled: true, template: null }),
+        findTenantForkOfTemplate: vi.fn(),
       } as unknown as SitesRepo;
       const svc = new SiteLayoutsService(makeRepo(), sites, mockRevalidate);
 
@@ -285,8 +286,9 @@ describe("SiteLayoutsService", () => {
       const sites = {
         findConfig: vi.fn().mockResolvedValue({
           websiteEnabled: true,
-          template: { slug: "nonexistent-template-xyz" },
+          template: { id: "tpl-1", slug: "nonexistent-template-xyz" },
         }),
+        findTenantForkOfTemplate: vi.fn().mockResolvedValue(null),
       } as unknown as SitesRepo;
       const svc = new SiteLayoutsService(makeRepo(), sites, mockRevalidate);
 

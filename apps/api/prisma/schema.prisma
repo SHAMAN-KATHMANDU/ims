@@ -99,9 +99,9 @@ model Tenant {
   tenantPages TenantPage[]
 
   // Block-based layouts (Phase 1 of template overhaul; nav menus dropped Phase 9)
-  siteLayouts SiteLayout[]
+  siteLayouts   SiteLayout[]
   // Reusable BlockNode[] sub-trees referenced via `snippet-ref` blocks (Phase 5)
-  siteSnippets SiteSnippet[]
+  siteSnippets  SiteSnippet[]
   // Inline comments on blog posts / pages (Phase 6 review workflow)
   blockComments BlockComment[]
 
@@ -116,6 +116,9 @@ model Tenant {
 
   // Form block submissions
   formSubmissions FormSubmission[]
+
+  // Reusable form definitions (admin-built forms referenced from FormBlocks)
+  forms Form[]
 
   // Page translations (i18n)
   pageTranslations TenantPageTranslation[]
@@ -139,6 +142,9 @@ model Tenant {
 
   // URL redirect rules (301/302) evaluated by the tenant-site middleware.
   tenantRedirects TenantRedirect[]
+
+  // Custom templates forked by this tenant
+  customTemplates SiteTemplate[]
 
   @@map("tenants")
 }
@@ -258,33 +264,52 @@ model SiteConfig {
 /// Catalog of website templates (minimal, luxury, standard, ...).
 /// Managed by platformAdmin; tenants pick one and customize via SiteConfig.
 model SiteTemplate {
-  id              String   @id @default(uuid())
-  slug            String   @unique // "minimal", "luxury", "standard", ...
-  name            String // Display name: "Minimal", "Luxury"
-  description     String?
+  id                 String   @id @default(uuid())
+  slug               String   @unique // "minimal", "luxury", "standard", ...
+  name               String // Display name: "Minimal", "Luxury"
+  description        String?
   /// Free-text category for grouping / filtering in the picker UI.
   /// Replaces the legacy SiteTemplateTier enum — categories can grow without
   /// schema migrations now.
-  category        String?  @db.VarChar(40)
-  previewImageUrl String?  @map("preview_image_url")
+  category           String?  @db.VarChar(40)
+  previewImageUrl    String?  @map("preview_image_url")
   /// Default branding payload applied when a tenant first picks this template.
   /// Shape: { colors: {9 tokens}, typography: {heading, body, display, scale, base},
   ///          spacing: {base, section}, radius, theme }
-  defaultBranding Json?    @map("default_branding")
+  defaultBranding    Json?    @map("default_branding")
   /// Default section toggles: { hero, products, categories, story, ... }.
-  defaultSections Json?    @map("default_sections")
+  defaultSections    Json?    @map("default_sections")
   /// Default page visibility: { home, products, blog, contact, ... }.
   /// Tenants can override per-page in SiteConfig.
-  defaultPages    Json?    @map("default_pages")
-  isActive        Boolean  @default(true) @map("is_active")
-  sortOrder       Int      @default(0) @map("sort_order")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  defaultPages       Json?    @map("default_pages")
+  /// Serialized block layouts per scope: { home: BlockNode[], products-index: BlockNode[], ... }
+  /// Populated from in-code blueprint during backfill. Can be edited by platform admins.
+  defaultLayouts     Json?    @map("default_layouts")
+  /// Default theme tokens: { mode, colors, typography, etc. }
+  /// Populated from in-code blueprint during backfill. Can be edited by platform admins.
+  defaultThemeTokens Json?    @map("default_theme_tokens")
+  isActive           Boolean  @default(true) @map("is_active")
+  sortOrder          Int      @default(0) @map("sort_order")
+  /// If set, this template is a fork of another template (the parent).
+  /// null = canonical platform template.
+  parentTemplateId   String?  @map("parent_template_id")
+  /// If set, this template belongs to a specific tenant (tenant-forked or custom).
+  /// null = canonical platform template.
+  ownerTenantId      String?  @map("owner_tenant_id")
+  /// Whether this fork is visible to the owning tenant in the template picker.
+  isPublic           Boolean  @default(true) @map("is_public")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
-  siteConfigs SiteConfig[]
+  siteConfigs    SiteConfig[]
+  parentTemplate SiteTemplate?  @relation("TemplateForks", fields: [parentTemplateId], references: [id], onDelete: SetNull)
+  forks          SiteTemplate[] @relation("TemplateForks")
+  owner          Tenant?        @relation(fields: [ownerTenantId], references: [id], onDelete: Cascade)
 
   @@index([isActive, sortOrder])
   @@index([category])
+  @@index([ownerTenantId])
+  @@index([parentTemplateId])
   @@map("site_templates")
 }
 
@@ -311,45 +336,45 @@ model BlogCategory {
 }
 
 model BlogPost {
-  id             String         @id @default(uuid())
-  tenantId       String         @map("tenant_id")
-  slug           String
-  title          String
-  excerpt        String?
-  bodyMarkdown   String         @map("body_markdown")
+  id                 String              @id @default(uuid())
+  tenantId           String              @map("tenant_id")
+  slug               String
+  title              String
+  excerpt            String?
+  bodyMarkdown       String              @map("body_markdown")
   /// Block tree (BlockNode[]) — the canonical source for the post body
   /// once Phase 2 ships. `bodyMarkdown` is kept in sync server-side via
   /// blocksToMarkdown() so RSS / SEO / legacy renderers keep working.
   /// Defaults to an empty tree for new rows; backfilled for existing rows
   /// with a single `markdown-body` block via the backfill script.
-  body           Json           @default("[]")
+  body               Json                @default("[]")
   /// Optional scheduled-publish timestamp. When set and `status='DRAFT'`,
   /// the scheduler worker (Phase 4) flips the post to PUBLISHED at this
   /// time. Null = no schedule.
-  scheduledPublishAt DateTime?  @map("scheduled_publish_at")
-  heroImageUrl   String?        @map("hero_image_url")
+  scheduledPublishAt DateTime?           @map("scheduled_publish_at")
+  heroImageUrl       String?             @map("hero_image_url")
   /// Phase 8 — Notion-style page-top customization. Cover image renders
   /// full-bleed above the title; icon (emoji or short string) renders
   /// inline before the heading. Both optional; both fall back to clean
   /// chrome when absent.
-  coverImageUrl  String?        @map("cover_image_url") @db.VarChar(1000)
-  icon           String?        @db.VarChar(80)
-  authorName     String?        @map("author_name")
-  status         BlogPostStatus @default(DRAFT)
+  coverImageUrl      String?             @map("cover_image_url") @db.VarChar(1000)
+  icon               String?             @db.VarChar(80)
+  authorName         String?             @map("author_name")
+  status             BlogPostStatus      @default(DRAFT)
   /// Phase 6 review workflow (gated by CMS_REVIEW_WORKFLOW). Independent
   /// of `status` so legacy single-author tenants can keep ignoring it.
-  reviewStatus   ContentReviewStatus @default(DRAFT) @map("review_status")
-  publishedAt    DateTime?      @map("published_at")
-  categoryId     String?        @map("category_id")
-  tags           String[]       @default([])
-  seoTitle       String?        @map("seo_title")
-  seoDescription String?        @map("seo_description")
-  readingMinutes Int?           @map("reading_minutes")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  reviewStatus       ContentReviewStatus @default(DRAFT) @map("review_status")
+  publishedAt        DateTime?           @map("published_at")
+  categoryId         String?             @map("category_id")
+  tags               String[]            @default([])
+  seoTitle           String?             @map("seo_title")
+  seoDescription     String?             @map("seo_description")
+  readingMinutes     Int?                @map("reading_minutes")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category BlogCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   versions BlogPostVersion[]
 
   @@unique([tenantId, slug])
@@ -418,38 +443,45 @@ enum ContentReviewStatus {
 /// Served on the tenant-site as /<slug> via a catch-all route; optionally
 /// linked from the site header via showInNav + navOrder.
 model TenantPage {
-  id             String   @id @default(uuid())
-  tenantId       String   @map("tenant_id")
-  slug           String   @db.VarChar(80)
-  title          String   @db.VarChar(200)
-  bodyMarkdown   String   @map("body_markdown")
+  id                 String              @id @default(uuid())
+  tenantId           String              @map("tenant_id")
+  slug               String              @db.VarChar(80)
+  title              String              @db.VarChar(200)
+  bodyMarkdown       String              @map("body_markdown")
   /// Block tree (BlockNode[]) — canonical body source once Phase 2 ships.
   /// `bodyMarkdown` is derived from this via blocksToMarkdown() for RSS /
   /// SEO / legacy renderers. Defaults to an empty tree for new rows.
-  body           Json     @default("[]")
+  body               Json                @default("[]")
   /// Optional scheduled-publish timestamp. When set and `isPublished=false`,
   /// the scheduler worker (Phase 4) publishes the page at this time.
-  scheduledPublishAt DateTime? @map("scheduled_publish_at")
+  scheduledPublishAt DateTime?           @map("scheduled_publish_at")
   /// Renderer layout variant: "default" | "full-width" | "narrow".
   /// The tenant-site maps this to width + padding presets.
-  layoutVariant  String   @default("default") @map("layout_variant") @db.VarChar(40)
-  showInNav      Boolean  @default(true) @map("show_in_nav")
-  navOrder       Int      @default(0) @map("nav_order")
-  isPublished    Boolean  @default(false) @map("is_published")
+  layoutVariant      String              @default("default") @map("layout_variant") @db.VarChar(40)
+  showInNav          Boolean             @default(true) @map("show_in_nav")
+  navOrder           Int                 @default(0) @map("nav_order")
+  isPublished        Boolean             @default(false) @map("is_published")
   /// Phase 6 review workflow (gated by CMS_REVIEW_WORKFLOW). Independent
   /// of `isPublished` so legacy single-author tenants can keep ignoring it.
-  reviewStatus   ContentReviewStatus @default(DRAFT) @map("review_status")
+  reviewStatus       ContentReviewStatus @default(DRAFT) @map("review_status")
   /// Phase 8 — Notion-style page-top customization (see BlogPost).
-  coverImageUrl  String?  @map("cover_image_url") @db.VarChar(1000)
-  icon           String?  @db.VarChar(80)
+  coverImageUrl      String?             @map("cover_image_url") @db.VarChar(1000)
+  icon               String?             @db.VarChar(80)
   /// Landing pages render without header/footer chrome at /landing/<slug>.
-  isLandingPage  Boolean  @default(false) @map("is_landing_page")
+  isLandingPage      Boolean             @default(false) @map("is_landing_page")
   /// Parent page for nested URL structure (/parent/child). Null = top-level.
-  parentId       String?  @map("parent_id")
-  seoTitle       String?  @map("seo_title") @db.VarChar(200)
-  seoDescription String?  @map("seo_description")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  parentId           String?             @map("parent_id")
+  seoTitle           String?             @map("seo_title") @db.VarChar(200)
+  seoDescription     String?             @map("seo_description")
+  /// Phase 5 — Built-in scope pages created from template blueprints.
+  /// When kind="scope", this field maps to a BlueprintScope value (e.g. "home", "products-index").
+  isBuiltInScope     Boolean             @default(false) @map("is_built_in_scope")
+  /// Phase 5 — Discriminator: "page" for user-created custom pages, "scope" for built-in scopes.
+  kind               String              @default("page") @map("kind") @db.VarChar(20)
+  /// Phase 5 — BlueprintScope when kind="scope"; null for kind="page".
+  scope              String?             @map("scope") @db.VarChar(40)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   tenant       Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent       TenantPage?             @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
@@ -461,6 +493,7 @@ model TenantPage {
   @@unique([tenantId, slug])
   @@index([tenantId, isPublished, navOrder])
   @@index([tenantId, parentId])
+  @@index([tenantId, kind, scope])
   @@map("tenant_pages")
 }
 
@@ -573,28 +606,28 @@ enum BlockCommentRecordType {
 /// inside that record). Threading via `parentId`. `resolvedAt` flips the
 /// thread to "resolved" without deleting it. Phase 6 of the CMS overhaul.
 model BlockComment {
-  id          String                 @id @default(uuid())
-  tenantId    String                 @map("tenant_id")
-  recordType  BlockCommentRecordType @map("record_type")
+  id         String                 @id @default(uuid())
+  tenantId   String                 @map("tenant_id")
+  recordType BlockCommentRecordType @map("record_type")
   /// Foreign-keyless reference into BlogPost / TenantPage (recordType
   /// disambiguates). We avoid two real FK columns to keep the model
   /// polymorphic; tenant-scoped queries stay cheap via the indexes.
-  recordId    String                 @map("record_id")
+  recordId   String                 @map("record_id")
   /// Optional anchor to a specific block id within the record body.
   /// Null = thread on the whole record.
-  blockId     String?                @map("block_id")
-  body        String                 @db.VarChar(2000)
-  authorId    String                 @map("author_id")
+  blockId    String?                @map("block_id")
+  body       String                 @db.VarChar(2000)
+  authorId   String                 @map("author_id")
   /// Threading: replies set parentId to the root thread comment.
-  parentId    String?                @map("parent_id")
-  resolvedAt  DateTime?              @map("resolved_at")
-  resolvedBy  String?                @map("resolved_by")
-  createdAt   DateTime               @default(now()) @map("created_at")
-  updatedAt   DateTime               @updatedAt @map("updated_at")
+  parentId   String?                @map("parent_id")
+  resolvedAt DateTime?              @map("resolved_at")
+  resolvedBy String?                @map("resolved_by")
+  createdAt  DateTime               @default(now()) @map("created_at")
+  updatedAt  DateTime               @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  author User   @relation("BlockCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  parent BlockComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author  User           @relation("BlockCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  parent  BlockComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies BlockComment[] @relation("CommentReplies")
 
   @@index([tenantId, recordType, recordId, createdAt])
@@ -707,6 +740,7 @@ model ProductCollection {
 model FormSubmission {
   id           String    @id @default(uuid())
   tenantId     String    @map("tenant_id")
+  formId       String?   @map("form_id")
   fields       Json
   submitTo     String    @default("email") @map("submit_to") @db.VarChar(20)
   leadId       String?   @map("lead_id")
@@ -719,9 +753,34 @@ model FormSubmission {
   attemptCount Int       @default(0) @map("attempt_count")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  form   Form?  @relation(fields: [formId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@map("form_submissions")
+}
+
+model Form {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  name            String
+  slug            String
+  description     String?
+  fields          Json // FormFieldDef[]
+  submitTo        String    @default("email") @db.VarChar(20) // "email" | "webhook" | "crm-lead"
+  recipients      String[]  @default([])
+  successMessage  String?   @map("success_message")
+  status          String    @default("draft") @db.VarChar(20) // "draft" | "active" | "paused"
+  submissionCount Int       @default(0) @map("submission_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submissions FormSubmission[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@map("forms")
 }
 
 enum PlanTier {
@@ -1962,6 +2021,8 @@ model MediaAsset {
   /// Soft-delete tombstone; rows with deletedAt set are excluded from list / lookup.
   /// Storage objects are retained so a future restore can rehydrate the row.
   deletedAt    DateTime? @map("deleted_at")
+  altText      String?   @map("alt_text")
+  folder       String?   @map("folder") @db.VarChar(80)
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploader           User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
@@ -1971,6 +2032,7 @@ model MediaAsset {
   @@unique([tenantId, storageKey])
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([tenantId, deletedAt])
+  @@index([tenantId, folder])
   @@map("media_assets")
 }
 

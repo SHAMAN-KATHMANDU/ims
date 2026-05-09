@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { BlockNode, BlockKind } from "@repo/shared";
 import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
+import { type BlockDataContext } from "@repo/blocks";
 import { useEditorStore } from "../store/editor-store";
 import {
   selectBlocks,
@@ -29,6 +30,7 @@ interface BlockWrapProps {
   block: BlockNode;
   index: number;
   isSelected: boolean;
+  dataContext: BlockDataContext;
 }
 
 interface HoverZone {
@@ -36,7 +38,12 @@ interface HoverZone {
   rect: { x: number; y: number; width: number; height: number };
 }
 
-export function BlockWrap({ block, index, isSelected }: BlockWrapProps) {
+export function BlockWrap({
+  block,
+  index,
+  isSelected,
+  dataContext,
+}: BlockWrapProps) {
   const [hoverZone, setHoverZone] = useState<HoverZone | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const blocks = useEditorStore(selectBlocks);
@@ -224,7 +231,7 @@ export function BlockWrap({ block, index, isSelected }: BlockWrapProps) {
       </div>
 
       {/* Block content */}
-      <BlockView block={block} />
+      <BlockView block={block} dataContext={dataContext} />
 
       {/* Right toolbar when selected */}
       {isSelected && (

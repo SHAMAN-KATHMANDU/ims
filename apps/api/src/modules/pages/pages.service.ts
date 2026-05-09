@@ -21,7 +21,7 @@ import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revali
 import type { BlockNode } from "@repo/shared";
 import { blocksToMarkdown } from "@repo/shared";
 import { snapshotTenantPage } from "@/modules/versions/versions.service";
-import defaultRepo, { type TenantPageListItem } from "./pages.repository";
+import defaultRepo from "./pages.repository";
 
 /**
  * Reconcile the markdown body and the canonical block tree from input.
@@ -54,6 +54,7 @@ import type {
   ListTenantPagesQuery,
   ReorderPagesInput,
   UpdateTenantPageInput,
+  PageListItem,
 } from "./pages.schema";
 import {
   revalidatePages as defaultRevalidate,
@@ -100,7 +101,7 @@ export class PagesService {
     tenantId: string,
     query: ListTenantPagesQuery,
   ): Promise<{
-    pages: TenantPageListItem[];
+    pages: PageListItem[];
     total: number;
     page: number;
     limit: number;

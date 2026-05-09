@@ -18,6 +18,7 @@ export interface FieldOverride {
   helpText?: string;
   group?: string;
   widget?: string;
+  kind?: "media" | "url" | "text";
 }
 
 /** All overrides keyed by `${blockKind}.${fieldName}`. */
@@ -50,11 +51,12 @@ export const INSPECTOR_OVERRIDES: Record<string, FieldOverride> = {
   "hero.alignment": { label: "Text alignment" },
   "hero.variant": { label: "Hero style" },
   "hero.ctaLabel": { label: "Button label" },
-  "hero.ctaHref": { label: "Button URL" },
+  "hero.ctaHref": { label: "Button URL", kind: "url" },
   "hero.eyebrow": {
     label: "Eyebrow text",
     helpText: "Small label shown above the main heading.",
   },
+  "hero.mediaUrl": { label: "Background image", kind: "media" },
 
   // ── Product Grid ─────────────────────────────────────────────────────────
   "product-grid.source": {
@@ -103,23 +105,23 @@ export const INSPECTOR_OVERRIDES: Record<string, FieldOverride> = {
   "pdp-gallery.enableZoom": { label: "Enable zoom" },
 
   // ── Embed ────────────────────────────────────────────────────────────────
-  "embed.src": { label: "Embed URL" },
+  "embed.src": { label: "Embed URL", kind: "url" },
   "embed.aspectRatio": { label: "Aspect ratio" },
   "embed.allowFullscreen": { label: "Allow fullscreen" },
 
   // ── Video ────────────────────────────────────────────────────────────────
   "video.source": { label: "Video platform" },
-  "video.url": { label: "Video URL" },
+  "video.url": { label: "Video URL", kind: "url" },
   "video.aspectRatio": { label: "Aspect ratio" },
 
   // ── Image ────────────────────────────────────────────────────────────────
-  "image.src": { label: "Image URL" },
+  "image.src": { label: "Image URL", kind: "media" },
   "image.aspectRatio": { label: "Aspect ratio" },
   "image.rounded": { label: "Rounded corners" },
 
   // ── Button ───────────────────────────────────────────────────────────────
   "button.label": { label: "Button text" },
-  "button.href": { label: "Link URL" },
+  "button.href": { label: "Link URL", kind: "url" },
   "button.style": { label: "Button style" },
   "button.alignment": { label: "Alignment" },
 
@@ -247,6 +249,8 @@ export const INSPECTOR_OVERRIDES: Record<string, FieldOverride> = {
   "gallery.images": {
     label: "Gallery images",
     widget: "GalleryBuilder",
+    helpText:
+      "Click 'Add from library' on each row to select from media library",
   },
   "lookbook.scenes": {
     label: "Lookbook scenes",

@@ -21,12 +21,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
-import type { Form, FormField } from "../types";
+import { useCreateForm, useUpdateForm } from "../../hooks/use-forms";
+import type { Form } from "../../services/forms.service";
+
+interface FormFieldUI {
+  kind: "text" | "email" | "textarea" | "phone" | "select";
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+  width?: "full" | "half";
+}
 
 interface FormEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: Form | null;
+  form: (Form & { fields: FormFieldUI[] }) | null;
 }
 
 export function FormEditorDialog({
@@ -36,45 +46,56 @@ export function FormEditorDialog({
 }: FormEditorDialogProps) {
   const { toast } = useToast();
   const [name, setName] = useState("");
-  const [fields, setFields] = useState<FormField[]>([]);
-  const [destination, setDestination] = useState<"email" | "webhook">("email");
+  const [slug, setSlug] = useState("");
+  const [fields, setFields] = useState<FormFieldUI[]>([]);
+  const [submitTo, setSubmitTo] = useState<"email" | "webhook" | "crm-lead">(
+    "email",
+  );
   const [successMessage, setSuccessMessage] = useState("");
+
+  const createForm = useCreateForm();
+  const updateForm = useUpdateForm();
 
   useEffect(() => {
     if (form) {
       setName(form.name);
+      setSlug(form.slug);
       setFields(form.fields);
-      setDestination(form.submissionDestination);
-      setSuccessMessage(form.successMessage);
+      setSubmitTo(form.submitTo as "email" | "webhook" | "crm-lead");
+      setSuccessMessage(form.successMessage ?? "");
     } else {
       setName("");
+      setSlug("");
       setFields([]);
-      setDestination("email");
+      setSubmitTo("email");
       setSuccessMessage("");
     }
   }, [form]);
 
   const handleAddField = () => {
-    const newField: FormField = {
-      id: `field-${Date.now()}`,
+    const newField: FormFieldUI = {
+      kind: "text",
       label: "New field",
-      type: "text",
       required: false,
     };
     setFields([...fields, newField]);
   };
 
-  const handleUpdateField = (id: string, updates: Partial<FormField>) => {
-    setFields(fields.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+  const handleUpdateField = (index: number, updates: Partial<FormFieldUI>) => {
+    setFields(fields.map((f, i) => (i === index ? { ...f, ...updates } : f)));
   };
 
-  const handleRemoveField = (id: string) => {
-    setFields(fields.filter((f) => f.id !== id));
+  const handleRemoveField = (index: number) => {
+    setFields(fields.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       toast({ title: "Form name is required", variant: "destructive" });
+      return;
+    }
+    if (!slug.trim()) {
+      toast({ title: "Form slug is required", variant: "destructive" });
       return;
     }
     if (fields.length === 0) {
@@ -82,13 +103,31 @@ export function FormEditorDialog({
       return;
     }
 
-    // TODO: implement form creation via API
-    toast({ title: "Form creation not yet available", variant: "destructive" });
-    onOpenChange(false);
-    setName("");
-    setFields([]);
-    setDestination("email");
-    setSuccessMessage("");
+    try {
+      if (form) {
+        await updateForm.mutateAsync({
+          id: form.id,
+          payload: {
+            name,
+            slug,
+            fields,
+            submitTo,
+            successMessage,
+          },
+        });
+      } else {
+        await createForm.mutateAsync({
+          name,
+          slug,
+          fields,
+          submitTo,
+          successMessage,
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      // Error handling done by hooks
+    }
   };
 
   return (
@@ -104,14 +143,25 @@ export function FormEditorDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Form name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Contact form"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Form name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Contact form"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Form slug</Label>
+              <Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="e.g., contact-form"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -128,9 +178,9 @@ export function FormEditorDialog({
               </Button>
             </div>
 
-            {fields.map((field) => (
+            {fields.map((field, index) => (
               <div
-                key={field.id}
+                key={index}
                 className="p-3 border rounded-lg space-y-2 bg-muted/30"
               >
                 <div className="grid grid-cols-2 gap-2">
@@ -141,7 +191,7 @@ export function FormEditorDialog({
                     <Input
                       value={field.label}
                       onChange={(e) =>
-                        handleUpdateField(field.id, { label: e.target.value })
+                        handleUpdateField(index, { label: e.target.value })
                       }
                       placeholder="Field label"
                       className="text-sm"
@@ -152,10 +202,10 @@ export function FormEditorDialog({
                       Type
                     </label>
                     <Select
-                      value={field.type}
+                      value={field.kind}
                       onValueChange={(value: string) =>
-                        handleUpdateField(field.id, {
-                          type: value as typeof field.type,
+                        handleUpdateField(index, {
+                          kind: value as FormFieldUI["kind"],
                         })
                       }
                     >
@@ -165,11 +215,9 @@ export function FormEditorDialog({
                       <SelectContent>
                         <SelectItem value="text">Text</SelectItem>
                         <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
                         <SelectItem value="textarea">Textarea</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
                         <SelectItem value="select">Select</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="radio">Radio</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -179,9 +227,9 @@ export function FormEditorDialog({
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={field.required}
+                      checked={field.required ?? false}
                       onChange={(e) =>
-                        handleUpdateField(field.id, {
+                        handleUpdateField(index, {
                           required: e.target.checked,
                         })
                       }
@@ -189,7 +237,7 @@ export function FormEditorDialog({
                     <span className="text-sm">Required</span>
                   </label>
                   <button
-                    onClick={() => handleRemoveField(field.id)}
+                    onClick={() => handleRemoveField(index)}
                     className="p-1.5 hover:bg-destructive/10 rounded transition-colors"
                   >
                     <Trash2 className="w-4 h-4 text-destructive" />
@@ -201,19 +249,20 @@ export function FormEditorDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="destination">Send submissions to</Label>
+              <Label htmlFor="submitTo">Send submissions to</Label>
               <Select
-                value={destination}
+                value={submitTo}
                 onValueChange={(v: string) =>
-                  setDestination(v as "email" | "webhook")
+                  setSubmitTo(v as "email" | "webhook" | "crm-lead")
                 }
               >
-                <SelectTrigger id="destination">
+                <SelectTrigger id="submitTo">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="email">Email</SelectItem>
                   <SelectItem value="webhook">Webhook</SelectItem>
+                  <SelectItem value="crm-lead">CRM Lead</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -234,7 +283,10 @@ export function FormEditorDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button
+              onClick={handleSave}
+              disabled={createForm.isPending || updateForm.isPending}
+            >
               {form ? "Update" : "Create"} form
             </Button>
           </div>

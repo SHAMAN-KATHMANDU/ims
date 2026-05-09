@@ -23,6 +23,7 @@ router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
 router.use(resolveTenantFromHostname());
 
 const SubmitFormSchema = z.object({
+  formId: z.string().uuid().optional(), // Reference to a stored Form
   fields: z
     .array(
       z.object({
@@ -65,7 +66,7 @@ router.post(
         });
       }
 
-      const { fields, submitTo, recipients } = parsed.data;
+      const { formId, fields, submitTo, recipients } = parsed.data;
 
       // Store block recipients as a synthetic "__recipients__" field so the
       // worker can retrieve them without an extra column on FormSubmission.
@@ -77,13 +78,38 @@ router.post(
             ]
           : fields;
 
-      const submission = await prisma.formSubmission.create({
-        data: {
-          tenantId,
-          fields:
-            fieldsToStore as unknown as import("@prisma/client").Prisma.InputJsonValue,
-          submitTo,
-        },
+      // If formId provided, verify it exists and increment submission count
+      if (formId) {
+        const form = await prisma.form.findFirst({
+          where: { id: formId, tenantId, deletedAt: null },
+        });
+        if (!form) {
+          return res.status(400).json({
+            message: "Referenced form not found",
+          });
+        }
+      }
+
+      const submission = await prisma.$transaction(async (tx) => {
+        const sub = await tx.formSubmission.create({
+          data: {
+            tenantId,
+            formId: formId || null,
+            fields:
+              fieldsToStore as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            submitTo,
+          },
+        });
+
+        // Increment submission count if formId provided
+        if (formId) {
+          await tx.form.update({
+            where: { id: formId },
+            data: { submissionCount: { increment: 1 } },
+          });
+        }
+
+        return sub;
       });
 
       // If submitTo is crm-lead, try to create a lead from the form data.

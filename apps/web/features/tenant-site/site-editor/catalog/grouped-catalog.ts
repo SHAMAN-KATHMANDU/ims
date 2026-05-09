@@ -32,6 +32,7 @@ const KIND_TO_GROUP: Partial<Record<BlockKind, string>> = {
   "bento-showcase": "Marketing",
   "contact-block": "Marketing",
   faq: "Marketing",
+  "policy-strip": "Marketing",
   // Commerce
   "product-grid": "Commerce",
   "product-listing": "Commerce",

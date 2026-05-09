@@ -9,6 +9,7 @@ export const mediaKeys = {
   list: (params?: ListMediaParams) =>
     [...mediaKeys.all, "list", params] as const,
   asset: (id: string) => [...mediaKeys.all, "asset", id] as const,
+  folders: () => [...mediaKeys.all, "folders"] as const,
 };
 
 export function useMediaList(params?: ListMediaParams) {
@@ -47,11 +48,18 @@ export function useUpdateMedia() {
       updates,
     }: {
       id: string;
-      updates: { altText?: string; name?: string };
+      updates: {
+        altText?: string | null;
+        name?: string;
+        folder?: string | null;
+      };
     }) => mediaService.update(id, updates),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, updates }) => {
       qc.invalidateQueries({ queryKey: mediaKeys.all });
       qc.invalidateQueries({ queryKey: mediaKeys.asset(id) });
+      if (updates.folder !== undefined) {
+        qc.invalidateQueries({ queryKey: mediaKeys.folders() });
+      }
       toast({ title: "Asset updated" });
     },
     onError: (error: Error) => {
@@ -61,5 +69,13 @@ export function useUpdateMedia() {
         variant: "destructive",
       });
     },
+  });
+}
+
+export function useMediaFolders() {
+  return useQuery({
+    queryKey: mediaKeys.folders(),
+    queryFn: () => mediaService.listFolders(),
+    staleTime: 5 * 60 * 1000,
   });
 }
