@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   Palette,
   Zap,
@@ -8,7 +8,7 @@ import {
   Type,
   RotateCcw,
   Check,
-  AlertCircle,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,31 +23,17 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
 import { useSiteConfig, useUpdateSiteConfig } from "../hooks/use-design";
+import { getContrastRatioString } from "../lib/contrast-ratio";
 import type { ThemeTokens } from "@repo/shared";
-import { getContrastRatio, getContrastScore } from "../utils/color-utils";
 
-const GOOGLE_FONTS = [
-  { label: "Inter", value: "Inter, sans-serif" },
-  { label: "Playfair Display", value: "Playfair Display, serif" },
+const FONT_FAMILIES = [
+  { label: "Inter", value: "Inter, system-ui, sans-serif" },
+  { label: "Playfair Display", value: "'Playfair Display', serif" },
   { label: "Merriweather", value: "Merriweather, serif" },
   { label: "Fraunces", value: "Fraunces, serif" },
-  { label: "Space Mono", value: "Space Mono, monospace" },
+  { label: "Space Mono", value: "'Space Mono', monospace" },
   { label: "System UI", value: "system-ui, sans-serif" },
-  { label: "Custom...", value: "custom" },
 ];
-
-const COLOR_LABEL_MAP: Record<string, string> = {
-  primary: "Primary",
-  secondary: "Secondary",
-  accent: "Accent",
-  background: "Background",
-  surface: "Surface",
-  text: "Text",
-  muted: "Muted",
-  border: "Border",
-  ring: "Ring",
-  onPrimary: "On Primary",
-};
 
 export function DesignThemeView() {
   const configQuery = useSiteConfig();
@@ -56,20 +42,9 @@ export function DesignThemeView() {
 
   const [isDirty, setIsDirty] = useState(false);
   const [localTheme, setLocalTheme] = useState<ThemeTokens | null>(null);
-  const [showCustomFont, setShowCustomFont] = useState<
-    "heading" | "body" | null
-  >(null);
 
   const currentTheme =
     localTheme || (configQuery.data?.themeTokens as ThemeTokens | undefined);
-
-  const contrastRatio = useMemo(() => {
-    if (!currentTheme) return 0;
-    return getContrastRatio(
-      currentTheme.colors.text,
-      currentTheme.colors.background,
-    );
-  }, [currentTheme?.colors.text, currentTheme?.colors.background]);
 
   const handleSave = async (): Promise<void> => {
     if (!localTheme) return;
@@ -78,7 +53,6 @@ export function DesignThemeView() {
         themeTokens: localTheme as unknown as Record<string, unknown>,
       });
       setIsDirty(false);
-      setShowCustomFont(null);
       toast({ title: "Theme saved successfully" });
     } catch (error) {
       toast({
@@ -92,7 +66,6 @@ export function DesignThemeView() {
   const handleRevert = (): void => {
     setLocalTheme(null);
     setIsDirty(false);
-    setShowCustomFont(null);
   };
 
   const handleColorChange = (key: string, value: string): void => {
@@ -191,7 +164,7 @@ export function DesignThemeView() {
     <div className="space-y-6">
       <PageHeader
         title="Design"
-        description="Customize your site's global theme."
+        description="Global tokens for your site theme."
         actions={
           <div className="flex gap-2">
             <Button
@@ -220,56 +193,43 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Colors</h3>
+              <h3 className="font-semibold text-sm">Brand Colors</h3>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               {colorKeys.map((colorKey) => {
-                const label = COLOR_LABEL_MAP[colorKey] || colorKey;
+                const color = currentTheme.colors[colorKey];
+                const contrastRatio = getContrastRatioString(
+                  color,
+                  currentTheme.colors.background || "#ffffff",
+                );
                 return (
-                  <div key={colorKey} className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={currentTheme.colors[colorKey]}
-                        onChange={(e) =>
-                          handleColorChange(colorKey, e.target.value)
-                        }
-                        className="h-8 w-8 rounded border border-border cursor-pointer"
-                      />
-                      <div className="flex-1">
-                        <Label className="text-sm">{label}</Label>
-                        <code className="text-xs text-muted-foreground font-mono">
-                          {currentTheme.colors[colorKey]}
-                        </code>
-                      </div>
+                  <div
+                    key={colorKey}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-muted/30"
+                  >
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) =>
+                        handleColorChange(colorKey, e.target.value)
+                      }
+                      className="h-8 w-8 rounded border border-border cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <Label className="text-sm capitalize font-medium block">
+                        {colorKey}
+                      </Label>
+                      <code className="text-xs text-muted-foreground font-mono">
+                        {color}
+                      </code>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-right whitespace-nowrap">
+                      Contrast: {contrastRatio}
                     </div>
                   </div>
                 );
               })}
-
-              {/* Contrast ratio */}
-              <div className="mt-4 pt-3 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium">
-                    Text contrast ratio
-                  </span>
-                </div>
-                <div className="text-sm mt-2">
-                  <span className="font-mono">
-                    {contrastRatio.toFixed(2)}:1
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {getContrastScore(contrastRatio) === "good" &&
-                      "✓ AAA compliant"}
-                    {getContrastScore(contrastRatio) === "ok" &&
-                      "✓ AA compliant"}
-                    {getContrastScore(contrastRatio) === "poor" &&
-                      "✗ Low contrast"}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -283,151 +243,119 @@ export function DesignThemeView() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm">Heading font</Label>
-                {!showCustomFont || showCustomFont !== "heading" ? (
-                  <Select
-                    value={
-                      GOOGLE_FONTS.find(
-                        (f) =>
-                          f.value === currentTheme.typography.heading.family,
-                      )?.value || "custom"
-                    }
-                    onValueChange={(v) => {
-                      if (v === "custom") {
-                        setShowCustomFont("heading");
-                      } else {
-                        handleTypographyChange("heading", {
-                          ...currentTheme.typography.heading,
-                          family: v,
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GOOGLE_FONTS.map((font) => (
-                        <SelectItem key={font.value} value={font.value}>
-                          {font.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={currentTheme.typography.heading.family}
-                    onChange={(e) =>
-                      handleTypographyChange("heading", {
-                        ...currentTheme.typography.heading,
-                        family: e.target.value,
-                      })
-                    }
-                    placeholder="e.g., Georgia, serif"
-                    autoFocus
-                  />
-                )}
+                <Select
+                  value={currentTheme.typography.heading.family}
+                  onValueChange={(value) =>
+                    handleTypographyChange("heading", {
+                      ...currentTheme.typography.heading,
+                      family: value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Body font</Label>
-                {!showCustomFont || showCustomFont !== "body" ? (
-                  <Select
-                    value={
-                      GOOGLE_FONTS.find(
-                        (f) => f.value === currentTheme.typography.body.family,
-                      )?.value || "custom"
-                    }
-                    onValueChange={(v) => {
-                      if (v === "custom") {
-                        setShowCustomFont("body");
-                      } else {
-                        handleTypographyChange("body", {
-                          ...currentTheme.typography.body,
-                          family: v,
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GOOGLE_FONTS.map((font) => (
-                        <SelectItem key={font.value} value={font.value}>
-                          {font.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    value={currentTheme.typography.body.family}
-                    onChange={(e) =>
-                      handleTypographyChange("body", {
-                        ...currentTheme.typography.body,
-                        family: e.target.value,
-                      })
-                    }
-                    placeholder="e.g., system-ui, sans-serif"
-                    autoFocus
-                  />
-                )}
+                <Select
+                  value={currentTheme.typography.body.family}
+                  onValueChange={(value) =>
+                    handleTypographyChange("body", {
+                      ...currentTheme.typography.body,
+                      family: value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font.value} value={font.value}>
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm">
-                    Scale ratio
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({currentTheme.typography.scaleRatio.toFixed(2)})
-                    </span>
-                  </Label>
-                  <div className="flex gap-2">
-                    {[1.125, 1.2, 1.25, 1.333].map((ratio) => (
-                      <button
-                        key={ratio}
-                        onClick={() =>
-                          handleTypographyChange("scaleRatio", ratio)
-                        }
-                        className={`flex-1 px-2 py-1 text-xs rounded border transition ${
-                          Math.abs(currentTheme.typography.scaleRatio - ratio) <
-                          0.01
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
-                        }`}
-                      >
-                        {ratio.toFixed(3)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm">
-                    Base size
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({currentTheme.typography.baseSize}px)
-                    </span>
-                  </Label>
+              <div className="space-y-2">
+                <Label className="text-sm">
+                  Heading Scale Ratio: {currentTheme.typography.scaleRatio}
+                </Label>
+                <div className="flex items-center gap-3">
                   <input
                     type="range"
-                    min="12"
-                    max="24"
-                    value={currentTheme.typography.baseSize}
+                    min="1.1"
+                    max="1.5"
+                    step="0.025"
+                    value={currentTheme.typography.scaleRatio}
                     onChange={(e) =>
                       handleTypographyChange(
-                        "baseSize",
-                        parseInt(e.target.value),
+                        "scaleRatio",
+                        parseFloat(e.target.value),
                       )
                     }
-                    className="w-full"
+                    className="flex-1"
                   />
                 </div>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.125)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.125
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.2)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.2
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.25)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.25
+                  </button>
+                  <button
+                    onClick={() => handleTypographyChange("scaleRatio", 1.333)}
+                    className="px-2 py-1 rounded hover:bg-muted"
+                  >
+                    1.333
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">
+                  Base font size: {currentTheme.typography.baseSize}px
+                </Label>
+                <input
+                  type="range"
+                  min="12"
+                  max="24"
+                  value={currentTheme.typography.baseSize}
+                  onChange={(e) =>
+                    handleTypographyChange("baseSize", parseInt(e.target.value))
+                  }
+                  className="w-full"
+                />
               </div>
             </div>
           </div>
 
-          {/* Spacing & Layout */}
+          {/* Spacing */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Layout className="h-4 w-4 text-muted-foreground" />
@@ -437,10 +365,7 @@ export function DesignThemeView() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm">
-                  Spacing unit
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({currentTheme.spacing.unit}px)
-                  </span>
+                  Base unit: {currentTheme.spacing.unit}px
                 </Label>
                 <input
                   type="range"
@@ -455,36 +380,14 @@ export function DesignThemeView() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm">Section spacing</Label>
-                <div className="flex gap-2">
-                  {(["compact", "balanced", "spacious"] as const).map((val) => (
-                    <button
-                      key={val}
-                      onClick={() => handleSpacingChange("section", val)}
-                      className={`flex-1 px-3 py-2 text-xs rounded border transition ${
-                        currentTheme.spacing.section === val
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      {val.charAt(0).toUpperCase() + val.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
                 <Label className="text-sm">
-                  Container width
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({currentTheme.spacing.container}px)
-                  </span>
+                  Container width: {currentTheme.spacing.container}px
                 </Label>
                 <input
                   type="range"
-                  min="1024"
+                  min="640"
                   max="1600"
-                  step="32"
+                  step="16"
                   value={currentTheme.spacing.container}
                   onChange={(e) =>
                     handleSpacingChange("container", parseInt(e.target.value))
@@ -492,62 +395,76 @@ export function DesignThemeView() {
                   className="w-full"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Section spacing</Label>
+                <div className="flex gap-2">
+                  {(["compact", "balanced", "spacious"] as const).map(
+                    (value) => (
+                      <button
+                        key={value}
+                        onClick={() => handleSpacingChange("section", value)}
+                        className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                          currentTheme.spacing.section === value
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        {value.charAt(0).toUpperCase() + value.slice(1)}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Shape & Buttons */}
+          {/* Shape & Radius */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Shape & Buttons</h3>
+              <h3 className="font-semibold text-sm">Shape</h3>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label className="text-sm">Border radius</Label>
-                <div className="flex gap-2">
-                  {(["sharp", "soft", "rounded"] as const).map((val) => (
+                <div className="flex gap-2 flex-wrap">
+                  {(["sharp", "soft", "rounded"] as const).map((value) => (
                     <button
-                      key={val}
-                      onClick={() => handleShapeChange("radius", val)}
-                      className={`flex-1 px-3 py-2 text-xs rounded border transition ${
-                        currentTheme.shape.radius === val
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                      key={value}
+                      onClick={() => handleShapeChange("radius", value)}
+                      className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                        currentTheme.shape.radius === value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:bg-muted"
                       }`}
                     >
-                      {val.charAt(0).toUpperCase() + val.slice(1)}
+                      {value.charAt(0).toUpperCase() + value.slice(1)}
                     </button>
                   ))}
                 </div>
-                {typeof currentTheme.shape.radius === "number" && (
-                  <Input
-                    type="number"
-                    min="0"
-                    max="48"
-                    value={currentTheme.shape.radius}
-                    onChange={(e) =>
-                      handleShapeChange("radius", parseInt(e.target.value))
-                    }
-                    placeholder="Custom radius (px)"
-                  />
-                )}
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Button style</Label>
                 <div className="flex gap-2">
-                  {(["solid", "outline", "pill"] as const).map((val) => (
+                  {(["solid", "outline", "pill"] as const).map((value) => (
                     <button
-                      key={val}
-                      onClick={() => handleShapeChange("buttonStyle", val)}
-                      className={`flex-1 px-3 py-2 text-xs rounded border transition ${
-                        currentTheme.shape.buttonStyle === val
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50"
+                      key={value}
+                      onClick={() =>
+                        handleShapeChange(
+                          "buttonStyle",
+                          value as "solid" | "outline" | "pill",
+                        )
+                      }
+                      className={`px-3 py-2 text-xs font-medium rounded border transition-colors ${
+                        currentTheme.shape.buttonStyle === value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border hover:bg-muted"
                       }`}
                     >
-                      {val.charAt(0).toUpperCase() + val.slice(1)}
+                      {value.charAt(0).toUpperCase() + value.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -559,7 +476,7 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Motion</h3>
+              <h3 className="font-semibold text-sm">Motion & Animation</h3>
             </div>
 
             <div className="space-y-3">
@@ -572,15 +489,12 @@ export function DesignThemeView() {
                   }
                   className="h-4 w-4"
                 />
-                <span className="text-sm">Enable animations</span>
+                <span className="text-sm font-medium">Enable animations</span>
               </label>
 
               <div className="space-y-2">
                 <Label className="text-sm">
-                  Duration
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({currentTheme.motion.duration}ms)
-                  </span>
+                  Animation duration: {currentTheme.motion.duration}ms
                 </Label>
                 <input
                   type="range"
@@ -592,6 +506,7 @@ export function DesignThemeView() {
                     handleMotionChange("duration", parseInt(e.target.value))
                   }
                   className="w-full"
+                  disabled={!currentTheme.motion.enableAnimations}
                 />
               </div>
             </div>
@@ -620,10 +535,6 @@ export function DesignThemeView() {
                   className="text-lg font-bold mb-1"
                   style={{
                     fontFamily: currentTheme.typography.heading.family,
-                    fontSize: `${
-                      currentTheme.typography.baseSize *
-                      Math.pow(currentTheme.typography.scaleRatio, 2)
-                    }px`,
                   }}
                 >
                   Design Preview
@@ -638,35 +549,17 @@ export function DesignThemeView() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  className="px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
-                  style={{
-                    backgroundColor: currentTheme.colors.primary,
-                    borderRadius:
-                      typeof currentTheme.shape.radius === "number"
-                        ? `${currentTheme.shape.radius}px`
-                        : {
-                            sharp: "0",
-                            soft: "6px",
-                            rounded: "12px",
-                          }[currentTheme.shape.radius],
-                  }}
+                  className="px-3 py-2 text-xs font-medium rounded text-white"
+                  style={{ backgroundColor: currentTheme.colors.primary }}
                 >
                   Primary CTA
                 </button>
                 <button
-                  className="px-3 py-2 text-xs font-medium rounded transition-opacity hover:opacity-90"
+                  className="px-3 py-2 text-xs font-medium rounded"
                   style={{
                     backgroundColor: "transparent",
                     border: `1px solid ${currentTheme.colors.border}`,
                     color: currentTheme.colors.text,
-                    borderRadius:
-                      typeof currentTheme.shape.radius === "number"
-                        ? `${currentTheme.shape.radius}px`
-                        : {
-                            sharp: "0",
-                            soft: "6px",
-                            rounded: "12px",
-                          }[currentTheme.shape.radius],
                   }}
                 >
                   Secondary
@@ -674,18 +567,10 @@ export function DesignThemeView() {
               </div>
 
               <div
-                className="p-3 space-y-2"
+                className="p-3 rounded space-y-2"
                 style={{
                   backgroundColor: currentTheme.colors.surface,
                   border: `1px solid ${currentTheme.colors.border}`,
-                  borderRadius:
-                    typeof currentTheme.shape.radius === "number"
-                      ? `${currentTheme.shape.radius}px`
-                      : {
-                          sharp: "0",
-                          soft: "6px",
-                          rounded: "12px",
-                        }[currentTheme.shape.radius],
                 }}
               >
                 <div
@@ -699,34 +584,8 @@ export function DesignThemeView() {
                   style={{
                     backgroundColor: currentTheme.colors.accent,
                     opacity: 0.2,
-                    borderRadius:
-                      typeof currentTheme.shape.radius === "number"
-                        ? `${currentTheme.shape.radius}px`
-                        : {
-                            sharp: "0",
-                            soft: "6px",
-                            rounded: "12px",
-                          }[currentTheme.shape.radius],
                   }}
                 />
-              </div>
-
-              <div
-                className="text-xs p-2 rounded"
-                style={{
-                  backgroundColor: currentTheme.colors.accent,
-                  color: currentTheme.colors.text,
-                  borderRadius:
-                    typeof currentTheme.shape.radius === "number"
-                      ? `${currentTheme.shape.radius}px`
-                      : {
-                          sharp: "0",
-                          soft: "6px",
-                          rounded: "12px",
-                        }[currentTheme.shape.radius],
-                }}
-              >
-                Accent element
               </div>
             </div>
           </div>
