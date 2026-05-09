@@ -41,7 +41,9 @@ export async function generateMetadata() {
       ctx.tenantId,
       ctx.tenantSlug,
     );
-    const seo = (site?.seo ?? {}) as { title?: string; description?: string };
+    const seo = (site?.seo ?? {}) as Record<string, unknown>;
+    const social = (seo.social ?? {}) as Record<string, unknown>;
+
     // Prefer TenantBusinessProfile identity fields; fall back to legacy branding JSON.
     const bp = site?.businessProfile;
     const name =
@@ -49,11 +51,49 @@ export async function generateMetadata() {
       brandingDisplayName(site?.branding ?? null, ctx.host);
     const faviconUrl =
       bp?.faviconUrl?.trim() || brandingLogoUrl(site?.branding ?? null) || null;
-    return {
-      title: seo.title || name,
+
+    const metadata: Record<string, unknown> = {
+      title: (seo.title as string) || name,
       description: seo.description,
       icons: faviconUrl ? { icon: faviconUrl } : undefined,
+      openGraph: {} as Record<string, unknown>,
+      twitter: {} as Record<string, unknown>,
     };
+
+    // Build OpenGraph meta tags
+    const ogMetadata = metadata.openGraph as Record<string, unknown>;
+    if ((seo.title as string)?.trim()) {
+      ogMetadata.title = seo.title;
+    }
+    if ((seo.description as string)?.trim()) {
+      ogMetadata.description = seo.description;
+    }
+
+    // Handle Facebook/OG image from cover image
+    const facebook = social.facebook as Record<string, unknown> | undefined;
+    if (facebook?.enabled && (seo.ogImage as string)?.trim()) {
+      ogMetadata.images = [{ url: seo.ogImage as string }];
+    }
+
+    // Handle LinkedIn
+    const linkedin = social.linkedin as Record<string, unknown> | undefined;
+    if (!linkedin?.enabled) {
+      // LinkedIn uses OpenGraph tags, so don't emit them if disabled
+    }
+
+    // Handle Twitter
+    const twitter = social.twitter as Record<string, unknown> | undefined;
+    const twitterMetadata = metadata.twitter as Record<string, unknown>;
+    if (twitter?.enabled) {
+      twitterMetadata.card = twitter.cardType || "summary_large_image";
+      if ((twitter.handle as string)?.trim()) {
+        twitterMetadata.creator = (twitter.handle as string).startsWith("@")
+          ? (twitter.handle as string)
+          : `@${twitter.handle}`;
+      }
+    }
+
+    return metadata;
   } catch {
     return { title: "Site" };
   }
@@ -139,6 +179,42 @@ export default async function RootLayout({
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
       <head>
         {headScripts}
+        {/* Social meta tags */}
+        {(() => {
+          const seo = (site?.seo ?? {}) as Record<string, unknown>;
+          const social = (seo.social ?? {}) as Record<string, unknown>;
+          const ogImage = (seo.ogImage as string) ?? "";
+
+          const whatsapp = social.whatsapp as
+            | Record<string, unknown>
+            | undefined;
+          const pinterest = social.pinterest as
+            | Record<string, unknown>
+            | undefined;
+
+          return (
+            <>
+              {whatsapp?.enabled && ogImage && (
+                <meta property="og:image" content={ogImage} />
+              )}
+              {pinterest?.enabled && ogImage && (
+                <>
+                  <meta property="pinterest:media" content={ogImage} />
+                  {(pinterest.handle as string)?.trim() && (
+                    <meta
+                      name="pinterest"
+                      content={
+                        (pinterest.handle as string).startsWith("@")
+                          ? (pinterest.handle as string)
+                          : `@${pinterest.handle}`
+                      }
+                    />
+                  )}
+                </>
+              )}
+            </>
+          );
+        })()}
         {/* Warm up the TCP/TLS handshake for the image CDN — most pages ship
             at least one S3-hosted product image so the handshake is on the
             critical path. `dns-prefetch` is the universal fallback for
