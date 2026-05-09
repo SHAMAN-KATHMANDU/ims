@@ -52,6 +52,8 @@ export interface LocationInventoryParams {
   limit?: number;
   search?: string;
   categoryId?: string;
+  sortBy?: "name" | "price" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedInventoryResponse {
@@ -185,6 +187,8 @@ export async function getLocationInventory(
     limit = INVENTORY_DEFAULT_LIMIT,
     search = "",
     categoryId,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -195,6 +199,12 @@ export async function getLocationInventory(
   }
   if (categoryId) {
     queryParams.set("categoryId", categoryId);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

@@ -61,17 +61,27 @@ interface InventoryItem {
   };
 }
 
+interface PaginatedInventoryResponse {
+  data: InventoryItem[];
+  pagination?: {
+    totalItems: number;
+    totalPages: number;
+    page: number;
+    limit: number;
+  };
+}
+
 interface TransferFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locations: Location[];
   onSubmit: (data: CreateTransferData, completeNow?: boolean) => Promise<void>;
   isLoading?: boolean;
-  /** Fetches location inventory; optional search/limit for searchable product selector */
+  /** Fetches location inventory with pagination and sorting */
   getLocationInventory: (
     locationId: string,
-    params?: { search?: string; limit?: number },
-  ) => Promise<InventoryItem[]>;
+    params?: Record<string, unknown>,
+  ) => Promise<PaginatedInventoryResponse>;
   inline?: boolean;
 }
 
@@ -81,6 +91,16 @@ const defaultValues: CreateTransferInput = {
   items: [],
   notes: "",
 };
+
+const PRODUCTS_PER_PAGE = 3;
+const SORT_OPTIONS = [
+  { value: "name", label: "Name A-Z" },
+  { value: "name_desc", label: "Name Z-A" },
+  { value: "price", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "createdAt", label: "Newest" },
+  { value: "createdAt_desc", label: "Oldest" },
+];
 
 export function TransferForm({
   open,
@@ -97,6 +117,10 @@ export function TransferForm({
   const [productSearch, setProductSearch] = useState("");
   const debouncedProductSearch = useDebounce(productSearch, 300);
   const [completeNow, setCompleteNow] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState<"name" | "price" | "createdAt">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   /** Cache of inventory items added to the transfer, for display when search results change */
   const addedItemsCacheRef = useRef<InventoryItem[]>([]);
 
@@ -113,27 +137,58 @@ export function TransferForm({
     if (!fromLocationId) {
       setSearchResults([]);
       setProductSearch("");
+      setCurrentPage(1);
+      setTotalPages(1);
       return;
     }
     form.setValue("items", []);
     addedItemsCacheRef.current = [];
+    setCurrentPage(1);
+    setTotalPages(1);
   }, [fromLocationId, form]);
 
-  // Search-only: fetch inventory when user types (debounced), same pattern as Sales
+  // Parse sort value into sortBy and sortOrder
+  const getSortParams = (sortValue: string) => {
+    if (sortValue.endsWith("_desc")) {
+      const base = sortValue.replace("_desc", "");
+      return {
+        sortBy: base as "name" | "price" | "createdAt",
+        sortOrder: "desc" as const,
+      };
+    }
+    return {
+      sortBy: sortValue as "name" | "price" | "createdAt",
+      sortOrder: "asc" as const,
+    };
+  };
+
+  // Fetch inventory when user types (debounced) or when pagination/sort changes
   useEffect(() => {
     if (!fromLocationId) return;
     if (!debouncedProductSearch.trim()) {
       setSearchResults([]);
+      setCurrentPage(1);
+      setTotalPages(1);
       return;
     }
     setLoadingInventory(true);
+    const { sortBy: sortByVal, sortOrder: sortOrderVal } =
+      getSortParams(sortBy);
     getLocationInventory(fromLocationId, {
       search: debouncedProductSearch.trim(),
-      limit: 25,
+      limit: PRODUCTS_PER_PAGE,
+      page: currentPage,
+      sortBy: sortByVal,
+      sortOrder: sortOrderVal,
     })
-      .then((inventory) => {
-        const withStock = inventory.filter((inv) => inv.quantity > 0);
+      .then((response) => {
+        const withStock = response.data.filter((inv) => inv.quantity > 0);
         setSearchResults(withStock);
+        if (response.pagination) {
+          setTotalPages(response.pagination.totalPages);
+        } else {
+          setTotalPages(1);
+        }
       })
       .catch((err) => {
         if (process.env.NODE_ENV !== "production") {
@@ -145,14 +200,26 @@ export function TransferForm({
           variant: "destructive",
         });
         setSearchResults([]);
+        setTotalPages(1);
       })
       .finally(() => setLoadingInventory(false));
-  }, [fromLocationId, debouncedProductSearch, getLocationInventory, toast]);
+  }, [
+    fromLocationId,
+    debouncedProductSearch,
+    currentPage,
+    sortBy,
+    getLocationInventory,
+    toast,
+  ]);
 
   useEffect(() => {
     if (!open && !inline) {
       form.reset(defaultValues);
       setProductSearch("");
+      setCurrentPage(1);
+      setTotalPages(1);
+      setSortBy("name");
+      setSortOrder("asc");
       addedItemsCacheRef.current = [];
     }
   }, [open, inline, form]);
@@ -452,12 +519,41 @@ export function TransferForm({
                 />
                 <Input
                   value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
+                  onChange={(e) => {
+                    setProductSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search by product name, product code, or category..."
                   className="pl-9"
                   aria-label="Search products to add to transfer"
                 />
               </div>
+
+              {productSearch.trim() && (
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) => {
+                        setSortBy(value as "name" | "price" | "createdAt");
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sort by..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SORT_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
               {loadingInventory && (
                 <div
                   className="flex justify-center py-4"
@@ -486,74 +582,107 @@ export function TransferForm({
               {productSearch.trim() &&
                 !loadingInventory &&
                 searchResults.length > 0 && (
-                  <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
-                    {searchResults.map((inv) => {
-                      const attrLabel =
-                        inv.variation.attributes
-                          ?.map((a) => a.attributeValue.value)
-                          .join(" / ") || "";
-                      const variantLabel = [attrLabel, inv.subVariation?.name]
-                        .filter(Boolean)
-                        .join(" / ");
-                      return (
-                        <div
-                          key={inv.id}
-                          role="button"
-                          tabIndex={0}
-                          className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => handleAddFromResult(inv)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleAddFromResult(inv);
-                            }
-                          }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm">
-                              {inv.variation.product.name}
-                              {variantLabel && (
-                                <span className="text-muted-foreground font-normal ml-1.5">
-                                  — {variantLabel}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                              {inv.variation.product.imsCode}
-                              {inv.subVariation?.name
-                                ? ` / ${inv.subVariation.name}`
-                                : ""}
-                            </div>
-                          </div>
-                          <div className="ml-4 flex items-center gap-4 shrink-0">
-                            <div className="text-right text-xs text-muted-foreground">
-                              Stock: {inv.quantity}
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onMouseDown={(e) => {
+                  <>
+                    <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                      {searchResults.map((inv) => {
+                        const attrLabel =
+                          inv.variation.attributes
+                            ?.map((a) => a.attributeValue.value)
+                            .join(" / ") || "";
+                        const variantLabel = [attrLabel, inv.subVariation?.name]
+                          .filter(Boolean)
+                          .join(" / ");
+                        return (
+                          <div
+                            key={inv.id}
+                            role="button"
+                            tabIndex={0}
+                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => handleAddFromResult(inv)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
                                 handleAddFromResult(inv);
-                              }}
-                              disabled={inv.quantity < 1}
-                              aria-label={`Add ${inv.variation.product.name} to transfer`}
-                            >
-                              <Plus
-                                className="h-4 w-4 mr-1"
-                                aria-hidden="true"
-                              />
-                              Add
-                            </Button>
+                              }
+                            }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">
+                                {inv.variation.product.name}
+                                {variantLabel && (
+                                  <span className="text-muted-foreground font-normal ml-1.5">
+                                    — {variantLabel}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                                {inv.variation.product.imsCode}
+                                {inv.subVariation?.name
+                                  ? ` / ${inv.subVariation.name}`
+                                  : ""}
+                              </div>
+                            </div>
+                            <div className="ml-4 flex items-center gap-4 shrink-0">
+                              <div className="text-right text-xs text-muted-foreground">
+                                Stock: {inv.quantity}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddFromResult(inv);
+                                }}
+                                disabled={inv.quantity < 1}
+                                aria-label={`Add ${inv.variation.product.name} to transfer`}
+                              >
+                                <Plus
+                                  className="h-4 w-4 mr-1"
+                                  aria-hidden="true"
+                                />
+                                Add
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.max(1, p - 1))
+                          }
+                          disabled={currentPage === 1 || loadingInventory}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          disabled={
+                            currentPage >= totalPages || loadingInventory
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
             </div>
           </div>

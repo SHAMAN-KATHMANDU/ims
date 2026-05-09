@@ -55,6 +55,13 @@ inventoryRouter.get(
  *       - in: query
  *         name: categoryId
  *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string, enum: [name, price, createdAt], default: name }
+ *         description: Sort field. name = product name, price = MRP, createdAt = product creation date
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc], default: asc }
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully

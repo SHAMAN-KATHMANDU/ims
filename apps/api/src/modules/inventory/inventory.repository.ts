@@ -21,6 +21,8 @@ export interface GetLocationInventoryParams {
   limit: number;
   search?: string;
   categoryId?: string;
+  sortBy?: "name" | "price" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }
 
 export class InventoryRepository {
@@ -66,7 +68,15 @@ export class InventoryRepository {
     tenantId: string | null,
     params: GetLocationInventoryParams,
   ) {
-    const { locationId, page, limit, search, categoryId } = params;
+    const {
+      locationId,
+      page,
+      limit,
+      search,
+      categoryId,
+      sortBy = "name",
+      sortOrder = "asc",
+    } = params;
 
     const variationWhere: Prisma.ProductVariationWhereInput = {};
 
@@ -100,6 +110,28 @@ export class InventoryRepository {
 
     const skip = (page - 1) * limit;
 
+    // Build orderBy based on sortBy parameter
+    const orderBy: Prisma.LocationInventoryOrderByWithRelationInput = {};
+    if (sortBy === "name") {
+      Object.assign(orderBy, {
+        variation: {
+          product: { name: sortOrder },
+        },
+      });
+    } else if (sortBy === "price") {
+      Object.assign(orderBy, {
+        variation: {
+          product: { mrp: sortOrder },
+        },
+      });
+    } else if (sortBy === "createdAt") {
+      Object.assign(orderBy, {
+        variation: {
+          createdAt: sortOrder,
+        },
+      });
+    }
+
     const [totalItems, inventory] = await Promise.all([
       prisma.locationInventory.count({
         where: locationInventoryTenantWhere(tenantId, where),
@@ -120,6 +152,7 @@ export class InventoryRepository {
                   category: {
                     select: { id: true, name: true },
                   },
+                  imsCode: true,
                 },
               },
               attributes: {
@@ -136,11 +169,7 @@ export class InventoryRepository {
           },
           subVariation: { select: { id: true, name: true } },
         },
-        orderBy: {
-          variation: {
-            product: { name: "asc" },
-          },
-        },
+        orderBy,
       }),
     ]);
 

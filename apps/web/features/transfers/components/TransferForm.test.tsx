@@ -40,10 +40,15 @@ const mockInventory = [
   },
 ];
 
+const mockPaginatedInventory = {
+  data: mockInventory,
+  pagination: { totalItems: 1, totalPages: 1, page: 1, limit: 3 },
+};
+
 describe("TransferForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetLocationInventory.mockResolvedValue(mockInventory);
+    mockGetLocationInventory.mockResolvedValue(mockPaginatedInventory);
   });
 
   it("renders location selects and add items section when inline", async () => {
@@ -93,7 +98,10 @@ describe("TransferForm", () => {
       () => {
         expect(mockGetLocationInventory).toHaveBeenCalledWith("loc1", {
           search: "widget",
-          limit: 25,
+          limit: 3,
+          page: 1,
+          sortBy: "name",
+          sortOrder: "asc",
         });
       },
       { timeout: 500 },
