@@ -6,6 +6,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import type { TemplatePageDefinition } from "@repo/shared";
 
 // ============================================
 // Types
@@ -27,7 +28,7 @@ export interface SiteTemplate {
   previewImageUrl: string | null;
   defaultBranding: Record<string, unknown> | null;
   defaultSections: Record<string, unknown> | null;
-  defaultPages: Record<string, unknown> | null;
+  defaultPages: TemplatePageDefinition[] | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;

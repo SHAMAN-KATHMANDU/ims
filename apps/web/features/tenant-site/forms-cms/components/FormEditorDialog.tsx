@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,11 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
-import {
-  useCreateForm,
-  useUpdateForm,
-  useDeleteForm,
-} from "../../hooks/use-forms";
+import { useCreateForm, useUpdateForm } from "../../hooks/use-forms";
 import type { Form } from "../../services/forms.service";
 
 interface FormFieldUI {
@@ -130,7 +125,7 @@ export function FormEditorDialog({
         });
       }
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       // Error handling done by hooks
     }
   };

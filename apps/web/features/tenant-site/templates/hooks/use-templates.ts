@@ -43,7 +43,6 @@ export function useApplyTemplate() {
       router.push("/content/dashboard");
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line no-console
       console.error("[useApplyTemplate] failed", error);
       const message =
         (isAxiosError(error) &&

@@ -14,7 +14,7 @@ export function FormsView() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
-  const { data: formsData, isLoading: formsLoading } = useFormsQuery();
+  const { data: formsData } = useFormsQuery();
   const { data: submissionsData } = useFormSubmissionsQuery(
     selectedFormId ?? "",
   );

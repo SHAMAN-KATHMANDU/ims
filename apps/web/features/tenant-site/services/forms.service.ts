@@ -46,7 +46,7 @@ export interface CreateFormData {
   status?: "draft" | "active" | "paused";
 }
 
-export interface UpdateFormData extends Partial<CreateFormData> {}
+export type UpdateFormData = Partial<CreateFormData>;
 
 export interface FormSubmissionsResponse {
   submissions: FormSubmission[];

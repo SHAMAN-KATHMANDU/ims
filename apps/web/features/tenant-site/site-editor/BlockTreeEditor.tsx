@@ -15,7 +15,7 @@ import type { BlockNode } from "@repo/shared";
 import type { BlockDataContext } from "@repo/blocks";
 import { MOCK_DATA_CONTEXT } from "@repo/blocks";
 import { useEditorStore } from "./store/editor-store";
-import { selectBlocks } from "./store/selectors";
+import { selectBlocks, selectLoad } from "./store/selectors";
 import { useEditorKeyboard } from "./keyboard/useEditorKeyboard";
 import { LayersPanel } from "./layers/LayersPanel";
 import { Canvas } from "./canvas/Canvas";
@@ -39,7 +39,7 @@ export function BlockTreeEditor({
   scope = "home",
 }: BlockTreeEditorProps) {
   const storeBlocks = useEditorStore(selectBlocks);
-  const load = useEditorStore((s) => s.load);
+  const load = useEditorStore(selectLoad);
   const loadedRef = useRef(false);
 
   // Load blocks into store once at mount

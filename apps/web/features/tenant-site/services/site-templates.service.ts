@@ -5,7 +5,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
-import type { BlockNode } from "@repo/shared";
+import type { BlockNode, TemplatePageDefinition } from "@repo/shared";
 
 export interface SiteTemplate {
   id: string;
@@ -17,7 +17,7 @@ export interface SiteTemplate {
   defaultThemeTokens: Record<string, unknown> | null;
   defaultBranding: Record<string, unknown> | null;
   defaultSections: Record<string, unknown> | null;
-  defaultPages: Record<string, unknown> | null;
+  defaultPages: TemplatePageDefinition[] | null;
   parentTemplateId: string | null;
   ownerTenantId: string | null;
   isPublic: boolean;
@@ -39,7 +39,7 @@ export interface UpdateTemplatePayload {
   defaultThemeTokens?: Record<string, unknown> | null;
   defaultBranding?: Record<string, unknown> | null;
   defaultSections?: Record<string, unknown> | null;
-  defaultPages?: Record<string, unknown> | null;
+  defaultPages?: TemplatePageDefinition[] | null;
 }
 
 export const siteTemplatesService = {

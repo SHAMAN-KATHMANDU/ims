@@ -76,7 +76,7 @@ export function TemplateEditorPage({
     } else {
       return selectedItem.page.blocks ?? [];
     }
-  }, [selectedItem, layouts, pages]);
+  }, [selectedItem, layouts]);
 
   // Handle blocks change from editor
   const handleBlocksChange = (newBlocks: BlockNode[]) => {
@@ -110,7 +110,10 @@ export function TemplateEditorPage({
     setIsSaving(true);
 
     try {
-      const payload: any = { defaultLayouts: layouts };
+      const payload: {
+        defaultLayouts: Record<BlueprintScope, BlockNode[]>;
+        defaultPages?: TemplatePageDefinition[];
+      } = { defaultLayouts: layouts };
       if (pages.length > 0) {
         payload.defaultPages = pages;
       }
@@ -123,7 +126,7 @@ export function TemplateEditorPage({
 
       toast({ title: "Template saved successfully" });
       router.back();
-    } catch (error) {
+    } catch {
       toast({ title: "Failed to save template", variant: "destructive" });
     } finally {
       setIsSaving(false);

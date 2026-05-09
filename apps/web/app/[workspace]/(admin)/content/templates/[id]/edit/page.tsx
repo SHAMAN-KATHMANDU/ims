@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { TemplateEditorPage } from "@/features/tenant-site/templates/components/TemplateEditorPage";
 
 interface PageProps {
