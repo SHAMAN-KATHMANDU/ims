@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { navigationService } from "./navigation.service";
 import type { NavigationConfig } from "./types";
 import { useToast } from "@/hooks/useToast";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 const navigationKeys = {
   all: ["navigation"] as const,
@@ -41,10 +41,11 @@ export function useUpdateNavigation() {
   });
 }
 
-// Debounced save hook
+// Debounced save hook — useRef so the timer survives re-renders (a fresh
+// object per render would defeat debouncing entirely).
 export function useDebouncedNavigationSave() {
   const mutation = useUpdateNavigation();
-  const timeoutRef: { current: NodeJS.Timeout | null } = { current: null };
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const debouncedSave = useCallback(
     (navigation: NavigationConfig) => {
