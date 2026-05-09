@@ -41,9 +41,21 @@ export async function generateMetadata() {
       ctx.tenantId,
       ctx.tenantSlug,
     );
-    const seo = (site?.seo ?? {}) as Record<string, unknown>;
-    const social = (seo.social ?? {}) as Record<string, unknown>;
-
+    const seo = (site?.seo ?? {}) as {
+      title?: string;
+      description?: string;
+      social?: {
+        twitter?: {
+          handle?: string;
+          enabled?: boolean;
+          cardType?: "summary" | "summary_large_image";
+        };
+        facebook?: { pageUrl?: string; enabled?: boolean };
+        linkedin?: { pageUrl?: string; enabled?: boolean };
+        whatsapp?: { enabled?: boolean };
+        pinterest?: { handle?: string; enabled?: boolean };
+      };
+    };
     // Prefer TenantBusinessProfile identity fields; fall back to legacy branding JSON.
     const bp = site?.businessProfile;
     const name =
@@ -53,45 +65,47 @@ export async function generateMetadata() {
       bp?.faviconUrl?.trim() || brandingLogoUrl(site?.branding ?? null) || null;
 
     const metadata: Record<string, unknown> = {
-      title: (seo.title as string) || name,
+      title: seo.title || name,
       description: seo.description,
       icons: faviconUrl ? { icon: faviconUrl } : undefined,
       openGraph: {} as Record<string, unknown>,
       twitter: {} as Record<string, unknown>,
     };
 
-    // Build OpenGraph meta tags
-    const ogMetadata = metadata.openGraph as Record<string, unknown>;
-    if ((seo.title as string)?.trim()) {
-      ogMetadata.title = seo.title;
-    }
-    if ((seo.description as string)?.trim()) {
-      ogMetadata.description = seo.description;
-    }
+    // Emit network-specific meta tags only if enabled
+    const social = seo.social ?? {};
 
-    // Handle Facebook/OG image from cover image
-    const facebook = social.facebook as Record<string, unknown> | undefined;
-    if (facebook?.enabled && (seo.ogImage as string)?.trim()) {
-      ogMetadata.images = [{ url: seo.ogImage as string }];
-    }
-
-    // Handle LinkedIn
-    const linkedin = social.linkedin as Record<string, unknown> | undefined;
-    if (!linkedin?.enabled) {
-      // LinkedIn uses OpenGraph tags, so don't emit them if disabled
-    }
-
-    // Handle Twitter
-    const twitter = social.twitter as Record<string, unknown> | undefined;
-    const twitterMetadata = metadata.twitter as Record<string, unknown>;
-    if (twitter?.enabled) {
-      twitterMetadata.card = twitter.cardType || "summary_large_image";
-      if ((twitter.handle as string)?.trim()) {
-        twitterMetadata.creator = (twitter.handle as string).startsWith("@")
-          ? (twitter.handle as string)
-          : `@${twitter.handle}`;
+    // Twitter
+    if (social.twitter?.enabled) {
+      (metadata.twitter as Record<string, unknown>).card =
+        social.twitter.cardType ?? "summary_large_image";
+      if (social.twitter.handle) {
+        (metadata.twitter as Record<string, unknown>).creator =
+          `@${social.twitter.handle}`;
       }
     }
+
+    // Facebook & OG (emitted by default, facebook-specific config optional)
+    if (social.facebook?.enabled) {
+      (metadata.openGraph as Record<string, unknown>).type = "website";
+      if (social.facebook.pageUrl) {
+        (metadata.openGraph as Record<string, unknown>).url =
+          social.facebook.pageUrl;
+      }
+    }
+
+    // LinkedIn (no specific meta tag; uses og:* tags)
+    if (social.linkedin?.enabled) {
+      (metadata.openGraph as Record<string, unknown>).type = "website";
+      if (social.linkedin.pageUrl) {
+        (metadata.openGraph as Record<string, unknown>).url =
+          social.linkedin.pageUrl;
+      }
+    }
+
+    // WhatsApp (uses og:* and og:image)
+    // Pinterest (uses og:* and og:image)
+    // Both are handled via OG tags and require og:image to be set at the page level
 
     return metadata;
   } catch {
@@ -179,42 +193,6 @@ export default async function RootLayout({
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
       <head>
         {headScripts}
-        {/* Social meta tags */}
-        {(() => {
-          const seo = (site?.seo ?? {}) as Record<string, unknown>;
-          const social = (seo.social ?? {}) as Record<string, unknown>;
-          const ogImage = (seo.ogImage as string) ?? "";
-
-          const whatsapp = social.whatsapp as
-            | Record<string, unknown>
-            | undefined;
-          const pinterest = social.pinterest as
-            | Record<string, unknown>
-            | undefined;
-
-          return (
-            <>
-              {whatsapp?.enabled && ogImage && (
-                <meta property="og:image" content={ogImage} />
-              )}
-              {pinterest?.enabled && ogImage && (
-                <>
-                  <meta property="pinterest:media" content={ogImage} />
-                  {(pinterest.handle as string)?.trim() && (
-                    <meta
-                      name="pinterest"
-                      content={
-                        (pinterest.handle as string).startsWith("@")
-                          ? (pinterest.handle as string)
-                          : `@${pinterest.handle}`
-                      }
-                    />
-                  )}
-                </>
-              )}
-            </>
-          );
-        })()}
         {/* Warm up the TCP/TLS handshake for the image CDN — most pages ship
             at least one S3-hosted product image so the handshake is on the
             critical path. `dns-prefetch` is the universal fallback for

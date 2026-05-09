@@ -41,6 +41,7 @@ export function NavItemEditor({
       }}
     >
       <div className="flex items-center gap-2 p-2 bg-bg-sunken rounded border border-line">
+        {/* Expand/collapse if has children */}
         {hasChildren && (
           <button
             onClick={onToggleExpand}
@@ -56,6 +57,7 @@ export function NavItemEditor({
         )}
         {!hasChildren && <div className="w-6" />}
 
+        {/* Label field */}
         <div className="flex-1 min-w-0">
           {editingLabel ? (
             <Input
@@ -79,6 +81,7 @@ export function NavItemEditor({
           )}
         </div>
 
+        {/* Delete button */}
         <button
           onClick={onDelete}
           className="p-1 text-ink-4 hover:text-danger hover:bg-bg-active rounded transition-colors"
@@ -88,6 +91,7 @@ export function NavItemEditor({
         </button>
       </div>
 
+      {/* URL section */}
       <div className="pl-2 space-y-2 border-l border-line-2">
         <div className="text-xs font-medium text-ink-3">Link</div>
         {editingUrl ? (
@@ -115,6 +119,7 @@ export function NavItemEditor({
         )}
       </div>
 
+      {/* Open in new tab checkbox */}
       <div className="flex items-center gap-2 pl-2">
         <input
           type="checkbox"
@@ -136,6 +141,7 @@ export function NavItemEditor({
         </label>
       </div>
 
+      {/* Add child button */}
       {canAddChild && (
         <div className="pl-2">
           <Button
@@ -149,13 +155,13 @@ export function NavItemEditor({
         </div>
       )}
 
+      {/* Children */}
       {isExpanded && hasChildren && (
         <div className="space-y-2 mt-2">
           {item.children?.map((child) => (
             <NavItemEditor
               key={child.id}
               item={child}
-              level={level + 1}
               onUpdate={(updated) => {
                 onUpdate({
                   ...item,
@@ -170,6 +176,7 @@ export function NavItemEditor({
                   children: item.children?.filter((c) => c.id !== child.id),
                 });
               }}
+              level={level + 1}
               canAddChild={false}
             />
           ))}
