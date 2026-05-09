@@ -8,9 +8,52 @@
    EARTHY LIGHT MODE
    ========================= */
 :root {
-  /* Fonts - DM Sans and Space Mono */
+  /* Fonts - Support both old and new naming */
   --font-dm-sans: var(--font-dm-sans);
   --font-space-mono: var(--font-space-mono);
+  --font-sans: var(--font-sans, system-ui, -apple-system, sans-serif);
+  --font-mono: var(--font-mono, monospace);
+  --font-serif: var(--font-serif, Georgia, serif);
+
+  /* CMS Design tokens - oklch */
+  --bg: oklch(0.987 0.002 95);
+  --bg-elev: oklch(1 0 0);
+  --bg-sunken: oklch(0.965 0.003 95);
+  --bg-hover: oklch(0.955 0.004 95);
+  --bg-active: oklch(0.93 0.005 95);
+  --panel: oklch(0.995 0.001 95);
+
+  --ink: oklch(0.18 0.01 280);
+  --ink-2: oklch(0.32 0.01 280);
+  --ink-3: oklch(0.5 0.012 280);
+  --ink-4: oklch(0.66 0.012 280);
+  --ink-5: oklch(0.82 0.008 280);
+
+  --line: oklch(0.91 0.005 280);
+  --line-2: oklch(0.94 0.004 280);
+  --line-strong: oklch(0.84 0.008 280);
+
+  --accent: oklch(0.55 0.21 264);
+  --accent-ink: oklch(0.98 0.005 264);
+  --accent-soft: oklch(0.94 0.05 264);
+  --accent-line: oklch(0.78 0.12 264);
+
+  --success: oklch(0.62 0.16 150);
+  --warn: oklch(0.72 0.16 75);
+  --danger: oklch(0.6 0.22 27);
+  --info: oklch(0.62 0.14 230);
+
+  --shadow-sm: 0 1px 0 0 oklch(0.85 0.01 280 / 0.5);
+  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.04), 0 4px 12px oklch(0 0 0 / 0.04);
+  --shadow-lg: 0 1px 2px oklch(0 0 0 / 0.06), 0 12px 32px oklch(0 0 0 / 0.08);
+
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+
+  --rail-w: 52px;
+  --side-w: 232px;
 
   /* Backgrounds */
   --background: oklch(0.985 0.005 95); /* warm paper */
@@ -82,7 +125,36 @@
 /* =========================
    EARTHY DARK MODE
    ========================= */
-.dark {
+.dark,
+[data-theme="dark"] {
+  /* CMS Design tokens - dark */
+  --bg: oklch(0.16 0.005 280);
+  --bg-elev: oklch(0.205 0.006 280);
+  --bg-sunken: oklch(0.135 0.005 280);
+  --bg-hover: oklch(0.235 0.007 280);
+  --bg-active: oklch(0.27 0.008 280);
+  --panel: oklch(0.19 0.006 280);
+
+  --ink: oklch(0.97 0.005 280);
+  --ink-2: oklch(0.85 0.006 280);
+  --ink-3: oklch(0.66 0.008 280);
+  --ink-4: oklch(0.52 0.008 280);
+  --ink-5: oklch(0.36 0.008 280);
+
+  --line: oklch(0.28 0.008 280);
+  --line-2: oklch(0.235 0.007 280);
+  --line-strong: oklch(0.36 0.01 280);
+
+  --accent: oklch(0.72 0.18 264);
+  --accent-ink: oklch(0.16 0.02 264);
+  --accent-soft: oklch(0.3 0.09 264);
+  --accent-line: oklch(0.45 0.14 264);
+
+  --shadow-sm: 0 1px 0 0 oklch(0 0 0 / 0.4);
+  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.4), 0 6px 18px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 1px 2px oklch(0 0 0 / 0.5), 0 16px 40px oklch(0 0 0 / 0.45);
+
+  /* Legacy shadcn tokens */
   --background: oklch(0.18 0.01 95); /* warm dark gray */
   --foreground: oklch(0.95 0.005 95);
 
@@ -280,6 +352,57 @@
     -moz-appearance: textfield;
     appearance: textfield;
   }
+}
+
+/* CMS utility classes */
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 1.5px;
+  border-radius: 4px;
+  background: var(--bg-elev);
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "zero", "ss02";
+  letter-spacing: 0;
+}
+
+.serif {
+  font-family: var(--font-serif);
+}
+
+/* Scrollbar styling */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: oklch(from var(--ink-5) l c h / 0.3);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--ink-4) l c h / 0.5);
+  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 
 /* Hide scrollbar but keep scroll behavior */

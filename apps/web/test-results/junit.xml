@@ -1,0 +1,24 @@
+<testsuites id="" name="" tests="5" failures="0" skipped="5" errors="0" time="0.41600399999999993">
+<testsuite name="permissions.spec.ts" timestamp="2026-04-24T12:39:34.836Z" hostname="chromium" tests="5" failures="0" skipped="5" time="0" errors="0">
+<testcase name="Role CRUD flow › create role, grant dangerous permissions, edit name, verify in list" classname="permissions.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Assign user to role via Members tab › search for user in command picker → member appears → avatar visible" classname="permissions.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Live permission update (Socket.IO push / reload fallback) › admin grants SALES view; user sees Sales sidebar link within 3 s (socket) or after reload (fallback)" classname="permissions.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Sidebar filter for Member-role user › Settings section hidden; Add Product button absent; /settings/roles shows no-access UI" classname="permissions.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Self-service password change › wrong current password → inline error; short new password → validation error; mismatch confirm → validation error; success → toast, re-login" classname="permissions.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>
