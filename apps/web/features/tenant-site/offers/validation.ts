@@ -11,6 +11,7 @@ export const CreateOfferSchema = z.object({
   endDate: z.string().optional(),
   maxUses: z.string().optional(),
   perCustomerLimit: z.string().optional(),
+  promoCodeIds: z.array(z.string()).optional(),
 });
 
 export type CreateOfferInput = z.infer<typeof CreateOfferSchema>;
@@ -29,6 +30,7 @@ export const OfferFormSchema = z.object({
   endDate: z.string(),
   maxUses: z.string(),
   perCustomerLimit: z.string(),
+  promoCodeIds: z.array(z.string()),
 });
 
 export type OfferFormInput = z.infer<typeof OfferFormSchema>;

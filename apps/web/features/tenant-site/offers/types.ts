@@ -14,6 +14,7 @@ export interface Offer {
   endDate?: string;
   maxUses?: number;
   perCustomerLimit?: number;
+  promoCodeIds?: string[];
 }
 
 export interface CreateOfferData {
@@ -27,6 +28,7 @@ export interface CreateOfferData {
   endDate?: string;
   maxUses?: number;
   perCustomerLimit?: number;
+  promoCodeIds?: string[];
 }
 
 export type UpdateOfferData = Partial<CreateOfferData>;
@@ -42,4 +44,5 @@ export interface OfferFormValues {
   endDate: string;
   maxUses: string;
   perCustomerLimit: string;
+  promoCodeIds: string[];
 }
