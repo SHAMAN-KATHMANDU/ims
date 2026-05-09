@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/useToast";
 import { useBundle, useUpdateBundle } from "../hooks/use-bundles";
+import { ProductPickerDialog } from "@/features/tenant-site/components/ProductPickerDialog";
 import type { CreateBundleData } from "../types";
 import { BundleForm } from "./BundleForm";
 
@@ -24,6 +25,7 @@ export function EditBundlePage({ bundleId }: EditBundlePageProps) {
   const updateMutation = useUpdateBundle();
 
   const [open, setOpen] = useState(true);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const handleSubmit = async (data: CreateBundleData) => {
     try {
@@ -40,15 +42,41 @@ export function EditBundlePage({ bundleId }: EditBundlePageProps) {
     }
   };
 
+  const handleSaveProducts = async (productIds: string[]) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: bundleId,
+        data: { ...bundle!, productIds },
+      });
+      toast({ title: "Products updated" });
+      refetch();
+    } catch (err) {
+      toast({
+        title: "Failed to update products",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm" className="gap-1">
           <Link href={`/${workspace}/products/bundles`}>
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to bundles
           </Link>
         </Button>
+        {bundle && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setProductPickerOpen(true)}
+          >
+            Manage products
+          </Button>
+        )}
       </div>
 
       {isLoading && (
@@ -78,18 +106,30 @@ export function EditBundlePage({ bundleId }: EditBundlePageProps) {
       )}
 
       {bundle && (
-        <BundleForm
-          open={open}
-          onOpenChange={(o) => {
-            setOpen(o);
-            if (!o) router.push(`/${workspace}/products/bundles`);
-          }}
-          editingBundle={bundle}
-          onSubmit={handleSubmit}
-          onReset={() => {}}
-          isLoading={updateMutation.isPending}
-          inline
-        />
+        <>
+          <BundleForm
+            open={open}
+            onOpenChange={(o) => {
+              setOpen(o);
+              if (!o) router.push(`/${workspace}/products/bundles`);
+            }}
+            editingBundle={bundle}
+            onSubmit={handleSubmit}
+            onReset={() => {}}
+            isLoading={updateMutation.isPending}
+            inline
+          />
+
+          {/* Product Picker Dialog */}
+          <ProductPickerDialog
+            open={productPickerOpen}
+            onOpenChange={setProductPickerOpen}
+            initialProductIds={bundle.productIds}
+            onSave={handleSaveProducts}
+            isSaving={updateMutation.isPending}
+            title="Manage Bundle Products"
+          />
+        </>
       )}
     </div>
   );
