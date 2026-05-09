@@ -41,7 +41,21 @@ export async function generateMetadata() {
       ctx.tenantId,
       ctx.tenantSlug,
     );
-    const seo = (site?.seo ?? {}) as { title?: string; description?: string };
+    const seo = (site?.seo ?? {}) as {
+      title?: string;
+      description?: string;
+      social?: {
+        twitter?: {
+          handle?: string;
+          enabled?: boolean;
+          cardType?: "summary" | "summary_large_image";
+        };
+        facebook?: { pageUrl?: string; enabled?: boolean };
+        linkedin?: { pageUrl?: string; enabled?: boolean };
+        whatsapp?: { enabled?: boolean };
+        pinterest?: { handle?: string; enabled?: boolean };
+      };
+    };
     // Prefer TenantBusinessProfile identity fields; fall back to legacy branding JSON.
     const bp = site?.businessProfile;
     const name =
@@ -49,11 +63,43 @@ export async function generateMetadata() {
       brandingDisplayName(site?.branding ?? null, ctx.host);
     const faviconUrl =
       bp?.faviconUrl?.trim() || brandingLogoUrl(site?.branding ?? null) || null;
-    return {
+
+    const metadata: Record<string, unknown> = {
       title: seo.title || name,
       description: seo.description,
       icons: faviconUrl ? { icon: faviconUrl } : undefined,
+      openGraph: {} as Record<string, unknown>,
+      twitter: {} as Record<string, unknown>,
     };
+
+    const social = seo.social ?? {};
+
+    if (social.twitter?.enabled) {
+      (metadata.twitter as Record<string, unknown>).card =
+        social.twitter.cardType ?? "summary_large_image";
+      if (social.twitter.handle) {
+        (metadata.twitter as Record<string, unknown>).creator =
+          `@${social.twitter.handle}`;
+      }
+    }
+
+    if (social.facebook?.enabled) {
+      (metadata.openGraph as Record<string, unknown>).type = "website";
+      if (social.facebook.pageUrl) {
+        (metadata.openGraph as Record<string, unknown>).url =
+          social.facebook.pageUrl;
+      }
+    }
+
+    if (social.linkedin?.enabled) {
+      (metadata.openGraph as Record<string, unknown>).type = "website";
+      if (social.linkedin.pageUrl) {
+        (metadata.openGraph as Record<string, unknown>).url =
+          social.linkedin.pageUrl;
+      }
+    }
+
+    return metadata;
   } catch {
     return { title: "Site" };
   }
