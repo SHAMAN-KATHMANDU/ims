@@ -17,11 +17,13 @@ export interface FormFieldDef {
 
 /**
  * Form block — contact or lead-capture form.
+ * Can be either inline (fields[] defined locally) or reference a stored Form via formId.
  */
 export interface FormBlockProps {
   heading?: string;
   description?: string;
-  fields: FormFieldDef[];
+  formId?: string; // Reference to a stored Form; takes precedence over inline fields
+  fields?: FormFieldDef[]; // Inline field definitions (used if formId not set)
   submitLabel?: string;
   successMessage?: string;
   submitTo: "email" | "crm-lead";
@@ -37,6 +39,7 @@ export const FormSchema = z
   .object({
     heading: optStr(200),
     description: optStr(500),
+    formId: optStr(36), // UUID
     fields: z
       .array(
         z
@@ -50,7 +53,8 @@ export const FormSchema = z
           })
           .strict(),
       )
-      .max(30),
+      .max(30)
+      .optional(),
     submitLabel: optStr(60),
     successMessage: optStr(500),
     submitTo: z.enum(["email", "crm-lead"]),
@@ -58,6 +62,10 @@ export const FormSchema = z
     buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
     buttonAlignment: z.enum(["start", "center", "stretch"]).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => data.formId || (data.fields && data.fields.length > 0),
+    "Either formId or fields must be provided",
+  );
 
 export type FormInput = z.infer<typeof FormSchema>;

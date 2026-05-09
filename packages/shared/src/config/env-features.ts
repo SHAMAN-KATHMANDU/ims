@@ -99,6 +99,10 @@ export enum EnvFeature {
    * Mirrors the Claude.ai Site design.
    */
   SITE_CMS_V2 = "SITE_CMS_V2",
+  /** First-class Form data model with admin CRUD. When disabled, forms are inline in blocks only. */
+  FORMS_DATA_BACKED = "FORMS_DATA_BACKED",
+  /** Phase 8: Template forks — tenants can fork canonical templates and customize them. */
+  TEMPLATE_FORKS = "TEMPLATE_FORKS",
 }
 
 /**
@@ -151,6 +155,8 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
     SITE_CMS_V2: true,
+    FORMS_DATA_BACKED: true,
+    TEMPLATE_FORKS: true,
   },
   staging: {
     CRM: true,
@@ -197,6 +203,8 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
     SITE_CMS_V2: true,
+    FORMS_DATA_BACKED: true,
+    TEMPLATE_FORKS: true,
   },
   "staging-production": {
     CRM: true,
@@ -243,6 +251,8 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     NOTION_STYLE_EDITOR: true,
     CMS_REVIEW_WORKFLOW: true,
     SITE_CMS_V2: true,
+    FORMS_DATA_BACKED: true,
+    TEMPLATE_FORKS: true,
   },
   production: {
     CRM: true,
@@ -289,6 +299,8 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     NOTION_STYLE_EDITOR: false,
     CMS_REVIEW_WORKFLOW: false,
     SITE_CMS_V2: false,
+    FORMS_DATA_BACKED: false,
+    TEMPLATE_FORKS: false,
   },
 };
 

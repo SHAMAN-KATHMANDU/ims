@@ -81,8 +81,10 @@ function buildMockRepo(
   return {
     findConfig: vi.fn().mockResolvedValue(config),
     findTemplateBySlug: vi.fn().mockResolvedValue(template),
+    findTenantForkOfTemplate: vi.fn().mockResolvedValue(null),
     listActiveTemplates: vi.fn().mockResolvedValue([template]),
     updateConfig,
+    upsertConfig: vi.fn().mockResolvedValue(config),
     upsertDraft: vi.fn().mockResolvedValue(null),
     findLayout: vi.fn().mockResolvedValue(null),
     upsertLayout: vi.fn().mockResolvedValue(null),
