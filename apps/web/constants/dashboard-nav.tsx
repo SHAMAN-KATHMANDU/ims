@@ -27,6 +27,8 @@ import {
   ListChecks,
   ShoppingBag,
   Globe,
+  FolderHeart,
+  PackagePlus,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
 import {
@@ -288,6 +290,25 @@ export const dashboardNavSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.PROMOTIONS,
         feature: Feature.PROMO_MANAGEMENT,
+        permModule: "INVENTORY" as const,
+      },
+      {
+        // Storefront product collections — managed via the CMS shell.
+        // Lives under /content/collections so it shares the CMS chrome.
+        path: "content/collections",
+        label: "Collections",
+        icon: FolderHeart,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
+        permModule: "WEBSITE" as const,
+      },
+      {
+        // Product bundles — managed via the IMS-side bundle CRUD pages.
+        path: "products/bundles",
+        label: "Bundles",
+        icon: PackagePlus,
+        roles: ["admin", "superAdmin"],
         permModule: "INVENTORY" as const,
       },
       {
