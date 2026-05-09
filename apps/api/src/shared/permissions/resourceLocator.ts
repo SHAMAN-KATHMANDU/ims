@@ -71,18 +71,33 @@ export async function resolveWorkspaceResourceId(
     select: { id: true },
   });
   if (existing) return existing.id;
-  const created = await prisma.resource.create({
-    data: {
-      tenantId,
-      type: "WORKSPACE",
-      externalId: tenantId,
-      parentId: null,
-      path: `/${tenantId}/`,
-      depth: 0,
-    },
-    select: { id: true },
-  });
-  return created.id;
+  try {
+    const created = await prisma.resource.create({
+      data: {
+        tenantId,
+        type: "WORKSPACE",
+        externalId: tenantId,
+        parentId: null,
+        path: `/${tenantId}/`,
+        depth: 0,
+      },
+      select: { id: true },
+    });
+    return created.id;
+  } catch (error: unknown) {
+    // Concurrent first-request-after-fresh-seed: another request raced past
+    // findUnique and inserted the WORKSPACE row. Re-read instead of failing.
+    if ((error as { code?: string })?.code === "P2002") {
+      const refetch = await prisma.resource.findUnique({
+        where: {
+          tenantId_externalId: { tenantId, externalId: tenantId },
+        },
+        select: { id: true },
+      });
+      if (refetch) return refetch.id;
+    }
+    throw error;
+  }
 }
 
 /**
