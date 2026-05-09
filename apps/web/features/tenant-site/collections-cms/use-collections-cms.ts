@@ -3,11 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 import { collectionsCmsService } from "./collections-cms.service";
-import type {
-  CreateCollectionPayload,
-  UpdateCollectionPayload,
-  CollectionDetail,
-} from "./types";
+import type { CreateCollectionPayload, UpdateCollectionPayload } from "./types";
 
 export const collectionsCmsKeys = {
   all: ["collections-cms"] as const,

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useThemeStore } from "@/store/theme-store";
+import { useThemeStore, selectTheme } from "@/store/theme-store";
 
 export function useThemeSync(): void {
-  const theme = useThemeStore((state) => state.theme);
+  const theme = useThemeStore(selectTheme);
 
   useEffect(() => {
     const root = document.documentElement;

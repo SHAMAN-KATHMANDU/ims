@@ -31,3 +31,6 @@ export const useThemeStore = create<ThemeStore>()(
     },
   ),
 );
+
+export const selectTheme = (s: ThemeStore) => s.theme;
+export const selectThemeToggle = (s: ThemeStore) => s.toggleTheme;

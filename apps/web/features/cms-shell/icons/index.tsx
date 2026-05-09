@@ -8,7 +8,6 @@ import {
   Image,
   Grid3x3,
   Gift,
-  Navigation as NavigationIcon,
   Palette,
   Globe,
   SearchX,
@@ -20,6 +19,7 @@ import {
   Plus,
   Command,
   Gauge,
+  LayoutTemplate,
 } from "lucide-react";
 
 const icons = {
@@ -31,7 +31,7 @@ const icons = {
   media: Image,
   collections: Grid3x3,
   offers: Gift,
-  navigation: NavigationIcon,
+  templates: LayoutTemplate,
   design: Palette,
   domains: Globe,
   seo: SearchX,

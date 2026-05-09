@@ -15,6 +15,8 @@ import {
   Redo2,
   LayoutGrid,
   Paintbrush,
+  Sparkles,
+  Eye,
 } from "lucide-react";
 import type { SiteLayoutScope } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
@@ -23,7 +25,12 @@ import {
   selectCanRedo,
   selectUndo,
   selectRedo,
+  selectDevice,
+  selectSetDevice,
+  selectDirty,
+  selectLastSaveTime,
 } from "../store/selectors";
+import { useDomains } from "../../hooks/use-domains";
 
 export type EditorMode = "design" | "content";
 
@@ -52,22 +59,44 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
     {
       scope,
       onScopeChange,
-      device,
-      onDeviceChange,
+      device: _device,
+      onDeviceChange: _onDeviceChange,
       mode,
       onModeChange,
-      onPublishClick,
+      onPublishClick: _onPublishClick,
     },
     ref,
   ) => {
     const [showScopeMenu, setShowScopeMenu] = useState(false);
     const scopeMenuRef = useRef<HTMLDivElement>(null);
+
+    // Store and data
     const canUndo = useEditorStore(selectCanUndo);
     const canRedo = useEditorStore(selectCanRedo);
     const undo = useEditorStore(selectUndo);
     const redo = useEditorStore(selectRedo);
+    const device = useEditorStore(selectDevice);
+    const setDevice = useEditorStore(selectSetDevice);
+    const dirty = useEditorStore(selectDirty);
+    const lastSaveTime = useEditorStore(selectLastSaveTime);
+
+    // Get page data - note: domains used to populate domain field for canvas
+    const { data: domains } = useDomains();
+
+    // Compute relative time since last save
+    const getRelativeSaveTime = () => {
+      if (!lastSaveTime) return "never saved";
+      const now = Date.now();
+      const diffMs = now - lastSaveTime;
+      const diffS = Math.floor(diffMs / 1000);
+      const diffM = Math.floor(diffS / 60);
+      if (diffS < 60) return `saved ${diffS}s ago`;
+      if (diffM < 60) return `saved ${diffM}m ago`;
+      return "saved today";
+    };
 
     const isDesign = mode === "design";
+    const _domain = domains?.[0]?.hostname || `{tenant}.example.com`;
 
     useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
@@ -127,37 +156,52 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
           )}
         </div>
 
-        {/* Center: Undo/Redo (design only) */}
+        {/* Center: Save status and undo/redo (design only) */}
         {isDesign && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
-              title="Undo (⌘Z)"
-            >
-              <Undo2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
-              title="Redo (⌘⇧Z)"
-            >
-              <Redo2 className="w-4 h-4" />
-            </button>
+          <div className="flex items-center gap-4">
+            {/* Save status */}
+            <div className="flex flex-col gap-0.5">
+              <div className="text-xs text-gray-500">
+                {dirty ? (
+                  <span className="animate-pulse">Saving…</span>
+                ) : (
+                  getRelativeSaveTime()
+                )}
+              </div>
+            </div>
+
+            {/* Undo/Redo */}
+            <div className="flex items-center gap-2 border-l pl-4">
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+                title="Undo (⌘Z)"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className="p-2 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+                title="Redo (⌘⇧Z)"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Right: Device selector + Publish (design only) */}
+        {/* Right: Device selector, AI, preview, publish (design only) */}
         {isDesign && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Device selector */}
             <div className="flex items-center gap-1 bg-gray-100 rounded p-1">
               {["desktop", "tablet", "mobile"].map((d) => (
                 <button
                   key={d}
                   onClick={() =>
-                    onDeviceChange(d as "desktop" | "tablet" | "mobile")
+                    setDevice(d as "desktop" | "tablet" | "mobile")
                   }
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                     device === d ? "bg-white shadow-sm" : "hover:bg-gray-200"
@@ -168,10 +212,31 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
               ))}
             </div>
 
+            {/* AI button (disabled for now) */}
+            <button
+              disabled
+              title="AI features coming soon"
+              className="p-2 text-gray-400 hover:bg-gray-100 disabled:opacity-50 rounded transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+
+            {/* Preview button */}
+            <button
+              onClick={() => {
+                window.open("#", "_blank");
+              }}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              title="Preview page"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+
+            {/* Publish button */}
             <button
               type="button"
-              onClick={onPublishClick}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+              onClick={_onPublishClick}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium"
             >
               Publish
             </button>

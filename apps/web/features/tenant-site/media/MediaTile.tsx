@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,10 +40,11 @@ export function MediaTile({ asset, onDelete, onEdit }: MediaTileProps) {
       {/* Thumbnail */}
       <div className="aspect-square bg-bg-sunken relative overflow-hidden">
         {asset.mimeType.startsWith("image/") ? (
-          <img
+          <Image
             src={asset.url}
             alt={asset.name}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
           />
         ) : asset.mimeType === "application/pdf" ? (
           <div className="flex items-center justify-center h-full text-2xl opacity-50">

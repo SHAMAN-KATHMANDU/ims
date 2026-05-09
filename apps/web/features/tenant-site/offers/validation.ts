@@ -4,13 +4,13 @@ export const CreateOfferSchema = z.object({
   code: z.string().min(1, "Code is required").max(50),
   title: z.string().min(1, "Title is required").max(200),
   type: z.enum(["Discount", "Comp", "Event", "Freeshipment"]),
-  value: z.string().min(1, "Value is required").max(200),
+  value: z.string().min(1, "Value is required"),
   appliesToAll: z.boolean(),
   appliesTo: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  maxUses: z.coerce.number().positive().optional(),
-  perCustomerLimit: z.coerce.number().positive().optional(),
+  maxUses: z.string().optional(),
+  perCustomerLimit: z.string().optional(),
 });
 
 export type CreateOfferInput = z.infer<typeof CreateOfferSchema>;

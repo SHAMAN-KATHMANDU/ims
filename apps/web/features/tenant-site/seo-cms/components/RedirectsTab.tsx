@@ -24,12 +24,12 @@ import {
   useRedirects,
   useCreateRedirect,
   useDeleteRedirect,
-} from "@/features/tenant-site/hooks/use-redirects";
+} from "../../hooks/use-redirects";
 import { useToast } from "@/hooks/useToast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { CreateRedirectData } from "@/features/tenant-site/services/redirects.service";
+import type { CreateRedirectData } from "../../services/redirects.service";
 
 const RedirectSchema = z.object({
   fromPath: z.string().min(1, "From path required"),
@@ -46,7 +46,6 @@ export function RedirectsTab() {
   const redirectsQuery = useRedirects();
   const createMutation = useCreateRedirect();
   const deleteMutation = useDeleteRedirect();
-  const { toast } = useToast();
 
   const redirects = redirectsQuery.data ?? [];
   const filtered = redirects.filter(

@@ -2,6 +2,7 @@
 
 import type { BlockNode } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
+import { selectSetSlashMenuAnchor } from "../store/selectors";
 
 interface BlockViewProps {
   block: BlockNode;
@@ -9,13 +10,32 @@ interface BlockViewProps {
 
 export function BlockView({ block }: BlockViewProps) {
   const { updateBlockProps } = useEditorStore();
+  const setSlashMenuAnchor = useEditorStore(selectSetSlashMenuAnchor);
+
+  const handleSlashMenuTrigger = (e: React.FormEvent<HTMLDivElement>) => {
+    const text = e.currentTarget.innerText;
+    if (text.startsWith("/")) {
+      const selection = document.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSlashMenuAnchor({
+          blockId: block.id,
+          position: { x: rect.left, y: rect.top },
+        });
+        e.currentTarget.innerText = text.slice(1);
+      }
+    }
+  };
 
   // Simple contentEditable support for heading/rich-text
   if (block.kind === "heading") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const props = block.props as any;
     const level = props.level || 2;
     const text = props.text || "";
-    const sizeMap = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sizeMap: Record<number, any> = {
       1: {
         fontSize: "38px",
         fontWeight: 600,
@@ -34,7 +54,7 @@ export function BlockView({ block }: BlockViewProps) {
         marginTop: "18px",
         marginBottom: "4px",
       },
-    } as Record<number, any>;
+    };
     const size = sizeMap[level] || sizeMap[2];
 
     return (
@@ -42,8 +62,10 @@ export function BlockView({ block }: BlockViewProps) {
         contentEditable
         suppressContentEditableWarning
         onInput={(e) => {
+          const innerText = e.currentTarget.innerText;
+          handleSlashMenuTrigger(e);
           updateBlockProps(block.id, {
-            text: e.currentTarget.innerText,
+            text: innerText,
           });
         }}
         style={{
@@ -62,6 +84,7 @@ export function BlockView({ block }: BlockViewProps) {
   }
 
   if (block.kind === "rich-text") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const props = block.props as any;
     const text = props.text || "";
 
@@ -70,8 +93,10 @@ export function BlockView({ block }: BlockViewProps) {
         contentEditable
         suppressContentEditableWarning
         onInput={(e) => {
+          const innerText = e.currentTarget.innerText;
+          handleSlashMenuTrigger(e);
           updateBlockProps(block.id, {
-            text: e.currentTarget.innerText,
+            text: innerText,
           });
         }}
         style={{

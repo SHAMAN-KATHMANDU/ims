@@ -1,0 +1,4 @@
+
+> @repo/blocks@1.0.0 check-types /Users/roshanpandey/PROJECTS/shaman/projectX/packages/blocks
+> tsc --noEmit
+

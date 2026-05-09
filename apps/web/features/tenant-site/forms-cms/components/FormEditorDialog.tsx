@@ -20,18 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
-import { useFormsStore } from "../store";
 import type { Form, FormField } from "../types";
 
 interface FormEditorDialogProps {
@@ -93,19 +82,8 @@ export function FormEditorDialog({
       return;
     }
 
-    const addForm = useFormsStore.getState().addForm;
-    addForm({
-      id: `form-${Date.now()}`,
-      name,
-      submissions: 0,
-      lastSubmission: "just now",
-      status: "active",
-      fields,
-      submissionDestination: destination,
-      successMessage: successMessage || "Thank you!",
-    });
-
-    toast({ title: "Form created" });
+    // TODO: implement form creation via API
+    toast({ title: "Form creation not yet available", variant: "destructive" });
     onOpenChange(false);
     setName("");
     setFields([]);
@@ -175,8 +153,10 @@ export function FormEditorDialog({
                     </label>
                     <Select
                       value={field.type}
-                      onValueChange={(value: any) =>
-                        handleUpdateField(field.id, { type: value })
+                      onValueChange={(value: string) =>
+                        handleUpdateField(field.id, {
+                          type: value as typeof field.type,
+                        })
                       }
                     >
                       <SelectTrigger className="text-sm">
@@ -224,7 +204,9 @@ export function FormEditorDialog({
               <Label htmlFor="destination">Send submissions to</Label>
               <Select
                 value={destination}
-                onValueChange={(v: any) => setDestination(v)}
+                onValueChange={(v: string) =>
+                  setDestination(v as "email" | "webhook")
+                }
               >
                 <SelectTrigger id="destination">
                   <SelectValue />

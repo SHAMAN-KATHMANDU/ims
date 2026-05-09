@@ -6,7 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { CmdK } from "./CmdK";
 import { useThemeSync } from "@/hooks/use-theme-sync";
-import { useGlobalShortcuts } from "@/features/cms-shell/hooks/use-global-shortcuts";
+import { useGlobalShortcuts } from "../hooks/use-global-shortcuts";
 
 interface ContentShellProps {
   children: ReactNode;

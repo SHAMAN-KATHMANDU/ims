@@ -1,35 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
+import {
+  useSiteConfig,
+  useUpdateSiteConfig,
+} from "../../../hooks/use-tenant-site";
 
 export function GeneralTab() {
   const { toast } = useToast();
-  const [siteName, setSiteName] = useState("Lumen & Coal");
-  const [tagline, setTagline] = useState(
-    "A wood-fired tasting room in the West Village.",
-  );
-  const [timezone, setTimezone] = useState("America/New_York");
-  const [language, setLanguage] = useState("English (US)");
-  const [address, setAddress] = useState("142 Charles St, New York, NY 10014");
-  const [phone, setPhone] = useState("+1 (212) 555-0127");
-  const [email, setEmail] = useState("reservations@lumenandcoal.com");
+  const { data: siteConfig, isLoading } = useSiteConfig();
+  const updateSiteConfig = useUpdateSiteConfig();
 
-  const handleSave = () => {
-    toast({ title: "Settings saved" });
+  const [siteName, setSiteName] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+
+  const contactData = useMemo(
+    () => (siteConfig?.contact ?? {}) as Record<string, unknown>,
+    [siteConfig?.contact],
+  );
+
+  useEffect(() => {
+    if (contactData) {
+      setSiteName((contactData.siteName as string) ?? "");
+      setTagline((contactData.tagline as string) ?? "");
+      setAddress((contactData.address as string) ?? "");
+      setPhone((contactData.phone as string) ?? "");
+      setEmail((contactData.email as string) ?? "");
+    }
+  }, [contactData]);
+
+  const handleSave = async () => {
+    try {
+      await updateSiteConfig.mutateAsync({
+        contact: {
+          siteName: siteName.trim(),
+          tagline: tagline.trim(),
+          address: address.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+        },
+      });
+      toast({ title: "Settings saved" });
+    } catch {
+      toast({
+        title: "Failed to save settings",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="text-sm text-muted-foreground">Loading settings…</div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -43,6 +76,7 @@ export function GeneralTab() {
             id="name"
             value={siteName}
             onChange={(e) => setSiteName(e.target.value)}
+            disabled={updateSiteConfig.isPending}
           />
         </div>
         <div className="space-y-2">
@@ -51,36 +85,8 @@ export function GeneralTab() {
             id="tagline"
             value={tagline}
             onChange={(e) => setTagline(e.target.value)}
+            disabled={updateSiteConfig.isPending}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="timezone">Timezone</Label>
-          <Select value={timezone} onValueChange={setTimezone}>
-            <SelectTrigger id="timezone">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="America/New_York">America/New_York</SelectItem>
-              <SelectItem value="America/Los_Angeles">
-                America/Los_Angeles
-              </SelectItem>
-              <SelectItem value="Europe/London">Europe/London</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="language">Default language</Label>
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger id="language">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="English (US)">English (US)</SelectItem>
-              <SelectItem value="English (UK)">English (UK)</SelectItem>
-              <SelectItem value="Français">Français</SelectItem>
-              <SelectItem value="Español">Español</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </Card>
 
@@ -95,6 +101,7 @@ export function GeneralTab() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             rows={2}
+            disabled={updateSiteConfig.isPending}
           />
         </div>
         <div className="space-y-2">
@@ -103,6 +110,7 @@ export function GeneralTab() {
             id="phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            disabled={updateSiteConfig.isPending}
           />
         </div>
         <div className="space-y-2">
@@ -112,12 +120,15 @@ export function GeneralTab() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={updateSiteConfig.isPending}
           />
         </div>
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>Save settings</Button>
+        <Button onClick={handleSave} disabled={updateSiteConfig.isPending}>
+          {updateSiteConfig.isPending ? "Saving…" : "Save settings"}
+        </Button>
       </div>
     </div>
   );

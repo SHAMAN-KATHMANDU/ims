@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,13 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,36 +24,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { OfferFormSchema, type OfferFormInput } from "../validation";
 import {
-  useOffersStore,
-  selectAddOffer,
-  selectUpdateOffer,
-  selectDeleteOffer,
-} from "../store";
-import type { Offer } from "../types";
-import { useToast } from "@/hooks/useToast";
+  useCreatePromo,
+  useUpdatePromo,
+  useDeletePromo,
+} from "../../hooks/use-promos";
+import type { PromoCode } from "../../services/promos.service";
+import { CreateOfferSchema, type CreateOfferInput } from "../validation";
 
 interface OfferEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  offer: Offer | null;
+  promo: PromoCode | null;
   onClose: () => void;
 }
 
 export function OfferEditorDialog({
   open,
   onOpenChange,
-  offer,
+  promo,
   onClose,
 }: OfferEditorDialogProps) {
-  const { toast } = useToast();
-  const addOffer = useOffersStore(selectAddOffer);
-  const updateOffer = useOffersStore(selectUpdateOffer);
-  const deleteOffer = useOffersStore(selectDeleteOffer);
+  const createPromo = useCreatePromo();
+  const updatePromo = useUpdatePromo();
+  const deletePromo = useDeletePromo();
 
-  const form = useForm<OfferFormInput>({
-    resolver: zodResolver(OfferFormSchema),
+  const form = useForm<CreateOfferInput>({
+    resolver: zodResolver(CreateOfferSchema),
     defaultValues: {
       code: "",
       title: "",
@@ -76,18 +66,22 @@ export function OfferEditorDialog({
   });
 
   useEffect(() => {
-    if (offer) {
+    if (promo) {
       form.reset({
-        code: offer.code,
-        title: offer.title,
-        type: offer.type,
-        value: offer.value,
-        appliesToAll: offer.appliesToAll,
-        appliesTo: offer.appliesTo ?? [],
-        startDate: offer.startDate ?? "",
-        endDate: offer.endDate ?? "",
-        maxUses: offer.maxUses?.toString() ?? "",
-        perCustomerLimit: offer.perCustomerLimit?.toString() ?? "",
+        code: promo.code,
+        title: promo.description || "",
+        type: "Discount",
+        value: `${promo.valueType === "PERCENTAGE" ? promo.value : promo.value}`,
+        appliesToAll: promo.applyToAll ?? true,
+        appliesTo: promo.productIds ?? [],
+        startDate: promo.validFrom
+          ? new Date(promo.validFrom).toISOString().split("T")[0]
+          : "",
+        endDate: promo.validTo
+          ? new Date(promo.validTo).toISOString().split("T")[0]
+          : "",
+        maxUses: promo.usageLimit?.toString() ?? "",
+        perCustomerLimit: "",
       });
     } else {
       form.reset({
@@ -103,67 +97,76 @@ export function OfferEditorDialog({
         perCustomerLimit: "",
       });
     }
-  }, [offer, form]);
+  }, [promo, form]);
 
-  const handleSubmit = form.handleSubmit((values) => {
-    if (offer) {
-      updateOffer(offer.id, {
-        ...values,
-        maxUses: values.maxUses ? parseInt(values.maxUses) : undefined,
-        perCustomerLimit: values.perCustomerLimit
-          ? parseInt(values.perCustomerLimit)
+  const handleSubmit = form.handleSubmit(async (values) => {
+    try {
+      const payload = {
+        code: values.code,
+        description: values.title,
+        valueType: "PERCENTAGE" as const,
+        value:
+          typeof values.value === "string"
+            ? parseFloat(values.value)
+            : values.value,
+        eligibility: "ALL" as const,
+        validFrom: values.startDate ? new Date(values.startDate) : undefined,
+        validTo: values.endDate ? new Date(values.endDate) : undefined,
+        usageLimit: values.maxUses
+          ? parseInt(values.maxUses.toString())
           : undefined,
-      });
-      toast({ title: "Offer updated" });
-    } else {
-      addOffer({
-        id: `offer-${Date.now()}`,
-        ...values,
-        uses: 0,
-        cap: values.maxUses ? parseInt(values.maxUses) : null,
-        status: values.startDate ? "scheduled" : "draft",
-        window: values.startDate
-          ? `${values.startDate} → ${values.endDate}`
-          : "—",
-        maxUses: values.maxUses ? parseInt(values.maxUses) : undefined,
-        perCustomerLimit: values.perCustomerLimit
-          ? parseInt(values.perCustomerLimit)
-          : undefined,
-      });
-      toast({ title: "Offer created" });
-    }
-    onClose();
-    onOpenChange(false);
-  });
+        applyToAll: values.appliesToAll,
+        productIds: values.appliesTo,
+      };
 
-  const handleDelete = () => {
-    if (offer) {
-      deleteOffer(offer.id);
-      toast({ title: "Offer deleted" });
+      if (promo) {
+        await updatePromo.mutateAsync({ id: promo.id, payload });
+      } else {
+        await createPromo.mutateAsync(payload);
+      }
+
       onClose();
       onOpenChange(false);
+      form.reset();
+    } catch {
+      /* error handled by mutation */
+    }
+  });
+
+  const handleDelete = async () => {
+    if (promo) {
+      try {
+        await deletePromo.mutateAsync(promo.id);
+        onClose();
+        onOpenChange(false);
+      } catch {
+        /* error handled by mutation */
+      }
     }
   };
+
+  const isSubmitting = createPromo.isPending || updatePromo.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{offer ? "Edit offer" : "New offer"}</DialogTitle>
+          <DialogTitle>{promo ? "Edit promo" : "New promo"}</DialogTitle>
           <DialogDescription>
-            {offer
-              ? "Update the offer details."
-              : "Create a new promo code or special offer."}
+            {promo
+              ? "Update the promo code details."
+              : "Create a new promo code."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="code">Promo code</Label>
+            <Label htmlFor="code">Code</Label>
             <Input
               id="code"
               placeholder="e.g., SUMMER20"
               {...form.register("code")}
+              disabled={isSubmitting}
             />
             {form.formState.errors.code && (
               <p className="text-xs text-destructive">
@@ -173,11 +176,12 @@ export function OfferEditorDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Description</Label>
             <Input
               id="title"
               placeholder="e.g., Summer sale"
               {...form.register("title")}
+              disabled={isSubmitting}
             />
             {form.formState.errors.title && (
               <p className="text-xs text-destructive">
@@ -186,33 +190,20 @@ export function OfferEditorDialog({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                defaultValue={form.watch("type")}
-                onValueChange={(v: any) => form.setValue("type", v)}
-              >
-                <SelectTrigger id="type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Discount">Discount</SelectItem>
-                  <SelectItem value="Comp">Comp</SelectItem>
-                  <SelectItem value="Event">Event</SelectItem>
-                  <SelectItem value="Freeshipment">Free shipping</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="value">Value</Label>
-              <Input
-                id="value"
-                placeholder="e.g., 20% off"
-                {...form.register("value")}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="value">Value (%)</Label>
+            <Input
+              id="value"
+              type="number"
+              placeholder="e.g., 20"
+              {...form.register("value")}
+              disabled={isSubmitting}
+            />
+            {form.formState.errors.value && (
+              <p className="text-xs text-destructive">
+                {form.formState.errors.value.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -223,6 +214,7 @@ export function OfferEditorDialog({
                   type="radio"
                   checked={form.watch("appliesToAll")}
                   onChange={() => form.setValue("appliesToAll", true)}
+                  disabled={isSubmitting}
                 />
                 <span className="text-sm">All products</span>
               </label>
@@ -231,6 +223,7 @@ export function OfferEditorDialog({
                   type="radio"
                   checked={!form.watch("appliesToAll")}
                   onChange={() => form.setValue("appliesToAll", false)}
+                  disabled={isSubmitting}
                 />
                 <span className="text-sm">Specific items</span>
               </label>
@@ -244,37 +237,33 @@ export function OfferEditorDialog({
                 id="startDate"
                 type="date"
                 {...form.register("startDate")}
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="endDate">End date</Label>
-              <Input id="endDate" type="date" {...form.register("endDate")} />
+              <Input
+                id="endDate"
+                type="date"
+                {...form.register("endDate")}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="maxUses">Max uses</Label>
-              <Input
-                id="maxUses"
-                type="number"
-                placeholder="Unlimited"
-                {...form.register("maxUses")}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="perCustomerLimit">Per customer</Label>
-              <Input
-                id="perCustomerLimit"
-                type="number"
-                placeholder="1"
-                {...form.register("perCustomerLimit")}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="maxUses">Max uses</Label>
+            <Input
+              id="maxUses"
+              type="number"
+              placeholder="Leave empty for unlimited"
+              {...form.register("maxUses")}
+              disabled={isSubmitting}
+            />
           </div>
 
           <div className="flex gap-2 pt-4">
-            {offer && (
+            {promo && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -282,6 +271,7 @@ export function OfferEditorDialog({
                     variant="destructive"
                     size="sm"
                     className="mr-auto"
+                    disabled={isSubmitting || deletePromo.isPending}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
@@ -289,7 +279,7 @@ export function OfferEditorDialog({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete offer?</AlertDialogTitle>
+                    <AlertDialogTitle>Delete promo?</AlertDialogTitle>
                     <AlertDialogDescription>
                       This cannot be undone.
                     </AlertDialogDescription>
@@ -299,8 +289,9 @@ export function OfferEditorDialog({
                     <AlertDialogAction
                       onClick={handleDelete}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deletePromo.isPending}
                     >
-                      Delete
+                      {deletePromo.isPending ? "Deleting…" : "Delete"}
                     </AlertDialogAction>
                   </div>
                 </AlertDialogContent>
@@ -313,10 +304,19 @@ export function OfferEditorDialog({
                 onClose();
                 onOpenChange(false);
               }}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit">{offer ? "Update" : "Create"} offer</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? promo
+                  ? "Updating…"
+                  : "Creating…"
+                : promo
+                  ? "Update"
+                  : "Create"}
+            </Button>
           </div>
         </form>
       </DialogContent>

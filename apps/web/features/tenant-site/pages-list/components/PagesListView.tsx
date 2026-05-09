@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useTopbarActionsStore } from "@/store/topbar-actions-store";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -23,6 +24,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus,
   Upload,
   Filter,
@@ -30,77 +39,61 @@ import {
   MoreVertical,
   Search,
 } from "lucide-react";
+import {
+  usePagesQuery,
+  useCreatePage,
+  useDeletePage,
+  usePublishPage,
+  useDuplicatePage,
+  type TenantPage,
+} from "../../hooks/use-pages";
+import { CreatePageDialog } from "./CreatePageDialog";
+import { formatDistanceToNow } from "date-fns";
 
-interface Page {
-  id: string;
-  title: string;
-  slug: string;
-  status: "draft" | "published" | "review" | "scheduled";
-  views: number;
-  updated: string;
-  author: string;
+interface TopbarStore {
+  setActions: (actions: React.ReactNode) => void;
 }
+
+const selectSetActions = (s: TopbarStore) => s.setActions;
 
 export function PagesListView() {
   const router = useRouter();
   const params = useParams();
-  const workspace = params.workspace as string;
-  const setActions = useTopbarActionsStore((s) => s.setActions);
+  const workspace = params.workspace as string | undefined;
+  const wsString = workspace ?? "";
+  const setActions = useTopbarActionsStore(selectSetActions);
+  const { toast: _toast } = useToast();
 
   const [filter, setFilter] = useState<
     "all" | "published" | "draft" | "review" | "scheduled"
   >("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set<string>());
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  // TODO: Wire to usePagesQuery hook when available
-  const pages: Page[] = [
-    {
-      id: "1",
-      title: "Home",
-      slug: "/",
-      status: "published",
-      views: 1250,
-      updated: "1 day ago",
-      author: "Sarah",
-    },
-    {
-      id: "2",
-      title: "About Us",
-      slug: "/about",
-      status: "published",
-      views: 340,
-      updated: "2 days ago",
-      author: "Mike",
-    },
-    {
-      id: "3",
-      title: "Contact",
-      slug: "/contact",
-      status: "draft",
-      views: 0,
-      updated: "3 hours ago",
-      author: "Alex",
-    },
-    {
-      id: "4",
-      title: "Services",
-      slug: "/services",
-      status: "review",
-      views: 0,
-      updated: "2 days ago",
-      author: "Sarah",
-    },
-    {
-      id: "5",
-      title: "Pricing",
-      slug: "/pricing",
-      status: "scheduled",
-      views: 0,
-      updated: "1 week ago",
-      author: "Mike",
-    },
-  ];
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Map filter to API status parameter
+  const statusMap: Record<string, boolean | undefined> = {
+    all: undefined,
+    published: true,
+    draft: false,
+    review: false, // Note: API may not support "review" status
+    scheduled: false,
+  };
+
+  const { data, isLoading } = usePagesQuery({
+    page: 1,
+    limit: 100,
+    published: statusMap[filter],
+  });
+
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages]);
+  const _createPage = useCreatePage();
+  const deletePage = useDeletePage();
+  const publishPage = usePublishPage();
+  const duplicatePage = useDuplicatePage();
 
   useEffect(() => {
     setActions(
@@ -109,7 +102,7 @@ export function PagesListView() {
           <Upload className="h-4 w-4" />
           Import
         </Button>
-        <Button size="sm">
+        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
           <Plus className="h-4 w-4" />
           New page
         </Button>
@@ -119,20 +112,28 @@ export function PagesListView() {
     return () => setActions(null);
   }, [setActions]);
 
-  const filtered = pages.filter((p) => {
-    if (filter !== "all" && p.status !== filter) return false;
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase()))
-      return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    return pages.filter((p) => {
+      if (
+        debouncedSearch &&
+        !p.title.toLowerCase().includes(debouncedSearch.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [pages, debouncedSearch]);
 
-  const counts = {
-    all: pages.length,
-    published: pages.filter((p) => p.status === "published").length,
-    draft: pages.filter((p) => p.status === "draft").length,
-    review: pages.filter((p) => p.status === "review").length,
-    scheduled: pages.filter((p) => p.status === "scheduled").length,
-  };
+  const counts = useMemo(
+    () => ({
+      all: pages.length,
+      published: pages.filter((p) => p.isPublished).length,
+      draft: pages.filter((p) => !p.isPublished && !p.scheduledPublishAt)
+        .length,
+      review: 0, // API doesn't have explicit review status
+      scheduled: pages.filter((p) => p.scheduledPublishAt).length,
+    }),
+    [pages],
+  );
 
   const allSelected =
     filtered.length > 0 && filtered.every((p) => selected.has(p.id));
@@ -154,6 +155,75 @@ export function PagesListView() {
       setSelected(new Set(filtered.map((p) => p.id)));
     }
   };
+
+  const handlePublishSelected = async () => {
+    try {
+      await Promise.all(
+        Array.from(selected).map((id) => publishPage.mutateAsync(id)),
+      );
+      setSelected(new Set());
+    } catch (error) {
+      console.error("Error publishing pages:", error);
+    }
+  };
+
+  const handleDuplicateSelected = async () => {
+    try {
+      if (selected.size === 1) {
+        const id = Array.from(selected)[0];
+        if (id) {
+          await duplicatePage.mutateAsync(id);
+        }
+      } else {
+        await Promise.all(
+          Array.from(selected).map((id) => duplicatePage.mutateAsync(id)),
+        );
+      }
+      setSelected(new Set());
+    } catch (error) {
+      console.error("Error duplicating pages:", error);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await Promise.all(
+        Array.from(selected).map((id) => deletePage.mutateAsync(id)),
+      );
+      setSelected(new Set());
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting pages:", error);
+    }
+  };
+
+  const getStatusBadgeVariant = (page: TenantPage) => {
+    if (page.isPublished) return "default";
+    if (page.scheduledPublishAt) return "destructive";
+    return "secondary";
+  };
+
+  const getStatusLabel = (page: TenantPage) => {
+    if (page.isPublished) return "Published";
+    if (page.scheduledPublishAt) return "Scheduled";
+    return "Draft";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="h-8 w-32 bg-[var(--bg-sunken)] rounded animate-pulse" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-12 bg-[var(--bg-sunken)] rounded animate-pulse"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -241,18 +311,33 @@ export function PagesListView() {
             {selected.size} selected
           </span>
           <div className="h-3 w-px" style={{ background: "var(--accent)" }} />
-          <Button size="sm" variant="default">
-            Publish
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handlePublishSelected}
+            disabled={publishPage.isPending}
+          >
+            {publishPage.isPending ? "Publishing…" : "Publish"}
           </Button>
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" disabled>
             Submit
           </Button>
-          <Button size="sm" variant="outline">
-            Duplicate
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDuplicateSelected}
+            disabled={duplicatePage.isPending}
+          >
+            {duplicatePage.isPending ? "Duplicating…" : "Duplicate"}
           </Button>
           <div className="flex-1" />
-          <Button size="sm" variant="destructive">
-            Delete
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setDeleteTarget("confirm")}
+            disabled={deletePage.isPending}
+          >
+            {deletePage.isPending ? "Deleting…" : "Delete"}
           </Button>
           <button
             onClick={() => setSelected(new Set())}
@@ -328,7 +413,7 @@ export function PagesListView() {
                     : undefined,
                 }}
                 onClick={() =>
-                  router.push(`/${workspace}/content/builder/${page.id}`)
+                  router.push(`/${wsString}/content/builder/${page.id}`)
                 }
               >
                 <TableCell className="px-3.5 py-3">
@@ -349,27 +434,29 @@ export function PagesListView() {
                 </TableCell>
                 <TableCell className="py-3">
                   <Badge
-                    variant={
-                      page.status === "published"
-                        ? "default"
-                        : page.status === "draft"
-                          ? "secondary"
-                          : page.status === "review"
-                            ? "outline"
-                            : "destructive"
-                    }
+                    variant={getStatusBadgeVariant(page)}
                     className="text-xs"
                   >
-                    {page.status}
+                    {getStatusLabel(page)}
                   </Badge>
                 </TableCell>
                 <TableCell className="mono py-3 text-right text-xs text-[var(--ink-3)]">
-                  {page.views > 0 ? page.views.toLocaleString() : "—"}
+                  {(() => {
+                    const views = (page as { views?: unknown }).views;
+                    return typeof views === "number" && views > 0
+                      ? views.toLocaleString()
+                      : "—";
+                  })()}
                 </TableCell>
                 <TableCell className="mono py-3 text-xs text-[var(--ink-3)]">
-                  {page.updated}
+                  {formatDistanceToNow(new Date(page.updatedAt), {
+                    addSuffix: true,
+                  })}
                 </TableCell>
-                <TableCell className="py-3 text-xs">{page.author}</TableCell>
+                <TableCell className="py-3 text-xs">
+                  {/* User name can be extracted from auth context if needed */}
+                  —
+                </TableCell>
                 <TableCell className="px-3.5 py-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -384,13 +471,31 @@ export function PagesListView() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `/${wsString}/content/builder/${page.id}`,
+                            "_blank",
+                          );
+                        }}
+                      >
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          duplicatePage.mutate(page.id);
+                        }}
+                      >
                         Duplicate
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(page.id);
+                        }}
+                      >
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -420,6 +525,41 @@ export function PagesListView() {
         </span>
         <span>↑↓ to navigate · ⏎ to open · ⌘D duplicate · ⌫ delete</span>
       </div>
+
+      {/* Create Page Dialog */}
+      <CreatePageDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreated={(newPageId) => {
+          setShowCreateDialog(false);
+          window.open(`/${wsString}/content/builder/${newPageId}`, "_blank");
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget}>
+        <AlertDialogContent>
+          <AlertDialogTitle>
+            Delete page{selected.size > 1 ? "s" : ""}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {selected.size > 1
+              ? `You're about to delete ${selected.size} pages. This action cannot be undone.`
+              : "This action cannot be undone."}
+          </AlertDialogDescription>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSelected}
+              className="bg-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

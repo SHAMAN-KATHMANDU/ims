@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCmdKStore } from "@/store/cmdk-store";
-import { useThemeStore } from "@/store/theme-store";
+import { useCmdKStore, selectCmdKToggle } from "@/store/cmdk-store";
+import { useThemeStore, selectThemeToggle } from "@/store/theme-store";
 
 export function useGlobalShortcuts(): void {
-  const toggleCmdK = useCmdKStore((state) => state.toggle);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const toggleCmdK = useCmdKStore(selectCmdKToggle);
+  const toggleTheme = useThemeStore(selectThemeToggle);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {

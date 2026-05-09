@@ -2,21 +2,26 @@
 
 import { Plus } from "lucide-react";
 import { useEditorStore } from "../store/editor-store";
-import { selectBlocks, selectSelectedId } from "../store/selectors";
+import {
+  selectBlocks,
+  selectSelectedId,
+  selectDevice,
+} from "../store/selectors";
+import { useDomains } from "../../hooks/use-domains";
 import { BlockWrap } from "./BlockWrap";
 import type { BlockNode, BlockKind } from "@repo/shared";
 import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
 
 interface CanvasProps {
-  workspace: string;
-  pageId: string;
   scope: string;
 }
 
-export function Canvas({ workspace, pageId, scope }: CanvasProps) {
+export function Canvas({ scope: _unused_scope }: CanvasProps) {
   const blocks = useEditorStore(selectBlocks);
   const selectedId = useEditorStore(selectSelectedId);
+  const device = useEditorStore(selectDevice);
   const { addBlock } = useEditorStore();
+  const { data: domains } = useDomains();
 
   const handleAddBlock = () => {
     const entry = BLOCK_CATALOG_ENTRIES.find((e) => e.kind === "rich-text");
@@ -29,14 +34,23 @@ export function Canvas({ workspace, pageId, scope }: CanvasProps) {
     addBlock(newBlock, blocks.length);
   };
 
+  const deviceWidth = {
+    desktop: 1240,
+    tablet: 820,
+    mobile: 414,
+  }[device];
+
+  const domain = domains?.[0]?.hostname || `{tenant}.example.com`;
+
   return (
     <div
-      className="flex justify-center py-8 px-6 min-h-full"
+      className="flex justify-center py-8 px-6 min-h-full overflow-auto"
       style={{ backgroundColor: "var(--bg-sunken)" }}
     >
       <div
-        className="w-full max-w-5xl rounded-lg border p-8"
+        className="rounded-lg border p-8 flex-shrink-0"
         style={{
+          width: deviceWidth,
           backgroundColor: "var(--bg-elev)",
           borderColor: "var(--line)",
           boxShadow: "var(--shadow-md)",
@@ -68,13 +82,13 @@ export function Canvas({ workspace, pageId, scope }: CanvasProps) {
               color: "var(--ink-4)",
             }}
           >
-            🔒 example.com/
+            🔒 {domain}/
           </div>
           <span
             className="text-xs font-mono uppercase"
             style={{ color: "var(--ink-4)" }}
           >
-            1240w
+            {deviceWidth}w
           </span>
         </div>
 

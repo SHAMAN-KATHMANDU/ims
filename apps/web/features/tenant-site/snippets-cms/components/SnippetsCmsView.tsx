@@ -29,6 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useSnippetsList,
   useCreateSnippet,
@@ -38,8 +39,11 @@ import type { SnippetItem } from "../types";
 
 export function SnippetsCmsView() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [createOpen, setCreateOpen] = useState(false);
-  const snippetsQuery = useSnippetsList({ search });
+  const snippetsQuery = useSnippetsList({
+    search: debouncedSearch || undefined,
+  });
   const deleteSnippet = useDeleteSnippet();
   const { toast } = useToast();
 
@@ -63,29 +67,23 @@ export function SnippetsCmsView() {
         title="Snippets"
         description="Reusable content blocks. Edit once, update everywhere."
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Code className="h-4 w-4 mr-2" />
-              New code snippet
-            </Button>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New snippet
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create snippet</DialogTitle>
-                  <DialogDescription>
-                    Create a new reusable snippet to use across pages.
-                  </DialogDescription>
-                </DialogHeader>
-                <CreateSnippetForm onSuccess={() => setCreateOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New snippet
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create snippet</DialogTitle>
+                <DialogDescription>
+                  Create a new reusable snippet to use across pages.
+                </DialogDescription>
+              </DialogHeader>
+              <CreateSnippetForm onSuccess={() => setCreateOpen(false)} />
+            </DialogContent>
+          </Dialog>
         }
       />
 
@@ -161,22 +159,19 @@ function CreateSnippetForm({
       return;
     }
 
-    try {
-      await createMutation.mutateAsync({
+    createMutation.mutate(
+      {
         name: name.trim(),
         slug: slug.trim(),
         type,
         content: type === "block" ? [] : "",
-      });
-      toast({ title: "Snippet created" });
-      onSuccess();
-    } catch (error) {
-      toast({
-        title: "Failed to create snippet",
-        description: error instanceof Error ? error.message : "Try again",
-        variant: "destructive",
-      });
-    }
+      },
+      {
+        onSuccess: () => {
+          onSuccess();
+        },
+      },
+    );
   };
 
   return (

@@ -1,24 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { GeneralTab } from "./tabs/GeneralTab";
 import { TeamTab } from "./tabs/TeamTab";
-import { BillingTab } from "./tabs/BillingTab";
-import { IntegrationsTab } from "./tabs/IntegrationsTab";
 import { APITab } from "./tabs/APITab";
 import { LegalTab } from "./tabs/LegalTab";
 import { AdvancedTab } from "./tabs/AdvancedTab";
 
-type TabKey =
-  | "general"
-  | "team"
-  | "billing"
-  | "integrations"
-  | "api"
-  | "legal"
-  | "advanced";
+type TabKey = "general" | "team" | "developer" | "legal" | "advanced";
 
 export function SettingsView() {
   const [activeTab, setActiveTab] = useState<TabKey>("general");
@@ -26,9 +16,7 @@ export function SettingsView() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: "general", label: "General" },
     { key: "team", label: "Team & permissions" },
-    { key: "billing", label: "Billing" },
-    { key: "integrations", label: "Integrations" },
-    { key: "api", label: "API & webhooks" },
+    { key: "developer", label: "Developer" },
     { key: "legal", label: "Legal" },
     { key: "advanced", label: "Advanced" },
   ];
@@ -59,9 +47,7 @@ export function SettingsView() {
         <div className="space-y-4">
           {activeTab === "general" && <GeneralTab />}
           {activeTab === "team" && <TeamTab />}
-          {activeTab === "billing" && <BillingTab />}
-          {activeTab === "integrations" && <IntegrationsTab />}
-          {activeTab === "api" && <APITab />}
+          {activeTab === "developer" && <APITab />}
           {activeTab === "legal" && <LegalTab />}
           {activeTab === "advanced" && <AdvancedTab />}
         </div>

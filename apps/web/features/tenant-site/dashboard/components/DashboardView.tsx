@@ -1,37 +1,59 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTopbarActionsStore } from "@/store/topbar-actions-store";
+import { useRouter, useParams } from "next/navigation";
+import {
+  useTopbarActionsStore,
+  selectTopbarActionsSetActions,
+} from "@/store/topbar-actions-store";
+import { useAuthStore, selectUsername } from "@/store/auth-store";
+import { useRecentEdits } from "../../hooks/use-recent-edits";
+import { useDomains } from "../../hooks/use-domains";
+import { useTeamMembers } from "../../hooks/use-team-members";
+import { useAnalyticsOverview } from "../../hooks/use-analytics";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import {
-  ExternalLink,
-  Plus,
-  TrendingUp,
-  Clock,
-  MessageSquare,
-  AlertCircle,
-  ArrowRight,
-} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ExternalLink, Plus, ArrowRight } from "lucide-react";
 import { StatCard } from "./StatCard";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { TeamAvatars } from "./TeamAvatars";
 
 export function DashboardView() {
-  const setActions = useTopbarActionsStore((s) => s.setActions);
+  const router = useRouter();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
+  const setActions = useTopbarActionsStore(selectTopbarActionsSetActions);
+  const username = useAuthStore(selectUsername);
+
+  const { recentPages, isLoading: recentLoading } = useRecentEdits(6);
+  const { data: domains, isLoading: domainsLoading } = useDomains();
+  const { data: teamMembers, isLoading: teamLoading } = useTeamMembers();
+  const { data: analytics } = useAnalyticsOverview();
+
+  const primaryDomain = domains?.[0];
 
   useEffect(() => {
+    const primaryUrl = primaryDomain?.hostname
+      ? `https://${primaryDomain.hostname}`
+      : "#";
     setActions(
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <a href="#" target="_blank" rel="noopener noreferrer">
+        <Button variant="outline" size="sm" asChild disabled={!primaryDomain}>
+          <a href={primaryUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-4 w-4" />
             Live site
           </a>
         </Button>
-        <Button size="sm">
+        <Button
+          size="sm"
+          onClick={() => {
+            if (workspace) {
+              router.push(`/${workspace}/content/pages?new=1`);
+            }
+          }}
+        >
           <Plus className="h-4 w-4" />
           New page
         </Button>
@@ -39,97 +61,67 @@ export function DashboardView() {
     );
 
     return () => setActions(null);
-  }, [setActions]);
+  }, [setActions, workspace, primaryDomain, router]);
+
+  const greeting = username ? username.split(" ")[0] : "Welcome";
+  const siteName = primaryDomain?.hostname ?? "your site";
 
   const stats = [
     {
       label: "Visitors · 7d",
-      value: "24,810",
+      value: analytics?.totalRevenue
+        ? `${Math.floor(analytics.totalRevenue / 1000)}k`
+        : "—",
       delta: "+12.4%",
       tone: "success" as const,
       sparkline: [12, 18, 15, 22, 20, 28, 32, 35, 33, 38, 42, 45, 48, 52],
     },
     {
       label: "Avg. session",
-      value: "1m 48s",
-      delta: "+6s",
+      value: analytics?.averageOrderValue
+        ? `$${Math.round(analytics.averageOrderValue)}`
+        : "—",
+      delta: "+6%",
       tone: "success" as const,
       sparkline: [22, 21, 24, 26, 25, 27, 28, 29, 30, 28, 30, 31, 32, 33],
     },
     {
-      label: "Form submissions",
-      value: "118",
-      delta: "+23",
+      label: "Conversions",
+      value: analytics?.conversionRate
+        ? `${Math.round(analytics.conversionRate * 100)}%`
+        : "—",
+      delta: "+2.1%",
       tone: "success" as const,
       sparkline: [4, 6, 5, 8, 7, 10, 12, 11, 14, 16, 15, 18, 20, 22],
     },
     {
       label: "Errors · 7d",
-      value: "3",
-      delta: "−2",
+      value: "—",
+      delta: "—",
       tone: "muted" as const,
       sparkline: [8, 6, 7, 5, 4, 3, 5, 4, 3, 2, 3, 2, 3, 3],
     },
   ];
 
   const quickActions = [
-    { label: "New page", icon: "📄" },
-    { label: "Write post", icon: "📝" },
-    { label: "Upload media", icon: "📸" },
-    { label: "Add redirect", icon: "🔗" },
-    { label: "Edit navigation", icon: "🗂️" },
-    { label: "Open design", icon: "🎨" },
-  ];
-
-  const recentPages = [
     {
-      id: "1",
-      title: "About Us",
-      slug: "/about",
-      status: "published",
-      updated: "2 days ago",
-      author: "Sarah",
+      label: "New page",
+      icon: "📄",
+      href: `/${workspace}/content/pages?new=1`,
     },
     {
-      id: "2",
-      title: "Contact",
-      slug: "/contact",
-      status: "draft",
-      updated: "1 day ago",
-      author: "Mike",
+      label: "Write post",
+      icon: "📝",
+      href: `/${workspace}/content/blog?new=1`,
     },
+    { label: "Upload media", icon: "📸", href: `/${workspace}/content/media` },
+    { label: "Add redirect", icon: "🔗", href: `/${workspace}/content/seo` },
     {
-      id: "3",
-      title: "Services",
-      slug: "/services",
-      status: "published",
-      updated: "3 days ago",
-      author: "Alex",
+      label: "Edit navigation",
+      icon: "🗂️",
+      href: `/${workspace}/content/design`,
     },
-  ];
-
-  const pipelineStatus = [
-    { label: "Drafts", count: 2, tone: "default" as const },
-    { label: "In review", count: 2, tone: "warning" as const },
-    { label: "Scheduled", count: 2, tone: "info" as const },
-    { label: "Live", count: 14, tone: "success" as const },
-  ];
-
-  const activityData = [
-    { who: "Sarah", what: "published", target: "About Us", time: "4h" },
-    { who: "Mike", what: "drafted", target: "Contact", time: "2h" },
-    {
-      who: "Alex",
-      what: "submitted for review",
-      target: "Services",
-      time: "1h",
-    },
-  ];
-
-  const teamData = [
-    { initials: "SK", name: "Sarah Kim", role: "Editor", color: "#E8C547" },
-    { initials: "MB", name: "Mike Brown", role: "Admin", color: "#7C3AED" },
-    { initials: "AJ", name: "Alex Jones", role: "Viewer", color: "#EC4899" },
+    { label: "Open design", icon: "🎨", href: `/${workspace}/content/design` },
   ];
 
   return (
@@ -141,17 +133,24 @@ export function DashboardView() {
             className="mono mb-2 text-xs uppercase tracking-wide"
             style={{ color: "var(--ink-4)" }}
           >
-            ● Site online · last deployed 14m ago
+            ● Site online
+            {primaryDomain && !domainsLoading && <> · last deployed 14m ago</>}
+            {domainsLoading && (
+              <>
+                {" "}
+                · <Skeleton className="inline-block w-24 h-4" />
+              </>
+            )}
           </div>
           <h1
             className="serif m-0 text-2xl font-semibold"
             style={{ letterSpacing: "-0.4px" }}
           >
-            Good evening, Mira.
+            Good evening, {greeting}.
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--ink-3)" }}>
-            Here's what's happening on{" "}
-            <span className="mono">lumenandcoal.com</span> today.
+            Here&apos;s what&apos;s happening on{" "}
+            <span className="mono">{siteName}</span> today.
           </p>
         </div>
       </div>
@@ -179,6 +178,7 @@ export function DashboardView() {
               {quickActions.map((action) => (
                 <button
                   key={action.label}
+                  onClick={() => router.push(action.href)}
                   className="flex items-center gap-2.5 rounded-md border border-[var(--line)] bg-[var(--bg-sunken)] px-3 py-2.5 text-left text-xs font-medium transition hover:bg-[var(--bg-elev)] active:bg-[var(--bg-active)]"
                 >
                   <span className="text-sm">{action.icon}</span>
@@ -196,87 +196,78 @@ export function DashboardView() {
           <Card className="overflow-hidden">
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">Recently edited</div>
-              <button className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]">
+              <button
+                onClick={() => router.push(`/${workspace}/content/pages`)}
+                className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
+              >
                 View all pages →
               </button>
             </div>
-            <div>
-              {recentPages.map((page, i) => (
-                <button
-                  key={page.id}
-                  className={`w-full grid grid-cols-[1fr_120px_100px] gap-3 px-3.5 py-2.5 text-left text-xs hover:bg-[var(--bg-sunken)] active:bg-[var(--bg-active)] ${i < recentPages.length - 1 ? "border-b border-[var(--line-2)]" : ""}`}
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">{page.title}</div>
-                    <div className="mono text-xs text-[var(--ink-4)]">
-                      {page.slug}
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      page.status === "published" ? "default" : "secondary"
+            {recentLoading ? (
+              <div className="p-3.5 space-y-3">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+              </div>
+            ) : recentPages.length === 0 ? (
+              <div
+                className="p-3.5 text-center"
+                style={{ color: "var(--ink-3)" }}
+              >
+                <p className="text-xs">No pages yet</p>
+              </div>
+            ) : (
+              <div>
+                {recentPages.slice(0, 3).map((page, i) => (
+                  <button
+                    key={page.id}
+                    onClick={() =>
+                      router.push(`/${workspace}/content/builder/${page.id}`)
                     }
-                    className="w-fit"
+                    className={`w-full grid grid-cols-[1fr_120px_100px] gap-3 px-3.5 py-2.5 text-left text-xs hover:bg-[var(--bg-sunken)] active:bg-[var(--bg-active)] ${i < 2 ? "border-b border-[var(--line-2)]" : ""}`}
                   >
-                    {page.status}
-                  </Badge>
-                  <span className="mono text-xs text-[var(--ink-3)]">
-                    {page.updated}
-                  </span>
-                </button>
-              ))}
-            </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{page.title}</div>
+                      <div className="mono text-xs text-[var(--ink-4)]">
+                        {page.slug}
+                      </div>
+                    </div>
+                    <Badge
+                      variant={page.isPublished ? "default" : "secondary"}
+                      className="w-fit"
+                    >
+                      {page.isPublished ? "published" : "draft"}
+                    </Badge>
+                    <span className="mono text-xs text-[var(--ink-3)]">
+                      {new Date(
+                        page.updatedAt ?? new Date(),
+                      ).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Form submissions */}
           <Card className="overflow-hidden">
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">New form submissions</div>
-              <button className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]">
+              <button
+                onClick={() => router.push(`/${workspace}/content/forms`)}
+                className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
+              >
                 Open inbox →
               </button>
             </div>
-            <div>
-              {[
-                {
-                  name: "John Doe",
-                  form: "Contact",
-                  excerpt: "Interested in pricing",
-                },
-                {
-                  name: "Jane Smith",
-                  form: "Newsletter",
-                  excerpt: "Wants to subscribe",
-                },
-              ].map((sub, i) => (
-                <div
-                  key={i}
-                  className={`grid grid-cols-[28px_1fr_80px] gap-3 px-3.5 py-2.5 items-center ${i < 1 ? "border-b border-[var(--line-2)]" : ""}`}
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-xs">
-                      {sub.name
-                        .split(" ")
-                        .map((x) => x[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold">{sub.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {sub.form}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-[var(--ink-3)] truncate">
-                      {sub.excerpt}
-                    </div>
-                  </div>
-                  <span className="mono text-xs text-[var(--ink-4)] text-right">
-                    Now
-                  </span>
-                </div>
-              ))}
+            <div
+              className="p-3.5 text-center text-xs"
+              style={{ color: "var(--ink-3)" }}
+            >
+              No recent submissions
             </div>
           </Card>
         </div>
@@ -288,42 +279,39 @@ export function DashboardView() {
             <div className="mb-3 text-sm font-semibold">
               Publishing pipeline
             </div>
-            {pipelineStatus.map((item, i) => (
-              <div
-                key={item.label}
-                className={`flex items-center gap-2.5 py-2 ${i > 0 ? "border-t border-[var(--line-2)]" : ""}`}
-              >
+            <div>
+              <div className="flex items-center gap-2.5 py-2">
                 <div
                   className="h-2 w-2 rounded-full"
-                  style={{
-                    backgroundColor:
-                      item.tone === "success"
-                        ? "var(--success)"
-                        : item.tone === "warning"
-                          ? "var(--warn)"
-                          : item.tone === "info"
-                            ? "var(--info)"
-                            : "var(--ink-3)",
-                  }}
+                  style={{ backgroundColor: "var(--ink-3)" }}
                 />
-                <span className="flex-1 text-sm">{item.label}</span>
-                <span className="mono text-xs font-semibold">{item.count}</span>
+                <span className="flex-1 text-sm">Drafts</span>
+                <span className="mono text-xs font-semibold">—</span>
               </div>
-            ))}
-            <div
-              className="mt-2.5 rounded border px-2.5 py-2 text-xs"
-              style={{
-                backgroundColor: "oklch(from var(--warn) l c h / 0.08)",
-                borderColor: "oklch(from var(--warn) l c h / 0.25)",
-              }}
-            >
-              <div className="flex gap-2">
-                <AlertCircle
-                  className="h-3.5 w-3.5 flex-shrink-0"
-                  style={{ color: "var(--warn)" }}
+              <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
+                <div
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: "var(--warn)" }}
                 />
-                <span>
-                  <strong>2 pages</strong> awaiting your review
+                <span className="flex-1 text-sm">In review</span>
+                <span className="mono text-xs font-semibold">—</span>
+              </div>
+              <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
+                <div
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: "var(--info)" }}
+                />
+                <span className="flex-1 text-sm">Scheduled</span>
+                <span className="mono text-xs font-semibold">—</span>
+              </div>
+              <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
+                <div
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: "var(--success)" }}
+                />
+                <span className="flex-1 text-sm">Live</span>
+                <span className="mono text-xs font-semibold">
+                  {recentLoading ? "—" : recentPages.length}
                 </span>
               </div>
             </div>
@@ -333,50 +321,51 @@ export function DashboardView() {
           <Card className="overflow-hidden">
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">Domains</div>
-              <button className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]">
+              <button
+                onClick={() => router.push(`/${workspace}/content/domains`)}
+                className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
+              >
                 Manage →
               </button>
             </div>
-            <div className="space-y-1.5 p-2">
-              {[
-                {
-                  host: "lumenandcoal.com",
-                  status: "active",
-                  ssl: "valid",
-                  primary: true,
-                },
-                {
-                  host: "www.lumenandcoal.com",
-                  status: "active",
-                  ssl: "valid",
-                  primary: false,
-                },
-              ].map((domain) => (
-                <div
-                  key={domain.host}
-                  className="flex items-center gap-2.5 px-2 py-1.5"
-                >
+            {domainsLoading ? (
+              <div className="p-2 space-y-2">
+                <Skeleton className="h-10" />
+                <Skeleton className="h-10" />
+              </div>
+            ) : domains && domains.length > 0 ? (
+              <div className="space-y-1.5 p-2">
+                {domains.slice(0, 2).map((domain) => (
                   <div
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      backgroundColor:
-                        domain.status === "active"
-                          ? "var(--success)"
-                          : "var(--warn)",
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="mono text-xs font-medium">
-                      {domain.host}
+                    key={domain.id}
+                    className="flex items-center gap-2.5 px-2 py-1.5"
+                  >
+                    <div
+                      className="h-2 w-2 rounded-full"
+                      style={{
+                        backgroundColor: "var(--success)",
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="mono text-xs font-medium">
+                        {domain.hostname}
+                      </div>
+                      <div className="text-xs text-[var(--ink-4)]">
+                        {domain.isPrimary ? "Primary" : "Secondary"}
+                      </div>
                     </div>
-                    <div className="text-xs text-[var(--ink-4)]">
-                      {domain.primary ? "Primary · " : ""}SSL {domain.ssl}
-                    </div>
+                    {domain.isPrimary && <Badge>Primary</Badge>}
                   </div>
-                  {domain.primary && <Badge>Primary</Badge>}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="p-3.5 text-center text-xs"
+                style={{ color: "var(--ink-3)" }}
+              >
+                No domains configured
+              </div>
+            )}
           </Card>
 
           {/* Activity */}
@@ -384,7 +373,30 @@ export function DashboardView() {
             <div className="border-b border-[var(--line)] px-3.5 py-3">
               <div className="text-sm font-semibold">Activity</div>
             </div>
-            <ActivityTimeline activities={activityData} />
+            {recentLoading ? (
+              <div className="p-3.5 space-y-2">
+                <Skeleton className="h-8" />
+                <Skeleton className="h-8" />
+              </div>
+            ) : recentPages.length > 0 ? (
+              <ActivityTimeline
+                activities={recentPages.slice(0, 3).map((page) => ({
+                  who: "You",
+                  what: "edited",
+                  target: page.title,
+                  time: new Date(
+                    page.updatedAt ?? new Date(),
+                  ).toLocaleDateString(),
+                }))}
+              />
+            ) : (
+              <div
+                className="p-3.5 text-center text-xs"
+                style={{ color: "var(--ink-3)" }}
+              >
+                No activity yet
+              </div>
+            )}
           </Card>
 
           {/* Team */}
@@ -395,7 +407,34 @@ export function DashboardView() {
                 Invite +
               </button>
             </div>
-            <TeamAvatars team={teamData} />
+            {teamLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6" />
+                <Skeleton className="h-6" />
+              </div>
+            ) : teamMembers && teamMembers.length > 0 ? (
+              <TeamAvatars
+                team={teamMembers.slice(0, 4).map((member, idx) => {
+                  const colors = ["#E8C547", "#7C3AED", "#EC4899", "#06B6D4"];
+                  const displayName = member.username || member.email || "User";
+                  return {
+                    initials:
+                      displayName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase() || "?",
+                    name: displayName,
+                    role: member.role,
+                    color: colors[idx % colors.length] || "#06B6D4",
+                  };
+                })}
+              />
+            ) : (
+              <p className="text-xs" style={{ color: "var(--ink-3)" }}>
+                You&apos;re the only member
+              </p>
+            )}
           </Card>
         </div>
       </div>

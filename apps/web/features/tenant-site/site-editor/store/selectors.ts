@@ -19,6 +19,9 @@ export const selectSelectedId = (s: EditorState) => s.selectedId;
 export const selectHoveredBlockId = (s: EditorState) => s.hoveredBlockId;
 export const selectHoveredBlockRect = (s: EditorState) => s.hoveredBlockRect;
 export const selectSelectedBlockRect = (s: EditorState) => s.selectedBlockRect;
+export const selectDevice = (s: EditorState) => s.device;
+export const selectLastSaveTime = (s: EditorState) => s.lastSaveTime;
+export const selectSlashMenuAnchor = (s: EditorState) => s.slashMenuAnchor;
 
 // Computed
 export const selectSelectedBlock = (s: EditorState) => {
@@ -39,6 +42,10 @@ export const selectSetHoveredBlockRect = (s: EditorState) =>
   s.setHoveredBlockRect;
 export const selectSetSelectedBlockRect = (s: EditorState) =>
   s.setSelectedBlockRect;
+export const selectSetDevice = (s: EditorState) => s.setDevice;
+export const selectSetLastSaveTime = (s: EditorState) => s.setLastSaveTime;
+export const selectSetSlashMenuAnchor = (s: EditorState) =>
+  s.setSlashMenuAnchor;
 
 export const selectAddBlock = (s: EditorState) => s.addBlock;
 export const selectRemoveBlock = (s: EditorState) => s.removeBlock;

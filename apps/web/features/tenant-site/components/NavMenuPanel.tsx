@@ -11,7 +11,7 @@
  * Single dirty flag + save action keeps the workflow coherent.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -37,8 +37,6 @@ import { useCan } from "@/features/permissions";
 import { MediaPickerField } from "@/features/media";
 import {
   defaultHeaderNavConfig,
-  NavConfigSchema,
-  NavItemsOnlySchema,
   type NavConfig,
   type NavCtaStyle,
   type NavHeaderBehavior,
@@ -53,18 +51,6 @@ function isEditableKind(kind: string): kind is EditableKind {
   return kind === "link" || kind === "cta" || kind === "pages-auto";
 }
 
-function coerceHeaderConfig(raw: unknown): NavConfig {
-  const parsed = NavConfigSchema.safeParse(raw);
-  if (parsed.success) return parsed.data;
-  return defaultHeaderNavConfig();
-}
-
-function coerceMobileDrawerItems(raw: unknown): NavItem[] {
-  const parsed = NavItemsOnlySchema.safeParse(raw);
-  if (parsed.success) return parsed.data.items;
-  return [];
-}
-
 function move<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
   const copy = [...arr];
@@ -77,9 +63,6 @@ export function NavMenuPanel({ disabled }: { disabled?: boolean }) {
   const { toast } = useToast();
   const { allowed: canUpdate } = useCan("WEBSITE.NAV_MENUS.UPDATE");
   const isDisabled = disabled || !canUpdate;
-
-  const headerRow = null;
-  const mobileDrawerRow = null;
 
   const [config, setConfig] = useState<NavConfig>(defaultHeaderNavConfig);
   const [mobileDrawerItems, setMobileDrawerItems] = useState<NavItem[]>([]);

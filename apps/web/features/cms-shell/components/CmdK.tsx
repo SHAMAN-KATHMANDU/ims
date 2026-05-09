@@ -2,7 +2,6 @@
 
 import { useRouter, useParams } from "next/navigation";
 import {
-  Command,
   CommandDialog,
   CommandInput,
   CommandList,
@@ -10,8 +9,13 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
-import { useCmdKStore } from "@/store/cmdk-store";
-import { useThemeStore } from "@/store/theme-store";
+import {
+  useCmdKStore,
+  selectCmdKOpen,
+  selectCmdKSetOpen,
+} from "@/store/cmdk-store";
+import { useThemeStore, selectThemeToggle } from "@/store/theme-store";
+import { useRecentEdits } from "../../tenant-site/hooks/use-recent-edits";
 import { Icon, type IconName } from "../icons";
 
 interface CmdItem {
@@ -19,6 +23,8 @@ interface CmdItem {
   icon?: IconName;
   action?: string;
   target?: string;
+  pageId?: string;
+  postId?: string;
   kbd?: string;
 }
 
@@ -27,7 +33,7 @@ interface CmdGroup {
   items: CmdItem[];
 }
 
-const CMDK_ITEMS: CmdGroup[] = [
+const getStaticCmdGroups = (): CmdGroup[] => [
   {
     group: "Jump to",
     items: [
@@ -39,7 +45,7 @@ const CMDK_ITEMS: CmdGroup[] = [
       { label: "Media", icon: "media", target: "media" },
       { label: "Collections", icon: "collections", target: "collections" },
       { label: "Offers", icon: "offers", target: "offers" },
-      { label: "Navigation", icon: "navigation", target: "navigation" },
+      { label: "Templates", icon: "templates", target: "templates" },
       { label: "Design", icon: "design", target: "design" },
       { label: "Domains", icon: "domains", target: "domains" },
       { label: "SEO & Redirects", icon: "seo", target: "seo" },
@@ -55,26 +61,69 @@ const CMDK_ITEMS: CmdGroup[] = [
       { label: "Toggle theme", icon: "design", action: "theme", kbd: "⌘ ⇧ L" },
     ],
   },
-  {
-    group: "Recent",
-    items: [
-      { label: "Home · /", icon: "pages", target: "builder" },
-      { label: "Menu · /menu", icon: "pages", target: "builder" },
-      { label: "Why we cook with almond wood", icon: "blog", target: "post" },
-    ],
-  },
 ];
 
 export function CmdK() {
   const router = useRouter();
   const params = useParams<{ workspace: string }>();
   const workspace = params?.workspace ?? "";
-  const open = useCmdKStore((state) => state.open);
-  const setOpen = useCmdKStore((state) => state.setOpen);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const open = useCmdKStore(selectCmdKOpen);
+  const setOpen = useCmdKStore(selectCmdKSetOpen);
+  const toggleTheme = useThemeStore(selectThemeToggle);
+  const {
+    recentPages,
+    recentPosts,
+    isLoading: recentLoading,
+  } = useRecentEdits(5);
+
+  const recentItems: CmdItem[] = [
+    ...recentPages.map((page) => ({
+      label: `${page.title} · ${page.slug}`,
+      icon: "pages" as IconName,
+      target: "builder",
+      pageId: page.id,
+    })),
+    ...recentPosts.map((post) => ({
+      label: post.title,
+      icon: "blog" as IconName,
+      target: "post",
+      postId: post.id,
+    })),
+  ]
+    .sort((a, b) => {
+      const getTime = (item: CmdItem) => {
+        if (item.pageId) {
+          const page = recentPages.find((p) => p.id === item.pageId);
+          return page ? new Date(page.updatedAt ?? 0).getTime() : 0;
+        }
+        if (item.postId) {
+          const post = recentPosts.find((p) => p.id === item.postId);
+          return post ? new Date(post.updatedAt ?? 0).getTime() : 0;
+        }
+        return 0;
+      };
+      return getTime(b) - getTime(a);
+    })
+    .slice(0, 5);
+
+  const cmokGroups: CmdGroup[] = [
+    ...getStaticCmdGroups(),
+    ...(recentItems.length > 0 && !recentLoading
+      ? [
+          {
+            group: "Recent",
+            items: recentItems,
+          },
+        ]
+      : []),
+  ];
 
   const handleSelect = (item: CmdItem) => {
-    if (item.target && workspace) {
+    if (item.pageId && workspace) {
+      router.push(`/${workspace}/content/builder/${item.pageId}`);
+    } else if (item.postId && workspace) {
+      router.push(`/${workspace}/content/post/${item.postId}`);
+    } else if (item.target && workspace) {
       router.push(`/${workspace}/content/${item.target}`);
     } else if (item.action === "theme") {
       toggleTheme();
@@ -86,13 +135,13 @@ export function CmdK() {
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Search or jump…" />
       <CommandList>
-        {CMDK_ITEMS.map((group, idx) => (
+        {cmokGroups.map((group, idx) => (
           <div key={group.group}>
             {idx > 0 && <CommandSeparator />}
             <CommandGroup heading={group.group}>
               {group.items.map((item) => (
                 <CommandItem
-                  key={item.label}
+                  key={`${item.label}-${item.pageId || item.postId || ""}`}
                   value={item.label}
                   onSelect={() => handleSelect(item)}
                   style={{ cursor: "pointer" }}

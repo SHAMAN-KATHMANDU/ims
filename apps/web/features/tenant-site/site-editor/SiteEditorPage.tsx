@@ -36,8 +36,8 @@ export function SiteEditorPage({
   scope,
 }: SiteEditorPageProps) {
   const { data: layout, isLoading } = useSiteLayoutQuery(scope);
-  const blocks = useEditorStore(selectBlocks);
-  const load = useEditorStore((s) => s.load);
+  const _blocks = useEditorStore(selectBlocks);
+  const load = useEditorStore(selectLoad);
   const loadedRef = useRef(false);
 
   // Load the layout into store ONCE, guarding against repeated refetches
@@ -80,7 +80,7 @@ export function SiteEditorPage({
       <div className="flex-1 flex min-h-0">
         <LayersPanel />
         <main className="flex-1 min-w-0 overflow-auto">
-          <Canvas workspace={workspace} pageId={pageId} scope={scope} />
+          <Canvas scope={scope} />
         </main>
         <InspectorPanel workspace={workspace} pageId={pageId} scope={scope} />
       </div>

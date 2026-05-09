@@ -5,7 +5,6 @@ import { Palette, Zap, Layout, Type, RotateCcw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
-import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,22 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
 import { useSiteConfig, useUpdateSiteConfig } from "../hooks/use-design";
-
-interface ThemeTokens {
-  colors?: Record<string, string>;
-  typography?: {
-    fontFamily?: string;
-    baseFontSize?: number;
-  };
-  layout?: {
-    containerWidth?: string;
-    sectionSpacing?: string;
-    borderRadius?: number;
-  };
-  motion?: {
-    enableTransitions?: boolean;
-  };
-}
+import type { ThemeTokens } from "@repo/shared";
 
 export function DesignThemeView() {
   const configQuery = useSiteConfig();
@@ -39,15 +23,16 @@ export function DesignThemeView() {
   const { toast } = useToast();
 
   const [isDirty, setIsDirty] = useState(false);
-  const [localTheme, setLocalTheme] = useState<ThemeTokens>(() => {
-    const currentConfig = configQuery.data;
-    return (currentConfig?.themeTokens as ThemeTokens) || {};
-  });
+  const [localTheme, setLocalTheme] = useState<ThemeTokens | null>(null);
+
+  const currentTheme =
+    localTheme || (configQuery.data?.themeTokens as ThemeTokens | undefined);
 
   const handleSave = async (): Promise<void> => {
+    if (!localTheme) return;
     try {
       await updateMutation.mutateAsync({
-        themeTokens: localTheme as Record<string, unknown>,
+        themeTokens: localTheme as unknown as Record<string, unknown>,
       });
       setIsDirty(false);
       toast({ title: "Theme saved successfully" });
@@ -61,38 +46,76 @@ export function DesignThemeView() {
   };
 
   const handleRevert = (): void => {
-    const currentConfig = configQuery.data;
-    setLocalTheme((currentConfig?.themeTokens as ThemeTokens) || {});
+    setLocalTheme(null);
     setIsDirty(false);
   };
 
   const handleColorChange = (key: string, value: string): void => {
+    if (!currentTheme) return;
     setLocalTheme((prev) => ({
-      ...prev,
+      ...(prev || currentTheme),
       colors: {
-        ...(prev.colors || {}),
+        ...((prev || currentTheme).colors || {}),
         [key]: value,
       },
     }));
     setIsDirty(true);
   };
 
-  const handleFontChange = (family: string): void => {
+  const handleTypographyChange = (
+    key: keyof ThemeTokens["typography"],
+    value: unknown,
+  ): void => {
+    if (!currentTheme) return;
     setLocalTheme((prev) => ({
-      ...prev,
+      ...(prev || currentTheme),
       typography: {
-        ...(prev.typography || {}),
-        fontFamily: family,
+        ...((prev || currentTheme).typography || {}),
+        [key]: value,
       },
     }));
     setIsDirty(true);
   };
 
-  const handleLayoutChange = (key: string, value: string | number): void => {
+  const handleSpacingChange = (
+    key: keyof ThemeTokens["spacing"],
+    value: unknown,
+  ): void => {
+    if (!currentTheme) return;
     setLocalTheme((prev) => ({
-      ...prev,
-      layout: {
-        ...(prev.layout || {}),
+      ...(prev || currentTheme),
+      spacing: {
+        ...((prev || currentTheme).spacing || {}),
+        [key]: value,
+      },
+    }));
+    setIsDirty(true);
+  };
+
+  const handleShapeChange = (
+    key: keyof ThemeTokens["shape"],
+    value: unknown,
+  ): void => {
+    if (!currentTheme) return;
+    setLocalTheme((prev) => ({
+      ...(prev || currentTheme),
+      shape: {
+        ...((prev || currentTheme).shape || {}),
+        [key]: value,
+      },
+    }));
+    setIsDirty(true);
+  };
+
+  const handleMotionChange = (
+    key: keyof ThemeTokens["motion"],
+    value: unknown,
+  ): void => {
+    if (!currentTheme) return;
+    setLocalTheme((prev) => ({
+      ...(prev || currentTheme),
+      motion: {
+        ...((prev || currentTheme).motion || {}),
         [key]: value,
       },
     }));
@@ -106,6 +129,18 @@ export function DesignThemeView() {
       </div>
     );
   }
+
+  if (!currentTheme) {
+    return (
+      <div className="flex items-center justify-center h-96 text-muted-foreground">
+        No theme data available.
+      </div>
+    );
+  }
+
+  const colorKeys = Object.keys(currentTheme.colors) as Array<
+    keyof typeof currentTheme.colors
+  >;
 
   return (
     <div className="space-y-6">
@@ -140,33 +175,25 @@ export function DesignThemeView() {
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Color Palette</h3>
+              <h3 className="font-semibold text-sm">Colors</h3>
             </div>
 
             <div className="space-y-2">
-              {[
-                "primary",
-                "secondary",
-                "accent",
-                "background",
-                "foreground",
-              ].map((colorKey) => (
+              {colorKeys.map((colorKey) => (
                 <div key={colorKey} className="flex items-center gap-3">
                   <input
                     type="color"
-                    value={
-                      (localTheme.colors?.[colorKey] as string) || "#000000"
-                    }
+                    value={currentTheme.colors[colorKey]}
                     onChange={(e) =>
                       handleColorChange(colorKey, e.target.value)
                     }
                     className="h-8 w-8 rounded border border-border cursor-pointer"
                   />
-                  <Label className="min-w-24 text-sm capitalize">
+                  <Label className="min-w-20 text-sm capitalize">
                     {colorKey}
                   </Label>
-                  <code className="text-xs text-muted-foreground font-mono">
-                    {(localTheme.colors?.[colorKey] as string) || "#000000"}
+                  <code className="text-xs text-muted-foreground font-mono flex-1">
+                    {currentTheme.colors[colorKey]}
                   </code>
                 </div>
               ))}
@@ -180,91 +207,182 @@ export function DesignThemeView() {
               <h3 className="font-semibold text-sm">Typography</h3>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm">Font family</Label>
-              <Select
-                value={localTheme.typography?.fontFamily || "sans"}
-                onValueChange={handleFontChange}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sans">Söhne (Sans)</SelectItem>
-                  <SelectItem value="serif">Tiempos (Serif)</SelectItem>
-                  <SelectItem value="mono">JetBrains Mono</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Heading font</Label>
+                <Input
+                  value={currentTheme.typography.heading.family}
+                  onChange={(e) =>
+                    handleTypographyChange("heading", {
+                      ...currentTheme.typography.heading,
+                      family: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., Georgia, serif"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Body font</Label>
+                <Input
+                  value={currentTheme.typography.body.family}
+                  onChange={(e) =>
+                    handleTypographyChange("body", {
+                      ...currentTheme.typography.body,
+                      family: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., system-ui, sans-serif"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm">Scale ratio</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="2"
+                    value={currentTheme.typography.scaleRatio}
+                    onChange={(e) =>
+                      handleTypographyChange(
+                        "scaleRatio",
+                        parseFloat(e.target.value),
+                      )
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">Base size (px)</Label>
+                  <Input
+                    type="number"
+                    min="12"
+                    max="24"
+                    value={currentTheme.typography.baseSize}
+                    onChange={(e) =>
+                      handleTypographyChange(
+                        "baseSize",
+                        parseInt(e.target.value),
+                      )
+                    }
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Layout */}
+          {/* Spacing */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Layout className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm">Layout</h3>
+              <h3 className="font-semibold text-sm">Spacing</h3>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-sm">Container width</Label>
-                <Select
-                  value={
-                    (localTheme.layout?.containerWidth as string) || "1280px"
+                <Label className="text-sm">Unit (px)</Label>
+                <Input
+                  type="number"
+                  min="2"
+                  max="16"
+                  value={currentTheme.spacing.unit}
+                  onChange={(e) =>
+                    handleSpacingChange("unit", parseInt(e.target.value))
                   }
-                  onValueChange={(v) => handleLayoutChange("containerWidth", v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1024px">1024px</SelectItem>
-                    <SelectItem value="1200px">1200px</SelectItem>
-                    <SelectItem value="1280px">1280px</SelectItem>
-                    <SelectItem value="1440px">1440px</SelectItem>
-                    <SelectItem value="full">Full width</SelectItem>
-                  </SelectContent>
-                </Select>
+                />
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Section spacing</Label>
                 <Select
-                  value={
-                    (localTheme.layout?.sectionSpacing as string) || "generous"
+                  value={currentTheme.spacing.section}
+                  onValueChange={(v) =>
+                    handleSpacingChange(
+                      "section",
+                      v as "compact" | "balanced" | "spacious",
+                    )
                   }
-                  onValueChange={(v) => handleLayoutChange("sectionSpacing", v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tight">Tight</SelectItem>
-                    <SelectItem value="standard">Standard</SelectItem>
-                    <SelectItem value="generous">Generous</SelectItem>
-                    <SelectItem value="editorial">Editorial</SelectItem>
+                    <SelectItem value="compact">Compact</SelectItem>
+                    <SelectItem value="balanced">Balanced</SelectItem>
+                    <SelectItem value="spacious">Spacious</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
+                <Label className="text-sm">Container width (px)</Label>
+                <Input
+                  type="number"
+                  min="640"
+                  max="1600"
+                  value={currentTheme.spacing.container}
+                  onChange={(e) =>
+                    handleSpacingChange("container", parseInt(e.target.value))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Shape */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm">Shape</h3>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
                 <Label className="text-sm">Border radius</Label>
-                <div className="grid grid-cols-5 gap-2">
-                  {[0, 2, 4, 8, 12].map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => handleLayoutChange("borderRadius", r)}
-                      className={`h-8 text-xs font-mono transition-colors ${
-                        (localTheme.layout?.borderRadius as number) === r
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/80 text-muted-foreground"
-                      }`}
-                      style={{ borderRadius: `${r}px` }}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
+                <Select
+                  value={
+                    typeof currentTheme.shape.radius === "number"
+                      ? currentTheme.shape.radius.toString()
+                      : currentTheme.shape.radius
+                  }
+                  onValueChange={(v) => {
+                    const num = parseInt(v);
+                    handleShapeChange("radius", isNaN(num) ? v : num);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sharp">Sharp</SelectItem>
+                    <SelectItem value="soft">Soft</SelectItem>
+                    <SelectItem value="rounded">Rounded</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Button style</Label>
+                <Select
+                  value={currentTheme.shape.buttonStyle}
+                  onValueChange={(v) =>
+                    handleShapeChange(
+                      "buttonStyle",
+                      v as "solid" | "outline" | "pill",
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="outline">Outline</SelectItem>
+                    <SelectItem value="pill">Pill</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -276,24 +394,32 @@ export function DesignThemeView() {
               <h3 className="font-semibold text-sm">Motion</h3>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={localTheme.motion?.enableTransitions ?? true}
-                onChange={(e) => {
-                  setLocalTheme((prev) => ({
-                    ...prev,
-                    motion: {
-                      ...(prev.motion || {}),
-                      enableTransitions: e.target.checked,
-                    },
-                  }));
-                  setIsDirty(true);
-                }}
-                className="h-4 w-4"
-              />
-              <span className="text-sm">Enable smooth transitions</span>
-            </label>
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={currentTheme.motion.enableAnimations}
+                  onChange={(e) =>
+                    handleMotionChange("enableAnimations", e.target.checked)
+                  }
+                  className="h-4 w-4"
+                />
+                <span className="text-sm">Enable animations</span>
+              </label>
+
+              <div className="space-y-2">
+                <Label className="text-sm">Duration (ms)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={currentTheme.motion.duration}
+                  onChange={(e) =>
+                    handleMotionChange("duration", parseInt(e.target.value))
+                  }
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -302,34 +428,74 @@ export function DesignThemeView() {
           <div className="sticky top-6 rounded-lg border border-border overflow-hidden bg-card">
             <div className="p-4 border-b border-border bg-muted/50">
               <div className="text-xs font-mono text-muted-foreground uppercase tracking-wide">
-                Live Theme Preview
+                Live Preview
               </div>
             </div>
 
-            <div className="p-6 space-y-4" style={getPreviewStyles(localTheme)}>
+            <div
+              className="p-6 space-y-4"
+              style={{
+                backgroundColor: currentTheme.colors.background,
+                color: currentTheme.colors.text,
+                fontFamily: currentTheme.typography.body.family,
+              }}
+            >
               <div>
-                <h2 className="text-lg font-serif font-bold mb-1">
+                <h2
+                  className="text-lg font-bold mb-1"
+                  style={{
+                    fontFamily: currentTheme.typography.heading.family,
+                  }}
+                >
                   Design Preview
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p
+                  className="text-sm"
+                  style={{ color: currentTheme.colors.muted }}
+                >
                   Your theme applied in real-time.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button className="px-3 py-2 text-xs font-medium bg-primary text-primary-foreground rounded">
+                <button
+                  className="px-3 py-2 text-xs font-medium rounded text-white"
+                  style={{ backgroundColor: currentTheme.colors.primary }}
+                >
                   Primary CTA
                 </button>
-                <button className="px-3 py-2 text-xs font-medium border border-border text-foreground rounded">
+                <button
+                  className="px-3 py-2 text-xs font-medium rounded"
+                  style={{
+                    backgroundColor: "transparent",
+                    border: `1px solid ${currentTheme.colors.border}`,
+                    color: currentTheme.colors.text,
+                  }}
+                >
                   Secondary
                 </button>
               </div>
 
-              <div className="p-3 rounded border border-border bg-muted/50 space-y-2">
-                <div className="text-xs font-mono text-muted-foreground uppercase">
+              <div
+                className="p-3 rounded space-y-2"
+                style={{
+                  backgroundColor: currentTheme.colors.surface,
+                  border: `1px solid ${currentTheme.colors.border}`,
+                }}
+              >
+                <div
+                  className="text-xs font-mono"
+                  style={{ color: currentTheme.colors.muted }}
+                >
                   Card preview
                 </div>
-                <div className="h-6 rounded bg-accent opacity-20" />
+                <div
+                  className="h-6 rounded"
+                  style={{
+                    backgroundColor: currentTheme.colors.accent,
+                    opacity: 0.2,
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -337,12 +503,4 @@ export function DesignThemeView() {
       </div>
     </div>
   );
-}
-
-function getPreviewStyles(theme: ThemeTokens): React.CSSProperties {
-  return {
-    fontFamily: theme.typography?.fontFamily || "system-ui",
-    backgroundColor: (theme.colors?.background as string) || "transparent",
-    color: (theme.colors?.foreground as string) || "inherit",
-  };
 }

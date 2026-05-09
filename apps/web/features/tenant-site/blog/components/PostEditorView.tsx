@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useTopbarActionsStore } from "@/store/topbar-actions-store";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,88 +17,193 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ChevronLeft, Sparkles, Eye, ChevronDown, Upload } from "lucide-react";
+import {
+  useBlogPostQuery,
+  useUpdateBlogPost,
+  usePublishBlogPost,
+  useBlogCategoriesQuery,
+  type BlogPost,
+} from "../../hooks/use-blog";
 
-interface BlogPost {
-  id: string;
-  title: string;
-  slug: string;
-  subtitle: string;
-  body: string;
-  category: string;
-  author: string;
-  date: string;
-  status: "draft" | "published" | "review" | "scheduled";
-  tags: string[];
-  scheduledDate?: string;
-  visibility: "public" | "members" | "unlisted";
-  metaDescription: string;
+interface TopbarStore {
+  setActions: (actions: React.ReactNode) => void;
 }
+
+const selectSetActions = (s: TopbarStore) => s.setActions;
 
 export function PostEditorView({ postId }: { postId: string }) {
   const router = useRouter();
   const params = useParams();
   const workspace = params.workspace as string;
-  const setActions = useTopbarActionsStore((s) => s.setActions);
+  const setActions = useTopbarActionsStore(selectSetActions);
 
-  // TODO: Fetch post data via useBlogPostQuery hook when available
   const isNew = postId === "new";
-  const [post, setPost] = useState<BlogPost>({
-    id: postId,
-    title: isNew ? "Untitled post" : "Why we cook over almond wood",
-    slug: isNew ? "untitled" : "almond-wood",
-    subtitle: isNew
-      ? ""
-      : "It started, like a lot of things in this kitchen, with a question we couldn't quite stop asking.",
-    body: isNew
-      ? ""
-      : `Almond wood burns differently than oak. It throws less ash, holds heat lower in the firebox, and finishes its perfume sweeter — closer to stone fruit than smoke.
 
-The first night we cooked over it, two things happened. The branzino tasted like a different fish. And every reservation that came in the next morning asked about the smell from the parking lot.`,
-    category: isNew ? "Kitchen" : "Kitchen",
-    author: "Chef Marcus",
-    date: new Date().toISOString().split("T")[0] || new Date().toISOString(),
-    status: isNew ? "draft" : "published",
-    tags: isNew ? [] : ["fire", "sourcing", "seasonal"],
-    visibility: "public",
-    metaDescription: isNew
-      ? ""
-      : "Notes on switching from oak to almond wood at the hearth, and what we noticed in the dining room.",
-  });
-
-  const [showSeo, setShowSeo] = useState<boolean>(false);
-  const [showSchedule, setShowSchedule] = useState<boolean>(
-    post.status === "scheduled",
+  const { data: existingPost, isLoading } = useBlogPostQuery(
+    isNew ? "" : postId,
   );
+  const { data: categories = [] } = useBlogCategoriesQuery();
+  const updatePost = useUpdateBlogPost();
+  const publishPost = usePublishBlogPost();
+
+  const [post, setPost] = useState<Partial<BlogPost>>({
+    title: "Untitled post",
+    slug: "untitled",
+    bodyMarkdown: "",
+    tags: [],
+  });
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const [showSeo, setShowSeo] = useState<boolean>(false);
+  const [showSchedule, setShowSchedule] = useState<boolean>(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load existing post
+  useEffect(() => {
+    if (existingPost && !isNew) {
+      setPost(existingPost);
+      setShowSchedule(!!existingPost.scheduledPublishAt);
+    }
+  }, [existingPost, isNew]);
+
+  const debouncedBodyMarkdown = useDebounce(post.bodyMarkdown ?? "", 2000);
+
+  // Autosave on debounced body change
+  useEffect(() => {
+    if (isNew || !post.id) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      if (debouncedBodyMarkdown !== existingPost?.bodyMarkdown) {
+        updatePost.mutate(
+          { id: post.id!, payload: { bodyMarkdown: debouncedBodyMarkdown } },
+          {
+            onSuccess: () => {
+              setLastSaveTime(new Date());
+            },
+          },
+        );
+      }
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [
+    debouncedBodyMarkdown,
+    isNew,
+    post.id,
+    existingPost?.bodyMarkdown,
+    updatePost,
+  ]);
+
+  const getSaveStatus = () => {
+    if (updatePost.isPending) return "Saving…";
+    if (!lastSaveTime) return "";
+    const secondsAgo = Math.floor((Date.now() - lastSaveTime.getTime()) / 1000);
+    if (secondsAgo < 60) return `Saved ${secondsAgo}s ago`;
+    const minutesAgo = Math.floor(secondsAgo / 60);
+    return `Saved ${minutesAgo}m ago`;
+  };
 
   useEffect(() => {
-    const publishLabel = post.status === "published" ? "Update" : "Publish";
+    const publishLabel = post.isPublished ? "Update" : "Publish";
     setActions(
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm">
-          <Sparkles className="h-4 w-4" />
-          Polish with AI
-        </Button>
-        <Button variant="outline" size="sm">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                data-testid="ai-polish-stub"
+              >
+                <Sparkles className="h-4 w-4" />
+                Polish with AI
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const previewUrl = `/${workspace}/blog/${post.slug}?draft=true&postId=${post.id}`;
+            window.open(previewUrl, "_blank");
+          }}
+        >
           <Eye className="h-4 w-4" />
           Preview
         </Button>
-        <Button size="sm">
-          {publishLabel}
+        <Button
+          size="sm"
+          onClick={() => {
+            if (post.id) {
+              publishPost.mutate(post.id, {
+                onSuccess: (updated) => {
+                  setPost(updated);
+                  setLastSaveTime(new Date());
+                },
+              });
+            }
+          }}
+          disabled={publishPost.isPending || !post.id}
+        >
+          {publishPost.isPending ? "Publishing…" : publishLabel}
           <ChevronDown className="h-4 w-4" />
         </Button>
       </div>,
     );
 
     return () => setActions(null);
-  }, [setActions, post.status]);
+  }, [
+    setActions,
+    post.isPublished,
+    post.id,
+    post.slug,
+    workspace,
+    publishPost,
+  ]);
 
-  const updateField = <K extends keyof BlogPost>(
+  const updateField = <K extends keyof Partial<BlogPost>>(
     key: K,
-    value: BlogPost[K],
+    value: Partial<BlogPost>[K],
   ) => {
     setPost((prev) => ({ ...prev, [key]: value }));
   };
+
+  if (isLoading && !isNew) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[var(--bg-sunken)]">
+        <div className="space-y-3">
+          <div className="h-8 w-64 bg-[var(--bg-elev)] rounded animate-pulse" />
+          <div className="h-48 w-96 bg-[var(--bg-elev)] rounded animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col bg-[var(--bg-sunken)]">
@@ -119,7 +225,7 @@ The first night we cooked over it, two things happened. The branzino tasted like
             className="mono text-xs truncate"
             style={{ color: "var(--ink-4)" }}
           >
-            /blog/{post.slug || "untitled"} · saved 4s ago
+            /blog/{post.slug || "untitled"} · {getSaveStatus()}
           </div>
         </div>
       </div>
@@ -134,34 +240,64 @@ The first night we cooked over it, two things happened. The branzino tasted like
               className="mono mb-2 text-xs uppercase tracking-wide"
               style={{ color: "var(--ink-4)" }}
             >
-              {post.category} · {post.date}
+              {categories.find((c) => c.id === post.categoryId)?.name || "—"} ·{" "}
+              {post.createdAt
+                ? new Date(post.createdAt).toLocaleDateString()
+                : new Date().toLocaleDateString()}
             </div>
 
             {/* Title */}
             <input
-              value={post.title}
-              onChange={(e) => updateField("title", e.target.value)}
+              value={post.title || ""}
+              onChange={(e) => {
+                updateField("title", e.target.value);
+                if (post.id) {
+                  updatePost.mutate({
+                    id: post.id,
+                    payload: { title: e.target.value },
+                  });
+                }
+              }}
               className="serif m-0 w-full text-5xl font-semibold bg-transparent outline-none border-0 leading-tight mb-4 placeholder:text-[var(--ink-3)]"
               placeholder="Why we cook over almond wood"
               style={{ letterSpacing: "-0.8px" }}
             />
 
-            {/* Subtitle */}
+            {/* Subtitle / Excerpt */}
             <textarea
-              value={post.subtitle}
-              onChange={(e) => updateField("subtitle", e.target.value)}
+              value={post.excerpt || ""}
+              onChange={(e) => {
+                updateField("excerpt", e.target.value);
+                if (post.id) {
+                  updatePost.mutate({
+                    id: post.id,
+                    payload: { excerpt: e.target.value },
+                  });
+                }
+              }}
               className="serif w-full text-lg italic bg-transparent outline-none border-0 leading-relaxed text-[var(--ink-3)] mb-6 placeholder:text-[var(--ink-4)] resize-none"
               placeholder="It started, like a lot of things in this kitchen, with a question…"
               rows={2}
             />
 
             {/* Cover image */}
-            <div className="aspect-video bg-gradient-to-br from-[oklch(0.45_0.06_50)] to-[oklch(0.28_0.05_30)] rounded-lg mb-6" />
+            {post.coverImageUrl ? (
+              <Image
+                src={post.coverImageUrl}
+                alt={post.title || "Cover image"}
+                width={1280}
+                height={720}
+                className="w-full aspect-video object-cover rounded-lg mb-6"
+                unoptimized
+              />
+            ) : (
+              <div className="aspect-video bg-gradient-to-br from-[oklch(0.45_0.06_50)] to-[oklch(0.28_0.05_30)] rounded-lg mb-6" />
+            )}
 
             {/* Body */}
             <textarea
-              value={post.body}
-              onChange={(e) => updateField("body", e.target.value)}
+              value={post.bodyMarkdown || ""}
+              onChange={(e) => updateField("bodyMarkdown", e.target.value)}
               className="serif w-full text-lg bg-transparent outline-none border-0 leading-loose text-[var(--ink-2)] placeholder:text-[var(--ink-4)] resize-none"
               placeholder="Start typing or paste your content here…"
               rows={10}
@@ -177,10 +313,27 @@ The first night we cooked over it, two things happened. The branzino tasted like
             <Label className="text-xs font-semibold block mb-2">
               Cover image
             </Label>
-            <div className="aspect-video bg-gradient-to-br from-[oklch(0.45_0.06_50)] to-[oklch(0.28_0.05_30)] rounded border border-[var(--line)] mb-2" />
-            <Button variant="outline" size="sm" className="w-full">
+            {post.coverImageUrl ? (
+              <Image
+                src={post.coverImageUrl}
+                alt={post.title || "Cover image"}
+                width={320}
+                height={180}
+                className="aspect-video w-full object-cover rounded border border-[var(--line)] mb-2"
+                unoptimized
+              />
+            ) : (
+              <div className="aspect-video bg-gradient-to-br from-[oklch(0.45_0.06_50)] to-[oklch(0.28_0.05_30)] rounded border border-[var(--line)] mb-2" />
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled
+              title="Media library coming soon"
+            >
               <Upload className="h-4 w-4" />
-              Replace
+              Upload
             </Button>
           </div>
 
@@ -194,8 +347,16 @@ The first night we cooked over it, two things happened. The branzino tasted like
                 </Label>
                 <Input
                   id="slug"
-                  value={post.slug}
-                  onChange={(e) => updateField("slug", e.target.value)}
+                  value={post.slug || ""}
+                  onChange={(e) => {
+                    updateField("slug", e.target.value);
+                    if (post.id) {
+                      updatePost.mutate({
+                        id: post.id,
+                        payload: { slug: e.target.value },
+                      });
+                    }
+                  }}
                   className="font-mono text-xs mt-1"
                 />
               </div>
@@ -204,27 +365,51 @@ The first night we cooked over it, two things happened. The branzino tasted like
                   Category
                 </Label>
                 <Select
-                  value={post.category}
-                  onValueChange={(v) => updateField("category", v)}
+                  value={post.categoryId || ""}
+                  onValueChange={(v) => {
+                    updateField("categoryId", v || null);
+                    if (post.id) {
+                      updatePost.mutate({
+                        id: post.id,
+                        payload: { categoryId: v || null },
+                      });
+                    }
+                  }}
                 >
                   <SelectTrigger id="category" className="mt-1 text-xs">
-                    <SelectValue />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Kitchen">Kitchen</SelectItem>
-                    <SelectItem value="Sourcing">Sourcing</SelectItem>
-                    <SelectItem value="Wine">Wine</SelectItem>
-                    <SelectItem value="Bar">Bar</SelectItem>
-                    <SelectItem value="Events">Events</SelectItem>
+                    <SelectItem value="">No category</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs block mb-1.5">Tags</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {post.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      #{tag}
+                  {(post.tags || []).map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="text-xs cursor-pointer hover:opacity-75"
+                      onClick={() => {
+                        const newTags =
+                          post.tags?.filter((t) => t !== tag) || [];
+                        updateField("tags", newTags);
+                        if (post.id) {
+                          updatePost.mutate({
+                            id: post.id,
+                            payload: { tags: newTags },
+                          });
+                        }
+                      }}
+                    >
+                      #{tag} ×
                     </Badge>
                   ))}
                   <button className="mono text-xs text-[var(--ink-4)] hover:text-[var(--ink)]">
@@ -251,29 +436,31 @@ The first night we cooked over it, two things happened. The branzino tasted like
                   </Label>
                   <Input
                     id="schedule-date"
-                    type="date"
+                    type="datetime-local"
+                    value={
+                      post.scheduledPublishAt
+                        ? new Date(post.scheduledPublishAt)
+                            .toISOString()
+                            .slice(0, 16)
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const dateValue = e.target.value
+                        ? new Date(e.target.value).toISOString()
+                        : null;
+                      updateField(
+                        "scheduledPublishAt",
+                        dateValue as string | null,
+                      );
+                      if (post.id) {
+                        updatePost.mutate({
+                          id: post.id,
+                          payload: { scheduledPublishAt: dateValue },
+                        });
+                      }
+                    }}
                     className="text-xs mt-1"
                   />
-                </div>
-                <div>
-                  <Label htmlFor="visibility" className="text-xs">
-                    Visibility
-                  </Label>
-                  <Select
-                    value={post.visibility}
-                    onValueChange={(v) =>
-                      updateField("visibility", v as BlogPost["visibility"])
-                    }
-                  >
-                    <SelectTrigger id="visibility" className="mt-1 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="members">Members only</SelectItem>
-                      <SelectItem value="unlisted">Unlisted</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             )}
@@ -288,25 +475,69 @@ The first night we cooked over it, two things happened. The branzino tasted like
               SEO {showSeo ? "▾" : "▸"}
             </button>
             {showSeo && (
-              <div>
-                <Label htmlFor="meta-desc" className="text-xs block mb-1.5">
-                  Meta description
-                </Label>
-                <textarea
-                  id="meta-desc"
-                  value={post.metaDescription}
-                  onChange={(e) =>
-                    updateField("metaDescription", e.target.value)
-                  }
-                  className="w-full text-xs p-2 rounded border border-[var(--line)] bg-[var(--bg-sunken)] outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
-                  rows={2}
-                  placeholder="Describe this post for search engines…"
-                />
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="seo-title" className="text-xs block mb-1.5">
+                    SEO Title
+                  </Label>
+                  <Input
+                    id="seo-title"
+                    value={post.seoTitle || ""}
+                    onChange={(e) => {
+                      updateField("seoTitle", e.target.value);
+                      if (post.id) {
+                        updatePost.mutate({
+                          id: post.id,
+                          payload: { seoTitle: e.target.value },
+                        });
+                      }
+                    }}
+                    className="text-xs"
+                    placeholder="SEO title for search engines"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="seo-desc" className="text-xs block mb-1.5">
+                    Meta description
+                  </Label>
+                  <textarea
+                    id="seo-desc"
+                    value={post.seoDescription || ""}
+                    onChange={(e) => {
+                      updateField("seoDescription", e.target.value);
+                      if (post.id) {
+                        updatePost.mutate({
+                          id: post.id,
+                          payload: { seoDescription: e.target.value },
+                        });
+                      }
+                    }}
+                    className="w-full text-xs p-2 rounded border border-[var(--line)] bg-[var(--bg-sunken)] outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
+                    rows={2}
+                    placeholder="Describe this post for search engines…"
+                  />
+                </div>
               </div>
             )}
           </div>
         </aside>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete post?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone.
+          </AlertDialogDescription>
+          <div className="flex justify-end gap-2">
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600">Delete</AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

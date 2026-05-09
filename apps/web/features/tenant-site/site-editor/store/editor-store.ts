@@ -42,6 +42,11 @@ export interface BlockRect {
   height: number;
 }
 
+export interface SlashMenuAnchor {
+  blockId: string;
+  position: { x: number; y: number };
+}
+
 export interface EditorState {
   past: EditorSnapshot[];
   present: EditorSnapshot;
@@ -53,6 +58,10 @@ export interface EditorState {
   hoveredBlockRect: BlockRect | null;
   selectedBlockRect: BlockRect | null;
 
+  device: "desktop" | "tablet" | "mobile";
+  lastSaveTime: number | null;
+  slashMenuAnchor: SlashMenuAnchor | null;
+
   // Lifecycle
   load: (blocks: BlockNode[]) => void;
   markClean: () => void;
@@ -62,6 +71,11 @@ export interface EditorState {
   setHoveredBlockId: (id: string | null) => void;
   setHoveredBlockRect: (rect: BlockRect | null) => void;
   setSelectedBlockRect: (rect: BlockRect | null) => void;
+
+  // UI state
+  setDevice: (device: "desktop" | "tablet" | "mobile") => void;
+  setLastSaveTime: (time: number | null) => void;
+  setSlashMenuAnchor: (anchor: SlashMenuAnchor | null) => void;
 
   // Tree mutations
   addBlock: (block: BlockNode, atIndex?: number) => void;
@@ -158,6 +172,9 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     hoveredBlockId: null,
     hoveredBlockRect: null,
     selectedBlockRect: null,
+    device: "desktop",
+    lastSaveTime: null,
+    slashMenuAnchor: null,
 
     load: (blocks) =>
       set({
@@ -174,6 +191,10 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     setHoveredBlockId: (id) => set({ hoveredBlockId: id }),
     setHoveredBlockRect: (rect) => set({ hoveredBlockRect: rect }),
     setSelectedBlockRect: (rect) => set({ selectedBlockRect: rect }),
+
+    setDevice: (device) => set({ device }),
+    setLastSaveTime: (time) => set({ lastSaveTime: time }),
+    setSlashMenuAnchor: (anchor) => set({ slashMenuAnchor: anchor }),
 
     addBlock: (block, atIndex) => {
       const { present } = get();

@@ -44,7 +44,7 @@ import {
   useVerifyMyDomain,
   useMyDomainVerificationInstructions,
 } from "../hooks/use-domains";
-import type { TenantDomain } from "../types";
+import type { TenantDomain } from "../services/domains.service";
 
 export function DomainsView() {
   const [addOpen, setAddOpen] = useState(false);
@@ -98,8 +98,12 @@ export function DomainsView() {
     if (!confirm(`Remove ${domain.hostname}?`)) return;
     deleteDomain.mutate(domain.id, {
       onSuccess: () => toast({ title: "Domain removed" }),
-      onError: () =>
-        toast({ title: "Failed to remove domain", variant: "destructive" }),
+      onError: (error: Error) =>
+        toast({
+          title: "Failed to remove domain",
+          description: error.message,
+          variant: "destructive",
+        }),
     });
   };
 
@@ -342,7 +346,7 @@ function VerifyDomainDialog({ domain, onClose }: VerifyDomainDialogProps) {
         <DialogHeader>
           <DialogTitle>Verify {domain.hostname}</DialogTitle>
           <DialogDescription>
-            Add the DNS records below, then click "Check DNS".
+            Add the DNS records below, then click &quot;Check DNS&quot;.
           </DialogDescription>
         </DialogHeader>
 

@@ -13,3 +13,7 @@ export const useCmdKStore = create<CmdKStore>((set) => ({
   setOpen: (open: boolean) => set({ open }),
   toggle: () => set((state) => ({ open: !state.open })),
 }));
+
+export const selectCmdKOpen = (s: CmdKStore) => s.open;
+export const selectCmdKSetOpen = (s: CmdKStore) => s.setOpen;
+export const selectCmdKToggle = (s: CmdKStore) => s.toggle;

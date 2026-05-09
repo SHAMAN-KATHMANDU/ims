@@ -12,3 +12,7 @@ export const useTopbarActionsStore = create<TopbarActionsStore>((set) => ({
   actions: null,
   setActions: (actions: ReactNode | null) => set({ actions }),
 }));
+
+export const selectTopbarActions = (s: TopbarActionsStore) => s.actions;
+export const selectTopbarActionsSetActions = (s: TopbarActionsStore) =>
+  s.setActions;

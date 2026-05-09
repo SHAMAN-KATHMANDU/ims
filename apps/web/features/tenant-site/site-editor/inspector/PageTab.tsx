@@ -1,12 +1,32 @@
 "use client";
 
+import { useState } from "react";
+import { usePageQuery, useUpdatePage } from "../../hooks/use-pages";
+
 interface PageTabProps {
-  workspace: string;
+  _workspace: string;
   pageId: string;
-  scope: string;
+  _scope: string;
 }
 
-export function PageTab({ workspace, pageId, scope }: PageTabProps) {
+export function PageTab({ pageId, _scope }: PageTabProps) {
+  const { data: page } = usePageQuery(pageId);
+  const updatePage = useUpdatePage();
+  const [title, setTitle] = useState(page?.title || "");
+  const [slug, setSlug] = useState(page?.slug || _scope || "");
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    updatePage.mutate({ id: pageId, payload: { title: newTitle } });
+  };
+
+  const handleSlugChange = (newSlug: string) => {
+    setSlug(newSlug);
+    updatePage.mutate({ id: pageId, payload: { slug: newSlug } });
+  };
+
+  const isPublished = page?.isPublished || false;
+
   return (
     <div
       className="p-3.5 flex flex-col gap-3.5"
@@ -14,50 +34,17 @@ export function PageTab({ workspace, pageId, scope }: PageTabProps) {
         backgroundColor: "var(--bg)",
       }}
     >
-      {/* Status section */}
+      {/* Title section */}
       <div>
-        <div
-          className="text-xs font-mono font-semibold uppercase tracking-wider mb-2"
-          style={{ color: "var(--ink-4)" }}
-        >
-          Status
-        </div>
-        <div className="flex flex-col gap-1">
-          {["draft", "review", "scheduled", "published"].map((status) => (
-            <button
-              key={status}
-              className="flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left"
-              style={{
-                backgroundColor: "transparent",
-                border: "1px solid transparent",
-                color: "var(--ink-3)",
-              }}
-            >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{
-                  backgroundColor:
-                    status === "published" ? "var(--success)" : "var(--warn)",
-                }}
-              />
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* URL section */}
-      <div>
-        <div
-          className="text-xs font-mono font-semibold uppercase tracking-wider mb-2"
-          style={{ color: "var(--ink-4)" }}
-        >
-          URL
+        <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
+          Page title
         </div>
         <input
           type="text"
-          defaultValue={`/${scope}`}
-          className="w-full h-7 px-2 rounded text-xs font-mono"
+          value={title}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          placeholder="Untitled"
+          className="w-full h-7 px-2 rounded text-xs"
           style={{
             border: "1px solid var(--line)",
             backgroundColor: "var(--bg-elev)",
@@ -67,37 +54,49 @@ export function PageTab({ workspace, pageId, scope }: PageTabProps) {
         />
       </div>
 
-      {/* Layout section */}
+      {/* Slug section */}
+      <div>
+        <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
+          Slug
+        </div>
+        <input
+          type="text"
+          value={slug}
+          onChange={(e) => handleSlugChange(e.target.value)}
+          className="w-full h-7 px-2 rounded text-xs font-mono"
+          style={{
+            border: "1px solid var(--line)",
+            backgroundColor: "var(--bg-elev)",
+            color: "var(--ink)",
+            outline: "none",
+          }}
+        />
+        <div className="text-xs mt-1" style={{ color: "var(--ink-4)" }}>
+          /{slug}
+        </div>
+      </div>
+
+      {/* Status section */}
       <div>
         <div
           className="text-xs font-mono font-semibold uppercase tracking-wider mb-2"
           style={{ color: "var(--ink-4)" }}
         >
-          Layout
+          Status
         </div>
-        <div className="flex flex-col gap-1.5">
-          {[
-            { label: "Template", value: "Default" },
-            { label: "Max width", value: "1240px" },
-            { label: "Theme", value: "Inherit" },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
-                {label}
-              </div>
-              <select
-                defaultValue={value}
-                className="w-full h-7 px-2 rounded text-xs"
-                style={{
-                  border: "1px solid var(--line)",
-                  backgroundColor: "var(--bg-elev)",
-                  color: "var(--ink)",
-                }}
-              >
-                <option>{value}</option>
-              </select>
-            </div>
-          ))}
+        <div
+          className="px-2 py-1.5 rounded text-xs font-medium"
+          style={{
+            backgroundColor: isPublished
+              ? "var(--accent-soft)"
+              : "var(--bg-sunken)",
+            color: isPublished ? "var(--accent)" : "var(--ink-2)",
+          }}
+        >
+          {isPublished ? "Published" : "Draft"}
+        </div>
+        <div className="text-xs mt-2" style={{ color: "var(--ink-4)" }}>
+          Use the Publish button in the top bar to publish.
         </div>
       </div>
     </div>

@@ -1,26 +1,25 @@
 import type { BlockNode, BlockKind } from "@repo/shared";
 
+type BlockProps = Record<string, unknown>;
+
 export function getBlockLabel(block: BlockNode): string {
+  const props = block.props as BlockProps;
   switch (block.kind) {
     case "heading": {
-      const props = block.props as any;
-      const level = props.level || 2;
-      const text = props.text || "Heading";
+      const level = (props.level as number | undefined) || 2;
+      const text = (props.text as string | undefined) || "Heading";
       return `H${level} · ${text.slice(0, 30)}`;
     }
     case "rich-text": {
-      const props = block.props as any;
-      const text = props.text || "Rich text";
+      const text = (props.text as string | undefined) || "Rich text";
       return text.slice(0, 40);
     }
     case "image": {
-      const props = block.props as any;
-      const alt = props.alt || "Image";
+      const alt = (props.alt as string | undefined) || "Image";
       return `Image · ${alt.slice(0, 24)}`;
     }
     case "button": {
-      const props = block.props as any;
-      const label = props.label || "Button";
+      const label = (props.label as string | undefined) || "Button";
       return `Button · ${label.slice(0, 20)}`;
     }
     case "section":
@@ -28,8 +27,7 @@ export function getBlockLabel(block: BlockNode): string {
     case "row":
       return "Row";
     case "columns": {
-      const props = block.props as any;
-      const cols = props.columns || 2;
+      const cols = (props.columns as number | undefined) || 2;
       return `${cols}-column layout`;
     }
     case "css-grid":
