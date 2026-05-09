@@ -27,7 +27,6 @@ import {
   ListChecks,
   ShoppingBag,
   Globe,
-  Sparkles,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
 import {
@@ -292,38 +291,20 @@ export const dashboardNavSections: NavSection[] = [
         permModule: "INVENTORY" as const,
       },
       {
-        // Website / tenant-site editor — opens in a new tab so the editor
-        // (Webflow-style block builder) gets its own full-screen surface.
-        // Routes live at /[workspace]/site-editor (lean (editor) shell).
-        path: "site-editor",
+        // Tenant-site CMS shell at /[workspace]/content — Notion-style admin
+        // surfacing Pages, Blog, Snippets, Media, Collections, Offers,
+        // Navigation, Design, Domains, SEO, Forms, Settings and the block
+        // builder (/content/builder/[pageId]) as siblings inside one shell.
+        path: "content",
         label: "Website",
         icon: Globe,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.TENANT_WEBSITES,
         tenantFeature: "websiteEnabled",
-        openInNewTab: true,
-        permModule: "WEBSITE" as const,
-      },
-      {
-        // Notion-style CMS shell at /[workspace]/site — Phase 5 of the
-        // editor rebuild. Coexists with the existing /site-editor block
-        // builder; tenants can use either while SITE_CMS_V2 is dev/staging.
-        path: "site",
-        label: "Website CMS",
-        icon: Sparkles,
-        roles: ["admin", "superAdmin"],
-        envFeature: EnvFeature.SITE_CMS_V2,
-        tenantFeature: "websiteEnabled",
         permModule: "WEBSITE" as const,
       },
     ],
   },
-  // CONTENT group removed — the new Notion-style CMS shell at
-  // /[workspace]/site (sidebar item "Website CMS", gated on SITE_CMS_V2)
-  // surfaces Pages, Blog, Snippets, Media, Collections, Offers, Navigation,
-  // Design, Domains, SEO and Settings as siblings inside its own shell.
-  // Routes at /[workspace]/content/* still exist as fallbacks but are no
-  // longer linked from the main sidebar.
   {
     title: "REPORTS",
     items: [
