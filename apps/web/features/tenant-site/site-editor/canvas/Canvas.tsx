@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { type BlockDataContext } from "@repo/blocks";
 import { useEditorStore } from "../store/editor-store";
 import {
   selectBlocks,
@@ -14,9 +15,10 @@ import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
 
 interface CanvasProps {
   scope: string;
+  dataContext: BlockDataContext;
 }
 
-export function Canvas({ scope: _unused_scope }: CanvasProps) {
+export function Canvas({ scope: _unused_scope, dataContext }: CanvasProps) {
   const blocks = useEditorStore(selectBlocks);
   const selectedId = useEditorStore(selectSelectedId);
   const device = useEditorStore(selectDevice);
@@ -120,6 +122,7 @@ export function Canvas({ scope: _unused_scope }: CanvasProps) {
                 block={block}
                 index={idx}
                 isSelected={selectedId === block.id}
+                dataContext={dataContext}
               />
             ))
           )}

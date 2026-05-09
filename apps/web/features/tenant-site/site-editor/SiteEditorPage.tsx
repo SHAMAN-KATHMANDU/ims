@@ -10,8 +10,9 @@
 
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
+import { MOCK_DATA_CONTEXT } from "@repo/blocks";
 import { useEditorStore } from "./store/editor-store";
 import { selectBlocks, selectLoad } from "./store/selectors";
 import { useSiteLayoutQuery } from "./hooks/useSiteLayoutQuery";
@@ -61,6 +62,14 @@ export function SiteEditorPage({
   // Keyboard shortcuts
   useEditorKeyboard({ enabled: true });
 
+  // Build data context once at mount (memoized to prevent unnecessary recreations)
+  const dataContext = useMemo(() => {
+    // Start with mock data for preview blocks
+    const context = { ...MOCK_DATA_CONTEXT };
+    // TODO: enhance with tenant-specific data (products, categories, etc.)
+    return context;
+  }, []);
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[var(--bg-sunken)]">
@@ -80,7 +89,7 @@ export function SiteEditorPage({
       <div className="flex-1 flex min-h-0">
         <LayersPanel />
         <main className="flex-1 min-w-0 overflow-auto">
-          <Canvas scope={scope} />
+          <Canvas scope={scope} dataContext={dataContext} />
         </main>
         <InspectorPanel workspace={workspace} pageId={pageId} scope={scope} />
       </div>
