@@ -11,6 +11,7 @@ WORKDIR /repo
 FROM base AS deps
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
 COPY packages/shared/package.json packages/shared/
+COPY packages/blocks/package.json packages/blocks/
 COPY packages/typescript-config/package.json packages/typescript-config/
 COPY packages/eslint-config/package.json packages/eslint-config/
 COPY apps/tenant-site/package.json apps/tenant-site/
@@ -19,10 +20,12 @@ RUN pnpm install --frozen-lockfile --filter tenant-site...
 # ---- build ----
 FROM deps AS builder
 COPY packages/shared packages/shared
+COPY packages/blocks packages/blocks
 COPY packages/typescript-config packages/typescript-config
 COPY packages/eslint-config packages/eslint-config
 COPY apps/tenant-site apps/tenant-site
 RUN pnpm --filter @repo/shared build
+RUN pnpm --filter @repo/blocks build
 RUN pnpm --filter tenant-site build
 
 # ---- runtime ----
