@@ -2,7 +2,6 @@ import { z } from "zod";
 import { ImageRefSchema } from "../../site-schema/media";
 
 const str = (max: number) => z.string().trim().max(max);
-const optStr = (max: number) => str(max).optional();
 
 /**
  * Section props — container with background + padding presets.

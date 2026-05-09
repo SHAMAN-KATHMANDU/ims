@@ -1,6 +1,12 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { DM_Sans, Space_Mono } from "next/font/google";
+import {
+  DM_Sans,
+  Space_Mono,
+  Inter,
+  Fraunces,
+  JetBrains_Mono,
+} from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryClientProvider } from "@/components/providers/query-client-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -29,6 +35,27 @@ const spaceMono = Space_Mono({
   weight: ["400", "700"],
   display: "swap",
   fallback: ["monospace"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -65,7 +92,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${dmSans.variable} ${spaceMono.variable} font-sans antialiased`}
+        className={`${dmSans.variable} ${spaceMono.variable} ${inter.variable} ${jetbrainsMono.variable} ${fraunces.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

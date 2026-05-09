@@ -1,7 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { EnvFeature, EnvFeaturePageGuard } from "@/features/flags";
 import { PermissionGate } from "@/features/permissions";
-import { SnippetsListPage } from "@/features/snippets";
+import { SnippetsCmsView } from "@/features/tenant-site/snippets-cms";
 
 export const metadata = { title: "Snippets" };
 
@@ -14,7 +14,7 @@ export default function SnippetsRoute() {
     <AuthGuard roles={["admin", "superAdmin"]}>
       <EnvFeaturePageGuard envFeature={EnvFeature.TENANT_WEBSITES}>
         <PermissionGate perm="WEBSITE.PAGES.VIEW">
-          <SnippetsListPage />
+          <SnippetsCmsView />
         </PermissionGate>
       </EnvFeaturePageGuard>
     </AuthGuard>
