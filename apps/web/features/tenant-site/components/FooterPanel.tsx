@@ -7,7 +7,7 @@
  * Loads via GET and saves via PUT to the "footer-config" slot.
  */
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   Card,
   CardContent,
@@ -31,10 +31,8 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useCan } from "@/features/permissions";
 import { MediaPickerField } from "@/features/media";
-import { SubmitButton } from "@/components/ui/submit-button";
 import {
   defaultFooterConfig,
-  FooterConfigSchema,
   SOCIAL_NETWORKS,
   type FooterConfig,
   type FooterColumn,
@@ -43,12 +41,6 @@ import {
   type NavItem,
   type NavCtaStyle,
 } from "@repo/shared";
-
-function coerceFooterConfig(raw: unknown): FooterConfig {
-  const parsed = FooterConfigSchema.safeParse(raw);
-  if (parsed.success) return parsed.data;
-  return defaultFooterConfig();
-}
 
 function move<T>(arr: T[], from: number, to: number): T[] {
   if (to < 0 || to >= arr.length) return arr;
@@ -59,14 +51,12 @@ function move<T>(arr: T[], from: number, to: number): T[] {
 }
 
 export function FooterPanel({ disabled }: { disabled?: boolean }) {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { allowed: canUpdate } = useCan("WEBSITE.NAV_MENUS.UPDATE");
   const isDisabled = disabled || !canUpdate;
 
-  const footerRow = null;
-
   const [config, setConfig] = useState<FooterConfig>(defaultFooterConfig);
-  const [dirty, setDirty] = useState(false);
+  const [_dirty, setDirty] = useState(false);
   const [selectedColumnIdx, setSelectedColumnIdx] = useState<number | null>(
     null,
   );
@@ -158,8 +148,8 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
     setDirty(true);
   };
 
-  const handleSave = async () => {
-    toast({
+  const _handleSave = async () => {
+    _toast({
       title: "Footer saving not available",
       description:
         "Footer configuration is managed through the site editor blocks.",
@@ -167,7 +157,7 @@ export function FooterPanel({ disabled }: { disabled?: boolean }) {
     });
   };
 
-  const handleReset = () => {
+  const _handleReset = () => {
     setConfig(defaultFooterConfig());
     setDirty(true);
     setSelectedColumnIdx(null);

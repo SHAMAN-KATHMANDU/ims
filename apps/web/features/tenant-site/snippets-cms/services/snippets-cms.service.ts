@@ -36,7 +36,7 @@ export interface CreateSnippetData {
   description?: string;
 }
 
-export interface UpdateSnippetData extends Partial<CreateSnippetData> {}
+export type UpdateSnippetData = Partial<CreateSnippetData>;
 
 export interface SnippetListResponse {
   snippets: SnippetItem[];

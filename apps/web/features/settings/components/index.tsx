@@ -295,7 +295,7 @@ export function SettingsPage() {
       {/* Website editor entry — platform env flag + per-tenant toggle. */}
       {showWebsiteCard && (
         <Link
-          href={`/${workspace}/site-editor`}
+          href={`/${workspace}/content/dashboard`}
           className="block rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50"
         >
           <div className="flex items-center gap-4">

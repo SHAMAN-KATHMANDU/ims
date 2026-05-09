@@ -35,8 +35,10 @@ const SCOPE_GROUPS = {
 type ScopeGroup = keyof typeof SCOPE_GROUPS;
 
 function getCurrentGroup(scope: SiteLayoutScope): ScopeGroup {
-  if (SCOPE_GROUPS.header.includes(scope as any)) return "header";
-  if (SCOPE_GROUPS.footer.includes(scope as any)) return "footer";
+  if ((SCOPE_GROUPS.header as readonly SiteLayoutScope[]).includes(scope))
+    return "header";
+  if ((SCOPE_GROUPS.footer as readonly SiteLayoutScope[]).includes(scope))
+    return "footer";
   return "page";
 }
 

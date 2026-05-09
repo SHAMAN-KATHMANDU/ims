@@ -2,7 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { Bell, ExternalLink } from "lucide-react";
-import { useTopbarActionsStore } from "@/store/topbar-actions-store";
+import {
+  useTopbarActionsStore,
+  selectTopbarActions,
+} from "@/store/topbar-actions-store";
 
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -43,7 +46,7 @@ function breadcrumbsFromPathname(pathname: string): string[] {
 
 export function Topbar() {
   const pathname = usePathname();
-  const actions = useTopbarActionsStore((state) => state.actions);
+  const actions = useTopbarActionsStore(selectTopbarActions);
   const crumbs = breadcrumbsFromPathname(pathname);
 
   return (

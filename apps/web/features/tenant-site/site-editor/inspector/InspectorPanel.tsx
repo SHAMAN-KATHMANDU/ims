@@ -74,14 +74,14 @@ export function InspectorPanel({
         }}
       >
         {activeTab === "page" && (
-          <PageTab workspace={workspace} pageId={pageId} scope={scope} />
+          <PageTab _workspace={workspace} pageId={pageId} _scope={scope} />
         )}
         {activeTab === "block" && <BlockTab block={selectedBlock} />}
         {activeTab === "seo" && (
-          <SeoTab workspace={workspace} pageId={pageId} scope={scope} />
+          <SeoTab _workspace={workspace} pageId={pageId} scope={scope} />
         )}
         {activeTab === "history" && (
-          <HistoryTab workspace={workspace} pageId={pageId} scope={scope} />
+          <HistoryTab _workspace={workspace} pageId={pageId} _scope={scope} />
         )}
       </div>
     </aside>

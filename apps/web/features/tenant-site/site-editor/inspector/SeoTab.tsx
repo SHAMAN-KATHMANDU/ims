@@ -1,12 +1,41 @@
 "use client";
 
+import { useState } from "react";
+import { usePageQuery, useUpdatePage } from "../../hooks/use-pages";
+
 interface SeoTabProps {
-  workspace: string;
+  _workspace: string;
   pageId: string;
   scope: string;
 }
 
-export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
+export function SeoTab({ pageId, scope }: SeoTabProps) {
+  const { data: page } = usePageQuery(pageId);
+  const updatePage = useUpdatePage();
+
+  const seoTitle = page?.seoTitle || page?.title || "";
+  const seoDescription = page?.seoDescription || "";
+  const coverImage = page?.coverImageUrl || "";
+
+  const [title, setTitle] = useState(seoTitle);
+  const [description, setDescription] = useState(seoDescription);
+  const [image, setImage] = useState(coverImage);
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    // Note: seoTitle may not be updatable via this API yet
+  };
+
+  const handleDescriptionChange = (newDesc: string) => {
+    setDescription(newDesc);
+    // Note: seoDescription may not be updatable via this API yet
+  };
+
+  const handleImageChange = (newImage: string) => {
+    setImage(newImage);
+    updatePage.mutate({ id: pageId, payload: { coverImageUrl: newImage } });
+  };
+
   return (
     <div
       className="p-3.5 flex flex-col gap-3.5"
@@ -29,7 +58,8 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
             </div>
             <input
               type="text"
-              defaultValue="Example Page"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
               className="w-full h-7 px-2 rounded text-xs"
               style={{
                 border: "1px solid var(--line)",
@@ -39,7 +69,7 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
               }}
             />
             <div className="mt-1 text-xs" style={{ color: "var(--ink-4)" }}>
-              18 / 70 chars
+              {title.length} / 60 chars
             </div>
           </div>
 
@@ -48,7 +78,8 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
               Meta description
             </div>
             <textarea
-              defaultValue="A description of your page for search results."
+              value={description}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               rows={2}
               className="w-full p-2 rounded text-xs"
               style={{
@@ -61,26 +92,37 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
               }}
             />
             <div className="mt-1 text-xs" style={{ color: "var(--ink-4)" }}>
-              52 / 160 chars
+              {description.length} / 160 chars
             </div>
           </div>
+        </div>
+      </div>
 
-          <div>
-            <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
-              Canonical
-            </div>
-            <input
-              type="text"
-              defaultValue="https://example.com/"
-              className="w-full h-7 px-2 rounded text-xs font-mono"
-              style={{
-                border: "1px solid var(--line)",
-                backgroundColor: "var(--bg-elev)",
-                color: "var(--ink)",
-                outline: "none",
-              }}
-            />
+      {/* Social image section */}
+      <div>
+        <div
+          className="text-xs font-mono font-semibold uppercase tracking-wider mb-2"
+          style={{ color: "var(--ink-4)" }}
+        >
+          Social image
+        </div>
+        <div>
+          <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
+            OG Image URL
           </div>
+          <input
+            type="text"
+            value={image}
+            onChange={(e) => handleImageChange(e.target.value)}
+            placeholder="https://example.com/og-image.jpg"
+            className="w-full h-7 px-2 rounded text-xs"
+            style={{
+              border: "1px solid var(--line)",
+              backgroundColor: "var(--bg-elev)",
+              color: "var(--ink)",
+              outline: "none",
+            }}
+          />
         </div>
       </div>
 
@@ -90,7 +132,7 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
           className="text-xs font-mono font-semibold uppercase tracking-wider mb-2"
           style={{ color: "var(--ink-4)" }}
         >
-          Social preview
+          Preview
         </div>
         <div
           className="border rounded overflow-hidden"
@@ -99,28 +141,42 @@ export function SeoTab({ workspace, pageId, scope }: SeoTabProps) {
             borderColor: "var(--line)",
           }}
         >
-          <div
-            style={{
-              aspectRatio: "1.91 / 1",
-              background:
-                "linear-gradient(135deg, oklch(0.45 0.06 50), oklch(0.28 0.05 30))",
-            }}
-          />
+          {image ? (
+            <div
+              style={{
+                aspectRatio: "1.91 / 1",
+                backgroundImage: `url(${image})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                aspectRatio: "1.91 / 1",
+                background:
+                  "linear-gradient(135deg, oklch(0.45 0.06 50), oklch(0.28 0.05 30))",
+              }}
+            />
+          )}
           <div className="p-2">
             <div
               className="text-xs font-mono"
               style={{ color: "var(--ink-4)" }}
             >
-              example.com
+              {page?.slug || scope}
             </div>
             <div
-              className="text-xs font-semibold mt-1"
+              className="text-xs font-semibold mt-1 truncate"
               style={{ color: "var(--ink)" }}
             >
-              Page Title
+              {title || "Page Title"}
             </div>
-            <div className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>
-              Short description here
+            <div
+              className="text-xs mt-1 line-clamp-2"
+              style={{ color: "var(--ink-3)" }}
+            >
+              {description || "Page description"}
             </div>
           </div>
         </div>

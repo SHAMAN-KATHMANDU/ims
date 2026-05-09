@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -52,9 +53,11 @@ export function MediaDetailDialog({
           {/* Preview */}
           <div className="rounded-lg border border-line bg-bg-elev overflow-hidden">
             {asset.mimeType.startsWith("image/") ? (
-              <img
+              <Image
                 src={asset.url}
                 alt={asset.name}
+                width={500}
+                height={400}
                 className="w-full max-h-96 object-cover"
               />
             ) : (

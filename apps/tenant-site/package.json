@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@repo/blocks": "workspace:*",
     "@repo/shared": "workspace:*",
     "@tailwindcss/typography": "^0.5.15",
     "date-fns": "4.1.0",

@@ -2,13 +2,13 @@
 
 import { GROUPED_CATALOG } from "../catalog/grouped-catalog";
 import { useEditorStore } from "../store/editor-store";
-import { selectBlocks } from "../store/selectors";
+import { selectBlocks, selectAddBlock } from "../store/selectors";
 import type { BlockNode, BlockKind } from "@repo/shared";
 import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
 
 export function BlocksAddPanel() {
   const blocks = useEditorStore(selectBlocks);
-  const addBlock = useEditorStore((s) => s.addBlock);
+  const addBlock = useEditorStore(selectAddBlock);
 
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
@@ -46,6 +46,13 @@ export function BlocksAddPanel() {
                 draggable
                 onDragStart={(e) => handleDragStart(e, entry.kind)}
                 onClick={() => handleClick(entry.kind)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleClick(entry.kind);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 className="p-2 rounded cursor-pointer text-xs transition-colors"
                 style={{
                   backgroundColor: "var(--bg-sunken)",

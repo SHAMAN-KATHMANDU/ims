@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSnippet, useUpdateSnippet } from "../hooks/use-snippets-cms";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export function SnippetEditorPage({
   snippetId,
@@ -23,6 +24,9 @@ export function SnippetEditorPage({
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const debouncedName = useDebounce(name, 800);
+  const debouncedContent = useDebounce(content, 800);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (snippetQuery.data) {
@@ -35,40 +39,65 @@ export function SnippetEditorPage({
     }
   }, [snippetQuery.data]);
 
-  const handleSave = async (): Promise<void> => {
-    try {
-      const updateData: Record<string, unknown> = { name };
+  const handleSave = useCallback((): void => {
+    if (!isDirty || !snippetQuery.data) return;
 
-      if (snippetQuery.data?.type === "html") {
-        updateData.content = content;
-      } else {
-        try {
-          updateData.content = JSON.parse(content);
-        } catch {
-          toast({
-            title: "Invalid JSON",
-            description: "Please fix the JSON syntax",
-            variant: "destructive",
-          });
-          return;
-        }
+    const updateData: Record<string, unknown> = { name };
+
+    if (snippetQuery.data.type === "html") {
+      updateData.content = content;
+    } else {
+      try {
+        updateData.content = JSON.parse(content);
+      } catch {
+        toast({
+          title: "Invalid JSON",
+          description: "Please fix the JSON syntax",
+          variant: "destructive",
+        });
+        return;
       }
+    }
 
-      await updateMutation.mutateAsync({
+    updateMutation.mutate(
+      {
         id: snippetId,
         data: updateData,
-      });
+      },
+      {
+        onSuccess: () => {
+          setIsDirty(false);
+        },
+      },
+    );
+  }, [
+    isDirty,
+    snippetQuery.data,
+    name,
+    content,
+    snippetId,
+    toast,
+    updateMutation,
+  ]);
 
-      setIsDirty(false);
-      toast({ title: "Snippet saved" });
-    } catch (error) {
-      toast({
-        title: "Failed to save",
-        description: error instanceof Error ? error.message : "Try again",
-        variant: "destructive",
-      });
+  // Autosave on debounced changes
+  useEffect(() => {
+    if (!isDirty) return;
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
     }
-  };
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      handleSave();
+    }, 1000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [debouncedName, debouncedContent, isDirty, handleSave]);
 
   if (snippetQuery.isLoading) {
     return (

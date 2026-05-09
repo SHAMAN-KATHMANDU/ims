@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMediaList, useDeleteMedia, useUpdateMedia } from "./use-media";
 import { MediaTile } from "./MediaTile";
 import { MediaDetailDialog } from "./MediaDetailDialog";
 import { Upload, Search, Folder } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { MediaAsset } from "./types";
 
 const FOLDERS = [
@@ -23,31 +24,42 @@ const FOLDERS = [
 export function MediaLibraryView() {
   const [folder, setFolder] = useState("All");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
 
-  const { data: allMedia = [], isLoading } = useMediaList();
+  const { data: allMedia = [], isLoading } = useMediaList({
+    folder: folder !== "All" ? folder : undefined,
+    search: debouncedSearch || undefined,
+  });
   const deleteMedia = useDeleteMedia();
   const updateMedia = useUpdateMedia();
 
-  const filtered = allMedia.filter((m) => {
-    if (folder !== "All" && m.folder !== folder) return false;
-    if (search && !m.name.toLowerCase().includes(search.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
-
-  const folderCounts = FOLDERS.reduce(
-    (acc, f) => {
-      if (f === "All") {
-        acc[f] = allMedia.length;
-      } else {
-        acc[f] = allMedia.filter((m) => m.folder === f).length;
+  const filtered = useMemo(() => {
+    return allMedia.filter((m) => {
+      if (folder !== "All" && m.folder !== folder) return false;
+      if (
+        debouncedSearch &&
+        !m.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+      ) {
+        return false;
       }
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+      return true;
+    });
+  }, [allMedia, folder, debouncedSearch]);
+
+  const folderCounts = useMemo(() => {
+    return FOLDERS.reduce(
+      (acc, f) => {
+        if (f === "All") {
+          acc[f] = allMedia.length;
+        } else {
+          acc[f] = allMedia.filter((m) => m.folder === f).length;
+        }
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  }, [allMedia]);
 
   return (
     <div className="space-y-6">

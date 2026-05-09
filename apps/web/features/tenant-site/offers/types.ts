@@ -29,7 +29,7 @@ export interface CreateOfferData {
   perCustomerLimit?: number;
 }
 
-export interface UpdateOfferData extends Partial<CreateOfferData> {}
+export type UpdateOfferData = Partial<CreateOfferData>;
 
 export interface OfferFormValues {
   code: string;

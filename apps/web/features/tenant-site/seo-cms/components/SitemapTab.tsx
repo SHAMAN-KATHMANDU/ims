@@ -32,11 +32,11 @@ export function SitemapTab() {
   const { toast } = useToast();
 
   const handleRegenerate = () => {
-    toast({ title: "Sitemap regenerating…" });
-    setTimeout(
-      () => toast({ title: "Sitemap regenerated successfully" }),
-      1500,
-    );
+    // TODO: implement sitemap regeneration endpoint
+    toast({
+      title: "Sitemap regeneration not yet available",
+      variant: "destructive",
+    });
   };
 
   return (

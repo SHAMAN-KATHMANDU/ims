@@ -15,7 +15,6 @@ import {
   useUpdateCollectionCms,
 } from "./use-collections-cms";
 import { Plus } from "lucide-react";
-import type { CollectionDetail } from "./types";
 
 export function CollectionsView() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -80,7 +79,7 @@ export function CollectionsView() {
               No collections yet
             </div>
           ) : (
-            collections.map((c, i) => (
+            collections.map((c) => (
               <button
                 key={c.id}
                 onClick={() => setActiveId(c.id)}
@@ -136,7 +135,7 @@ export function CollectionsView() {
                   No products in this collection
                 </div>
               ) : (
-                (active.products || []).map((p, i) => (
+                (active.products || []).map((p) => (
                   <div
                     key={p.id}
                     className={`px-4 py-3 border-t border-line-2 grid grid-cols-[32px_80px_1fr_80px_90px_32px] gap-4 items-center hover:bg-bg-sunken transition-colors`}

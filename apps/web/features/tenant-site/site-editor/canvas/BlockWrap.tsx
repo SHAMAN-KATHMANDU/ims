@@ -19,7 +19,7 @@ import {
   selectWrapInRowAt,
 } from "../store/selectors";
 import { findPath } from "../tree/blockTree";
-import { isContainerKind, CONTAINER_KINDS } from "../tree/containerKinds";
+import { isContainerKind } from "../tree/containerKinds";
 import { resolveDropZone } from "../dnd/dropZones";
 import { DropIndicator } from "./DropIndicator";
 import type { DropZone } from "../dnd/dropZones";
@@ -161,6 +161,13 @@ export function BlockWrap({ block, index, isSelected }: BlockWrapProps) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       onClick={handleSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          handleSelect();
+        }
+      }}
+      role="button"
+      tabIndex={0}
       className={`
         relative p-1 rounded transition-colors
         ${
@@ -230,6 +237,9 @@ export function BlockWrap({ block, index, isSelected }: BlockWrapProps) {
             zIndex: 10,
           }}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="toolbar"
+          tabIndex={0}
         >
           <button
             onClick={handleDuplicate}

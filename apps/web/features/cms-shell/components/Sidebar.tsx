@@ -3,8 +3,20 @@
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { Moon, Sun } from "lucide-react";
-import { useThemeStore } from "@/store/theme-store";
-import { useCmdKStore } from "@/store/cmdk-store";
+import {
+  useThemeStore,
+  selectTheme,
+  selectThemeToggle,
+} from "@/store/theme-store";
+import { useCmdKStore, selectCmdKSetOpen } from "@/store/cmdk-store";
+import {
+  useAuthStore,
+  selectUser,
+  selectTenant,
+  selectUserRole,
+  selectUsername,
+} from "@/store/auth-store";
+import { useSidebarCounts } from "../../tenant-site/hooks/use-sidebar-counts";
 import { Icon, type IconName } from "../icons";
 
 interface NavItem {
@@ -19,7 +31,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const NAV_GROUPS: NavGroup[] = [
+const getBaseNavGroups = (): NavGroup[] => [
   {
     label: "Overview",
     items: [{ label: "Dashboard", icon: "gauge", href: "/content/dashboard" }],
@@ -27,16 +39,15 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Content",
     items: [
-      { label: "Pages", icon: "pages", href: "/content/pages", count: 10 },
-      { label: "Blog", icon: "blog", href: "/content/blog", count: 7 },
-      { label: "Blocks", icon: "blocks", href: "/content/blocks", count: 21 },
+      { label: "Pages", icon: "pages", href: "/content/pages" },
+      { label: "Blog", icon: "blog", href: "/content/blog" },
+      { label: "Blocks", icon: "blocks", href: "/content/blocks" },
       {
         label: "Snippets",
         icon: "snippets",
         href: "/content/snippets",
-        count: 6,
       },
-      { label: "Media", icon: "media", href: "/content/media", count: 312 },
+      { label: "Media", icon: "media", href: "/content/media" },
     ],
   },
   {
@@ -46,19 +57,18 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Collections",
         icon: "collections",
         href: "/content/collections",
-        count: 5,
       },
-      { label: "Offers", icon: "offers", href: "/content/offers", count: 5 },
+      { label: "Offers", icon: "offers", href: "/content/offers" },
     ],
   },
   {
     label: "Structure",
     items: [
-      { label: "Navigation", icon: "navigation", href: "/content/navigation" },
+      { label: "Templates", icon: "templates", href: "/content/templates" },
       { label: "Design", icon: "design", href: "/content/design" },
       { label: "Domains", icon: "domains", href: "/content/domains" },
       { label: "SEO & redirects", icon: "seo", href: "/content/seo" },
-      { label: "Forms", icon: "forms", href: "/content/forms", count: 3 },
+      { label: "Forms", icon: "forms", href: "/content/forms" },
     ],
   },
   {
@@ -67,21 +77,91 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const STUB_DATA = {
-  tenantName: "Lumen & Coal",
-  tenantPlan: "pro",
-  userInitials: "AP",
-  userName: "Alex Park",
-  userRole: "Admin",
-};
-
 export function Sidebar() {
   const pathname = usePathname();
   const params = useParams<{ workspace: string }>();
   const workspace = params?.workspace ?? "";
-  const theme = useThemeStore((state) => state.theme);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
-  const openCmdK = useCmdKStore((state) => state.setOpen);
+  const theme = useThemeStore(selectTheme);
+  const toggleTheme = useThemeStore(selectThemeToggle);
+  const openCmdK = useCmdKStore(selectCmdKSetOpen);
+
+  const user = useAuthStore(selectUser);
+  const tenant = useAuthStore(selectTenant);
+  const userRole = useAuthStore(selectUserRole);
+  const username = useAuthStore(selectUsername);
+  const {
+    pages,
+    blog,
+    blocks,
+    snippets,
+    media,
+    collections,
+    offers,
+    forms,
+    isLoading: countsLoading,
+  } = useSidebarCounts();
+
+  const baseGroups = getBaseNavGroups();
+  const navGroups: NavGroup[] = baseGroups.map((group) => {
+    if (group.label === "Content") {
+      return {
+        ...group,
+        items: group.items.map((item) => {
+          const countMap: Record<string, number | undefined> = {
+            "/content/pages": pages,
+            "/content/blog": blog,
+            "/content/blocks": blocks,
+            "/content/snippets": snippets,
+            "/content/media": media,
+          };
+          return {
+            ...item,
+            count: countMap[item.href],
+          };
+        }),
+      };
+    }
+    if (group.label === "Commerce") {
+      return {
+        ...group,
+        items: group.items.map((item) => {
+          const countMap: Record<string, number | undefined> = {
+            "/content/collections": collections,
+            "/content/offers": offers,
+          };
+          return {
+            ...item,
+            count: countMap[item.href],
+          };
+        }),
+      };
+    }
+    if (group.label === "Structure") {
+      return {
+        ...group,
+        items: group.items.map((item) => {
+          const countMap: Record<string, number | undefined> = {
+            "/content/forms": forms,
+          };
+          return {
+            ...item,
+            count: countMap[item.href],
+          };
+        }),
+      };
+    }
+    return group;
+  });
+
+  const tenantName = tenant?.name ?? "Workspace";
+  const tenantPlan = tenant?.plan;
+  const userInitials =
+    username
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "?";
+  const displayName = username || user?.username || "User";
 
   const buildHref = (href: string) =>
     workspace ? `/${workspace}${href}` : href;
@@ -91,6 +171,8 @@ export function Sidebar() {
     const hrefSegment = href.split("/content/")?.[1]?.split("/")?.[0];
     return segment === hrefSegment;
   };
+
+  const tenantInitial = tenantName.charAt(0).toUpperCase();
 
   return (
     <div
@@ -130,29 +212,34 @@ export function Sidebar() {
               fontWeight: 600,
             }}
           >
-            L
+            {tenantInitial}
           </div>
           <div className="flex-1 min-w-0">
             <div
               className="text-sm font-medium truncate"
               style={{ color: "var(--ink)" }}
             >
-              {STUB_DATA.tenantName}
+              {tenantName}
             </div>
-            <div className="text-xs truncate" style={{ color: "var(--ink-3)" }}>
-              <span
-                className="mono"
-                style={{
-                  display: "inline-block",
-                  padding: "2px 4px",
-                  backgroundColor: "var(--bg-active)",
-                  borderRadius: "3px",
-                  fontSize: "9px",
-                }}
+            {tenantPlan && (
+              <div
+                className="text-xs truncate"
+                style={{ color: "var(--ink-3)" }}
               >
-                {STUB_DATA.tenantPlan}
-              </span>
-            </div>
+                <span
+                  className="mono"
+                  style={{
+                    display: "inline-block",
+                    padding: "2px 4px",
+                    backgroundColor: "var(--bg-active)",
+                    borderRadius: "3px",
+                    fontSize: "9px",
+                  }}
+                >
+                  {tenantPlan}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -191,7 +278,7 @@ export function Sidebar() {
 
       {/* Nav groups */}
       <div className="flex-1 overflow-y-auto" style={{ paddingTop: "16px" }}>
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.label} className="mb-6">
             <div
               className="mono text-xs font-semibold uppercase tracking-wider px-4 mb-2"
@@ -206,6 +293,12 @@ export function Sidebar() {
             <nav className="space-y-1">
               {group.items.map((item) => {
                 const active = isActive(item.href);
+                const count =
+                  item.count !== undefined
+                    ? countsLoading
+                      ? undefined
+                      : item.count
+                    : undefined;
                 return (
                   <Link
                     key={item.href}
@@ -240,7 +333,7 @@ export function Sidebar() {
                   >
                     <Icon name={item.icon} size={14} />
                     <span className="flex-1">{item.label}</span>
-                    {item.count && (
+                    {count !== undefined && (
                       <span
                         className="mono text-xs"
                         style={{
@@ -251,7 +344,7 @@ export function Sidebar() {
                           fontSize: "10px",
                         }}
                       >
-                        {item.count}
+                        {count}
                       </span>
                     )}
                   </Link>
@@ -285,7 +378,7 @@ export function Sidebar() {
               flexShrink: 0,
             }}
           >
-            {STUB_DATA.userInitials}
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <div
@@ -298,19 +391,21 @@ export function Sidebar() {
                 textOverflow: "ellipsis",
               }}
             >
-              {STUB_DATA.userName}
+              {displayName}
             </div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "var(--ink-3)",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {STUB_DATA.userRole}
-            </div>
+            {userRole && (
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "var(--ink-3)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {userRole}
+              </div>
+            )}
           </div>
         </div>
 

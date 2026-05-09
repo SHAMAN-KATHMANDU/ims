@@ -1,17 +1,11 @@
 "use client";
 
 import type React from "react";
-import { useState, useMemo } from "react";
-import { Search, Info, MoreVertical } from "lucide-react";
+import { useState, useMemo, Suspense } from "react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -23,12 +17,25 @@ import {
   getBlockCatalog,
   getCategories,
 } from "../services/blocks-library.service";
+import { InsertBlockDialog } from "./InsertBlockDialog";
 import type { CatalogEntry } from "@repo/shared";
+import { BlockRenderer, MOCK_DATA_CONTEXT } from "@repo/blocks";
+
+function BlockPreviewFallback() {
+  return (
+    <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
+      Preview unavailable
+    </div>
+  );
+}
 
 export function BlocksLibraryView() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBlock, setSelectedBlock] = useState<CatalogEntry | null>(null);
+  const [insertingBlock, setInsertingBlock] = useState<CatalogEntry | null>(
+    null,
+  );
 
   const allBlocks = getBlockCatalog();
   const categories = getCategories();
@@ -128,6 +135,18 @@ export function BlocksLibraryView() {
         <BlockDetailDialog
           block={selectedBlock}
           onClose={() => setSelectedBlock(null)}
+          onInsert={() => {
+            setInsertingBlock(selectedBlock);
+            setSelectedBlock(null);
+          }}
+        />
+      )}
+
+      {/* Insert Block Dialog */}
+      {insertingBlock && (
+        <InsertBlockDialog
+          block={insertingBlock}
+          onClose={() => setInsertingBlock(null)}
         />
       )}
     </div>
@@ -141,13 +160,29 @@ function BlockCard({
   block: CatalogEntry;
   onSelect: () => void;
 }): React.ReactElement {
+  const defaultProps = block.createDefaultProps();
+  const previewNode = {
+    id: "preview",
+    kind: block.kind,
+    props: defaultProps,
+  };
+
   return (
     <button
+      type="button"
       onClick={onSelect}
+      aria-label={`Insert ${block.label} block`}
       className="p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-2 group cursor-pointer"
     >
-      <div className="h-12 bg-muted rounded flex items-center justify-center text-muted-foreground group-hover:bg-muted/80 transition-colors">
-        <Info className="h-5 w-5" />
+      <div className="h-24 bg-muted rounded flex items-center justify-center text-muted-foreground group-hover:bg-muted/80 transition-colors overflow-hidden">
+        <div className="pointer-events-none scale-50 origin-top-left w-full">
+          <Suspense fallback={<BlockPreviewFallback />}>
+            <BlockRenderer
+              nodes={[previewNode]}
+              dataContext={MOCK_DATA_CONTEXT}
+            />
+          </Suspense>
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -169,15 +204,24 @@ function BlockCard({
 interface BlockDetailDialogProps {
   block: CatalogEntry;
   onClose: () => void;
+  onInsert: () => void;
 }
 
 function BlockDetailDialog({
   block,
   onClose,
+  onInsert,
 }: BlockDetailDialogProps): React.ReactElement {
+  const defaultProps = block.createDefaultProps();
+  const previewNode = {
+    id: "detail-preview",
+    kind: block.kind,
+    props: defaultProps,
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{block.label}</DialogTitle>
           <DialogDescription>{block.description}</DialogDescription>
@@ -185,8 +229,13 @@ function BlockDetailDialog({
 
         <div className="space-y-4">
           {/* Preview */}
-          <div className="h-32 bg-muted rounded-lg border border-border flex items-center justify-center text-muted-foreground">
-            <Info className="h-8 w-8" />
+          <div className="h-48 bg-muted rounded-lg border border-border flex items-center justify-center text-muted-foreground overflow-hidden">
+            <Suspense fallback={<BlockPreviewFallback />}>
+              <BlockRenderer
+                nodes={[previewNode]}
+                dataContext={MOCK_DATA_CONTEXT}
+              />
+            </Suspense>
           </div>
 
           {/* Details */}
@@ -227,13 +276,7 @@ function BlockDetailDialog({
             <Button variant="outline" size="sm" onClick={onClose}>
               Close
             </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                // TODO: Navigate to builder with this block selected
-                onClose();
-              }}
-            >
+            <Button size="sm" onClick={onInsert}>
               Insert into page
             </Button>
           </div>

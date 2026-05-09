@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 import { mediaService, type ListMediaParams } from "./media.service";
-import type { MediaAsset } from "./types";
 
 export const mediaKeys = {
   all: ["tenant-site-media"] as const,

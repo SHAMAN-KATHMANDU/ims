@@ -7,6 +7,8 @@ export { SiteSeoForm } from "./components/SiteSeoForm";
 export { SiteTemplatePicker } from "./components/SiteTemplatePicker";
 export { FooterPanel } from "./components/FooterPanel";
 
+export { TemplatesView } from "./templates";
+
 export {
   useSiteConfig,
   useSiteTemplates,
