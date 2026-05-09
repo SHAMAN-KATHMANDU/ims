@@ -1,17 +1,23 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { useToast } from "@/hooks/useToast";
-import { useFormsQuery, useFormSubmissionsQuery } from "../../hooks/use-forms";
+import {
+  useFormsQuery,
+  useFormSubmissionsQuery,
+  useFormQuery,
+} from "../../hooks/use-forms";
 import { FormEditorDialog } from "./FormEditorDialog";
 
 export function FormsView() {
   const { toast } = useToast();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editingFormId, setEditingFormId] = useState<string | null>(null);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
   const { data: formsData } = useFormsQuery();
@@ -21,6 +27,7 @@ export function FormsView() {
 
   const forms = formsData?.forms ?? [];
   const selectedForm = forms.find((f) => f.id === selectedFormId);
+  const editingFormQuery = useFormQuery(editingFormId ?? "");
   const formSubmissions = submissionsData?.submissions ?? [];
   const totalSubmissions = submissionsData?.pagination?.total ?? 0;
 
@@ -47,6 +54,16 @@ export function FormsView() {
               <Download className="w-4 h-4 mr-1" />
               Export CSV
             </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingFormId(null);
+                setEditorOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              New form
+            </Button>
           </div>
         }
       />
@@ -54,9 +71,20 @@ export function FormsView() {
       {forms.length === 0 && (
         <Card className="p-8 text-center text-muted-foreground">
           <p className="text-sm">
-            No forms yet. Add a form block to a page in the builder to get
-            started.
+            No forms yet. Click <strong>New form</strong> above to build your
+            first form, or add a form block to a page in the builder.
           </p>
+          <Button
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              setEditingFormId(null);
+              setEditorOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Create your first form
+          </Button>
         </Card>
       )}
 
@@ -68,23 +96,39 @@ export function FormsView() {
               Forms ({forms.length})
             </div>
             {forms.map((form) => (
-              <button
+              <div
                 key={form.id}
-                onClick={() => setSelectedFormId(form.id)}
-                className={`w-full text-left px-4 py-3 border-b text-sm transition-colors ${
+                className={`w-full px-4 py-3 border-b text-sm transition-colors flex items-center gap-2 ${
                   selectedFormId === form.id
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-muted/50"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{form.name}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {form.submissionCount} submission
-                  {form.submissionCount !== 1 ? "s" : ""}
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFormId(form.id)}
+                  className="flex-1 text-left"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium">{form.name}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {form.submissionCount} submission
+                    {form.submissionCount !== 1 ? "s" : ""}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Edit ${form.name}`}
+                  onClick={() => {
+                    setEditingFormId(form.id);
+                    setEditorOpen(true);
+                  }}
+                  className="p-1 rounded hover:bg-muted"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
             ))}
           </Card>
 
@@ -136,8 +180,19 @@ export function FormsView() {
 
       <FormEditorDialog
         open={editorOpen}
-        onOpenChange={setEditorOpen}
-        form={null}
+        onOpenChange={(next) => {
+          setEditorOpen(next);
+          if (!next) setEditingFormId(null);
+        }}
+        form={
+          editingFormId && editingFormQuery.data
+            ? // FormEditorDialog narrows Form.fields to FormFieldUI[]; the API
+              // returns them as unknown[] (FormFieldDef[]) — they're shape-compatible.
+              (editingFormQuery.data.form as React.ComponentProps<
+                typeof FormEditorDialog
+              >["form"])
+            : null
+        }
       />
     </div>
   );
