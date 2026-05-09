@@ -211,6 +211,70 @@ export class PagesRepository {
       },
     });
   }
+
+  /**
+   * Upsert a custom page (kind="page") from a template's defaultPages entry.
+   * Idempotent on the (tenantId, kind, slug) unique constraint.
+   *
+   * On first apply, creates a new TenantPage + SiteLayout with the page's blocks.
+   * On re-apply: if `overwriteExisting=true`, updates the page and layout (used when
+   * resetBranding=true). Otherwise, leaves existing user edits untouched.
+   */
+  async upsertCustomPage(
+    tenantId: string,
+    data: {
+      slug: string;
+      title: string;
+      navOrder?: number;
+      description?: string;
+      seoTitle?: string;
+      seoDescription?: string;
+    },
+    overwriteExisting: boolean = false,
+  ): Promise<TenantPage> {
+    // Try to find existing custom page
+    const existing = await prisma.tenantPage.findFirst({
+      where: { tenantId, kind: "page", slug: data.slug },
+    });
+
+    if (existing) {
+      if (!overwriteExisting) {
+        // Preserve existing user edits — return as-is
+        return existing;
+      }
+      // Overwrite: update title and metadata
+      return prisma.tenantPage.update({
+        where: { id: existing.id },
+        data: {
+          title: data.title,
+          ...(data.navOrder !== undefined && { navOrder: data.navOrder }),
+          ...(data.seoTitle !== undefined && { seoTitle: data.seoTitle }),
+          ...(data.seoDescription !== undefined && {
+            seoDescription: data.seoDescription,
+          }),
+        },
+      });
+    }
+
+    // Create new custom page
+    return prisma.tenantPage.create({
+      data: {
+        tenantId,
+        slug: data.slug,
+        title: data.title,
+        bodyMarkdown: "",
+        body: [],
+        kind: "page",
+        scope: null,
+        isBuiltInScope: false,
+        showInNav: true,
+        navOrder: data.navOrder ?? 0,
+        isPublished: false, // Custom pages start as drafts
+        seoTitle: data.seoTitle,
+        seoDescription: data.seoDescription,
+      },
+    });
+  }
 }
 
 export default new PagesRepository();

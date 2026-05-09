@@ -10,6 +10,7 @@ const mockRepo = {
   upsertConfig: vi.fn(),
   listActiveTemplates: vi.fn(),
   findTemplateBySlug: vi.fn(),
+  findTenantForkOfTemplate: vi.fn(),
   publishAllDrafts: vi.fn(),
 } as unknown as Repo;
 
@@ -207,9 +208,21 @@ describe("SitesService", () => {
       (
         mockRepo.findTemplateBySlug as ReturnType<typeof vi.fn>
       ).mockResolvedValue(template());
+      (
+        mockRepo.findTenantForkOfTemplate as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
       (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config({ templateId: "tpl2" }),
       );
+
+      // Mock the private seeding methods to avoid DB calls
+      vi.spyOn(service as any, "seedLayoutsFromBlueprint").mockResolvedValue(
+        undefined,
+      );
+      vi.spyOn(
+        service as any,
+        "seedCustomPagesFromBlueprint",
+      ).mockResolvedValue(undefined);
 
       await service.pickTemplate("t1", {
         templateSlug: "luxury",
@@ -230,9 +243,21 @@ describe("SitesService", () => {
       (
         mockRepo.findTemplateBySlug as ReturnType<typeof vi.fn>
       ).mockResolvedValue(template());
+      (
+        mockRepo.findTenantForkOfTemplate as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
       (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config({ templateId: "tpl2" }),
       );
+
+      // Mock the private seeding methods to avoid DB calls
+      vi.spyOn(service as any, "seedLayoutsFromBlueprint").mockResolvedValue(
+        undefined,
+      );
+      vi.spyOn(
+        service as any,
+        "seedCustomPagesFromBlueprint",
+      ).mockResolvedValue(undefined);
 
       await service.pickTemplate("t1", {
         templateSlug: "luxury",

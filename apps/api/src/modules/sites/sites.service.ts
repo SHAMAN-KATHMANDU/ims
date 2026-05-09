@@ -176,6 +176,12 @@ export class SitesService {
     if (!template) throw createError("Template not found", 404);
     if (!template.isActive) throw createError("Template is not active", 400);
 
+    // Check for a tenant fork of this template
+    const tenantFork = await this.repo.findTenantForkOfTemplate(
+      tenantId,
+      template.id,
+    );
+
     const data: Prisma.SiteConfigUpdateInput = {
       template: { connect: { id: template.id } },
     };
@@ -196,7 +202,11 @@ export class SitesService {
           : (template.defaultSections as Prisma.InputJsonValue);
     }
 
-    const blueprint = getTemplateBlueprint(input.templateSlug);
+    // Resolve blueprint with fork-awareness: prefer tenant fork's layouts/tokens
+    const blueprint = getTemplateBlueprint(input.templateSlug, {
+      tenantFork,
+      canonicalTemplate: template,
+    });
     if (blueprint?.defaultThemeTokens) {
       const existingTokens = current?.themeTokens as Record<
         string,
@@ -221,6 +231,12 @@ export class SitesService {
     // because it's the strongest "I want a clean slate" signal).
     if (blueprint) {
       await this.seedLayoutsFromBlueprint(
+        tenantId,
+        blueprint,
+        input.resetBranding === true,
+      );
+      // Phase 10H — seed custom pages from defaultPages
+      await this.seedCustomPagesFromBlueprint(
         tenantId,
         blueprint,
         input.resetBranding === true,
@@ -290,6 +306,82 @@ export class SitesService {
       });
 
       await revalidateSiteLayout(tenantId, scope);
+    }
+  }
+
+  /**
+   * Seed custom pages (kind="page") from a template's defaultPages array.
+   * Idempotent: each page is upserted by (tenantId, kind, slug).
+   *
+   * When overwriteExisting=true (e.g., resetBranding=true), the page and layout
+   * are updated to match the template's current blocks. Otherwise, existing user
+   * edits are preserved (first apply only seeds new pages).
+   */
+  private async seedCustomPagesFromBlueprint(
+    tenantId: string,
+    blueprint: TemplateBlueprint,
+    overwriteExisting: boolean,
+  ): Promise<void> {
+    if (!blueprint.defaultPages || blueprint.defaultPages.length === 0) {
+      return; // No custom pages to seed
+    }
+
+    for (const pageDef of blueprint.defaultPages) {
+      // Validate the page definition
+      if (!pageDef.slug || !pageDef.title) {
+        logger.warn(
+          `Skipping invalid custom page in blueprint "${blueprint.slug}": missing slug or title`,
+        );
+        continue;
+      }
+
+      // Upsert the TenantPage row
+      const page = await pagesRepo.upsertCustomPage(
+        tenantId,
+        {
+          slug: pageDef.slug,
+          title: pageDef.title,
+          navOrder: pageDef.navOrder,
+          description: pageDef.description,
+          seoTitle: pageDef.meta?.seoTitle,
+          seoDescription: pageDef.meta?.seoDescription,
+        },
+        overwriteExisting,
+      );
+
+      // Seed the SiteLayout for this custom page
+      const blocks = pageDef.blocks ?? [];
+      const parsed = BlockTreeSchema.safeParse(blocks);
+      if (!parsed.success) {
+        throw createError(
+          `Template "${blueprint.slug}" custom page "${pageDef.slug}" failed schema validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
+          500,
+        );
+      }
+      const json = parsed.data as unknown as Prisma.InputJsonValue;
+
+      if (overwriteExisting) {
+        // Update both draft and published for full reset
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope: "page", pageId: page.id },
+          json,
+        );
+        // Only publish if explicitly resetting
+        await siteLayoutsRepo.publishDraft(tenantId, {
+          scope: "page",
+          pageId: page.id,
+        });
+      } else {
+        // Idempotent: only seed draft on first apply
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope: "page", pageId: page.id },
+          json,
+        );
+      }
+
+      await revalidateSiteLayout(tenantId, "page");
     }
   }
 
@@ -563,7 +655,17 @@ export class SitesService {
       return;
     }
 
-    const blueprint = getTemplateBlueprint(template.slug);
+    // Check for a tenant fork of this template
+    const tenantFork = await this.repo.findTenantForkOfTemplate(
+      tenantId,
+      template.id,
+    );
+
+    // Resolve blueprint with fork-awareness: prefer tenant fork's layouts/tokens
+    const blueprint = getTemplateBlueprint(template.slug, {
+      tenantFork,
+      canonicalTemplate: template,
+    });
 
     // NavMenu table is no longer the source of truth (dropped in Phase 9).
     // Synthesize blocks from template blueprint only.

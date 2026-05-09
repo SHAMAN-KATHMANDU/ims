@@ -9,6 +9,10 @@
 import { z } from "zod";
 import { BlockNodeSchema, type BlockNode } from "./blocks";
 import { ThemeTokensSchema, type ThemeTokens } from "./theme";
+import {
+  TemplatePageDefinitionsSchema,
+  type TemplatePageDefinitions,
+} from "./template-pages";
 
 // ---------------------------------------------------------------------------
 // Theme tokens (design system)
@@ -82,11 +86,14 @@ export const BLUEPRINT_SCOPES = [
 ] as const satisfies readonly BlueprintScope[];
 
 /**
- * TemplateBlueprint — canonical block tree + theme tokens for a template.
+ * TemplateBlueprint — canonical block tree + theme tokens + custom pages for a template.
  *
  * When a tenant picks a template, the sites service creates SiteLayout rows
  * for each scope (home, products-index, product-detail, offers) from the
  * matching blueprint. The tenant can then edit each layout independently.
+ *
+ * Custom pages (in defaultPages) are also seeded as TenantPage rows with their
+ * associated SiteLayout rows, so they appear in /content/pages and are editable.
  *
  * Each blueprint's home tree is intentionally distinct — different hero
  * variants, different section orderings — so picking Editorial vs. Dark
@@ -96,6 +103,7 @@ export interface TemplateBlueprint {
   slug: string;
   layouts?: Partial<Record<BlueprintScope, Array<BlockNode>>>;
   defaultThemeTokens?: ThemeTokens;
+  defaultPages?: TemplatePageDefinitions;
 }
 
 export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
@@ -120,4 +128,5 @@ export const TemplateBlueprintSchema: z.ZodType<TemplateBlueprint> = z.object({
     )
     .optional(),
   defaultThemeTokens: ThemeTokensSchema.optional(),
+  defaultPages: TemplatePageDefinitionsSchema.optional(),
 }) as unknown as z.ZodType<TemplateBlueprint>;
