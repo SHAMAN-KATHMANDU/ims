@@ -8,5 +8,5 @@ export default async function TenantSiteRoute({
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace } = await params;
-  redirect(`/${workspace}/site-editor`);
+  redirect(`/${workspace}/content/dashboard`);
 }

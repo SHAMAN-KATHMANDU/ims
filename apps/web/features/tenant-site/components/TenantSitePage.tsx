@@ -220,7 +220,7 @@ export function TenantSitePage() {
               <Can perm="WEBSITE.SITE.UPDATE">
                 <Button asChild>
                   <a
-                    href={`/${workspaceSlug}/site-editor`}
+                    href={`/${workspaceSlug}/content/dashboard`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
