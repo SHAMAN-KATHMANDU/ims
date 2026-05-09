@@ -23,6 +23,7 @@ export function FormBlock({
   const [error, setError] = useState<string | null>(null);
   const wrapperHasPadY = node.style?.paddingY !== undefined;
   const sectionPad = wrapperHasPadY ? undefined : "var(--section-padding) 0";
+  const fields = props.fields ?? [];
 
   const updateField = (label: string, value: string) => {
     setValues((v) => ({ ...v, [label]: value }));
@@ -37,7 +38,7 @@ export function FormBlock({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          fields: props.fields.map((f) => ({
+          fields: fields.map((f) => ({
             label: f.label,
             value: values[f.label] ?? "",
           })),
@@ -117,7 +118,7 @@ export function FormBlock({
             gap: "1.25rem",
           }}
         >
-          {props.fields.map((field) => (
+          {fields.map((field) => (
             <label
               key={field.label}
               style={{

@@ -6,7 +6,7 @@ import type { BlockKind, BlockNode } from "@repo/shared";
  * This includes sample/mock data for preview modes and real data for production.
  */
 export interface BlockDataContext {
-  site?: { locale?: string; currency?: string } | null;
+  site?: { locale?: string | null; currency?: string } | null;
   products?: Array<{
     id: string;
     name: string;
@@ -40,14 +40,14 @@ export interface BlockDataContext {
   [key: string]: unknown;
 }
 
-export interface BlockComponentProps<P = unknown> {
+export interface BlockComponentProps<P = unknown, D = BlockDataContext> {
   node: BlockNode;
   props: P;
-  dataContext: BlockDataContext;
+  dataContext: D;
   children?: ReactNode;
 }
 
-export type BlockComponent = ComponentType<BlockComponentProps<any>>;
+export type BlockComponent = ComponentType<BlockComponentProps<any, any>>;
 
 export interface BlockRegistryEntry {
   component: BlockComponent;

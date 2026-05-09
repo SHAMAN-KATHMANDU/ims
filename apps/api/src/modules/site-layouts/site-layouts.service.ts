@@ -280,7 +280,18 @@ export class SiteLayoutsService {
       );
     }
 
-    const blueprint = getTemplateBlueprint(config.template.slug);
+    // Check for a tenant fork of this template
+    const template = config.template;
+    const tenantFork = await this.sites.findTenantForkOfTemplate(
+      tenantId,
+      template.id,
+    );
+
+    // Resolve blueprint with fork-awareness: prefer tenant fork's layouts/tokens
+    const blueprint = getTemplateBlueprint(config.template.slug, {
+      tenantFork,
+      canonicalTemplate: template,
+    });
     if (!blueprint) {
       throw createError(
         `No blueprint registered for template "${config.template.slug}".`,

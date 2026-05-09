@@ -3,6 +3,7 @@
 import type { BlockNode } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
 import { selectUpdateBlockProps } from "../store/selectors";
+import { SchemaDrivenForm } from "./SchemaDrivenForm";
 
 interface BlockTabProps {
   block: BlockNode | undefined;
@@ -251,9 +252,11 @@ export function BlockTab({ block }: BlockTabProps) {
       }
       default:
         return (
-          <div className="text-xs" style={{ color: "var(--ink-3)" }}>
-            No specific properties for {block.kind} blocks yet.
-          </div>
+          <SchemaDrivenForm
+            blockKind={block.kind}
+            value={props}
+            onChange={(newProps) => updateBlockProps(block.id, newProps)}
+          />
         );
     }
   };

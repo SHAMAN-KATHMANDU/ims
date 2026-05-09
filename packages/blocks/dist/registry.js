@@ -4,14 +4,7 @@ import { RowBlock } from "./components/layout/RowBlock";
 import { ColumnsBlock } from "./components/layout/ColumnsBlock";
 import { CssGridBlock } from "./components/layout/CssGridBlock";
 // Content blocks
-import {
-  HeadingBlock,
-  RichTextBlock,
-  ImageBlock,
-  ButtonBlock,
-  SpacerBlock,
-  DividerBlock,
-} from "./components/content/ContentBlocks";
+import { HeadingBlock, RichTextBlock, ImageBlock, ButtonBlock, SpacerBlock, DividerBlock, } from "./components/content/ContentBlocks";
 import { MarkdownBodyBlock } from "./components/content/MarkdownBodyBlock";
 import { EmbedBlock } from "./components/content/EmbedBlock";
 import { VideoBlock } from "./components/content/VideoBlock";
@@ -73,77 +66,77 @@ import { SnippetRefBlock } from "./components/SnippetRefBlock";
 // Form blocks
 import { FormBlock } from "./components/content/FormBlock";
 export const blockRegistry = {
-  // Layout
-  section: { component: SectionBlock, container: true },
-  row: { component: RowBlock, container: true },
-  columns: { component: ColumnsBlock, container: true },
-  "css-grid": { component: CssGridBlock, container: true },
-  // Content
-  heading: { component: HeadingBlock },
-  "rich-text": { component: RichTextBlock },
-  image: { component: ImageBlock },
-  button: { component: ButtonBlock },
-  spacer: { component: SpacerBlock },
-  divider: { component: DividerBlock },
-  "markdown-body": { component: MarkdownBodyBlock },
-  embed: { component: EmbedBlock },
-  video: { component: VideoBlock },
-  accordion: { component: AccordionBlock },
-  gallery: { component: GalleryBlock },
-  tabs: { component: TabsBlock },
-  "custom-html": { component: CustomHtmlBlock },
-  "empty-state": { component: EmptyStateBlock },
-  breadcrumbs: { component: BreadcrumbsBlock },
-  // Commerce
-  hero: { component: HeroBlock },
-  "product-grid": { component: ProductGridBlock },
-  "category-tiles": { component: CategoryTilesBlock },
-  "product-listing": { component: ProductListingBlock },
-  "product-filters": { component: ProductFiltersBlock },
-  "bundle-spotlight": { component: BundleSpotlightBlock },
-  "gift-card-redeem": { component: GiftCardRedeemBlock },
-  "cart-line-items": { component: CartLineItemsBlock },
-  "order-summary": { component: OrderSummaryBlock },
-  "price-tiers": { component: PriceTiersBlock },
-  // Marketing
-  "announcement-bar": { component: AnnouncementBarBlock },
-  "collection-cards": { component: CollectionCardsBlock },
-  "trust-strip": { component: TrustStripBlock },
-  "story-split": { component: StorySplitBlock },
-  "bento-showcase": { component: BentoShowcaseBlock },
-  "stats-band": { component: StatsBandBlock },
-  newsletter: { component: NewsletterBlock },
-  "contact-block": { component: ContactBlockComp },
-  faq: { component: FaqBlock },
-  testimonials: { component: TestimonialsBlock },
-  "logo-cloud": { component: LogoCloudBlock },
-  "policy-strip": { component: PolicyStripBlock },
-  // Blog
-  "blog-list": { component: BlogListBlock },
-  // PDP
-  "pdp-gallery": { component: PdpGalleryBlock },
-  "pdp-buybox": { component: PdpBuyboxBlock },
-  "pdp-details": { component: PdpDetailsBlock },
-  "pdp-related": { component: PdpRelatedBlock },
-  "reviews-list": { component: ReviewsListBlock },
-  fbt: { component: FbtBlock },
-  "recently-viewed": { component: RecentlyViewedBlock },
-  "size-guide": { component: SizeGuideBlock },
-  "product-comparison": { component: ProductComparisonBlock },
-  lookbook: { component: LookbookBlock },
-  // Header
-  "nav-bar": { component: NavBarBlock },
-  "logo-mark": { component: LogoMarkBlock },
-  "utility-bar": { component: UtilityBarBlock },
-  // Footer
-  "footer-columns": { component: FooterColumnsBlock },
-  "social-links": { component: SocialLinksBlock },
-  "payment-icons": { component: PaymentIconsBlock },
-  "copyright-bar": { component: CopyrightBarBlock },
-  // Checkout
-  "account-bar": { component: AccountBarBlock },
-  // Reusable sub-trees
-  "snippet-ref": { component: SnippetRefBlock },
-  // Forms
-  form: { component: FormBlock },
+    // Layout
+    section: { component: SectionBlock, container: true },
+    row: { component: RowBlock, container: true },
+    columns: { component: ColumnsBlock, container: true },
+    "css-grid": { component: CssGridBlock, container: true },
+    // Content
+    heading: { component: HeadingBlock },
+    "rich-text": { component: RichTextBlock },
+    image: { component: ImageBlock },
+    button: { component: ButtonBlock },
+    spacer: { component: SpacerBlock },
+    divider: { component: DividerBlock },
+    "markdown-body": { component: MarkdownBodyBlock },
+    embed: { component: EmbedBlock },
+    video: { component: VideoBlock },
+    accordion: { component: AccordionBlock },
+    gallery: { component: GalleryBlock },
+    tabs: { component: TabsBlock },
+    "custom-html": { component: CustomHtmlBlock },
+    "empty-state": { component: EmptyStateBlock },
+    breadcrumbs: { component: BreadcrumbsBlock },
+    // Commerce
+    hero: { component: HeroBlock },
+    "product-grid": { component: ProductGridBlock },
+    "category-tiles": { component: CategoryTilesBlock },
+    "product-listing": { component: ProductListingBlock },
+    "product-filters": { component: ProductFiltersBlock },
+    "bundle-spotlight": { component: BundleSpotlightBlock },
+    "gift-card-redeem": { component: GiftCardRedeemBlock },
+    "cart-line-items": { component: CartLineItemsBlock },
+    "order-summary": { component: OrderSummaryBlock },
+    "price-tiers": { component: PriceTiersBlock },
+    // Marketing
+    "announcement-bar": { component: AnnouncementBarBlock },
+    "collection-cards": { component: CollectionCardsBlock },
+    "trust-strip": { component: TrustStripBlock },
+    "story-split": { component: StorySplitBlock },
+    "bento-showcase": { component: BentoShowcaseBlock },
+    "stats-band": { component: StatsBandBlock },
+    newsletter: { component: NewsletterBlock },
+    "contact-block": { component: ContactBlockComp },
+    faq: { component: FaqBlock },
+    testimonials: { component: TestimonialsBlock },
+    "logo-cloud": { component: LogoCloudBlock },
+    "policy-strip": { component: PolicyStripBlock },
+    // Blog
+    "blog-list": { component: BlogListBlock },
+    // PDP
+    "pdp-gallery": { component: PdpGalleryBlock },
+    "pdp-buybox": { component: PdpBuyboxBlock },
+    "pdp-details": { component: PdpDetailsBlock },
+    "pdp-related": { component: PdpRelatedBlock },
+    "reviews-list": { component: ReviewsListBlock },
+    fbt: { component: FbtBlock },
+    "recently-viewed": { component: RecentlyViewedBlock },
+    "size-guide": { component: SizeGuideBlock },
+    "product-comparison": { component: ProductComparisonBlock },
+    lookbook: { component: LookbookBlock },
+    // Header
+    "nav-bar": { component: NavBarBlock },
+    "logo-mark": { component: LogoMarkBlock },
+    "utility-bar": { component: UtilityBarBlock },
+    // Footer
+    "footer-columns": { component: FooterColumnsBlock },
+    "social-links": { component: SocialLinksBlock },
+    "payment-icons": { component: PaymentIconsBlock },
+    "copyright-bar": { component: CopyrightBarBlock },
+    // Checkout
+    "account-bar": { component: AccountBarBlock },
+    // Reusable sub-trees
+    "snippet-ref": { component: SnippetRefBlock },
+    // Forms
+    form: { component: FormBlock },
 };

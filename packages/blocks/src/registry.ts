@@ -175,4 +175,5 @@ export type {
   BlockComponentProps,
   BlockComponent,
   BlockDataContext,
+  BlockRegistryEntry,
 } from "./types";
