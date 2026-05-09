@@ -6,6 +6,8 @@ import {
   useTopbarActionsStore,
   selectTopbarActions,
 } from "@/store/topbar-actions-store";
+import { useQuery } from "@tanstack/react-query";
+import { listMyDomains } from "@/features/tenant-site/domains/services/domains.service";
 
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -48,6 +50,17 @@ export function Topbar() {
   const pathname = usePathname();
   const actions = useTopbarActionsStore(selectTopbarActions);
   const crumbs = breadcrumbsFromPathname(pathname);
+
+  const { data: domains } = useQuery({
+    queryKey: ["my-domains"],
+    queryFn: listMyDomains,
+    staleTime: 2 * 60 * 1000,
+  });
+  const primaryDomain =
+    domains?.find((d) => d.isPrimary) ?? domains?.[0] ?? null;
+  const liveSiteUrl = primaryDomain
+    ? `https://${primaryDomain.hostname}`
+    : null;
 
   return (
     <div
@@ -150,7 +163,19 @@ export function Topbar() {
         </button>
 
         {/* Live site button */}
-        <button
+        <a
+          href={liveSiteUrl ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!liveSiteUrl}
+          onClick={(e) => {
+            if (!liveSiteUrl) e.preventDefault();
+          }}
+          title={
+            liveSiteUrl
+              ? "View live site"
+              : "Add a custom domain in Site → Domains to enable"
+          }
           style={{
             height: 28,
             padding: "0 10px",
@@ -160,22 +185,24 @@ export function Topbar() {
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            color: "var(--ink-2)",
+            color: liveSiteUrl ? "var(--ink-2)" : "var(--ink-4)",
             fontSize: "12px",
-            cursor: "pointer",
+            cursor: liveSiteUrl ? "pointer" : "not-allowed",
+            opacity: liveSiteUrl ? 1 : 0.6,
+            textDecoration: "none",
             transition: "background-color 150ms ease",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--bg-hover)";
+            if (liveSiteUrl)
+              e.currentTarget.style.backgroundColor = "var(--bg-hover)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "var(--bg)";
           }}
-          title="View live site"
         >
           <ExternalLink size={13} />
           Live site
-        </button>
+        </a>
       </div>
     </div>
   );
