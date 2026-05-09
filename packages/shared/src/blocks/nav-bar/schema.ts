@@ -12,7 +12,7 @@ export interface NavBarItem {
   label: string;
   href: string;
   children?: NavBarItem[];
-  megaMenuBlocks?: any[]; // BlockNode[] — validated at site-layout level
+  megaMenuBlocks?: unknown[]; // BlockNode[] — validated at site-layout level
   hasMegaMenu?: boolean;
 }
 

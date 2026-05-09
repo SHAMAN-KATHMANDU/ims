@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NavBarSchema, type NavBarProps } from "./schema";
+import { NavBarSchema, type NavBarProps, type NavBarItem } from "./schema";
 
 describe("NavBarSchema", () => {
   describe("backwards compatibility — simple nav-bar (legacy)", () => {
@@ -408,7 +408,7 @@ describe("NavBarSchema", () => {
             label: "Link",
             href: "/page",
             unknownProp: "bad",
-          } as any,
+          } as unknown as NavBarItem,
         ],
       };
       expect(() => NavBarSchema.parse(input)).toThrow();
