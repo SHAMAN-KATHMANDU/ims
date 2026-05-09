@@ -110,6 +110,18 @@ describe("media.schema", () => {
     expect(r.mimePrefix).toBe("image/");
   });
 
+  it("ListMediaQuerySchema accepts folder filter", () => {
+    const r = ListMediaQuerySchema.parse({ folder: "Brand" });
+    expect(r.folder).toBe("Brand");
+  });
+
+  it("ListMediaQuerySchema rejects folder over 80 chars", () => {
+    const r = ListMediaQuerySchema.safeParse({
+      folder: "x".repeat(81),
+    });
+    expect(r.success).toBe(false);
+  });
+
   it("UpdateMediaAssetSchema accepts valid fileName", () => {
     const r = UpdateMediaAssetSchema.safeParse({ fileName: "photo.png" });
     expect(r.success).toBe(true);
@@ -134,6 +146,53 @@ describe("media.schema", () => {
   it("UpdateMediaAssetSchema rejects whitespace-only fileName", () => {
     const r = UpdateMediaAssetSchema.safeParse({ fileName: "   \t  " });
     expect(r.success).toBe(false);
+  });
+
+  it("UpdateMediaAssetSchema accepts altText", () => {
+    const r = UpdateMediaAssetSchema.safeParse({
+      altText: "A beautiful landscape photo",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.altText).toBe("A beautiful landscape photo");
+  });
+
+  it("UpdateMediaAssetSchema rejects altText over 1000 chars", () => {
+    const r = UpdateMediaAssetSchema.safeParse({
+      altText: "x".repeat(1001),
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("UpdateMediaAssetSchema trims altText", () => {
+    const r = UpdateMediaAssetSchema.safeParse({
+      altText: "  alt text  ",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.altText).toBe("alt text");
+  });
+
+  it("UpdateMediaAssetSchema accepts folder", () => {
+    const r = UpdateMediaAssetSchema.safeParse({ folder: "Brand" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.folder).toBe("Brand");
+  });
+
+  it("UpdateMediaAssetSchema rejects folder over 80 chars", () => {
+    const r = UpdateMediaAssetSchema.safeParse({
+      folder: "x".repeat(81),
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("UpdateMediaAssetSchema trims folder", () => {
+    const r = UpdateMediaAssetSchema.safeParse({ folder: "  Designs  " });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.folder).toBe("Designs");
+  });
+
+  it("UpdateMediaAssetSchema allows all fields empty", () => {
+    const r = UpdateMediaAssetSchema.safeParse({});
+    expect(r.success).toBe(true);
   });
 
   it("MediaAssetIdParamsSchema accepts UUID id", () => {

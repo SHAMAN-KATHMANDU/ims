@@ -62,6 +62,21 @@ export class SitesRepository {
     });
   }
 
+  async upsertConfig(
+    tenantId: string,
+    data: Record<string, unknown>,
+  ): Promise<SiteConfigWithTemplate> {
+    // Writes invalidate the per-request memo.
+    const memo = getRequestMemo();
+    if (memo) memo.delete(`${SITE_CONFIG_MEMO_PREFIX}${tenantId}`);
+    return (await prisma.siteConfig.upsert({
+      where: { tenantId },
+      create: { ...data, tenantId } as unknown as Prisma.SiteConfigCreateInput,
+      update: data as unknown as Prisma.SiteConfigUpdateInput,
+      include: { template: true },
+    })) as SiteConfigWithTemplate;
+  }
+
   listActiveTemplates(): Promise<SiteTemplate[]> {
     return prisma.siteTemplate.findMany({
       where: { isActive: true },
@@ -71,6 +86,21 @@ export class SitesRepository {
 
   findTemplateBySlug(slug: string): Promise<SiteTemplate | null> {
     return prisma.siteTemplate.findUnique({ where: { slug } });
+  }
+
+  /**
+   * Find a tenant's fork of a canonical template.
+   */
+  findTenantForkOfTemplate(
+    tenantId: string,
+    parentTemplateId: string,
+  ): Promise<SiteTemplate | null> {
+    return prisma.siteTemplate.findFirst({
+      where: {
+        parentTemplateId,
+        ownerTenantId: tenantId,
+      },
+    });
   }
 
   /**

@@ -42,7 +42,7 @@ export function MediaTile({ asset, onDelete, onEdit }: MediaTileProps) {
         {asset.mimeType.startsWith("image/") ? (
           <Image
             src={asset.url}
-            alt={asset.name}
+            alt={asset.altText || asset.name}
             fill
             className="object-cover"
           />

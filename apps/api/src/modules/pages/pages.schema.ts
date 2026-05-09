@@ -9,6 +9,7 @@
 
 import { z } from "zod";
 import { BlockTreeSchema } from "@repo/shared";
+import type { ContentReviewStatus } from "@prisma/client";
 
 const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,80}$/;
 
@@ -108,6 +109,31 @@ export const ListTenantPagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   published: z.coerce.boolean().optional(),
 });
+
+/**
+ * PageListItem shape — type alias for TenantPageListItem,
+ * used in services to render scope pages distinctly in the Pages list.
+ */
+export type PageListItem = {
+  id: string;
+  tenantId: string;
+  slug: string;
+  title: string;
+  layoutVariant: string;
+  showInNav: boolean;
+  navOrder: number;
+  isPublished: boolean;
+  reviewStatus: ContentReviewStatus;
+  coverImageUrl: string | null;
+  icon: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  kind: string;
+  scope: string | null;
+  isBuiltInScope: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type CreateTenantPageInput = z.infer<typeof CreateTenantPageSchema>;
 export type UpdateTenantPageInput = z.infer<typeof UpdateTenantPageSchema>;

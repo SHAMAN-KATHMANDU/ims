@@ -29,10 +29,7 @@ export class MediaRepository {
    * the underlying S3 object stays around for recovery / audit. Returns the
    * number of rows affected (0 if not found or already deleted).
    */
-  async softDeleteByIdForTenant(
-    id: string,
-    tenantId: string,
-  ): Promise<number> {
+  async softDeleteByIdForTenant(id: string, tenantId: string): Promise<number> {
     const res = await prisma.mediaAsset.updateMany({
       where: { id, tenantId, deletedAt: null },
       data: { deletedAt: new Date() },
@@ -57,6 +54,7 @@ export class MediaRepository {
       cursorId?: string;
       purpose?: string;
       mimePrefix?: string;
+      folder?: string;
       includeDeleted?: boolean;
     },
   ): Promise<MediaAsset[]> {
@@ -67,6 +65,13 @@ export class MediaRepository {
     }
     if (opts.mimePrefix) {
       where.mimeType = { startsWith: opts.mimePrefix };
+    }
+    if (opts.folder !== undefined) {
+      if (opts.folder === "__none__") {
+        where.folder = null;
+      } else {
+        where.folder = opts.folder;
+      }
     }
     return prisma.mediaAsset.findMany({
       where,
@@ -172,5 +177,39 @@ export class MediaRepository {
     return prisma.mediaAsset.findFirst({
       where: { id, tenantId, deletedAt: null },
     });
+  }
+
+  async updateAssetFields(
+    id: string,
+    tenantId: string,
+    data: {
+      fileName?: string;
+      altText?: string | null;
+      folder?: string | null;
+    },
+  ): Promise<MediaAsset | null> {
+    const updateData: Prisma.MediaAssetUpdateInput = {};
+    if (data.fileName !== undefined) updateData.fileName = data.fileName;
+    if (data.altText !== undefined) updateData.altText = data.altText;
+    if (data.folder !== undefined) updateData.folder = data.folder;
+
+    const updated = await prisma.mediaAsset.updateMany({
+      where: { id, tenantId, deletedAt: null },
+      data: updateData,
+    });
+    if (updated.count === 0) return null;
+    return prisma.mediaAsset.findFirst({
+      where: { id, tenantId, deletedAt: null },
+    });
+  }
+
+  async listDistinctFoldersForTenant(tenantId: string): Promise<string[]> {
+    const result = await prisma.mediaAsset.findMany({
+      where: { tenantId, deletedAt: null, folder: { not: null } },
+      select: { folder: true },
+      distinct: ["folder"],
+      orderBy: { folder: "asc" },
+    });
+    return result.map((r) => r.folder!).filter(Boolean);
   }
 }

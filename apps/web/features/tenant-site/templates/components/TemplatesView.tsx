@@ -5,18 +5,35 @@ import {
   useTopbarActionsStore,
   selectTopbarActionsSetActions,
 } from "@/store/topbar-actions-store";
+import { useAuthStore, selectTenant } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { useTemplatesQuery } from "../hooks/use-templates";
+import {
+  useTemplatesQuery,
+  useForkTemplate,
+  useDeleteTemplate,
+} from "../hooks/use-templates";
 import { useSiteConfig } from "../../hooks/use-tenant-site";
 import { TemplateCard } from "./TemplateCard";
 import { ApplyTemplateConfirmDialog } from "./ApplyTemplateConfirmDialog";
 
 export function TemplatesView() {
   const setTopbarActions = useTopbarActionsStore(selectTopbarActionsSetActions);
+  const tenant = useAuthStore(selectTenant);
   const templatesQuery = useTemplatesQuery();
   const configQuery = useSiteConfig();
+  const forkMutation = useForkTemplate();
+  const deleteMutation = useDeleteTemplate();
   const [confirmTemplate, setConfirmTemplate] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     setTopbarActions(
@@ -73,10 +90,20 @@ export function TemplatesView() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map((template) => (
             <TemplateCard
-              key={template.slug}
+              key={template.id}
               template={template}
               isActive={template.id === currentTemplateId}
+              currentTenantId={tenant?.id ?? ""}
               onApply={() => setConfirmTemplate(template.slug)}
+              onForkClick={(id, name) => {
+                forkMutation.mutate({ id, name });
+              }}
+              onEditClick={(id) => {
+                window.location.href = `/content/templates/${id}/edit`;
+              }}
+              onDeleteClick={(id) => {
+                setDeleteConfirm(id);
+              }}
             />
           ))}
         </div>
@@ -86,7 +113,7 @@ export function TemplatesView() {
         </div>
       )}
 
-      {/* Confirmation dialog */}
+      {/* Apply template confirmation dialog */}
       {confirmTemplate && (
         <ApplyTemplateConfirmDialog
           template={templates.find((t) => t.slug === confirmTemplate)!}
@@ -95,6 +122,36 @@ export function TemplatesView() {
             if (!open) setConfirmTemplate(null);
           }}
         />
+      )}
+
+      {/* Delete fork confirmation dialog */}
+      {deleteConfirm && (
+        <AlertDialog
+          open={!!deleteConfirm}
+          onOpenChange={(open) => {
+            if (!open) setDeleteConfirm(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete Fork?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Your custom template fork will be
+              permanently deleted.
+            </AlertDialogDescription>
+            <div className="flex gap-2 justify-end">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  deleteMutation.mutate(deleteConfirm);
+                  setDeleteConfirm(null);
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

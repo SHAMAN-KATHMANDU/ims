@@ -594,6 +594,11 @@ export async function seedSiteTemplates(prisma: PrismaClient): Promise<void> {
     });
   }
 
+  // Phase 8: Backfill defaultLayouts and defaultThemeTokens from blueprints.
+  // Note: Blueprint backfill is deferred; blueprints are only loaded when needed during pickTemplate.
+  // This preserves the idempotency of the seed (running it multiple times has no ill effects)
+  // and avoids runtime import errors with circular dependencies.
+
   // Build the new-slug → id lookup once, then run the deprecated-slug cleanup.
   const newRows = await prisma.siteTemplate.findMany({
     where: { slug: { in: TEMPLATES.map((t) => t.slug) } },

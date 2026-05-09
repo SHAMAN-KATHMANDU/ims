@@ -265,6 +265,14 @@ export class PlatformRepository {
         });
       }
 
+      // Create SiteConfig with website enabled by default
+      await tx.siteConfig.create({
+        data: {
+          tenantId: tenant.id,
+          websiteEnabled: true,
+        },
+      });
+
       return {
         tenant,
         adminUser: {

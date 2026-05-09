@@ -220,6 +220,35 @@ export function BlockTab({ block }: BlockTabProps) {
           </>
         );
       }
+      case "form": {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const form = props as any;
+        return (
+          <div>
+            <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
+              Form ID (optional)
+            </div>
+            <input
+              type="text"
+              placeholder="Leave empty for inline fields"
+              value={form.formId || ""}
+              onChange={(e) =>
+                updateBlockProps(block.id, { formId: e.target.value })
+              }
+              className="w-full h-7 px-2 rounded text-xs"
+              style={{
+                border: "1px solid var(--line)",
+                backgroundColor: "var(--bg-elev)",
+                color: "var(--ink)",
+                outline: "none",
+              }}
+            />
+            <div className="text-xs mt-1" style={{ color: "var(--ink-4)" }}>
+              Reference a stored form, or define fields inline in the editor.
+            </div>
+          </div>
+        );
+      }
       default:
         return (
           <div className="text-xs" style={{ color: "var(--ink-3)" }}>

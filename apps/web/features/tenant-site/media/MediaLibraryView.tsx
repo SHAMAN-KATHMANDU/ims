@@ -1,75 +1,94 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useMediaList, useDeleteMedia, useUpdateMedia } from "./use-media";
+import {
+  useMediaList,
+  useDeleteMedia,
+  useUpdateMedia,
+  useMediaFolders,
+} from "./use-media";
 import { MediaTile } from "./MediaTile";
 import { MediaDetailDialog } from "./MediaDetailDialog";
-import { Upload, Search, Folder } from "lucide-react";
+import { Upload, Search, Folder, Plus } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { MediaAsset } from "./types";
 
-const FOLDERS = [
-  "All",
-  "Brand",
-  "Interior",
-  "Exterior",
-  "Food",
-  "Bar",
-  "Team",
-  "Documents",
-];
-
 export function MediaLibraryView() {
-  const [folder, setFolder] = useState("All");
+  const [folder, setFolder] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [newFolderInput, setNewFolderInput] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: allMedia = [], isLoading } = useMediaList({
-    folder: folder !== "All" ? folder : undefined,
-    search: debouncedSearch || undefined,
+    folder: folder || undefined,
   });
+  const { data: folders = [] } = useMediaFolders();
   const deleteMedia = useDeleteMedia();
   const updateMedia = useUpdateMedia();
 
+  const displayFolders = useMemo(() => {
+    return ["All", ...folders];
+  }, [folders]);
+
   const filtered = useMemo(() => {
     return allMedia.filter((m) => {
-      if (folder !== "All" && m.folder !== folder) return false;
       if (
         debouncedSearch &&
-        !m.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+        !m.name?.toLowerCase().includes(debouncedSearch.toLowerCase())
       ) {
         return false;
       }
       return true;
     });
-  }, [allMedia, folder, debouncedSearch]);
+  }, [allMedia, debouncedSearch]);
 
   const folderCounts = useMemo(() => {
-    return FOLDERS.reduce(
-      (acc, f) => {
-        if (f === "All") {
-          acc[f] = allMedia.length;
-        } else {
-          acc[f] = allMedia.filter((m) => m.folder === f).length;
-        }
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-  }, [allMedia]);
+    const counts: Record<string, number> = { All: allMedia.length };
+    folders.forEach((f) => {
+      counts[f] = allMedia.filter((m) => m.folder === f).length;
+    });
+    return counts;
+  }, [allMedia, folders]);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      // Upload each file - this is a placeholder
+      // In a real implementation, you'd call uploadMedia.mutate(files[i])
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   return (
     <div className="space-y-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,video/*,application/pdf"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Media</h1>
           <p className="text-sm text-ink-3 mt-1">{allMedia.length} assets</p>
         </div>
-        <Button className="gap-2 bg-accent text-bg hover:bg-accent/90">
+        <Button
+          onClick={handleUploadClick}
+          className="gap-2 bg-accent text-bg hover:bg-accent/90"
+        >
           <Upload className="w-4 h-4" />
           Upload
         </Button>
@@ -82,19 +101,23 @@ export function MediaLibraryView() {
           <div className="text-xs font-mono text-ink-4 uppercase tracking-wide px-2 py-1">
             Folders
           </div>
-          {FOLDERS.map((f) => (
+          {displayFolders.map((f) => (
             <button
               key={f}
-              onClick={() => setFolder(f)}
+              onClick={() => setFolder(f === "All" ? null : f)}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                folder === f
+                (f === "All" ? folder === null : folder === f)
                   ? "bg-bg-active text-ink font-medium"
                   : "text-ink-3 hover:bg-bg-sunken"
               }`}
             >
               <Folder
                 className={`w-4 h-4 ${
-                  folder === f ? "text-accent" : "text-ink-4"
+                  f === "All"
+                    ? folder === null
+                    : folder === f
+                      ? "text-accent"
+                      : "text-ink-4"
                 }`}
               />
               <span className="flex-1 text-left">{f}</span>
@@ -103,6 +126,29 @@ export function MediaLibraryView() {
               </span>
             </button>
           ))}
+          {newFolderInput && (
+            <div className="px-3 py-2 rounded-md text-sm bg-bg-sunken">
+              <Input
+                value={newFolderInput}
+                onChange={(e) => setNewFolderInput(e.target.value)}
+                placeholder="Folder name"
+                className="h-8 text-sm"
+                onBlur={() => {
+                  if (newFolderInput.trim()) {
+                    setFolder(newFolderInput.trim());
+                  }
+                  setNewFolderInput("");
+                }}
+              />
+            </div>
+          )}
+          <button
+            onClick={() => setNewFolderInput("")}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-ink-3 hover:bg-bg-sunken transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New folder</span>
+          </button>
         </div>
 
         {/* Main */}

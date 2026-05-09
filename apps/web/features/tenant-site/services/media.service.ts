@@ -13,6 +13,8 @@ export interface MediaAsset {
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+  altText?: string | null;
+  folder?: string | null;
 }
 
 export interface MediaPresignResult {
@@ -31,6 +33,7 @@ export interface MediaListParams {
     | "library"
     | "message_media";
   mimePrefix?: string;
+  folder?: string;
 }
 
 export interface MediaListResponse {
@@ -176,7 +179,11 @@ export const mediaService = {
 
   async updateAsset(
     id: string,
-    payload: { fileName: string },
+    payload: {
+      fileName?: string;
+      altText?: string | null;
+      folder?: string | null;
+    },
   ): Promise<MediaAsset> {
     try {
       const { data } = await api.patch<{ asset: MediaAsset }>(
@@ -186,6 +193,15 @@ export const mediaService = {
       return data.asset;
     } catch (error) {
       throw handleApiError(error, "media update");
+    }
+  },
+
+  async listFolders(): Promise<string[]> {
+    try {
+      const { data } = await api.get<{ folders: string[] }>("/media/folders");
+      return data.folders;
+    } catch (error) {
+      throw handleApiError(error, "media folders");
     }
   },
 

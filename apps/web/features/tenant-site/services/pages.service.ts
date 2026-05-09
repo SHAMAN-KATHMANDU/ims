@@ -18,6 +18,9 @@ export interface TenantPage {
   icon: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  kind: "page" | "scope";
+  scope: string | null;
+  isBuiltInScope: boolean;
   createdAt: string;
   updatedAt: string;
 }

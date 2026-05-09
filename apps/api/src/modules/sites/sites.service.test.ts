@@ -7,6 +7,7 @@ type Repo = typeof defaultRepo;
 const mockRepo = {
   findConfig: vi.fn(),
   updateConfig: vi.fn(),
+  upsertConfig: vi.fn(),
   listActiveTemplates: vi.fn(),
   findTemplateBySlug: vi.fn(),
   publishAllDrafts: vi.fn(),
@@ -80,10 +81,15 @@ describe("SitesService", () => {
       expect(result.tenantId).toBe("t1");
     });
 
-    it("throws 403 when SiteConfig missing", async () => {
+    it("auto-creates SiteConfig when missing", async () => {
       (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-      await expect(service.getConfig("t1")).rejects.toMatchObject({
-        statusCode: 403,
+      (mockRepo.upsertConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      const result = await service.getConfig("t1");
+      expect(result.websiteEnabled).toBe(true);
+      expect(mockRepo.upsertConfig).toHaveBeenCalledWith("t1", {
+        websiteEnabled: true,
       });
     });
 
@@ -183,8 +189,10 @@ describe("SitesService", () => {
       expect(result).toHaveLength(1);
     });
 
-    it("throws 403 when disabled", async () => {
-      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    it("throws 403 when websiteEnabled is false", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ websiteEnabled: false }),
+      );
       await expect(service.listTemplates("t1")).rejects.toMatchObject({
         statusCode: 403,
       });
@@ -269,8 +277,10 @@ describe("SitesService", () => {
       ).rejects.toMatchObject({ statusCode: 400 });
     });
 
-    it("throws 403 when disabled", async () => {
-      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    it("throws 403 when websiteEnabled is false", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ websiteEnabled: false }),
+      );
       await expect(
         service.pickTemplate("t1", {
           templateSlug: "luxury",

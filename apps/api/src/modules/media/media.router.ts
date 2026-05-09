@@ -139,6 +139,25 @@ mediaRouter.get(
 
 /**
  * @swagger
+ * /media/folders:
+ *   get:
+ *     summary: List distinct folder names for the tenant
+ *     tags: [Media]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of folder names
+ *       404:
+ *         description: Media upload feature is disabled in this environment
+ */
+mediaRouter.get(
+  "/folders",
+  asyncHandler(mediaController.listFolders.bind(mediaController)),
+);
+
+/**
+ * @swagger
  * /media/assets/{id}:
  *   delete:
  *     summary: Delete media asset (S3 object first when configured)
@@ -160,8 +179,8 @@ mediaRouter.get(
  *       503:
  *         description: S3 not configured for delete
  *   patch:
- *     summary: Update media asset display name (metadata only)
- *     description: Updates **fileName** in the database; storage key and public URL are unchanged.
+ *     summary: Update media asset metadata
+ *     description: Updates **fileName**, **altText**, and/or **folder**; storage key and public URL are unchanged. All fields are optional. Pass empty string to clear altText or folder.
  *     tags: [Media]
  *     security:
  *       - bearerAuth: []
@@ -176,9 +195,10 @@ mediaRouter.get(
  *         application/json:
  *           schema:
  *             type: object
- *             required: [fileName]
  *             properties:
  *               fileName: { type: string, minLength: 1, maxLength: 255 }
+ *               altText: { type: string, maxLength: 1000 }
+ *               folder: { type: string, maxLength: 80 }
  *     responses:
  *       200:
  *         description: Updated asset

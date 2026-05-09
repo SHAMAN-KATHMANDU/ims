@@ -25,6 +25,10 @@ const PAGE_LIST_SELECT = {
   icon: true,
   seoTitle: true,
   seoDescription: true,
+  // Phase 5 — scope page support.
+  kind: true,
+  scope: true,
+  isBuiltInScope: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.TenantPageSelect;
@@ -47,16 +51,56 @@ export class PagesRepository {
       ...(opts.published === undefined ? {} : { isPublished: opts.published }),
     };
 
+    // Scope pages are sorted by BLUEPRINT_SCOPES order; user pages by navOrder then title.
+    const SCOPE_ORDER: Record<string, number> = {
+      header: 0,
+      footer: 1,
+      home: 2,
+      "products-index": 3,
+      "product-detail": 4,
+      offers: 5,
+      cart: 6,
+      "blog-index": 7,
+      "blog-post": 8,
+      contact: 9,
+      page: 10,
+      "404": 11,
+    };
+
     return Promise.all([
       prisma.tenantPage.findMany({
         where,
         select: PAGE_LIST_SELECT,
-        orderBy: [{ navOrder: "asc" }, { title: "asc" }],
+        orderBy: [
+          // Scope pages first (sorted by BLUEPRINT_SCOPES order)
+          { kind: "asc" },
+          // Within each kind, scope pages by scope order, user pages by nav order then title
+        ],
         skip: (opts.page - 1) * opts.limit,
         take: opts.limit,
       }),
       prisma.tenantPage.count({ where }),
-    ]);
+    ]).then(([pages, total]) => {
+      // Sort with custom logic for scopes, then nav order for user pages
+      const sorted = pages.sort((a, b) => {
+        // Scopes first
+        if (a.kind === "scope" && b.kind === "page") return -1;
+        if (a.kind === "page" && b.kind === "scope") return 1;
+
+        // Within scopes: sort by BLUEPRINT_SCOPES order
+        if (a.kind === "scope" && b.kind === "scope") {
+          const scopeAOrder = SCOPE_ORDER[a.scope ?? ""] ?? 999;
+          const scopeBOrder = SCOPE_ORDER[b.scope ?? ""] ?? 999;
+          return scopeAOrder - scopeBOrder;
+        }
+
+        // Within user pages: sort by navOrder then title
+        if (a.navOrder !== b.navOrder) return a.navOrder - b.navOrder;
+        return a.title.localeCompare(b.title);
+      });
+
+      return [sorted, total];
+    });
   }
 
   getPageById(tenantId: string, id: string): Promise<TenantPage | null> {
@@ -123,6 +167,48 @@ export class PagesRepository {
           data: { navOrder: u.navOrder },
         });
       }
+    });
+  }
+
+  /**
+   * Upsert a scope page (kind="scope") for a template's built-in scope.
+   * Idempotent on the (tenantId, scope) unique constraint where kind='scope'.
+   * Used when seeding layouts from a blueprint to create TenantPage rows
+   * that appear in the Pages list alongside user-created custom pages.
+   */
+  async upsertScopePage(
+    tenantId: string,
+    scope: string,
+    data: { title: string; slug: string },
+  ): Promise<TenantPage> {
+    // Try to find existing scope page
+    const existing = await prisma.tenantPage.findFirst({
+      where: { tenantId, kind: "scope", scope },
+    });
+
+    if (existing) {
+      // Update title if it changed, leave other fields alone
+      return prisma.tenantPage.update({
+        where: { id: existing.id },
+        data: { title: data.title },
+      });
+    }
+
+    // Create new scope page
+    return prisma.tenantPage.create({
+      data: {
+        tenantId,
+        slug: data.slug,
+        title: data.title,
+        bodyMarkdown: "",
+        body: [],
+        kind: "scope",
+        scope,
+        isBuiltInScope: true,
+        showInNav: true,
+        navOrder: 0,
+        isPublished: true,
+      },
     });
   }
 }

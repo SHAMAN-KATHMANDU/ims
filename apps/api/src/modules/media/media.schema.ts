@@ -66,6 +66,8 @@ export const ListMediaQuerySchema = z.object({
   purpose: z.enum(MEDIA_PURPOSES).optional(),
   /** When set, only assets whose mimeType starts with this prefix (e.g. image/, video/). */
   mimePrefix: z.string().trim().min(1).max(40).optional(),
+  /** When set, only assets in this folder (case-sensitive). Use "__none__" to filter for null folder. */
+  folder: z.string().max(80).optional(),
 });
 
 export type ListMediaQueryDto = z.infer<typeof ListMediaQuerySchema>;
@@ -103,7 +105,20 @@ export const UpdateMediaAssetSchema = z.object({
         .string()
         .min(1, "Display name cannot be empty")
         .max(255, "Display name must be at most 255 characters"),
-    ),
+    )
+    .optional(),
+  altText: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(z.string().max(1000, "Alt text must be at most 1000 characters"))
+    .nullable()
+    .optional(),
+  folder: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(z.string().max(80, "Folder name must be at most 80 characters"))
+    .nullable()
+    .optional(),
 });
 
 export type UpdateMediaAssetDto = z.infer<typeof UpdateMediaAssetSchema>;

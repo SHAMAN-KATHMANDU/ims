@@ -34,6 +34,9 @@ import { seedMemberTotals } from "./26-member-totals.seed";
 import { seedDemoBlog } from "./27-demo-blog.seed";
 import { seedDemoPages } from "./28-demo-pages.seed";
 import { seedDemoWebsiteOrders } from "./29-demo-website-orders.seed";
+import { seedBackfillSiteConfigs } from "./02b-backfill-site-configs.seed";
+import { seedBackfillScopePages } from "./02c-backfill-scope-pages.seed";
+import { seedRbacRolesPermissions } from "./30-rbac-roles-permissions.seed";
 import { hashPassword } from "./utils";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
@@ -210,6 +213,7 @@ async function fullTenantSeed(
   let ctx = createEmptyContext(tenantId, slug, subscriptionId);
 
   ctx = await seedUsers(prismaClient, ctx, password);
+  ctx = await seedRbacRolesPermissions(prismaClient, ctx);
   ctx = await seedCategories(prismaClient, ctx);
   ctx = await seedVendors(prismaClient, ctx);
   ctx = await seedLocations(prismaClient, ctx);
@@ -252,6 +256,8 @@ async function seedPlatformAndPlanLimits(): Promise<void> {
     PLATFORM_ADMIN_USERNAME,
     platformAdminPassword,
   );
+  await seedBackfillSiteConfigs(prisma);
+  await seedBackfillScopePages(prisma);
 }
 
 /**

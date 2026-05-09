@@ -209,6 +209,14 @@ export function PagesListView() {
     return "Draft";
   };
 
+  const getScopeLabel = (page: TenantPage) => {
+    if (page.kind === "scope") {
+      const scopePath = page.scope === "404" ? "/404" : `/${page.scope}`;
+      return scopePath;
+    }
+    return `/${page.slug}`;
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
@@ -412,9 +420,13 @@ export function PagesListView() {
                     ? "oklch(from var(--accent) l c h / 0.05)"
                     : undefined,
                 }}
-                onClick={() =>
-                  router.push(`/${wsString}/content/builder/${page.id}`)
-                }
+                onClick={() => {
+                  const url =
+                    page.kind === "scope"
+                      ? `/${wsString}/content/builder/${page.id}?scope=${page.scope}`
+                      : `/${wsString}/content/builder/${page.id}`;
+                  router.push(url);
+                }}
               >
                 <TableCell className="px-3.5 py-3">
                   <input
@@ -427,10 +439,17 @@ export function PagesListView() {
                   />
                 </TableCell>
                 <TableCell className="py-3 text-sm font-medium">
-                  {page.title}
+                  <div className="flex items-center gap-2">
+                    {page.kind === "scope" && (
+                      <Badge variant="outline" className="text-xs">
+                        Scope
+                      </Badge>
+                    )}
+                    {page.title}
+                  </div>
                 </TableCell>
                 <TableCell className="mono py-3 text-xs text-[var(--ink-3)]">
-                  {page.slug}
+                  {getScopeLabel(page)}
                 </TableCell>
                 <TableCell className="py-3">
                   <Badge
@@ -474,30 +493,35 @@ export function PagesListView() {
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open(
-                            `/${wsString}/content/builder/${page.id}`,
-                            "_blank",
-                          );
+                          const url =
+                            page.kind === "scope"
+                              ? `/${wsString}/content/builder/${page.id}?scope=${page.scope}`
+                              : `/${wsString}/content/builder/${page.id}`;
+                          window.open(url, "_blank");
                         }}
                       >
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          duplicatePage.mutate(page.id);
-                        }}
-                      >
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(page.id);
-                        }}
-                      >
-                        Delete
-                      </DropdownMenuItem>
+                      {page.kind !== "scope" && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              duplicatePage.mutate(page.id);
+                            }}
+                          >
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(page.id);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

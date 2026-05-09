@@ -8,6 +8,7 @@ const hoisted = vi.hoisted(() => ({
   registerAsset: vi.fn(),
   listAssets: vi.fn(),
   deleteAsset: vi.fn(),
+  listFolders: vi.fn(),
   getConversation: vi.fn().mockResolvedValue({ id: "conv-1" }),
 }));
 
@@ -18,6 +19,7 @@ vi.mock("./media.service", () => ({
     registerAsset = hoisted.registerAsset;
     listAssets = hoisted.listAssets;
     deleteAsset = hoisted.deleteAsset;
+    listFolders = hoisted.listFolders;
   },
 }));
 
@@ -50,6 +52,9 @@ function assetStub(overrides: Partial<MediaAsset> = {}): MediaAsset {
     purpose: "library",
     uploadedById: "u1",
     createdAt: new Date("2025-01-01T00:00:00.000Z"),
+    deletedAt: null,
+    altText: null,
+    folder: null,
     ...overrides,
   } as MediaAsset;
 }
@@ -220,6 +225,64 @@ describe("MediaController", () => {
       const res = mockRes() as Response;
 
       await mediaController.updateMediaAsset(req, res);
+
+      expect(sendControllerError).toHaveBeenCalled();
+    });
+
+    it("accepts altText and folder in update", async () => {
+      const asset = assetStub({
+        fileName: "photo.png",
+        altText: "A sunset",
+        folder: "Nature",
+      });
+      hoisted.updateAsset.mockResolvedValue(asset);
+      const req = makeReq({
+        params: { id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa" },
+        body: {
+          fileName: "photo.png",
+          altText: "A sunset",
+          folder: "Nature",
+        },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.updateMediaAsset(req, res);
+
+      expect(hoisted.updateAsset).toHaveBeenCalledWith(
+        "t1",
+        "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+        {
+          fileName: "photo.png",
+          altText: "A sunset",
+          folder: "Nature",
+        },
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe("listFolders", () => {
+    it("returns 200 with folders list", async () => {
+      hoisted.listFolders.mockResolvedValue(["Brand", "Designs", "Team"]);
+      const req = makeReq({});
+      const res = mockRes() as Response;
+
+      await mediaController.listFolders(req, res);
+
+      expect(hoisted.listFolders).toHaveBeenCalledWith("t1");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: { folders: ["Brand", "Designs", "Team"] },
+      });
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      hoisted.listFolders.mockRejectedValue(new Error("DB error"));
+      const req = makeReq({});
+      const res = mockRes() as Response;
+
+      await mediaController.listFolders(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
     });
