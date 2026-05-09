@@ -29,12 +29,14 @@ type TemplateSeed = {
   sortOrder: number;
 };
 
-const DEFAULT_PAGES = {
-  home: true,
-  products: true,
-  blog: true,
-  contact: true,
-};
+// `defaultPages` on a SiteTemplate is `TemplatePageDefinition[]` — an array
+// of *custom* pages (e.g. About, FAQ) the template seeds when applied. The 11
+// canonical templates ship with no pre-defined custom pages; the 12 core
+// scopes (home, products-index, etc.) come from `BLUEPRINT_SCOPES` instead.
+// Earlier versions of this seed wrote a flag-map (`{home: true, ...}`), which
+// was the wrong shape and crashed the apply path with
+// "blueprint.defaultPages is not iterable".
+const DEFAULT_PAGES: Prisma.InputJsonValue = [];
 
 /**
  * Slugs from the previous template catalog that are no longer shipped.

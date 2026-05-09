@@ -322,8 +322,17 @@ export class SitesService {
     blueprint: TemplateBlueprint,
     overwriteExisting: boolean,
   ): Promise<void> {
-    if (!blueprint.defaultPages || blueprint.defaultPages.length === 0) {
-      return; // No custom pages to seed
+    // `defaultPages` is loaded from the SiteTemplate row, which is JSON. Older
+    // rows (and the platform seed prior to Phase 10H) wrote a legacy flag-map
+    // shape like `{ home: true, products: true }`; the apply path expects
+    // `TemplatePageDefinition[]`. Treat anything that isn't a real array as
+    // "no custom pages" instead of crashing on a non-iterable.
+    if (
+      !blueprint.defaultPages ||
+      !Array.isArray(blueprint.defaultPages) ||
+      blueprint.defaultPages.length === 0
+    ) {
+      return;
     }
 
     for (const pageDef of blueprint.defaultPages) {

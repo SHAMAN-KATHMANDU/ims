@@ -15,13 +15,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Upload, Blocks, List as ListIcon } from "lucide-react";
+import { Plus, Upload, Blocks, List as ListIcon, Tag } from "lucide-react";
 import {
   useBlogPostsQuery,
   useBlogCategoriesQuery,
+  useCreateBlogCategory,
 } from "../../hooks/use-blog";
 import { CreateBlogPostDialog } from "./CreateBlogPostDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/useToast";
 import { formatDistanceToNow } from "date-fns";
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
 
 interface TopbarStore {
   setActions: (actions: React.ReactNode) => void;
@@ -41,6 +62,10 @@ export function BlogListView() {
   >("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const createCategory = useCreateBlogCategory();
+  const { toast } = useToast();
 
   const statusMap: Record<
     string,
@@ -165,23 +190,37 @@ export function BlogListView() {
             ))}
           </div>
 
-          {/* Category filter */}
-          <Select
-            value={selectedCategory || "__all__"}
-            onValueChange={(v) => setSelectedCategory(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-40 h-8 text-xs">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All categories</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Category filter + new category */}
+          <div className="flex items-center gap-1">
+            <Select
+              value={selectedCategory || "__all__"}
+              onValueChange={(v) =>
+                setSelectedCategory(v === "__all__" ? "" : v)
+              }
+            >
+              <SelectTrigger className="w-40 h-8 text-xs">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => setShowNewCategoryDialog(true)}
+              title="New blog category"
+            >
+              <Tag className="h-3 w-3 mr-1" />
+              New
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-1 rounded border border-[var(--line)] bg-[var(--bg-sunken)] p-0.5">
@@ -372,6 +411,70 @@ export function BlogListView() {
           router.push(`/${workspace}/content/post/${newPostId}`);
         }}
       />
+
+      {/* New Category Dialog */}
+      <Dialog
+        open={showNewCategoryDialog}
+        onOpenChange={(open) => {
+          setShowNewCategoryDialog(open);
+          if (!open) setNewCategoryName("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New blog category</DialogTitle>
+            <DialogDescription>
+              Categories let readers filter posts on /blog.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="new-category-name">Name</Label>
+              <Input
+                id="new-category-name"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="e.g. Field notes"
+                autoFocus
+                disabled={createCategory.isPending}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewCategoryDialog(false)}
+              disabled={createCategory.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const name = newCategoryName.trim();
+                if (!name) return;
+                try {
+                  await createCategory.mutateAsync({
+                    name,
+                    slug: slugify(name),
+                  });
+                  toast({ title: `Category "${name}" created` });
+                  setNewCategoryName("");
+                  setShowNewCategoryDialog(false);
+                } catch (err) {
+                  toast({
+                    title: "Failed to create category",
+                    description: err instanceof Error ? err.message : undefined,
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={!newCategoryName.trim() || createCategory.isPending}
+            >
+              {createCategory.isPending ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
