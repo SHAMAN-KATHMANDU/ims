@@ -1,6 +1,6 @@
 # Continuous Integration: lint, test, typecheck, and security scan.
 # No Docker build/push or deployment. Runs on PRs and non-main branch pushes.
-# ⚠ To switch back to GitHub-hosted runners: replace every `runs-on: ubuntu-latest` with `runs-on: ubuntu-latest`.
+# ⚠ To switch back to the self-hosted runner: replace every `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
 
 name: CI
 
@@ -106,6 +106,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Guard Prisma migrations — tenant FK must reference tenants(id)
@@ -133,6 +134,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint Web (and shared if needed)
@@ -146,19 +148,31 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
-    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
-    # Redis is started manually in a step so we can kill orphaned containers
-    # from cancelled runs before binding port 6379 (Docker services bind ports
-    # before steps run, so a leftover container on 6379 would fail the job).
-    #
-    # ⚠ Switching back to ubuntu-latest requires these changes:
-    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
-    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
-    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
-    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ims_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_test?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
@@ -167,30 +181,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-      - name: Start Redis (kill orphan first)
-        # Kill any container already occupying 6379 from a cancelled prior run,
-        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
-        run: |
-          docker rm -f ci-redis 2>/dev/null || true
-          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
-          for i in $(seq 1 20); do
-            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
-            sleep 1
-          done
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
         run: pnpm --filter api exec prisma generate
-      - name: Drop and recreate test database
-        # The self-hosted runner uses a persistent Postgres instance, so the
-        # ims_test DB accumulates state across runs. A cancelled job can leave a
-        # migration "started but not finished" in _prisma_migrations (P3009),
-        # blocking all subsequent migrate deploy calls. Dropping and recreating
-        # the DB gives a guaranteed clean slate without needing migrate reset.
-        run: |
-          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
-            -c "DROP DATABASE IF EXISTS ims_test;" \
-            -c "CREATE DATABASE ims_test;"
       - name: Run migrations
         run: pnpm --filter api exec prisma migrate deploy
       - name: Run API tests
@@ -198,9 +193,6 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-      - name: Stop Redis
-        if: always()
-        run: docker rm -f ci-redis 2>/dev/null || true
 
   test-web:
     name: Test Web
@@ -213,6 +205,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Web tests
@@ -232,6 +225,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Lint tenant-site (and shared if needed)
@@ -251,6 +245,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run tenant-site unit tests
@@ -281,6 +276,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run shared package unit tests
@@ -302,6 +298,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Generate Prisma client
@@ -318,23 +315,31 @@ jobs:
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
-    # Postgres 16 runs natively on the self-hosted runner (no port conflict).
-    # Uses ims_e2e (not ims_test) so this job can run concurrently with test-api
-    # without conflicting DROP/CREATE DATABASE calls on the same runner.
-    # Redis is started manually in a step so we can kill orphaned containers
-    # from cancelled runs before binding port 6379 (Docker services bind ports
-    # before steps run, so a leftover container on 6379 would fail the job).
-    #
-    # ⚠ Switching back to ubuntu-latest requires these changes:
-    #   1. Restore the postgres Docker service block (image: postgres:16, POSTGRES_USER/PASSWORD/DB, port 5432:5432)
-    #   2. Change DATABASE_URL back to: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-    #      (rename ims_e2e references back to ims_test — no conflict on ephemeral VMs)
-    #   3. Move Redis back to a `services:` block (no orphan risk on ephemeral VMs)
-    #   4. Restore `- uses: pnpm/action-setup@v4` before setup-node (blank VM has no pnpm)
-    #   5. Restore `cache: "pnpm"` under setup-node (no persistent store on GitHub-hosted)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ims_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      # ims_e2e is pre-created on the runner: CREATE DATABASE ims_e2e OWNER ci_runner;
-      DATABASE_URL: postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_e2e?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
       # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
@@ -346,27 +351,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-      - name: Start Redis (kill orphan first)
-        # Kill any container already occupying 6379 from a cancelled prior run,
-        # then start a fresh Redis. On ubuntu-latest use a `services:` block instead.
-        run: |
-          docker rm -f ci-redis 2>/dev/null || true
-          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
-          for i in $(seq 1 20); do
-            docker exec ci-redis redis-cli ping 2>/dev/null | grep -q PONG && break
-            sleep 1
-          done
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Build shared and API
         run: |
           pnpm --filter @repo/shared build
           pnpm --filter api exec prisma generate
-          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/postgres \
-            -c "DROP DATABASE IF EXISTS ims_e2e WITH (FORCE);" \
-            -c "CREATE DATABASE ims_e2e OWNER ci_runner;"
-          psql postgresql://ci_runner:ci_runner_pass@localhost:5432/ims_e2e \
-            -c "GRANT ALL ON SCHEMA public TO ci_runner;"
           pnpm --filter api exec prisma migrate deploy
           pnpm --filter api exec prisma db seed
           pnpm --filter api build
@@ -408,9 +399,6 @@ jobs:
           E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
           kill "$API_PID" 2>/dev/null || true
           wait "$API_PID" 2>/dev/null || true
-      - name: Stop Redis
-        if: always()
-        run: docker rm -f ci-redis 2>/dev/null || true
 
   trivy:
     name: Trivy security scan
@@ -425,6 +413,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
       - name: Run Trivy vulnerability scanner (filesystem)
