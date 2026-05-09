@@ -19,6 +19,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/shared/package.json ./packages/shared/
+COPY packages/blocks/package.json ./packages/blocks/
 
 # Install dependencies (frozen lockfile for reproducibility)
 # Note: --ignore-scripts is intentionally omitted so pnpm properly links
@@ -57,8 +58,9 @@ ENV NEXT_PUBLIC_APP_ENV=${NEXT_PUBLIC_APP_ENV}
 ARG NEXT_PUBLIC_FEATURE_FLAGS
 ENV NEXT_PUBLIC_FEATURE_FLAGS=${NEXT_PUBLIC_FEATURE_FLAGS}
 
-# Build the shared package first (web depends on it)
+# Build the shared and blocks packages first (web depends on both)
 RUN pnpm --filter @repo/shared build
+RUN pnpm --filter @repo/blocks build
 
 # Build the Next.js app.
 # --mount=type=cache persists the Next.js incremental compiler cache on the
