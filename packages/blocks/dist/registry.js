@@ -27,6 +27,7 @@ import { OrderSummaryBlock } from "./components/commerce/OrderSummaryBlock";
 import { PriceTiersBlock } from "./components/commerce/PriceTiersBlock";
 // Marketing blocks
 import { AnnouncementBarBlock } from "./components/marketing/AnnouncementBarBlock";
+import { PromoCardsBlock } from "./components/marketing/PromoCardsBlock";
 import { CollectionCardsBlock } from "./components/marketing/CollectionCardsBlock";
 import { TrustStripBlock } from "./components/marketing/TrustStripBlock";
 import { StorySplitBlock } from "./components/marketing/StorySplitBlock";
@@ -61,6 +62,7 @@ import { PaymentIconsBlock } from "./components/footer/PaymentIconsBlock";
 import { CopyrightBarBlock } from "./components/footer/CopyrightBarBlock";
 // Checkout blocks
 import { AccountBarBlock } from "./components/checkout/AccountBarBlock";
+import { CheckoutFormBlock } from "./components/checkout/CheckoutFormBlock";
 // Reusable sub-trees
 import { SnippetRefBlock } from "./components/SnippetRefBlock";
 // Form blocks
@@ -100,6 +102,7 @@ export const blockRegistry = {
     "price-tiers": { component: PriceTiersBlock },
     // Marketing
     "announcement-bar": { component: AnnouncementBarBlock },
+    "promo-cards": { component: PromoCardsBlock },
     "collection-cards": { component: CollectionCardsBlock },
     "trust-strip": { component: TrustStripBlock },
     "story-split": { component: StorySplitBlock },
@@ -135,6 +138,7 @@ export const blockRegistry = {
     "copyright-bar": { component: CopyrightBarBlock },
     // Checkout
     "account-bar": { component: AccountBarBlock },
+    "checkout-form": { component: CheckoutFormBlock },
     // Reusable sub-trees
     "snippet-ref": { component: SnippetRefBlock },
     // Forms

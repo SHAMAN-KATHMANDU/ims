@@ -255,13 +255,33 @@ export class PagesRepository {
     });
 
     if (existing) {
+      // Always promote leftover kind="scope" rows to kind="page" when this
+      // path runs, even with overwriteExisting=false. Being "scope" for a
+      // user-facing slug like "home" or "products-index" was a pre-PR-#528
+      // accident — the user never chose it and the row stays invisible
+      // from the Pages tab until the conversion runs. Preserving "scope"
+      // here would be preserving a bug, not preserving user intent.
+      if (existing.kind === "scope") {
+        return prisma.tenantPage.update({
+          where: { id: existing.id },
+          data: {
+            title: data.title,
+            kind: "page",
+            scope: null,
+            isBuiltInScope: false,
+            ...(data.navOrder !== undefined && { navOrder: data.navOrder }),
+            ...(data.seoTitle !== undefined && { seoTitle: data.seoTitle }),
+            ...(data.seoDescription !== undefined && {
+              seoDescription: data.seoDescription,
+            }),
+          },
+        });
+      }
       if (!overwriteExisting) {
-        // Preserve existing user edits — return as-is
+        // Preserve existing user edits on a real kind="page" row.
         return existing;
       }
-      // Overwrite: update title and metadata. If the row was kind="scope"
-      // (legacy from pre-PR-#528), convert it to kind="page" so it shows
-      // up under the Pages tab in the editor.
+      // Explicit reset: rewrite metadata.
       return prisma.tenantPage.update({
         where: { id: existing.id },
         data: {

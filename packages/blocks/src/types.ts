@@ -6,7 +6,24 @@ import type { BlockKind, BlockNode } from "@repo/shared";
  * This includes sample/mock data for preview modes and real data for production.
  */
 export interface BlockDataContext {
-  site?: { locale?: string | null; currency?: string } | null;
+  site?: {
+    locale?: string | null;
+    currency?: string;
+    /**
+     * Editor-managed navigation. When present, NavBarBlock and footer
+     * blocks render this in preference to their own per-block items
+     * prop, so a Navigation-tab edit propagates to every header.
+     */
+    navigation?: {
+      primary?: Array<{ id: string; label: string; href: string }>;
+      utility?: Array<{ id: string; label: string; href: string }>;
+      footer?: Array<{
+        id: string;
+        title: string;
+        items: Array<{ id: string; label: string; href: string }>;
+      }>;
+    } | null;
+  } | null;
   products?: Array<{
     id: string;
     name: string;

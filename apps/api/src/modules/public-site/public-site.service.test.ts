@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PublicSiteService } from "./public-site.service";
 import type defaultRepo from "./public-site.repository";
+import type defaultCollectionsRepo from "@/modules/collections/collections.repository";
+import type defaultPromoRepo from "@/modules/promos/promo.repository";
+import type defaultBundleRepo from "@/modules/bundles/bundle.repository";
 
 type Repo = typeof defaultRepo;
+type CollectionsRepo = typeof defaultCollectionsRepo;
+type PromoRepo = typeof defaultPromoRepo;
+type BundleRepo = typeof defaultBundleRepo;
 
 const mockRepo = {
   findSiteConfig: vi.fn(),
@@ -13,7 +19,27 @@ const mockRepo = {
   listFrequentlyBoughtWith: vi.fn(),
 } as unknown as Repo;
 
-const service = new PublicSiteService(mockRepo);
+const mockCollectionsRepo = {
+  list: vi.fn(),
+  findBySlug: vi.fn(),
+} as unknown as CollectionsRepo;
+
+const mockPromoRepo = {
+  count: vi.fn(),
+  findMany: vi.fn(),
+} as unknown as PromoRepo;
+
+const mockBundleRepo = {
+  findActiveBySlug: vi.fn(),
+  dereferenceProducts: vi.fn(),
+} as unknown as BundleRepo;
+
+const service = new PublicSiteService(
+  mockRepo,
+  mockCollectionsRepo,
+  mockPromoRepo,
+  mockBundleRepo,
+);
 
 function config(overrides: Record<string, unknown> = {}) {
   return {
@@ -359,6 +385,137 @@ describe("PublicSiteService", () => {
         "t1",
         expect.objectContaining({ sort: "newest" }),
       );
+    });
+  });
+
+  describe("listActiveCollections", () => {
+    it("returns active collections capped by limit", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (mockCollectionsRepo.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: "c1",
+          slug: "hero",
+          title: "Hero",
+          subtitle: null,
+          isActive: true,
+        },
+        {
+          id: "c2",
+          slug: "calm",
+          title: "Calm",
+          subtitle: "lo",
+          isActive: true,
+        },
+        {
+          id: "c3",
+          slug: "off",
+          title: "Off",
+          subtitle: null,
+          isActive: false,
+        },
+      ]);
+      const { collections } = await service.listActiveCollections("t1", 4);
+      // c3 is filtered (inactive); c1, c2 returned in order
+      expect(collections.map((c) => c.id)).toEqual(["c1", "c2"]);
+    });
+
+    it("clamps limit between 1 and 24 and defaults to 6", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      const many = Array.from({ length: 30 }, (_, i) => ({
+        id: `c${i}`,
+        slug: `s${i}`,
+        title: `T${i}`,
+        subtitle: null,
+        isActive: true,
+      }));
+      (mockCollectionsRepo.list as ReturnType<typeof vi.fn>).mockResolvedValue(
+        many,
+      );
+
+      const overflow = await service.listActiveCollections("t1", 999);
+      expect(overflow.collections).toHaveLength(24);
+
+      const negative = await service.listActiveCollections("t1", -5);
+      expect(negative.collections).toHaveLength(1);
+
+      const def = await service.listActiveCollections("t1");
+      expect(def.collections).toHaveLength(6);
+    });
+
+    it("throws 404 when site is not published", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null,
+      );
+      await expect(service.listActiveCollections("t1")).rejects.toMatchObject({
+        statusCode: 404,
+      });
+      expect(mockCollectionsRepo.list).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getBundleBySlug", () => {
+    it("returns the bundle with hydrated product summaries", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      const now = new Date("2024-06-01T00:00:00Z");
+      (
+        mockBundleRepo.findActiveBySlug as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        id: "b1",
+        slug: "starter",
+        name: "Starter Kit",
+        description: "Three favourites",
+        productIds: ["p1", "p2"],
+        pricingStrategy: "DISCOUNT_PCT",
+        discountPct: 15,
+        fixedPrice: null,
+        active: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      (
+        mockBundleRepo.dereferenceProducts as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([
+        { id: "p1", name: "Cleanser", finalSp: 100 },
+        { id: "p2", name: "Toner", finalSp: 80 },
+      ]);
+
+      const result = await service.getBundleBySlug("t1", "starter");
+      expect(result.bundle.slug).toBe("starter");
+      expect(result.bundle.discountPct).toBe(15);
+      expect(result.products).toEqual([
+        { id: "p1", name: "Cleanser", finalSp: "100" },
+        { id: "p2", name: "Toner", finalSp: "80" },
+      ]);
+    });
+
+    it("throws 404 when no active bundle matches the slug (cross-tenant safe)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config(),
+      );
+      (
+        mockBundleRepo.findActiveBySlug as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+
+      await expect(
+        service.getBundleBySlug("t1", "missing"),
+      ).rejects.toMatchObject({ statusCode: 404 });
+      expect(mockBundleRepo.dereferenceProducts).not.toHaveBeenCalled();
+    });
+
+    it("throws 404 when site is not published (before bundle lookup)", async () => {
+      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null,
+      );
+      await expect(
+        service.getBundleBySlug("t1", "starter"),
+      ).rejects.toMatchObject({ statusCode: 404 });
+      expect(mockBundleRepo.findActiveBySlug).not.toHaveBeenCalled();
     });
   });
 

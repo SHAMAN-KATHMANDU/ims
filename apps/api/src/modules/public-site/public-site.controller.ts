@@ -217,6 +217,38 @@ class PublicSiteController {
       );
     }
   };
+
+  listActiveCollections = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const limitRaw = Number(req.query.limit);
+      const limit =
+        Number.isFinite(limitRaw) && limitRaw > 0
+          ? Math.min(24, Math.max(1, Math.floor(limitRaw)))
+          : 6;
+      const result = await service.listActiveCollections(tenantId, limit);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "List public collections error")
+      );
+    }
+  };
+
+  getBundleBySlug = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const slug = getParam(req, "slug");
+      const result = await service.getBundleBySlug(tenantId, slug);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Get public bundle error")
+      );
+    }
+  };
 }
 
 export default new PublicSiteController();

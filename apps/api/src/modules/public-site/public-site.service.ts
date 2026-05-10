@@ -14,16 +14,19 @@ import type {
 } from "./public-site.schema";
 import defaultCollectionsRepo from "@/modules/collections/collections.repository";
 import defaultPromoRepo from "@/modules/promos/promo.repository";
+import defaultBundleRepo from "@/modules/bundles/bundle.repository";
 
 type Repo = typeof defaultRepo;
 type CollectionsRepo = typeof defaultCollectionsRepo;
 type PromoRepo = typeof defaultPromoRepo;
+type BundleRepo = typeof defaultBundleRepo;
 
 export class PublicSiteService {
   constructor(
     private readonly repo: Repo = defaultRepo,
     private readonly collectionsRepo: CollectionsRepo = defaultCollectionsRepo,
     private readonly promoRepo: PromoRepo = defaultPromoRepo,
+    private readonly bundleRepo: BundleRepo = defaultBundleRepo,
   ) {}
 
   private async ensurePublished(tenantId: string): Promise<PublicSiteConfig> {
@@ -41,6 +44,7 @@ export class PublicSiteService {
     seo: unknown;
     themeTokens: unknown;
     analytics: unknown;
+    navigation: unknown;
     template: PublicSiteConfig["template"];
     locale: string;
     locales: string[];
@@ -56,6 +60,12 @@ export class PublicSiteService {
       seo: config.seo,
       themeTokens: config.themeTokens,
       analytics: config.analytics,
+      // Navigation { primary, utility, footer } is populated on Apply by
+      // seedNavigationFromBlueprint and edited via the Site editor's
+      // Navigation tab. NavBarBlock + footer blocks read this on the
+      // storefront so a single edit propagates to every header instance
+      // without touching the per-block items prop.
+      navigation: config.navigation,
       template: config.template,
       locale,
       locales,
@@ -183,6 +193,95 @@ export class PublicSiteService {
         value: p.value.toString(),
         validFrom: p.validFrom ? p.validFrom.toISOString() : null,
         validTo: p.validTo ? p.validTo.toISOString() : null,
+      })),
+    };
+  }
+
+  /**
+   * List the tenant's active collections — used by CollectionCardsBlock's
+   * `source="auto"` mode to render real, editor-managed collections instead
+   * of hardcoded placeholders. The list shape is intentionally narrow: each
+   * card only needs slug + title + subtitle to render. Product cover images
+   * stay out so this stays a single fast query.
+   */
+  async listActiveCollections(
+    tenantId: string,
+    limit = 6,
+  ): Promise<{
+    collections: Array<{
+      id: string;
+      slug: string;
+      title: string;
+      subtitle: string | null;
+    }>;
+  }> {
+    await this.ensurePublished(tenantId);
+    const rows = await this.collectionsRepo.list(tenantId);
+    const active = rows
+      .filter((c) => c.isActive)
+      .slice(0, Math.max(1, Math.min(limit, 24)))
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        title: c.title,
+        subtitle: c.subtitle,
+      }));
+    return { collections: active };
+  }
+
+  /**
+   * Resolve a bundle by slug — returns the bundle row with productIds
+   * dereferenced into product summaries (id/name/finalSp). Missing or
+   * soft-deleted productIds are silently dropped while order is preserved,
+   * matching the existing dereference contract used in the admin module.
+   *
+   * Used by BundleSpotlightBlock so a dropped block can render real product
+   * lists tied to a real Bundle row, not a hardcoded slug placeholder.
+   */
+  async getBundleBySlug(
+    tenantId: string,
+    slug: string,
+  ): Promise<{
+    bundle: {
+      id: string;
+      slug: string;
+      name: string;
+      description: string | null;
+      productIds: string[];
+      pricingStrategy: string;
+      discountPct: number | null;
+      fixedPrice: number | null;
+      active: boolean;
+      createdAt: string;
+      updatedAt: string;
+    };
+    products: Array<{ id: string; name: string; finalSp: string }>;
+  }> {
+    await this.ensurePublished(tenantId);
+    const bundle = await this.bundleRepo.findActiveBySlug(tenantId, slug);
+    if (!bundle) throw createError("Bundle not found", 404);
+    const products = await this.bundleRepo.dereferenceProducts(
+      tenantId,
+      bundle.productIds,
+    );
+    return {
+      bundle: {
+        id: bundle.id,
+        slug: bundle.slug,
+        name: bundle.name,
+        description: bundle.description,
+        productIds: bundle.productIds,
+        pricingStrategy: bundle.pricingStrategy,
+        discountPct: bundle.discountPct,
+        fixedPrice: bundle.fixedPrice,
+        active: bundle.active,
+        createdAt: bundle.createdAt.toISOString(),
+        updatedAt: bundle.updatedAt.toISOString(),
+      },
+      products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        finalSp: p.finalSp.toString(),
       })),
     };
   }

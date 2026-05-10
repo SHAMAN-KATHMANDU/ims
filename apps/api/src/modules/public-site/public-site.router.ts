@@ -144,6 +144,48 @@ router.get("/collections/:slug", asyncHandler(controller.getCollectionBySlug));
 
 /**
  * @swagger
+ * /public/collections:
+ *   get:
+ *     summary: List the tenant's active collections (id, slug, title, subtitle)
+ *     description: |
+ *       Powers `CollectionCardsBlock` `source="auto"` and the template
+ *       autowire pass. Capped at 24 to keep the payload small; clients
+ *       that need a larger window should hit the admin endpoints.
+ *     tags: [Public]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 24, default: 6 }
+ *     responses:
+ *       200: { description: Active collections }
+ *       404: { description: Site not published }
+ */
+router.get("/collections", asyncHandler(controller.listActiveCollections));
+
+/**
+ * @swagger
+ * /public/bundles/{slug}:
+ *   get:
+ *     summary: Get an active bundle by slug with hydrated product summaries
+ *     description: |
+ *       Bundles store productIds as a denormalized array; this endpoint
+ *       dereferences them into product summaries (id/name/finalSp). Missing
+ *       or soft-deleted productIds are silently dropped while order is
+ *       preserved. Powers `BundleSpotlightBlock`.
+ *     tags: [Public]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Bundle with hydrated products }
+ *       404: { description: Bundle not active or site not published }
+ */
+router.get("/bundles/:slug", asyncHandler(controller.getBundleBySlug));
+
+/**
+ * @swagger
  * /public/products/{id}/reviews:
  *   get:
  *     summary: List APPROVED reviews for a product (newest first, paginated)

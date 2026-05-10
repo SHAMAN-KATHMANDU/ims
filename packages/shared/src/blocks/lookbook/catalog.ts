@@ -6,7 +6,7 @@ export const lookbookCatalog: CatalogEntry<"lookbook"> = {
   description: "Shoppable pinned image.",
   category: "pdp",
   createDefaultProps: () => ({
-    aspect: "4/5",
+    aspectRatio: "4/5",
     scenes: [],
   }),
 };

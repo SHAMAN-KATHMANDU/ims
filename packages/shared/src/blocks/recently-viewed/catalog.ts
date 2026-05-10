@@ -8,6 +8,6 @@ export const recentlyViewedCatalog: CatalogEntry<"recently-viewed"> = {
   scopes: ["product-detail"],
   createDefaultProps: () => ({
     heading: "Recently viewed",
-    maxItems: 6,
+    limit: 6,
   }),
 };

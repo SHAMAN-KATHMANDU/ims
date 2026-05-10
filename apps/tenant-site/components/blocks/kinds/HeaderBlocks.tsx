@@ -102,12 +102,16 @@ function BrandRenderer({
   );
 }
 
-export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
+export function NavBarBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<NavBarProps>) {
   const {
+    variant = "standard",
     brand = "Shaman",
     brandHref = "/",
     brandStyle = "serif",
-    items = [],
+    items: propItems = [],
     cta,
     utilityBar,
     mobileDrawer,
@@ -115,17 +119,39 @@ export function NavBarBlock({ props }: BlockComponentProps<NavBarProps>) {
     showCart = true,
     showAccount = false,
     cartCount = 0,
-    sticky = true,
-    align = "between",
+    sticky: stickyProp,
+    align: alignProp,
   } = props;
+
+  // Variant overrides the legacy `align` + `sticky` props so the
+  // variant picker can control layout from a single setting. Tenants
+  // who edited `align` directly still win because `alignProp` /
+  // `stickyProp` are read first.
+  const align: "between" | "center" =
+    alignProp ??
+    (variant === "centered" || variant === "split" ? "center" : "between");
+  const sticky = stickyProp ?? variant !== "transparent";
+  const isTransparent = variant === "transparent";
+
+  // Resolve nav items: site.navigation.primary (editor-managed, single
+  // source of truth) → block override → empty. The Navigation tab in the
+  // editor edits SiteConfig.navigation, which is seeded by Apply and
+  // surfaced through dataContext.site.navigation. Falling back to
+  // props.items lets a tenant override per-header for special pages.
+  const sitePrimary = dataContext?.site?.navigation?.primary;
+  const items: NavBarItem[] =
+    Array.isArray(sitePrimary) && sitePrimary.length > 0
+      ? sitePrimary.map((p) => ({ label: p.label, href: p.href }))
+      : propItems;
 
   const isCentered = align === "center";
 
   const headerClasses = [
-    "w-full border-b",
+    "w-full",
+    !isTransparent && "border-b",
     sticky && "sticky top-0 z-50",
     "px-6 md:px-12 py-4 md:py-5",
-    "bg-[var(--t-bg)]",
+    isTransparent ? "bg-transparent" : "bg-[var(--t-bg)]",
   ]
     .filter(Boolean)
     .join(" ");

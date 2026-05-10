@@ -7,6 +7,7 @@
  * here rather than growing shared.tsx.
  */
 
+import { Suspense } from "react";
 import {
   TrustStrip,
   StorySplit,
@@ -35,6 +36,10 @@ import { normalizeImageRef } from "@/lib/image";
 import { NewsletterModal } from "./NewsletterModal";
 import { AnnouncementModal } from "./AnnouncementModal";
 import { getSiteFormatOptions } from "@/lib/format";
+import {
+  resolveCollectionCards,
+  type ResolvedCollectionCard,
+} from "../resolvers/collection-cards";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -131,14 +136,43 @@ const ASPECT_MAP = {
   landscape: "16 / 9",
 } as const;
 
-export function CollectionCardsBlock({
+export function CollectionCardsBlock(
+  args: BlockComponentProps<CollectionCardsProps>,
+) {
+  const { props } = args;
+  // source="auto" needs the IMS round-trip; wrap in Suspense so the page
+  // shell streams while we hit /public/collections. Manual mode renders
+  // synchronously from the authored cards array.
+  if (props.source === "auto") {
+    return (
+      <Suspense fallback={null}>
+        <CollectionCardsInner {...args} />
+      </Suspense>
+    );
+  }
+  return <CollectionCardsInner {...args} />;
+}
+
+async function CollectionCardsInner({
   node,
   props,
+  dataContext,
 }: BlockComponentProps<CollectionCardsProps>) {
+  const cards = await resolveCollectionCards(props, {
+    host: dataContext.host,
+    tenantId: dataContext.tenantId,
+    site: dataContext.site,
+  });
   const aspect = ASPECT_MAP[props.aspectRatio ?? "portrait"];
   const overlay = props.overlay !== false;
-  const columns = Math.max(1, Math.min(props.cards.length, 4));
+  const columns = Math.max(1, Math.min(cards.length, 4));
   const wrapperHasPadY = node.style?.paddingY !== undefined;
+  if (cards.length === 0) {
+    // Empty state — this is the editor preview / freshly-applied template
+    // case before the tenant has any collections, OR the auto fetch failed.
+    // Render nothing on the public site to avoid a half-empty section.
+    return null;
+  }
   return (
     <section
       style={{
@@ -182,9 +216,9 @@ export function CollectionCardsBlock({
             ["--count" as string]: columns,
           }}
         >
-          {props.cards.map((card, i) => (
+          {cards.map((card) => (
             <CollectionCard
-              key={`${i}-${card.title}`}
+              key={card.id}
               card={card}
               aspect={aspect}
               overlay={overlay}
@@ -201,11 +235,11 @@ function CollectionCard({
   aspect,
   overlay,
 }: {
-  card: CollectionCardsProps["cards"][number];
+  card: ResolvedCollectionCard;
   aspect: string;
   overlay: boolean;
 }) {
-  const href = card.ctaHref && card.ctaHref.length > 0 ? card.ctaHref : null;
+  const href = card.href && card.href.length > 0 ? card.href : null;
   const hasImage = !!card.imageUrl;
   const sharedStyle: React.CSSProperties = {
     position: "relative",

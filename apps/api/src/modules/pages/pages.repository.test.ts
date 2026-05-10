@@ -88,7 +88,12 @@ describe("pagesRepo.upsertCustomPage — Bug 1 regression: scope→page slug col
     expect(result.id).toBe("legacy-scope-id");
   });
 
-  it("returns the existing row untouched when overwriteExisting=false", async () => {
+  it("promotes legacy kind=scope rows to kind=page even when overwriteExisting=false", async () => {
+    // Pre-PR-#528 sites have leftover kind="scope" rows for slugs like
+    // home/cart/offers that the new flow now owns as kind="page". The
+    // upsert must convert them in-place, regardless of the overwrite
+    // flag — staying as kind="scope" hides them from the Pages tab,
+    // and that was never the user's intent (it was a migration artifact).
     const existing = {
       id: "existing-id",
       tenantId: "t-1",
@@ -98,10 +103,42 @@ describe("pagesRepo.upsertCustomPage — Bug 1 regression: scope→page slug col
       title: "Cart",
     };
     findFirstMock.mockResolvedValue(existing);
+    updateMock.mockResolvedValue({ ...existing, kind: "page", scope: null });
+
+    await pagesRepo.upsertCustomPage(
+      "t-1",
+      { slug: "cart", title: "Cart" },
+      false,
+    );
+
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "existing-id" },
+        data: expect.objectContaining({
+          kind: "page",
+          scope: null,
+          isBuiltInScope: false,
+        }),
+      }),
+    );
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a kind=page row untouched when overwriteExisting=false", async () => {
+    // Real user-edited page row — preserve everything.
+    const existing = {
+      id: "user-page-id",
+      tenantId: "t-1",
+      kind: "page",
+      scope: null,
+      slug: "about",
+      title: "About — User Edited",
+    };
+    findFirstMock.mockResolvedValue(existing);
 
     const result = await pagesRepo.upsertCustomPage(
       "t-1",
-      { slug: "cart", title: "Cart" },
+      { slug: "about", title: "About" },
       false,
     );
 

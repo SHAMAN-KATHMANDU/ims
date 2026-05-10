@@ -58,7 +58,9 @@ export const LookbookSchema = z
           })
           .strict(),
       )
-      .min(1)
+      // min(0) so a freshly-dropped block from the palette validates
+      // before the user adds a scene via the inspector.
+      .min(0)
       .max(10),
     aspectRatio: z.enum(["16/9", "4/5", "3/4", "1/1"]).optional(),
   })

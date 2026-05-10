@@ -5,6 +5,7 @@ import type { BlockNode } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
 import { selectUpdateBlockProps } from "../store/selectors";
 import { SchemaDrivenForm } from "./SchemaDrivenForm";
+import { VariantPicker } from "./widgets/VariantPicker";
 import { ProductPickerDialog } from "../../components/ProductPickerDialog";
 import { useCategories } from "@/features/products";
 
@@ -259,6 +260,9 @@ export function BlockTab({ block }: BlockTabProps) {
       case "product-grid": {
         return <ProductGridInspector block={block} />;
       }
+      case "nav-bar": {
+        return <NavBarInspector block={block} />;
+      }
       default:
         return (
           <SchemaDrivenForm
@@ -286,6 +290,21 @@ export function BlockTab({ block }: BlockTabProps) {
           {blockType} block
         </div>
       </div>
+
+      {/* Variant picker — auto-shown when the block schema declares a
+          `variant` enum. Renders nothing for blocks without variants. */}
+      <VariantPicker
+        blockKind={block.kind}
+        value={(props as { variant?: string }).variant}
+        onChange={(variant) =>
+          // VariantPicker only emits values it read off the schema's
+          // own enum, so the cast is safe — TypeScript can't narrow
+          // because updateBlockProps is generic over BlockKind.
+          updateBlockProps(block.id, {
+            variant,
+          } as Record<string, unknown>)
+        }
+      />
 
       {/* Block-specific properties */}
       {renderBlockProperties()}
@@ -484,5 +503,72 @@ function ProductGridInspector({ block }: ProductGridInspectorProps) {
         Show SKU
       </label>
     </>
+  );
+}
+
+// ─── NavBar inspector ─────────────────────────────────────────────────────────
+//
+// The header NavBar has two ways to source its menu items:
+//
+//   1. Site navigation (default) — read from SiteConfig.navigation.primary.
+//      One source of truth; editing the Site → Navigation tab updates every
+//      header instance at once. The block stores `items: []` so the
+//      `resolveItems()` fallback in NavBarBlock.tsx routes to site nav.
+//
+//   2. Override — the block defines its own `items[]` for special pages
+//      (e.g. a marketing landing with a stripped-down nav). Falls back to
+//      SchemaDrivenForm so the user can edit the per-item label/href.
+//
+// Without this toggle the user had no fast path back to "use site nav" once
+// they accidentally edited the items prop, because the array was non-empty.
+
+interface NavBarInspectorProps {
+  block: BlockNode;
+}
+
+function NavBarInspector({ block }: NavBarInspectorProps) {
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props = block.props as any;
+  const items = (props.items as Array<unknown> | undefined) ?? [];
+  const useSiteNav = items.length === 0;
+
+  return (
+    <div className="flex flex-col gap-3.5">
+      <label className="flex items-start gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={useSiteNav}
+          onChange={(e) => {
+            if (e.target.checked) {
+              // Switch to site nav — clear the block's local items.
+              updateBlockProps(block.id, { items: [] });
+            } else {
+              // Switch to override — seed with a starter item so the user
+              // immediately sees the items editor populated.
+              updateBlockProps(block.id, {
+                items: [{ label: "Shop", href: "/products" }],
+              });
+            }
+          }}
+          style={{ accentColor: "var(--accent)" }}
+          className="mt-0.5"
+        />
+        <span>
+          <div style={{ color: "var(--ink)" }}>Use site navigation</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--ink-4)" }}>
+            Render menu items from Site → Navigation. Off to override per
+            header.
+          </div>
+        </span>
+      </label>
+      {useSiteNav ? null : (
+        <SchemaDrivenForm
+          blockKind={block.kind}
+          value={props}
+          onChange={(newProps) => updateBlockProps(block.id, newProps)}
+        />
+      )}
+    </div>
   );
 }
