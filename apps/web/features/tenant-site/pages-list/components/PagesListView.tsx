@@ -66,7 +66,7 @@ export function PagesListView() {
   const { toast: _toast } = useToast();
 
   const [filter, setFilter] = useState<
-    "all" | "published" | "draft" | "review" | "scheduled"
+    "all" | "published" | "draft" | "review" | "scheduled" | "layouts"
   >("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set<string>());
@@ -98,14 +98,20 @@ export function PagesListView() {
     published: statusMap[filter],
   });
 
-  // Built-in scope pages (header, footer, home, product-detail, blog-index,
-  // …) are layout templates, not routable user pages. They live in the same
-  // TenantPage table for storage convenience but belong in Templates / Design,
-  // not the Pages list. Hide them here so the list is just user-authored pages.
-  const pages = useMemo(
+  // Built-in scope pages (header, footer, home, product-detail, …) are layout
+  // templates rather than routable user pages. They live in the same
+  // TenantPage table for storage but the user wants them editable from a
+  // separate "Layouts" tab so they don't clutter the routable Pages tabs but
+  // are still reachable for personalization.
+  const userPages = useMemo(
     () => (data?.pages ?? []).filter((p) => p.kind !== "scope"),
     [data?.pages],
   );
+  const scopePages = useMemo(
+    () => (data?.pages ?? []).filter((p) => p.kind === "scope"),
+    [data?.pages],
+  );
+  const pages = filter === "layouts" ? scopePages : userPages;
   const _createPage = useCreatePage();
   const deletePage = useDeletePage();
   const publishPage = usePublishPage();
@@ -141,14 +147,15 @@ export function PagesListView() {
 
   const counts = useMemo(
     () => ({
-      all: pages.length,
-      published: pages.filter((p) => p.isPublished).length,
-      draft: pages.filter((p) => !p.isPublished && !p.scheduledPublishAt)
+      all: userPages.length,
+      published: userPages.filter((p) => p.isPublished).length,
+      draft: userPages.filter((p) => !p.isPublished && !p.scheduledPublishAt)
         .length,
       review: 0, // API doesn't have explicit review status
-      scheduled: pages.filter((p) => p.scheduledPublishAt).length,
+      scheduled: userPages.filter((p) => p.scheduledPublishAt).length,
+      layouts: scopePages.length,
     }),
-    [pages],
+    [userPages, scopePages],
   );
 
   const allSelected =
@@ -275,6 +282,7 @@ export function PagesListView() {
           { id: "draft", label: "Drafts" },
           { id: "review", label: "In review" },
           { id: "scheduled", label: "Scheduled" },
+          { id: "layouts", label: "Layouts" },
         ].map((tab) => (
           <button
             key={tab.id}
