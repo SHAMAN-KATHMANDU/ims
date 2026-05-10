@@ -1,24 +1,13 @@
 # E2E web automation tests.
-# Triggered on push to main, nightly schedule, and manual dispatch.
-# Per-PR E2E was removed from ci.yml to save Actions minutes; this is the
-# pre-deploy + nightly safety net. Body lifted from the previous
-# `e2e-web-automation` job in ci.yml.
+# Triggered on nightly schedule and manual dispatch only — NOT on push to main.
+# Per-PR E2E was removed from ci.yml to save Actions minutes; the nightly run
+# (plus on-demand `workflow_dispatch`) is the safety net.
+# Body lifted from the previous `e2e-web-automation` job in ci.yml.
 # ⚠ To switch back to the self-hosted runner: replace `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
 
 name: E2E Web (automation)
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".claude/**"
-      - ".vscode/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - "LICENSE"
-      - ".editorconfig"
-      - ".gitignore"
   schedule:
     # Nightly at 06:00 UTC
     - cron: "0 6 * * *"
