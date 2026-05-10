@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Bell, ExternalLink } from "lucide-react";
 import {
   useTopbarActionsStore,
@@ -8,6 +8,7 @@ import {
 } from "@/store/topbar-actions-store";
 import { useQuery } from "@tanstack/react-query";
 import { listMyDomains } from "@/features/tenant-site/domains/services/domains.service";
+import { usePreviewUrl } from "@/features/tenant-site/site-editor/hooks/usePreviewUrl";
 
 const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
@@ -48,8 +49,6 @@ function breadcrumbsFromPathname(pathname: string): string[] {
 
 export function Topbar() {
   const pathname = usePathname();
-  const params = useParams<{ workspace: string }>();
-  const workspace = params?.workspace ?? "";
   const actions = useTopbarActionsStore(selectTopbarActions);
   const crumbs = breadcrumbsFromPathname(pathname);
 
@@ -62,15 +61,14 @@ export function Topbar() {
     domains?.find((d) => d.isPrimary && d.appType === "WEBSITE") ??
     domains?.find((d) => d.appType === "WEBSITE") ??
     null;
-  const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
-    /\/$/,
-    "",
-  );
+  // Fall back to the API-minted preview URL — bare visits to
+  // TENANT_SITE_PUBLIC_URL are 204'd by tenant-site middleware (see
+  // apps/tenant-site/middleware.ts:211), only token-gated /preview/* paths
+  // are allowed.
+  const { data: mintedPreviewUrl } = usePreviewUrl("home");
   const liveSiteUrl = primaryDomain
     ? `https://${primaryDomain.hostname}`
-    : fallbackBase && workspace
-      ? `${fallbackBase}/${workspace}`
-      : null;
+    : (mintedPreviewUrl ?? null);
 
   return (
     <div

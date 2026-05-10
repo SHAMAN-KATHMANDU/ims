@@ -11,6 +11,7 @@ import { useRecentEdits } from "../../hooks/use-recent-edits";
 import { useDomains } from "../../hooks/use-domains";
 import { useTeamMembers } from "../../hooks/use-team-members";
 import { useAnalyticsOverview } from "../../hooks/use-analytics";
+import { usePreviewUrl } from "../../site-editor/hooks/usePreviewUrl";
 
 interface RecentEntry {
   id: string;
@@ -105,16 +106,15 @@ export function DashboardView() {
     return { drafts, scheduled, live };
   }, [recentPages, recentPosts]);
 
+  // Mint a preview URL when no custom domain is attached. Bare visits to
+  // TENANT_SITE_PUBLIC_URL are 204'd by tenant-site middleware; only the
+  // token-gated /preview/* path is allowed.
+  const { data: mintedPreviewUrl } = usePreviewUrl("home");
+
   useEffect(() => {
-    const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
-      /\/$/,
-      "",
-    );
     const primaryUrl = primaryDomain?.hostname
       ? `https://${primaryDomain.hostname}`
-      : fallbackBase && workspace
-        ? `${fallbackBase}/${workspace}`
-        : "#";
+      : (mintedPreviewUrl ?? "#");
     const liveDisabled = primaryUrl === "#";
     setActions(
       <div className="flex gap-2">
@@ -139,7 +139,7 @@ export function DashboardView() {
     );
 
     return () => setActions(null);
-  }, [setActions, workspace, primaryDomain, router]);
+  }, [setActions, workspace, primaryDomain, mintedPreviewUrl, router]);
 
   const greeting = username ? username.split(" ")[0] : "Welcome";
   const siteName = primaryDomain?.hostname ?? "your site";

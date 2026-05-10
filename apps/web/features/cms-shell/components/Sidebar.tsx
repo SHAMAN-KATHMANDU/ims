@@ -19,6 +19,7 @@ import {
   selectUsername,
 } from "@/store/auth-store";
 import { useSidebarCounts } from "../../tenant-site/hooks/use-sidebar-counts";
+import { usePreviewUrl } from "../../tenant-site/site-editor/hooks/usePreviewUrl";
 import { Icon, type IconName } from "../icons";
 
 interface NavItem {
@@ -108,10 +109,15 @@ export function Sidebar() {
     isLoading: countsLoading,
   } = useSidebarCounts();
 
-  // Live preview link — prefers the tenant's primary custom domain. When the
-  // tenant hasn't attached one yet we fall back to the platform tenant-site
-  // host (NEXT_PUBLIC_TENANT_SITE_URL) with the workspace slug appended so
-  // the Preview entry is always actionable, not just a disabled stub.
+  // Live preview link. Three-tier fallback so this entry is virtually always
+  // actionable:
+  //   1. Tenant's primary verified WEBSITE custom domain — opens the live site.
+  //   2. API-minted token-gated preview URL (`/preview/site/home?token=…`)
+  //      against the platform tenant-site host. The bare host returns 204 by
+  //      middleware design (apps/tenant-site/middleware.ts:211); only the
+  //      /preview/ bypass path is allowed, which is exactly what the editor
+  //      already uses for its iframe.
+  //   3. Disabled with a tooltip explaining how to enable it.
   const { data: domains } = useQuery({
     queryKey: ["my-domains"],
     queryFn: listMyDomains,
@@ -121,15 +127,10 @@ export function Sidebar() {
     domains?.find((d) => d.isPrimary && d.appType === "WEBSITE") ??
     domains?.find((d) => d.appType === "WEBSITE") ??
     null;
-  const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
-    /\/$/,
-    "",
-  );
+  const { data: mintedPreviewUrl } = usePreviewUrl("home");
   const previewHref = primaryDomain
     ? `https://${primaryDomain.hostname}`
-    : fallbackBase && workspace
-      ? `${fallbackBase}/${workspace}`
-      : "";
+    : (mintedPreviewUrl ?? "");
 
   const baseGroups = getBaseNavGroups();
   const overview = baseGroups[0];
@@ -141,7 +142,7 @@ export function Sidebar() {
       external: true,
       disabledTitle: previewHref
         ? undefined
-        : "Add a custom domain in Site → Domains, or set NEXT_PUBLIC_TENANT_SITE_URL, to enable preview",
+        : "Preview unavailable — the API couldn't mint a preview URL (TENANT_SITE_PUBLIC_URL not set on the API container?). Attach a custom domain in Site → Domains as an alternative.",
     });
   }
   const navGroups: NavGroup[] = baseGroups.map((group) => {
