@@ -214,11 +214,24 @@ export class PagesRepository {
 
   /**
    * Upsert a custom page (kind="page") from a template's defaultPages entry.
-   * Idempotent on the (tenantId, kind, slug) unique constraint.
+   * Idempotent on the `@@unique([tenantId, slug])` constraint.
    *
-   * On first apply, creates a new TenantPage + SiteLayout with the page's blocks.
-   * On re-apply: if `overwriteExisting=true`, updates the page and layout (used when
-   * resetBranding=true). Otherwise, leaves existing user edits untouched.
+   * On first apply, creates a new TenantPage with the page's metadata (blocks
+   * are written separately to a SiteLayout row by the caller).
+   *
+   * On re-apply with `overwriteExisting=false`: leaves the existing row alone
+   * so user edits are preserved.
+   *
+   * On re-apply with `overwriteExisting=true`: updates the row's title +
+   * metadata. If the existing row was a `kind="scope"` row left over from the
+   * pre-PR-#528 flow (e.g. slug "offers" / "cart" / "contact" — same slug as
+   * a new PAGE_SCOPE), it's converted in place to `kind="page"`, with the
+   * row's id preserved so any downstream FK reference (notably
+   * `SiteLayout.pageId` written by the caller right after) still resolves.
+   * The orphaned `SiteLayout(scope=<old_scope>, pageId=null)` row from the
+   * old flow is left untouched (per "no migration script" decision) — it
+   * just stops being read by the new TenantPage→SiteLayout(scope=page,
+   * pageId=<id>) lookup path.
    */
   async upsertCustomPage(
     tenantId: string,
@@ -232,9 +245,13 @@ export class PagesRepository {
     },
     overwriteExisting: boolean = false,
   ): Promise<TenantPage> {
-    // Try to find existing custom page
+    // Find by (tenantId, slug) only — NOT by kind. The unique index is on
+    // (tenantId, slug), so any existing row with this slug — page OR scope —
+    // would block a create() with a 409. Filtering by kind here used to hide
+    // legacy scope rows from the find, sending us into the create branch
+    // and triggering the constraint.
     const existing = await prisma.tenantPage.findFirst({
-      where: { tenantId, kind: "page", slug: data.slug },
+      where: { tenantId, slug: data.slug },
     });
 
     if (existing) {
@@ -242,11 +259,16 @@ export class PagesRepository {
         // Preserve existing user edits — return as-is
         return existing;
       }
-      // Overwrite: update title and metadata
+      // Overwrite: update title and metadata. If the row was kind="scope"
+      // (legacy from pre-PR-#528), convert it to kind="page" so it shows
+      // up under the Pages tab in the editor.
       return prisma.tenantPage.update({
         where: { id: existing.id },
         data: {
           title: data.title,
+          kind: "page",
+          scope: null,
+          isBuiltInScope: false,
           ...(data.navOrder !== undefined && { navOrder: data.navOrder }),
           ...(data.seoTitle !== undefined && { seoTitle: data.seoTitle }),
           ...(data.seoDescription !== undefined && {

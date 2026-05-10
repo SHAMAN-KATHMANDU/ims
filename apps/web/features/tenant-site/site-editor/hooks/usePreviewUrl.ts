@@ -24,9 +24,14 @@ export const previewUrlKeys = {
 const REFRESH_INTERVAL_MS = 25 * 60 * 1000;
 
 export function usePreviewUrl(scope: SiteLayoutScope, pageId?: string) {
+  // pageId is only meaningful when scope === "page" (the SiteLayout row is
+  // keyed by both). For chrome scopes (header, footer, 404, etc.) the row
+  // has pageId=null, so passing the route's TenantPage.id here would make
+  // the preview lookup miss. Clear it.
+  const effectivePageId = scope === "page" ? pageId : undefined;
   return useQuery({
-    queryKey: previewUrlKeys.scope(scope, pageId),
-    queryFn: () => getSiteLayoutPreviewUrl(scope, pageId),
+    queryKey: previewUrlKeys.scope(scope, effectivePageId),
+    queryFn: () => getSiteLayoutPreviewUrl(scope, effectivePageId),
     staleTime: REFRESH_INTERVAL_MS,
     refetchInterval: REFRESH_INTERVAL_MS,
     refetchOnWindowFocus: false,

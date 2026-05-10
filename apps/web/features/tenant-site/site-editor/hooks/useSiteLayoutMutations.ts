@@ -1,5 +1,8 @@
 /**
  * Mutations for saving, publishing, and discarding site layouts.
+ *
+ * `pageId` is required when scope === "page" (the SiteLayout row is keyed by
+ * both); chrome scopes (header/footer/etc.) ignore it.
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,16 +15,21 @@ import {
 import { siteLayoutKeys } from "./useSiteLayoutQuery";
 import { useToast } from "@/hooks/useToast";
 
-export function useSaveLayoutDraft(scope: SiteLayoutScope) {
+export function useSaveLayoutDraft(
+  scope: SiteLayoutScope,
+  pageId: string | null = null,
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (blocks: BlockNode[]) => {
-      return upsertSiteLayoutDraft({ scope, blocks });
+      return upsertSiteLayoutDraft({ scope, pageId, blocks });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteLayoutKeys.scope(scope) });
+      queryClient.invalidateQueries({
+        queryKey: siteLayoutKeys.scope(scope, pageId),
+      });
       toast({
         title: "Draft saved",
         variant: "default",
@@ -37,16 +45,21 @@ export function useSaveLayoutDraft(scope: SiteLayoutScope) {
   });
 }
 
-export function usePublishLayout(scope: SiteLayoutScope) {
+export function usePublishLayout(
+  scope: SiteLayoutScope,
+  pageId: string | null = null,
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async () => {
-      return publishSiteLayout(scope);
+      return publishSiteLayout(scope, pageId ?? undefined);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteLayoutKeys.scope(scope) });
+      queryClient.invalidateQueries({
+        queryKey: siteLayoutKeys.scope(scope, pageId),
+      });
       toast({
         title: "Site published",
         description: "Your changes are now live",
@@ -63,16 +76,21 @@ export function usePublishLayout(scope: SiteLayoutScope) {
   });
 }
 
-export function useDiscardDraft(scope: SiteLayoutScope) {
+export function useDiscardDraft(
+  scope: SiteLayoutScope,
+  pageId: string | null = null,
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async () => {
-      return deleteSiteLayout(scope);
+      return deleteSiteLayout(scope, pageId ?? undefined);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteLayoutKeys.scope(scope) });
+      queryClient.invalidateQueries({
+        queryKey: siteLayoutKeys.scope(scope, pageId),
+      });
       toast({
         title: "Draft discarded",
         variant: "default",
@@ -88,16 +106,21 @@ export function useDiscardDraft(scope: SiteLayoutScope) {
   });
 }
 
-export function useUnpublishLayout(scope: SiteLayoutScope) {
+export function useUnpublishLayout(
+  scope: SiteLayoutScope,
+  pageId: string | null = null,
+) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async () => {
-      return deleteSiteLayout(scope);
+      return deleteSiteLayout(scope, pageId ?? undefined);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteLayoutKeys.scope(scope) });
+      queryClient.invalidateQueries({
+        queryKey: siteLayoutKeys.scope(scope, pageId),
+      });
       toast({
         title: "Site unpublished",
         variant: "default",

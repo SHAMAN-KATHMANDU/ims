@@ -11,10 +11,13 @@ import type { SiteLayoutScope } from "@repo/shared";
 
 const AUTOSAVE_DELAY_MS = 2000;
 
-export function useAutosave(scope: SiteLayoutScope) {
+export function useAutosave(
+  scope: SiteLayoutScope,
+  pageId: string | null = null,
+) {
   const dirty = useEditorStore(selectDirty);
   const blocks = useEditorStore(selectBlocks);
-  const { mutate: saveDraft } = useSaveLayoutDraft(scope);
+  const { mutate: saveDraft } = useSaveLayoutDraft(scope, pageId);
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasSavedRef = useRef(false);
