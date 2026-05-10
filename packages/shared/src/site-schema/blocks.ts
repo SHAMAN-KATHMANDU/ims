@@ -78,6 +78,7 @@ import type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
 import type { CartLineItemsProps } from "../blocks/cart-line-items/schema";
 import type { OrderSummaryProps } from "../blocks/order-summary/schema";
 import type { AccountBarProps } from "../blocks/account-bar/schema";
+import type { CheckoutFormProps } from "../blocks/checkout-form/schema";
 import type { PriceTiersProps } from "../blocks/price-tiers/schema";
 import type { SnippetRefProps } from "../blocks/snippet-ref/schema";
 
@@ -152,6 +153,7 @@ export type { CopyrightBarProps } from "../blocks/copyright-bar/schema";
 export type { CartLineItemsProps } from "../blocks/cart-line-items/schema";
 export type { OrderSummaryProps } from "../blocks/order-summary/schema";
 export type { AccountBarProps } from "../blocks/account-bar/schema";
+export type { CheckoutFormProps } from "../blocks/checkout-form/schema";
 export type { PriceTier, PriceTiersProps } from "../blocks/price-tiers/schema";
 export type { SnippetRefProps } from "../blocks/snippet-ref/schema";
 
@@ -251,6 +253,7 @@ export interface BlockPropsMap {
   "cart-line-items": CartLineItemsProps;
   "order-summary": OrderSummaryProps;
   "account-bar": AccountBarProps;
+  "checkout-form": CheckoutFormProps;
   "price-tiers": PriceTiersProps;
   // Phase 5: reusable BlockNode[] sub-trees referenced by id.
   "snippet-ref": SnippetRefProps;
