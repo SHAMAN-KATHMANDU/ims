@@ -6,10 +6,13 @@
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
 
+export type DomainAppType = "WEBSITE" | "IMS" | "API";
+
 export interface TenantDomain {
   id: string;
   tenantId: string;
   hostname: string;
+  appType: DomainAppType;
   isPrimary: boolean;
   verifiedAt: string | null;
   sslStatus: "pending" | "valid" | "expired";
@@ -29,7 +32,7 @@ export interface DomainVerificationInstructions {
 
 export interface CreateDomainData {
   hostname: string;
-  appType?: "WEBSITE" | "SHOP";
+  appType: DomainAppType;
 }
 
 export interface UpdateDomainData {
