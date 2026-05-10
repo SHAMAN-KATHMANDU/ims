@@ -222,7 +222,7 @@ jobs:
         run: |
           pnpm --filter api exec prisma migrate diff \
             --from-url "$DATABASE_URL" \
-            --to-schema-datamodel apps/api/prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
             --exit-code
       - name: Run API tests
         run: pnpm exec turbo run test:coverage --filter=api
