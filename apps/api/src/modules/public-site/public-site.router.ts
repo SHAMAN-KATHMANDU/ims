@@ -162,27 +162,34 @@ router.get("/collections/:slug", asyncHandler(controller.getCollectionBySlug));
  */
 router.get("/collections", asyncHandler(controller.listActiveCollections));
 
+// `/public/bundles` and `/public/bundles/:slug` are owned by
+// `publicBundleRouter` (mounted at `/public/bundles` in router.config.ts).
+// Don't add bundle routes here — Express's `router.use("/public", ...)`
+// match would shadow the dedicated bundle router.
+
 /**
  * @swagger
- * /public/bundles/{slug}:
+ * /public/assets:
  *   get:
- *     summary: Get an active bundle by slug with hydrated product summaries
+ *     summary: Batch-resolve MediaAsset rows by id for storefront blocks
  *     description: |
- *       Bundles store productIds as a denormalized array; this endpoint
- *       dereferences them into product summaries (id/name/finalSp). Missing
- *       or soft-deleted productIds are silently dropped while order is
- *       preserved. Powers `BundleSpotlightBlock`.
+ *       The block tree stores image references as `{ assetId }` so the
+ *       editor doesn't pin a CDN URL into JSON. The storefront page
+ *       route collects all assetIds in the tree and calls this endpoint
+ *       once to resolve them into publicUrls + altText. Capped at 50
+ *       ids per request.
  *     tags: [Public]
  *     parameters:
- *       - in: path
- *         name: slug
+ *       - in: query
+ *         name: ids
  *         required: true
  *         schema: { type: string }
+ *         description: Comma-separated MediaAsset ids
  *     responses:
- *       200: { description: Bundle with hydrated products }
- *       404: { description: Bundle not active or site not published }
+ *       200: { description: Resolved assets (missing/deleted ids dropped) }
+ *       404: { description: Site not published }
  */
-router.get("/bundles/:slug", asyncHandler(controller.getBundleBySlug));
+router.get("/assets", asyncHandler(controller.resolveAssets));
 
 /**
  * @swagger

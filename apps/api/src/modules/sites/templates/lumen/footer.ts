@@ -11,6 +11,7 @@ export function lumenFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "centered",
       showBrand: true,
       brand: "Lumen",
       tagline: "Slow skincare. Made in small batches in Lisbon.",

@@ -53,10 +53,10 @@ export function HeroBlock({
       ctaLabel={props.ctaLabel ?? "Shop the collection"}
       title={props.title}
       subtitle={props.subtitle}
-      imageUrl={normalizeImageRef(props.imageUrl)}
+      imageUrl={normalizeImageRef(props.imageUrl, dataContext?.assets)}
       heroLayout={props.heroLayout}
       videoUrl={props.videoUrl}
-      videoPoster={normalizeImageRef(props.videoPoster)}
+      videoPoster={normalizeImageRef(props.videoPoster, dataContext?.assets)}
       shoppableProducts={shoppableProducts}
     />
   );

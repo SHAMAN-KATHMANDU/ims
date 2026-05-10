@@ -224,7 +224,10 @@ const IMAGE_SHADOW: Record<string, string> = {
   lg: "0 8px 28px rgba(0,0,0,0.2)",
 };
 
-export function ImageBlock({ props }: BlockComponentProps<ImageProps>) {
+export function ImageBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<ImageProps>) {
   const ar =
     props.aspectRatio && props.aspectRatio !== "auto"
       ? props.aspectRatio
@@ -236,7 +239,7 @@ export function ImageBlock({ props }: BlockComponentProps<ImageProps>) {
       : props.hoverEffect === "lift"
         ? "tpl-img-lift"
         : "";
-  const src = normalizeImageRef(props.src);
+  const src = normalizeImageRef(props.src, dataContext?.assets);
   const body = (
     // eslint-disable-next-line @next/next/no-img-element
     <img

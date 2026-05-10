@@ -22,6 +22,7 @@ export function ridgeHeader(): BlockNode[] {
       ],
     }),
     block("nav-bar", {
+      variant: "split",
       brand: "RIDGE//",
       brandStyle: "sans",
       items: [

@@ -72,6 +72,7 @@ import {
   DividerBlock,
 } from "./kinds/content-blocks";
 import { BundleSpotlightBlock } from "./kinds/BundleSpotlightBlock";
+import { CheckoutFormBlock } from "./kinds/CheckoutFormBlock";
 import { TabsBlock } from "./kinds/TabsBlock";
 import { GalleryBlock } from "./kinds/GalleryBlock";
 import { CustomHtmlBlock } from "./kinds/CustomHtmlBlock";
@@ -200,6 +201,7 @@ const tenantOverrides: Partial<Record<BlockKind, BlockComponent>> = {
   // Cart / checkout / blog / snippet
   "cart-line-items": CartLineItemsBlock as BlockComponent,
   "order-summary": OrderSummaryBlock as BlockComponent,
+  "checkout-form": CheckoutFormBlock as BlockComponent,
   "account-bar": AccountBarBlock as BlockComponent,
   "blog-list": BlogListBlock as BlockComponent,
   "snippet-ref": SnippetRefBlock as BlockComponent,

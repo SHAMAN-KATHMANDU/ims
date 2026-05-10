@@ -40,6 +40,7 @@ import {
   resolveCollectionCards,
   type ResolvedCollectionCard,
 } from "../resolvers/collection-cards";
+import { BlockGridSkeleton } from "./BlockSkeletons";
 
 const TONE_BG: Record<
   NonNullable<AnnouncementBarProps["tone"]>,
@@ -141,11 +142,24 @@ export function CollectionCardsBlock(
 ) {
   const { props } = args;
   // source="auto" needs the IMS round-trip; wrap in Suspense so the page
-  // shell streams while we hit /public/collections. Manual mode renders
-  // synchronously from the authored cards array.
+  // shell streams while we hit /public/collections. The skeleton matches
+  // the rendered grid shape (4 placeholder cards in the configured aspect)
+  // so the layout doesn't pop in when the fetch settles.
   if (props.source === "auto") {
+    const limit = props.limit ?? 4;
+    const aspectRatio = ASPECT_MAP[props.aspectRatio ?? "portrait"] ?? "3 / 4";
+    const wrapperHasPadY = args.node.style?.paddingY !== undefined;
     return (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <BlockGridSkeleton
+            wrapperHasPadY={wrapperHasPadY}
+            columns={Math.min(limit, 4) as 2 | 3 | 4}
+            count={limit}
+            aspectRatio={aspectRatio}
+          />
+        }
+      >
         <CollectionCardsInner {...args} />
       </Suspense>
     );
@@ -222,6 +236,7 @@ async function CollectionCardsInner({
               card={card}
               aspect={aspect}
               overlay={overlay}
+              assets={dataContext?.assets}
             />
           ))}
         </div>
@@ -234,13 +249,16 @@ function CollectionCard({
   card,
   aspect,
   overlay,
+  assets,
 }: {
   card: ResolvedCollectionCard;
   aspect: string;
   overlay: boolean;
+  assets?: BlockComponentProps<CollectionCardsProps>["dataContext"]["assets"];
 }) {
   const href = card.href && card.href.length > 0 ? card.href : null;
-  const hasImage = !!card.imageUrl;
+  const resolvedSrc = normalizeImageRef(card.imageUrl, assets);
+  const hasImage = resolvedSrc.length > 0;
   const sharedStyle: React.CSSProperties = {
     position: "relative",
     display: "block",
@@ -256,7 +274,7 @@ function CollectionCard({
       {hasImage && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={normalizeImageRef(card.imageUrl)}
+          src={resolvedSrc}
           alt=""
           aria-hidden="true"
           loading="lazy"
@@ -613,7 +631,10 @@ export function TestimonialsBlock({
 
 // ---------- Logo cloud (new) ------------------------------------------------
 
-export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
+export function LogoCloudBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<LogoCloudProps>) {
   if (props.logos.length === 0) return null;
   const height = props.logoHeight ?? 32;
   const cols = props.columns ?? 4;
@@ -653,7 +674,7 @@ export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={normalizeImageRef(l.src)}
+              src={normalizeImageRef(l.src, dataContext?.assets)}
               alt={l.alt}
               style={{
                 height,

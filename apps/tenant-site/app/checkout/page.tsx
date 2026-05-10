@@ -11,6 +11,7 @@ import { brandingDisplayName } from "@/lib/theme";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,8 @@ export default async function CheckoutRoute() {
       : []),
   ];
 
+  const assets = await buildAssetMap(ctx.host, ctx.tenantId, blocks);
+
   const dataContext: BlockDataContext = {
     site,
     host: ctx.host,
@@ -71,6 +74,7 @@ export default async function CheckoutRoute() {
     navPages,
     products: [],
     featuredBlogPosts: [],
+    assets,
   };
 
   return (

@@ -76,7 +76,10 @@ function vimeoEmbedUrl(url: string): string {
   return match ? `https://player.vimeo.com/video/${match[1]}` : url;
 }
 
-export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
+export function VideoBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<VideoProps>) {
   const ar = props.aspectRatio ?? "16/9";
 
   if (props.source === "mp4") {
@@ -89,7 +92,7 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
           loop={props.loop}
           muted={props.muted}
           playsInline
-          poster={normalizeImageRef(props.posterUrl)}
+          poster={normalizeImageRef(props.posterUrl, dataContext?.assets)}
           style={{
             width: "100%",
             aspectRatio: ar,

@@ -19,6 +19,7 @@ import { getTenantContext } from "@/lib/tenant";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 
 type Props = {
@@ -53,6 +54,12 @@ export default async function LandingPage({ params }: Props) {
   // Check if this page has a block layout
   const layout = await getSiteLayout(ctx.host, ctx.tenantId, "page", page.id);
 
+  const layoutBlocks =
+    layout && Array.isArray(layout.blocks)
+      ? (layout.blocks as BlockNode[])
+      : [];
+  const assets = await buildAssetMap(ctx.host, ctx.tenantId, layoutBlocks);
+
   const dataContext: BlockDataContext = {
     site,
     host: ctx.host,
@@ -61,6 +68,7 @@ export default async function LandingPage({ params }: Props) {
     navPages: [],
     products: [],
     featuredBlogPosts: [],
+    assets,
   };
 
   // No header/footer — that's the point of a landing page

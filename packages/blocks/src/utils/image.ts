@@ -30,15 +30,27 @@ export function resolveImageUrl(
   return parsed.toString();
 }
 
+/**
+ * Map of resolved MediaAsset rows keyed by id. Threaded through
+ * `BlockDataContext.assets` by tenant-site page routes; pass it to
+ * `normalizeImageRef()` so `{ assetId }` refs resolve to the real
+ * publicUrl synchronously at render time. Without it, asset-id refs
+ * render as empty strings (matching the prior placeholder behaviour).
+ */
+export type AssetMap = Record<string, { publicUrl: string }>;
+
 export function normalizeImageRef(
   ref: string | ImageRef | null | undefined,
+  assets?: AssetMap,
 ): string {
   if (!ref) return "";
   if (typeof ref === "string") return ref;
   if ("url" in ref) return ref.url || "";
   if ("assetId" in ref) {
-    // TODO: resolve assetId to MediaAsset URL via public API
-    return "";
+    const id = ref.assetId;
+    if (!id) return "";
+    const resolved = assets?.[id];
+    return resolved?.publicUrl ?? "";
   }
   return "";
 }

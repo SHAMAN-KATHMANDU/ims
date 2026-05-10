@@ -13,6 +13,7 @@ export function maisonFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "standard",
       showBrand: true,
       brand: "Maison",
       tagline:

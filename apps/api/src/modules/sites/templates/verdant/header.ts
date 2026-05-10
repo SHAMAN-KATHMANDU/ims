@@ -17,6 +17,7 @@ export function verdantHeader(): BlockNode[] {
       tone: "muted",
     }),
     block("nav-bar", {
+      variant: "centered",
       brand: "Verdant",
       brandStyle: "serif",
       items: [

@@ -17,6 +17,7 @@ export function voltHeader(): BlockNode[] {
       tone: "accent",
     }),
     block("nav-bar", {
+      variant: "transparent",
       brand: "▲ VOLT",
       brandStyle: "mono",
       items: [

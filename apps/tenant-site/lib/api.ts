@@ -560,6 +560,47 @@ export function getCollection(
 }
 
 /**
+ * Resolved MediaAsset summary — what the storefront needs to render an
+ * `<img src>` for an `{ assetId }` block ref. Returned in batches by
+ * `getPublicAssets()` and threaded into BlockDataContext.assets.
+ */
+export interface PublicAssetSummary {
+  id: string;
+  publicUrl: string;
+  altText: string | null;
+  mimeType: string;
+}
+
+/**
+ * Batch-resolve MediaAsset rows by id. Used by page routes to hydrate
+ * every `{ assetId }` ref in the block tree in a single round trip;
+ * blocks then look up their refs synchronously via dataContext.assets.
+ */
+export async function getPublicAssets(
+  host: string,
+  tenantId: string,
+  ids: string[],
+): Promise<PublicAssetSummary[]> {
+  const filtered = Array.from(new Set(ids.filter(Boolean))).slice(0, 50);
+  if (filtered.length === 0) return [];
+  try {
+    const result = await publicFetch<{ assets: PublicAssetSummary[] }>(
+      `/public/assets?ids=${encodeURIComponent(filtered.join(","))}`,
+      {
+        host,
+        tenantId,
+        // Asset URLs are stable per id; cache hard with the asset list tag
+        // so an admin rename / replace busts the storefront in one shot.
+        tags: [`tenant:${tenantId}:assets`],
+      },
+    );
+    return result?.assets ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Lightweight Collection summary for the CollectionCardsBlock auto-mode
  * resolver — id/slug/title/subtitle, no products. Avoids dragging the
  * full PublicCollection in when only the cover labels are needed.

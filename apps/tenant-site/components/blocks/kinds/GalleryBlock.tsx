@@ -10,7 +10,11 @@ import type { GalleryProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
 import { normalizeImageRef } from "@/lib/image";
 
-export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
+export function GalleryBlock({
+  props,
+  dataContext,
+}: BlockComponentProps<GalleryProps>) {
+  const assets = dataContext?.assets;
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
   const slideContainerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +69,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={normalizeImageRef(current?.src)}
+            src={normalizeImageRef(current?.src, assets)}
             alt={current?.alt ?? ""}
             style={{
               width: "100%",
@@ -173,7 +177,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={normalizeImageRef(img.src)}
+                src={normalizeImageRef(img.src, assets)}
                 alt={img.alt}
                 loading="lazy"
                 style={{
@@ -222,7 +226,7 @@ export function GalleryBlock({ props }: BlockComponentProps<GalleryProps>) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={normalizeImageRef(props.images[lightboxIdx]?.src)}
+            src={normalizeImageRef(props.images[lightboxIdx]?.src, assets)}
             alt={props.images[lightboxIdx]?.alt ?? ""}
             onClick={(e) => e.stopPropagation()}
             style={{

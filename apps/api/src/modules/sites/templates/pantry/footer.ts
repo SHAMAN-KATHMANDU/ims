@@ -11,6 +11,7 @@ export function pantryFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "standard",
       showBrand: true,
       brand: "Pantry & Co.",
       tagline: "A modern pantry, stocked with intention.",

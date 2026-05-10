@@ -16,6 +16,7 @@ export function pantryHeader(): BlockNode[] {
       tone: "default",
     }),
     block("nav-bar", {
+      variant: "standard",
       brand: "Pantry & Co.",
       brandStyle: "serif",
       items: [

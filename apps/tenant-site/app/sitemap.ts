@@ -5,6 +5,8 @@ import {
   getBlogCategories,
   getProducts,
   getNavPages,
+  getCollections,
+  getPublicBundles,
 } from "@/lib/api";
 
 // Tenant-specific sitemap. Static top-level pages, plus every published
@@ -55,6 +57,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           url: `${base}/${p.slug}`,
           changeFrequency: "monthly",
           priority: 0.5,
+        });
+      }
+    } catch {
+      // swallow
+    }
+
+    // Curated collections — each gets a /collections/<slug> landing page.
+    try {
+      const collections = await getCollections(ctx.host, ctx.tenantId, {
+        limit: 24,
+      });
+      for (const c of collections) {
+        entries.push({
+          url: `${base}/collections/${c.slug}`,
+          changeFrequency: "weekly",
+          priority: 0.6,
+        });
+      }
+    } catch {
+      // swallow — collections are optional for SEO indexing.
+    }
+
+    // Active bundles — each surfaces under /bundles/<slug>.
+    try {
+      const bundles = await getPublicBundles(ctx.host, ctx.tenantId, {
+        limit: 50,
+      });
+      for (const b of bundles?.items ?? []) {
+        entries.push({
+          url: `${base}/bundles/${b.slug}`,
+          changeFrequency: "weekly",
+          priority: 0.6,
         });
       }
     } catch {

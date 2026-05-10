@@ -15,6 +15,7 @@ import { normalizeImageRef } from "@/lib/image";
 export function LookbookBlock({
   node,
   props,
+  dataContext,
 }: BlockComponentProps<LookbookProps>) {
   if (props.scenes.length === 0) return null;
   const aspectRatio = props.aspectRatio ?? "4/5";
@@ -76,7 +77,7 @@ export function LookbookBlock({
               <div style={{ position: "relative", aspectRatio }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={normalizeImageRef(scene.imageUrl)}
+                  src={normalizeImageRef(scene.imageUrl, dataContext?.assets)}
                   alt={scene.alt ?? ""}
                   loading="lazy"
                   style={{

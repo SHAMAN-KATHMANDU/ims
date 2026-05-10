@@ -14,19 +14,17 @@ import type {
 } from "./public-site.schema";
 import defaultCollectionsRepo from "@/modules/collections/collections.repository";
 import defaultPromoRepo from "@/modules/promos/promo.repository";
-import defaultBundleRepo from "@/modules/bundles/bundle.repository";
+import prisma from "@/config/prisma";
 
 type Repo = typeof defaultRepo;
 type CollectionsRepo = typeof defaultCollectionsRepo;
 type PromoRepo = typeof defaultPromoRepo;
-type BundleRepo = typeof defaultBundleRepo;
 
 export class PublicSiteService {
   constructor(
     private readonly repo: Repo = defaultRepo,
     private readonly collectionsRepo: CollectionsRepo = defaultCollectionsRepo,
     private readonly promoRepo: PromoRepo = defaultPromoRepo,
-    private readonly bundleRepo: BundleRepo = defaultBundleRepo,
   ) {}
 
   private async ensurePublished(tenantId: string): Promise<PublicSiteConfig> {
@@ -229,61 +227,46 @@ export class PublicSiteService {
     return { collections: active };
   }
 
+  // Bundle endpoints (public list + by-slug) live in
+  // `apps/api/src/modules/bundles/bundle.router.ts` — `publicBundleRouter`.
+  // Don't add bundle methods here; the dedicated module owns the contract.
+
   /**
-   * Resolve a bundle by slug — returns the bundle row with productIds
-   * dereferenced into product summaries (id/name/finalSp). Missing or
-   * soft-deleted productIds are silently dropped while order is preserved,
-   * matching the existing dereference contract used in the admin module.
+   * Batch-resolve MediaAsset rows by id for the storefront.
    *
-   * Used by BundleSpotlightBlock so a dropped block can render real product
-   * lists tied to a real Bundle row, not a hardcoded slug placeholder.
+   * The block tree references images by `{ assetId }` so the editor doesn't
+   * pin a CDN URL into JSON (that URL would rot when storage moves). Each
+   * page route collects the assetIds in its block tree, calls this once,
+   * and threads the resulting map into BlockDataContext so blocks render
+   * the resolved publicUrl SSR-time without async wait per block.
+   *
+   * Tenant-scoped + soft-deletion-aware: missing or deleted assetIds are
+   * silently dropped. Callers fall back to text/placeholder when an id
+   * isn't in the result map.
    */
-  async getBundleBySlug(
+  async resolveAssets(
     tenantId: string,
-    slug: string,
+    ids: string[],
   ): Promise<{
-    bundle: {
+    assets: Array<{
       id: string;
-      slug: string;
-      name: string;
-      description: string | null;
-      productIds: string[];
-      pricingStrategy: string;
-      discountPct: number | null;
-      fixedPrice: number | null;
-      active: boolean;
-      createdAt: string;
-      updatedAt: string;
-    };
-    products: Array<{ id: string; name: string; finalSp: string }>;
+      publicUrl: string;
+      altText: string | null;
+      mimeType: string;
+    }>;
   }> {
     await this.ensurePublished(tenantId);
-    const bundle = await this.bundleRepo.findActiveBySlug(tenantId, slug);
-    if (!bundle) throw createError("Bundle not found", 404);
-    const products = await this.bundleRepo.dereferenceProducts(
-      tenantId,
-      bundle.productIds,
-    );
-    return {
-      bundle: {
-        id: bundle.id,
-        slug: bundle.slug,
-        name: bundle.name,
-        description: bundle.description,
-        productIds: bundle.productIds,
-        pricingStrategy: bundle.pricingStrategy,
-        discountPct: bundle.discountPct,
-        fixedPrice: bundle.fixedPrice,
-        active: bundle.active,
-        createdAt: bundle.createdAt.toISOString(),
-        updatedAt: bundle.updatedAt.toISOString(),
+    if (ids.length === 0) return { assets: [] };
+    const rows = await prisma.mediaAsset.findMany({
+      where: { tenantId, deletedAt: null, id: { in: ids } },
+      select: {
+        id: true,
+        publicUrl: true,
+        altText: true,
+        mimeType: true,
       },
-      products: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        finalSp: p.finalSp.toString(),
-      })),
-    };
+    });
+    return { assets: rows };
   }
 
   /**

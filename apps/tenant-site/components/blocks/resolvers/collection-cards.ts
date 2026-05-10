@@ -1,4 +1,4 @@
-import type { CollectionCardsProps } from "@repo/shared";
+import type { CollectionCardsProps, ImageRef } from "@repo/shared";
 import { getCollections, type PublicCollectionSummary } from "@/lib/api";
 import type { BlockResolver } from "./types";
 
@@ -17,7 +17,12 @@ export interface ResolvedCollectionCard {
   title: string;
   subtitle: string | null;
   href: string;
-  imageUrl?: string | null;
+  /**
+   * Either a literal URL or an `{ assetId }`/`{ url }` ImageRef. The
+   * renderer normalises this with `dataContext.assets` at the call site
+   * so manual cards with `{ assetId }` images resolve to publicUrls.
+   */
+  imageUrl?: string | ImageRef | null;
   ctaLabel?: string | null;
 }
 
@@ -42,7 +47,7 @@ export const resolveCollectionCards: BlockResolver<
       title: c.title,
       subtitle: c.subtitle ?? null,
       href: c.ctaHref ?? "#",
-      imageUrl: typeof c.imageUrl === "string" ? c.imageUrl : null,
+      imageUrl: c.imageUrl ?? null,
       ctaLabel: c.ctaLabel ?? null,
     }));
 };

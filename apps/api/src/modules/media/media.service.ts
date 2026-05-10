@@ -14,6 +14,7 @@ import {
   presignPutObject,
 } from "@/lib/s3/s3Storage";
 import { createError } from "@/middlewares/errorHandler";
+import { revalidateTenantTags, assetTags } from "@/shared/cache/revalidateTags";
 import type {
   MEDIA_PURPOSES,
   PresignBodyDto,
@@ -454,6 +455,7 @@ export class MediaService {
       assetId,
       storageKey: row.storageKey,
     });
+    void revalidateTenantTags(tenantId, assetTags(tenantId), "media.delete");
   }
 
   async updateAsset(
@@ -504,6 +506,7 @@ export class MediaService {
     if (!updated) {
       throw createError("Media asset not found", 404);
     }
+    void revalidateTenantTags(tenantId, assetTags(tenantId), "media.update");
     return updated;
   }
 }

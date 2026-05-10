@@ -12,6 +12,7 @@ import { BlogPageShell } from "@/components/blog/BlogPageShell";
 import { BlogArticle } from "@/components/blog/BlogArticle";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,8 @@ export default async function BlogPostPage({ params }: Props) {
         : []),
     ];
 
+    const assets = await buildAssetMap(ctx.host, ctx.tenantId, blocks);
+
     const dataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -92,6 +95,7 @@ export default async function BlogPostPage({ params }: Props) {
       navPages,
       products: [],
       featuredBlogPosts: result.related ?? [],
+      assets,
     };
     return (
       <>

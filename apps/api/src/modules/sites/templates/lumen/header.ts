@@ -16,6 +16,7 @@ export function lumenHeader(): BlockNode[] {
       tone: "muted",
     }),
     block("nav-bar", {
+      variant: "centered",
       brand: "Lumen",
       brandStyle: "serif",
       items: [

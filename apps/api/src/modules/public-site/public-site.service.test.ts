@@ -3,12 +3,10 @@ import { PublicSiteService } from "./public-site.service";
 import type defaultRepo from "./public-site.repository";
 import type defaultCollectionsRepo from "@/modules/collections/collections.repository";
 import type defaultPromoRepo from "@/modules/promos/promo.repository";
-import type defaultBundleRepo from "@/modules/bundles/bundle.repository";
 
 type Repo = typeof defaultRepo;
 type CollectionsRepo = typeof defaultCollectionsRepo;
 type PromoRepo = typeof defaultPromoRepo;
-type BundleRepo = typeof defaultBundleRepo;
 
 const mockRepo = {
   findSiteConfig: vi.fn(),
@@ -29,16 +27,10 @@ const mockPromoRepo = {
   findMany: vi.fn(),
 } as unknown as PromoRepo;
 
-const mockBundleRepo = {
-  findActiveBySlug: vi.fn(),
-  dereferenceProducts: vi.fn(),
-} as unknown as BundleRepo;
-
 const service = new PublicSiteService(
   mockRepo,
   mockCollectionsRepo,
   mockPromoRepo,
-  mockBundleRepo,
 );
 
 function config(overrides: Record<string, unknown> = {}) {
@@ -457,67 +449,9 @@ describe("PublicSiteService", () => {
     });
   });
 
-  describe("getBundleBySlug", () => {
-    it("returns the bundle with hydrated product summaries", async () => {
-      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
-        config(),
-      );
-      const now = new Date("2024-06-01T00:00:00Z");
-      (
-        mockBundleRepo.findActiveBySlug as ReturnType<typeof vi.fn>
-      ).mockResolvedValue({
-        id: "b1",
-        slug: "starter",
-        name: "Starter Kit",
-        description: "Three favourites",
-        productIds: ["p1", "p2"],
-        pricingStrategy: "DISCOUNT_PCT",
-        discountPct: 15,
-        fixedPrice: null,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-      (
-        mockBundleRepo.dereferenceProducts as ReturnType<typeof vi.fn>
-      ).mockResolvedValue([
-        { id: "p1", name: "Cleanser", finalSp: 100 },
-        { id: "p2", name: "Toner", finalSp: 80 },
-      ]);
-
-      const result = await service.getBundleBySlug("t1", "starter");
-      expect(result.bundle.slug).toBe("starter");
-      expect(result.bundle.discountPct).toBe(15);
-      expect(result.products).toEqual([
-        { id: "p1", name: "Cleanser", finalSp: "100" },
-        { id: "p2", name: "Toner", finalSp: "80" },
-      ]);
-    });
-
-    it("throws 404 when no active bundle matches the slug (cross-tenant safe)", async () => {
-      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
-        config(),
-      );
-      (
-        mockBundleRepo.findActiveBySlug as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(null);
-
-      await expect(
-        service.getBundleBySlug("t1", "missing"),
-      ).rejects.toMatchObject({ statusCode: 404 });
-      expect(mockBundleRepo.dereferenceProducts).not.toHaveBeenCalled();
-    });
-
-    it("throws 404 when site is not published (before bundle lookup)", async () => {
-      (mockRepo.findSiteConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
-        null,
-      );
-      await expect(
-        service.getBundleBySlug("t1", "starter"),
-      ).rejects.toMatchObject({ statusCode: 404 });
-      expect(mockBundleRepo.findActiveBySlug).not.toHaveBeenCalled();
-    });
-  });
+  // Bundle endpoints live in `apps/api/src/modules/bundles/` —
+  // public-site no longer owns them. See `bundle.service.test.ts` for
+  // the corresponding coverage.
 
   describe("listFrequentlyBoughtWith", () => {
     it("returns products when published and product exists for tenant", async () => {

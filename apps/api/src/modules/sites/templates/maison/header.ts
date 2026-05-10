@@ -18,6 +18,7 @@ export function maisonHeader(): BlockNode[] {
       tone: "default",
     }),
     block("nav-bar", {
+      variant: "standard",
       brand: "Maison",
       brandStyle: "serif",
       items: [

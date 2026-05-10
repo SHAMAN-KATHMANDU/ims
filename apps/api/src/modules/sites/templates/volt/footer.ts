@@ -12,6 +12,7 @@ export function voltFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "dark",
       showBrand: true,
       brand: "▲ VOLT",
       tagline: "Audio gear, engineered tight.",

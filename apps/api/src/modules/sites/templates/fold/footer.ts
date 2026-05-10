@@ -12,6 +12,7 @@ export function foldFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "minimal",
       showBrand: true,
       brand: "FOLD",
       tagline: "Less, but louder.",

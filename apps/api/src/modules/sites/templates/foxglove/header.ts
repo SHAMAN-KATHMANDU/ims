@@ -17,6 +17,7 @@ export function foxgloveHeader(): BlockNode[] {
       tone: "muted",
     }),
     block("nav-bar", {
+      variant: "standard",
       brand: "Foxglove & Co.",
       brandStyle: "serif",
       items: [
