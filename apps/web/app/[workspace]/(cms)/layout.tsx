@@ -22,7 +22,7 @@ type Props = {
  * own `ContentShell` so the tenant admin's CRM/Sales/Inventory rail does not
  * render alongside it. Mirrors the `(platform)` shell-isolation pattern.
  *
- * Routes: /[workspace]/content/* (route group `(cms)` is invisible in the URL).
+ * Routes: /[workspace]/site/* (route group `(cms)` is invisible in the URL).
  */
 export default async function CmsLayout({ children, params }: Props) {
   const { workspace } = await params;

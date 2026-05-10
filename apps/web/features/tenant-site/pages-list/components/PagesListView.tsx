@@ -432,8 +432,8 @@ export function PagesListView() {
                 onClick={() => {
                   const url =
                     page.kind === "scope"
-                      ? `/${wsString}/content/builder/${page.id}?scope=${page.scope}`
-                      : `/${wsString}/content/builder/${page.id}`;
+                      ? `/${wsString}/site/builder/${page.id}?scope=${page.scope}`
+                      : `/${wsString}/site/builder/${page.id}`;
                   router.push(url);
                 }}
               >
@@ -504,8 +504,8 @@ export function PagesListView() {
                           e.stopPropagation();
                           const url =
                             page.kind === "scope"
-                              ? `/${wsString}/content/builder/${page.id}?scope=${page.scope}`
-                              : `/${wsString}/content/builder/${page.id}`;
+                              ? `/${wsString}/site/builder/${page.id}?scope=${page.scope}`
+                              : `/${wsString}/site/builder/${page.id}`;
                           window.open(url, "_blank");
                         }}
                       >
@@ -565,14 +565,14 @@ export function PagesListView() {
         onOpenChange={(next) => {
           setShowCreateDialog(next);
           // Drop the `?new=1` flag once the dialog closes so navigating back
-          // to /content/pages doesn't keep popping the dialog open.
+          // to /site/pages doesn't keep popping the dialog open.
           if (!next && searchParams?.get("new") === "1") {
-            router.replace(`/${wsString}/content/pages`);
+            router.replace(`/${wsString}/site/pages`);
           }
         }}
         onCreated={(newPageId) => {
           setShowCreateDialog(false);
-          router.push(`/${wsString}/content/builder/${newPageId}`);
+          router.push(`/${wsString}/site/builder/${newPageId}`);
         }}
       />
 

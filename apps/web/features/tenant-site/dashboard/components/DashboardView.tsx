@@ -57,7 +57,7 @@ export function DashboardView() {
       isPublished: p.isPublished,
       updatedAt: p.updatedAt ?? null,
       kind: "page",
-      href: `/${workspace}/content/builder/${p.id}`,
+      href: `/${workspace}/site/builder/${p.id}`,
     }));
     const posts: RecentEntry[] = recentPosts.map((b) => ({
       id: b.id,
@@ -66,7 +66,7 @@ export function DashboardView() {
       isPublished: b.isPublished,
       updatedAt: b.updatedAt ?? null,
       kind: "post",
-      href: `/${workspace}/content/post/${b.id}`,
+      href: `/${workspace}/site/post/${b.id}`,
     }));
     return [...pages, ...posts]
       .sort((a, b) => {
@@ -121,7 +121,7 @@ export function DashboardView() {
           size="sm"
           onClick={() => {
             if (workspace) {
-              router.push(`/${workspace}/content/pages?new=1`);
+              router.push(`/${workspace}/site/pages?new=1`);
             }
           }}
         >
@@ -178,21 +178,21 @@ export function DashboardView() {
     {
       label: "New page",
       icon: "📄",
-      href: `/${workspace}/content/pages?new=1`,
+      href: `/${workspace}/site/pages?new=1`,
     },
     {
       label: "Write post",
       icon: "📝",
-      href: `/${workspace}/content/blog?new=1`,
+      href: `/${workspace}/site/blog?new=1`,
     },
-    { label: "Upload media", icon: "📸", href: `/${workspace}/content/media` },
-    { label: "Add redirect", icon: "🔗", href: `/${workspace}/content/seo` },
+    { label: "Upload media", icon: "📸", href: `/${workspace}/site/media` },
+    { label: "Add redirect", icon: "🔗", href: `/${workspace}/site/seo` },
     {
       label: "Edit navigation",
       icon: "🗂️",
-      href: `/${workspace}/content/design`,
+      href: `/${workspace}/site/design`,
     },
-    { label: "Open design", icon: "🎨", href: `/${workspace}/content/design` },
+    { label: "Open design", icon: "🎨", href: `/${workspace}/site/design` },
   ];
 
   return (
@@ -268,7 +268,7 @@ export function DashboardView() {
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">Recently edited</div>
               <button
-                onClick={() => router.push(`/${workspace}/content/pages`)}
+                onClick={() => router.push(`/${workspace}/site/pages`)}
                 className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
               >
                 View all pages →
@@ -327,7 +327,7 @@ export function DashboardView() {
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">New form submissions</div>
               <button
-                onClick={() => router.push(`/${workspace}/content/forms`)}
+                onClick={() => router.push(`/${workspace}/site/forms`)}
                 className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
               >
                 Open inbox →
@@ -397,7 +397,7 @@ export function DashboardView() {
             <div className="border-b border-[var(--line)] px-3.5 py-3 flex items-center justify-between">
               <div className="text-sm font-semibold">Domains</div>
               <button
-                onClick={() => router.push(`/${workspace}/content/domains`)}
+                onClick={() => router.push(`/${workspace}/site/domains`)}
                 className="mono text-xs text-[var(--ink-3)] hover:text-[var(--ink)]"
               >
                 Manage →

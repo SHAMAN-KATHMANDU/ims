@@ -30,9 +30,9 @@ function breadcrumbsFromPathname(pathname: string): string[] {
   const parts = pathname.split("/").filter(Boolean);
   const crumbs: string[] = [];
 
-  if (parts.includes("content")) {
+  if (parts.includes("site")) {
     crumbs.push("Site");
-    const idx = parts.indexOf("content");
+    const idx = parts.indexOf("site");
     const segment =
       idx >= 0 && idx + 1 < parts.length ? parts[idx + 1] : undefined;
     if (segment) {

@@ -54,7 +54,7 @@ export function SnippetsListPage() {
       toast({ title: "Snippet created" });
       setNewTitle("");
       setCreating(false);
-      router.push(`/${workspace}/content/snippets/${snippet.id}`);
+      router.push(`/${workspace}/site/snippets/${snippet.id}`);
     } catch (err) {
       toast({
         title: "Could not create snippet",
@@ -173,7 +173,7 @@ export function SnippetsListPage() {
             <CardContent className="p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <Link
-                  href={`/${workspace}/content/snippets/${s.id}`}
+                  href={`/${workspace}/site/snippets/${s.id}`}
                   className="min-w-0 flex-1"
                 >
                   <div className="text-sm font-semibold leading-tight">

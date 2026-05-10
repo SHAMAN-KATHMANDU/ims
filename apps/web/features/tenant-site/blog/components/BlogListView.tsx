@@ -271,7 +271,7 @@ export function BlogListView() {
               <button
                 key={post.id}
                 onClick={() =>
-                  router.push(`/${workspace}/content/post/${post.id}`)
+                  router.push(`/${workspace}/site/post/${post.id}`)
                 }
                 className="w-full grid gap-3 px-3.5 py-3 text-left border-b border-[var(--line-2)] last:border-0 hover:bg-[var(--bg-sunken)] transition"
                 style={{
@@ -351,7 +351,7 @@ export function BlogListView() {
               <button
                 key={post.id}
                 onClick={() =>
-                  router.push(`/${workspace}/content/post/${post.id}`)
+                  router.push(`/${workspace}/site/post/${post.id}`)
                 }
                 className="text-left transition hover:opacity-90"
               >
@@ -408,7 +408,7 @@ export function BlogListView() {
         onOpenChange={setShowCreateDialog}
         onCreated={(newPostId) => {
           setShowCreateDialog(false);
-          router.push(`/${workspace}/content/post/${newPostId}`);
+          router.push(`/${workspace}/site/post/${newPostId}`);
         }}
       />
 

@@ -17,7 +17,7 @@ export function ContentShell({ children }: ContentShellProps) {
   useGlobalShortcuts();
 
   const pathname = usePathname();
-  const isBuilderRoute = pathname.includes("/content/builder/");
+  const isBuilderRoute = pathname.includes("/site/builder/");
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>

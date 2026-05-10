@@ -60,7 +60,7 @@ async function fetchPages(query: string): Promise<GlobalSearchResult[]> {
         id: p.id,
         label: p.title,
         sub: `/${p.slug}`,
-        href: (ws) => `/${ws}/content/pages/${p.id}`,
+        href: (ws) => `/${ws}/site/pages/${p.id}`,
       }));
   } catch {
     return [];
@@ -78,7 +78,7 @@ async function fetchPosts(query: string): Promise<GlobalSearchResult[]> {
       id: p.id,
       label: p.title,
       sub: `/${p.slug}`,
-      href: (ws) => `/${ws}/content/blog/${p.id}`,
+      href: (ws) => `/${ws}/site/blog/${p.id}`,
     }));
   } catch {
     return [];
@@ -113,7 +113,7 @@ async function fetchSnippets(query: string): Promise<GlobalSearchResult[]> {
       id: s.id,
       label: s.title,
       sub: `/${s.slug}`,
-      href: (ws) => `/${ws}/content/snippets/${s.id}`,
+      href: (ws) => `/${ws}/site/snippets/${s.id}`,
     }));
   } catch {
     return [];

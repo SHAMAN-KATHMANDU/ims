@@ -46,7 +46,7 @@ interface SiteOverviewTabProps {
 export function SiteOverviewTab({ config, onGoToTab }: SiteOverviewTabProps) {
   const pathname = usePathname();
   const workspaceSlug = pathname.split("/")[1] ?? "";
-  const editorHref = `/${workspaceSlug}/content/dashboard`;
+  const editorHref = `/${workspaceSlug}/site/dashboard`;
   const layoutsQuery = useSiteLayouts();
   const pagesQuery = useTenantPages({ limit: 100 });
 

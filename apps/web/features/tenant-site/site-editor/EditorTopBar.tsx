@@ -24,7 +24,7 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
 
   const handleBack = () => {
     router.push(
-      `/[workspace]/(admin)/content/pages`.replace("[workspace]", workspace),
+      `/[workspace]/(admin)/site/pages`.replace("[workspace]", workspace),
     );
   };
 

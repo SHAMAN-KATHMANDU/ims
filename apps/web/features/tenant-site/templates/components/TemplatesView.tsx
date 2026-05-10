@@ -99,7 +99,7 @@ export function TemplatesView() {
                 forkMutation.mutate({ id, name });
               }}
               onEditClick={(id) => {
-                window.location.href = `/content/templates/${id}/edit`;
+                window.location.href = `/site/templates/${id}/edit`;
               }}
               onDeleteClick={(id) => {
                 setDeleteConfirm(id);

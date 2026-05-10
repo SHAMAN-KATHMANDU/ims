@@ -108,7 +108,7 @@ export function SnippetEditorPage({ id }: { id: string }) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => router.push(`/${workspace}/content/snippets`)}
+          onClick={() => router.push(`/${workspace}/site/snippets`)}
         >
           <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
           All snippets

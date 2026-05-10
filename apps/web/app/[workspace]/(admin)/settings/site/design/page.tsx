@@ -8,5 +8,5 @@ export default async function SiteDesignRoute({
   params: Promise<{ workspace: string }>;
 }) {
   const { workspace } = await params;
-  redirect(`/${workspace}/content/design`);
+  redirect(`/${workspace}/site/design`);
 }

@@ -40,7 +40,7 @@ export function useApplyTemplate() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("site-template-picked"));
       }
-      router.push("/content/dashboard");
+      router.push("/site/dashboard");
     },
     onError: (error: unknown) => {
       console.error("[useApplyTemplate] failed", error);
@@ -69,7 +69,7 @@ export function useForkTemplate() {
     onSuccess: (template) => {
       queryClient.invalidateQueries({ queryKey: tenantSiteKeys.templates() });
       toast({ title: "Template forked successfully" });
-      router.push(`/content/templates/${template.id}/edit`);
+      router.push(`/site/templates/${template.id}/edit`);
     },
     onError: (error: unknown) => {
       const message =
@@ -133,7 +133,7 @@ export function useDeleteTemplate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantSiteKeys.templates() });
       toast({ title: "Template deleted successfully" });
-      router.push("/content/templates");
+      router.push("/site/templates");
     },
     onError: (error: unknown) => {
       const message =

@@ -294,8 +294,8 @@ export const dashboardNavSections: NavSection[] = [
       },
       {
         // Storefront product collections — managed via the CMS shell.
-        // Lives under /content/collections so it shares the CMS chrome.
-        path: "content/collections",
+        // Lives under /site/collections so it shares the CMS chrome.
+        path: "site/collections",
         label: "Collections",
         icon: FolderHeart,
         roles: ["admin", "superAdmin"],
@@ -315,10 +315,10 @@ export const dashboardNavSections: NavSection[] = [
         // Tenant-site CMS shell at /[workspace]/content — Notion-style admin
         // surfacing Pages, Blog, Snippets, Media, Collections, Offers,
         // Templates, Design, Domains, SEO, Forms, Settings and the block
-        // builder (/content/builder/[pageId]) as siblings inside one shell.
+        // builder (/site/builder/[pageId]) as siblings inside one shell.
         // Opens in a new tab so the CMS owns its full chrome (no parent
         // sidebar/topbar) per the Notion-style design intent.
-        path: "content",
+        path: "site",
         label: "Website",
         icon: Globe,
         roles: ["admin", "superAdmin"],

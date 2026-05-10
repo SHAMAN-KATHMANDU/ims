@@ -210,7 +210,7 @@ export function PostEditorView({ postId }: { postId: string }) {
       {/* Topbar */}
       <div className="border-b border-[var(--line)] bg-[var(--bg)] px-3 py-3 flex items-center gap-2.5">
         <button
-          onClick={() => router.push(`/${workspace}/content/blog`)}
+          onClick={() => router.push(`/${workspace}/site/blog`)}
           className="flex items-center gap-1.5 px-2 py-1.5 rounded text-sm font-medium hover:bg-[var(--bg-elev)]"
         >
           <ChevronLeft className="h-3.5 w-3.5" />

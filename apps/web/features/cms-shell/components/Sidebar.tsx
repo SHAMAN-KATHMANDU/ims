@@ -40,20 +40,20 @@ interface NavGroup {
 const getBaseNavGroups = (): NavGroup[] => [
   {
     label: "Overview",
-    items: [{ label: "Dashboard", icon: "gauge", href: "/content/dashboard" }],
+    items: [{ label: "Dashboard", icon: "gauge", href: "/site/dashboard" }],
   },
   {
     label: "Content",
     items: [
-      { label: "Pages", icon: "pages", href: "/content/pages" },
-      { label: "Blog", icon: "blog", href: "/content/blog" },
-      { label: "Blocks", icon: "blocks", href: "/content/blocks" },
+      { label: "Pages", icon: "pages", href: "/site/pages" },
+      { label: "Blog", icon: "blog", href: "/site/blog" },
+      { label: "Blocks", icon: "blocks", href: "/site/blocks" },
       {
         label: "Snippets",
         icon: "snippets",
-        href: "/content/snippets",
+        href: "/site/snippets",
       },
-      { label: "Media", icon: "media", href: "/content/media" },
+      { label: "Media", icon: "media", href: "/site/media" },
     ],
   },
   {
@@ -62,25 +62,25 @@ const getBaseNavGroups = (): NavGroup[] => [
       {
         label: "Collections",
         icon: "collections",
-        href: "/content/collections",
+        href: "/site/collections",
       },
-      { label: "Offers", icon: "offers", href: "/content/offers" },
+      { label: "Offers", icon: "offers", href: "/site/offers" },
     ],
   },
   {
     label: "Structure",
     items: [
-      { label: "Templates", icon: "templates", href: "/content/templates" },
-      { label: "Design", icon: "design", href: "/content/design" },
-      { label: "Navigation", icon: "navigation", href: "/content/navigation" },
-      { label: "Domains", icon: "domains", href: "/content/domains" },
-      { label: "SEO & redirects", icon: "seo", href: "/content/seo" },
-      { label: "Forms", icon: "forms", href: "/content/forms" },
+      { label: "Templates", icon: "templates", href: "/site/templates" },
+      { label: "Design", icon: "design", href: "/site/design" },
+      { label: "Navigation", icon: "navigation", href: "/site/navigation" },
+      { label: "Domains", icon: "domains", href: "/site/domains" },
+      { label: "SEO & redirects", icon: "seo", href: "/site/seo" },
+      { label: "Forms", icon: "forms", href: "/site/forms" },
     ],
   },
   {
     label: "System",
-    items: [{ label: "Settings", icon: "settings", href: "/content/settings" }],
+    items: [{ label: "Settings", icon: "settings", href: "/site/settings" }],
   },
 ];
 
@@ -137,11 +137,11 @@ export function Sidebar() {
         ...group,
         items: group.items.map((item) => {
           const countMap: Record<string, number | undefined> = {
-            "/content/pages": pages,
-            "/content/blog": blog,
-            "/content/blocks": blocks,
-            "/content/snippets": snippets,
-            "/content/media": media,
+            "/site/pages": pages,
+            "/site/blog": blog,
+            "/site/blocks": blocks,
+            "/site/snippets": snippets,
+            "/site/media": media,
           };
           return {
             ...item,
@@ -155,8 +155,8 @@ export function Sidebar() {
         ...group,
         items: group.items.map((item) => {
           const countMap: Record<string, number | undefined> = {
-            "/content/collections": collections,
-            "/content/offers": offers,
+            "/site/collections": collections,
+            "/site/offers": offers,
           };
           return {
             ...item,
@@ -170,7 +170,7 @@ export function Sidebar() {
         ...group,
         items: group.items.map((item) => {
           const countMap: Record<string, number | undefined> = {
-            "/content/forms": forms,
+            "/site/forms": forms,
           };
           return {
             ...item,
@@ -196,8 +196,8 @@ export function Sidebar() {
     workspace ? `/${workspace}${href}` : href;
 
   const isActive = (href: string) => {
-    const segment = pathname.split("/content/")?.[1]?.split("/")?.[0];
-    const hrefSegment = href.split("/content/")?.[1]?.split("/")?.[0];
+    const segment = pathname.split("/site/")?.[1]?.split("/")?.[0];
+    const hrefSegment = href.split("/site/")?.[1]?.split("/")?.[0];
     return segment === hrefSegment;
   };
 

@@ -120,11 +120,11 @@ export function CmdK() {
 
   const handleSelect = (item: CmdItem) => {
     if (item.pageId && workspace) {
-      router.push(`/${workspace}/content/builder/${item.pageId}`);
+      router.push(`/${workspace}/site/builder/${item.pageId}`);
     } else if (item.postId && workspace) {
-      router.push(`/${workspace}/content/post/${item.postId}`);
+      router.push(`/${workspace}/site/post/${item.postId}`);
     } else if (item.target && workspace) {
-      router.push(`/${workspace}/content/${item.target}`);
+      router.push(`/${workspace}/site/${item.target}`);
     } else if (item.action === "theme") {
       toggleTheme();
     }

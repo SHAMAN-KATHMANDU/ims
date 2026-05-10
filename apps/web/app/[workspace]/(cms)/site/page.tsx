@@ -6,5 +6,5 @@ interface ContentRouteProps {
 
 export default async function ContentRoute({ params }: ContentRouteProps) {
   const { workspace } = await params;
-  redirect(`/${workspace}/content/dashboard`);
+  redirect(`/${workspace}/site/dashboard`);
 }
