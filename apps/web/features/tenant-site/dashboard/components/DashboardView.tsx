@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   useTopbarActionsStore,
@@ -11,6 +11,16 @@ import { useRecentEdits } from "../../hooks/use-recent-edits";
 import { useDomains } from "../../hooks/use-domains";
 import { useTeamMembers } from "../../hooks/use-team-members";
 import { useAnalyticsOverview } from "../../hooks/use-analytics";
+
+interface RecentEntry {
+  id: string;
+  title: string;
+  slug: string;
+  isPublished: boolean;
+  updatedAt: string | null;
+  kind: "page" | "post";
+  href: string;
+}
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +37,73 @@ export function DashboardView() {
   const setActions = useTopbarActionsStore(selectTopbarActionsSetActions);
   const username = useAuthStore(selectUsername);
 
-  const { recentPages, isLoading: recentLoading } = useRecentEdits(6);
+  const {
+    recentPages,
+    recentPosts,
+    isLoading: recentLoading,
+  } = useRecentEdits(10);
   const { data: domains, isLoading: domainsLoading } = useDomains();
   const { data: teamMembers, isLoading: teamLoading } = useTeamMembers();
   const { data: analytics } = useAnalyticsOverview();
 
   const primaryDomain = domains?.[0];
+
+  // Merge pages + posts into a unified, freshness-sorted list for "Recently edited".
+  const recentEntries = useMemo<RecentEntry[]>(() => {
+    const pages: RecentEntry[] = recentPages.map((p) => ({
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      isPublished: p.isPublished,
+      updatedAt: p.updatedAt ?? null,
+      kind: "page",
+      href: `/${workspace}/content/builder/${p.id}`,
+    }));
+    const posts: RecentEntry[] = recentPosts.map((b) => ({
+      id: b.id,
+      title: b.title,
+      slug: b.slug,
+      isPublished: b.isPublished,
+      updatedAt: b.updatedAt ?? null,
+      kind: "post",
+      href: `/${workspace}/content/post/${b.id}`,
+    }));
+    return [...pages, ...posts]
+      .sort((a, b) => {
+        const ta = a.updatedAt ? Date.parse(a.updatedAt) : 0;
+        const tb = b.updatedAt ? Date.parse(b.updatedAt) : 0;
+        return tb - ta;
+      })
+      .slice(0, 5);
+  }, [recentPages, recentPosts, workspace]);
+
+  // Pipeline buckets are derived from the same lists. Pages and posts both
+  // expose isPublished + scheduledPublishAt; "In review" isn't tracked yet
+  // (would need a workflow status enum), so it stays as "—".
+  const pipeline = useMemo(() => {
+    const all: Array<{
+      isPublished: boolean;
+      scheduledPublishAt: string | null;
+    }> = [
+      ...recentPages.map((p) => ({
+        isPublished: p.isPublished,
+        scheduledPublishAt: p.scheduledPublishAt,
+      })),
+      ...recentPosts.map((b) => ({
+        isPublished: b.isPublished,
+        scheduledPublishAt: b.scheduledPublishAt,
+      })),
+    ];
+    let drafts = 0;
+    let scheduled = 0;
+    let live = 0;
+    for (const item of all) {
+      if (item.isPublished) live += 1;
+      else if (item.scheduledPublishAt) scheduled += 1;
+      else drafts += 1;
+    }
+    return { drafts, scheduled, live };
+  }, [recentPages, recentPosts]);
 
   useEffect(() => {
     const primaryUrl = primaryDomain?.hostname
@@ -209,38 +280,37 @@ export function DashboardView() {
                 <Skeleton className="h-10" />
                 <Skeleton className="h-10" />
               </div>
-            ) : recentPages.length === 0 ? (
+            ) : recentEntries.length === 0 ? (
               <div
                 className="p-3.5 text-center"
                 style={{ color: "var(--ink-3)" }}
               >
-                <p className="text-xs">No pages yet</p>
+                <p className="text-xs">No pages or posts yet</p>
               </div>
             ) : (
               <div>
-                {recentPages.slice(0, 3).map((page, i) => (
+                {recentEntries.slice(0, 3).map((entry, i, arr) => (
                   <button
-                    key={page.id}
-                    onClick={() =>
-                      router.push(`/${workspace}/content/builder/${page.id}`)
-                    }
-                    className={`w-full grid grid-cols-[1fr_120px_100px] gap-3 px-3.5 py-2.5 text-left text-xs hover:bg-[var(--bg-sunken)] active:bg-[var(--bg-active)] ${i < 2 ? "border-b border-[var(--line-2)]" : ""}`}
+                    key={`${entry.kind}-${entry.id}`}
+                    onClick={() => router.push(entry.href)}
+                    className={`w-full grid grid-cols-[1fr_120px_100px] gap-3 px-3.5 py-2.5 text-left text-xs hover:bg-[var(--bg-sunken)] active:bg-[var(--bg-active)] ${i < arr.length - 1 ? "border-b border-[var(--line-2)]" : ""}`}
                   >
                     <div className="min-w-0">
-                      <div className="text-sm font-medium">{page.title}</div>
+                      <div className="text-sm font-medium">{entry.title}</div>
                       <div className="mono text-xs text-[var(--ink-4)]">
-                        {page.slug}
+                        {entry.kind === "post" ? "blog · " : ""}
+                        {entry.slug}
                       </div>
                     </div>
                     <Badge
-                      variant={page.isPublished ? "default" : "secondary"}
+                      variant={entry.isPublished ? "default" : "secondary"}
                       className="w-fit"
                     >
-                      {page.isPublished ? "published" : "draft"}
+                      {entry.isPublished ? "published" : "draft"}
                     </Badge>
                     <span className="mono text-xs text-[var(--ink-3)]">
                       {new Date(
-                        page.updatedAt ?? new Date(),
+                        entry.updatedAt ?? new Date(),
                       ).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -286,7 +356,9 @@ export function DashboardView() {
                   style={{ backgroundColor: "var(--ink-3)" }}
                 />
                 <span className="flex-1 text-sm">Drafts</span>
-                <span className="mono text-xs font-semibold">—</span>
+                <span className="mono text-xs font-semibold">
+                  {recentLoading ? "—" : pipeline.drafts}
+                </span>
               </div>
               <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
                 <div
@@ -294,6 +366,7 @@ export function DashboardView() {
                   style={{ backgroundColor: "var(--warn)" }}
                 />
                 <span className="flex-1 text-sm">In review</span>
+                {/* No workflow status enum yet — surface as "—" until one ships. */}
                 <span className="mono text-xs font-semibold">—</span>
               </div>
               <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
@@ -302,7 +375,9 @@ export function DashboardView() {
                   style={{ backgroundColor: "var(--info)" }}
                 />
                 <span className="flex-1 text-sm">Scheduled</span>
-                <span className="mono text-xs font-semibold">—</span>
+                <span className="mono text-xs font-semibold">
+                  {recentLoading ? "—" : pipeline.scheduled}
+                </span>
               </div>
               <div className="border-t border-[var(--line-2)] flex items-center gap-2.5 py-2">
                 <div
@@ -311,7 +386,7 @@ export function DashboardView() {
                 />
                 <span className="flex-1 text-sm">Live</span>
                 <span className="mono text-xs font-semibold">
-                  {recentLoading ? "—" : recentPages.length}
+                  {recentLoading ? "—" : pipeline.live}
                 </span>
               </div>
             </div>
@@ -378,14 +453,14 @@ export function DashboardView() {
                 <Skeleton className="h-8" />
                 <Skeleton className="h-8" />
               </div>
-            ) : recentPages.length > 0 ? (
+            ) : recentEntries.length > 0 ? (
               <ActivityTimeline
-                activities={recentPages.slice(0, 3).map((page) => ({
+                activities={recentEntries.slice(0, 3).map((entry) => ({
                   who: "You",
                   what: "edited",
-                  target: page.title,
+                  target: entry.title,
                   time: new Date(
-                    page.updatedAt ?? new Date(),
+                    entry.updatedAt ?? new Date(),
                   ).toLocaleDateString(),
                 }))}
               />
