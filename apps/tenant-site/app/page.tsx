@@ -1,11 +1,11 @@
 import { getTenantContext } from "@/lib/tenant";
 import {
   getSiteWithProfile,
-  getProducts,
   getCategories,
   getFeaturedBlogPosts,
   getNavPages,
   getSiteLayout,
+  getTenantPageBySlug,
 } from "@/lib/api";
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
@@ -31,27 +31,24 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const ctx = await getTenantContext();
-  const [
-    site,
-    productList,
-    categories,
-    featuredBlogPosts,
-    navPages,
-    headerLayout,
-    pageLayout,
-    footerLayout,
-  ] = await Promise.all([
-    getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
-    getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 50 }),
-    getCategories(ctx.host, ctx.tenantId),
-    getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
-    getNavPages(ctx.host, ctx.tenantId),
-    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
-    getSiteLayout(ctx.host, ctx.tenantId, "home").catch(() => null),
-    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
-  ]);
+  const [site, page, categories, featuredBlogPosts, navPages] =
+    await Promise.all([
+      getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
+      getTenantPageBySlug(ctx.host, ctx.tenantId, "/"),
+      getCategories(ctx.host, ctx.tenantId),
+      getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
+      getNavPages(ctx.host, ctx.tenantId),
+    ]);
 
   if (!site) notFound();
+
+  const [headerLayout, pageLayout, footerLayout] = await Promise.all([
+    getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
+    page
+      ? getSiteLayout(ctx.host, ctx.tenantId, "page", page.id).catch(() => null)
+      : getSiteLayout(ctx.host, ctx.tenantId, "home").catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+  ]);
 
   const blocks = [
     ...(Array.isArray(headerLayout?.blocks)
@@ -71,7 +68,7 @@ export default async function HomePage() {
     tenantId: ctx.tenantId,
     categories,
     navPages,
-    products: productList?.products ?? [],
+    products: [],
     featuredBlogPosts,
   };
 

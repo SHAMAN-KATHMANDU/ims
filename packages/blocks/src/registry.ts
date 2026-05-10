@@ -78,6 +78,7 @@ import { CopyrightBarBlock } from "./components/footer/CopyrightBarBlock";
 
 // Checkout blocks
 import { AccountBarBlock } from "./components/checkout/AccountBarBlock";
+import { CheckoutFormBlock } from "./components/checkout/CheckoutFormBlock";
 
 // Reusable sub-trees
 import { SnippetRefBlock } from "./components/SnippetRefBlock";
@@ -163,6 +164,7 @@ export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = {
 
   // Checkout
   "account-bar": { component: AccountBarBlock as BlockComponent },
+  "checkout-form": { component: CheckoutFormBlock as BlockComponent },
 
   // Reusable sub-trees
   "snippet-ref": { component: SnippetRefBlock as BlockComponent },

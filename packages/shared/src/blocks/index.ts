@@ -125,6 +125,7 @@ import { CopyrightBarSchema, copyrightBarCatalog } from "./copyright-bar";
 import { CartLineItemsSchema, cartLineItemsCatalog } from "./cart-line-items";
 import { OrderSummarySchema, orderSummaryCatalog } from "./order-summary";
 import { AccountBarSchema, accountBarCatalog } from "./account-bar";
+import { CheckoutFormSchema, checkoutFormCatalog } from "./checkout-form";
 import { PriceTiersSchema, priceTiersCatalog } from "./price-tiers";
 
 // Phase 5: reusable sub-trees
@@ -215,6 +216,7 @@ export const BLOCK_CATALOG_ENTRIES: readonly CatalogEntry[] = [
   accountBarCatalog,
   cartLineItemsCatalog,
   orderSummaryCatalog,
+  checkoutFormCatalog,
   priceTiersCatalog,
 
   // Phase 5: reusable sub-trees
@@ -290,6 +292,7 @@ export const BLOCK_PROPS_SCHEMAS: Record<BlockKind, z.ZodType<unknown>> = {
   "cart-line-items": CartLineItemsSchema,
   "order-summary": OrderSummarySchema,
   "account-bar": AccountBarSchema,
+  "checkout-form": CheckoutFormSchema,
   "price-tiers": PriceTiersSchema,
   "snippet-ref": SnippetRefSchema,
 };

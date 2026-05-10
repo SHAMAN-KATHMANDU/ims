@@ -6,6 +6,9 @@ import {
   getNavPages,
   getTenantPageBySlug,
   getSiteLayout,
+  getProducts,
+  getFeaturedBlogPosts,
+  type ProductSort,
 } from "@/lib/api";
 import { getTenantContext } from "@/lib/tenant";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
@@ -28,6 +31,7 @@ import type { BlockDataContext } from "@/components/blocks/data-context";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function columnWidth(variant: string | undefined): number {
@@ -38,6 +42,38 @@ function columnWidth(variant: string | undefined): number {
 
 function leafSlug(segments: string[]): string {
   return segments[segments.length - 1] ?? "";
+}
+
+function getOne(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function parseAttrFilter(
+  params: Record<string, string | string[] | undefined>,
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    const m = key.match(/^attr\[(.+)\]$/);
+    if (!m) continue;
+    const typeId = m[1];
+    if (!typeId) continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (typeof v === "string" && v.length > 0) out[typeId] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+const VALID_SORTS = new Set<ProductSort>([
+  "newest",
+  "price-asc",
+  "price-desc",
+  "name-asc",
+]);
+
+function parseSort(raw: string | undefined): ProductSort | undefined {
+  if (!raw) return undefined;
+  return VALID_SORTS.has(raw as ProductSort) ? (raw as ProductSort) : undefined;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -55,27 +91,60 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function TenantCustomPage({ params }: Props) {
+export default async function TenantCustomPage({
+  params,
+  searchParams,
+}: Props) {
   const slug = leafSlug((await params).slug);
   if (!slug) notFound();
 
   const ctx = await getTenantContext();
-  const [site, page, categories, navPages] = await Promise.all([
+  const params_resolved = await searchParams;
+  const page = Number(getOne(params_resolved.page) ?? "1") || 1;
+  const sort = parseSort(getOne(params_resolved.sort));
+  const categoryId = getOne(params_resolved.categoryId);
+  const search = getOne(params_resolved.search);
+  const rawMinPrice = getOne(params_resolved.minPrice);
+  const rawMaxPrice = getOne(params_resolved.maxPrice);
+  const vendorId = getOne(params_resolved.vendorId);
+  const attr = parseAttrFilter(params_resolved);
+
+  const [site, pageRecord, categories, navPages] = await Promise.all([
     getSiteWithProfile(ctx.host, ctx.tenantId, ctx.tenantSlug),
     getTenantPageBySlug(ctx.host, ctx.tenantId, slug),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),
   ]);
 
-  if (!site || !page) notFound();
+  if (!site || !pageRecord) notFound();
 
-  const [headerLayout, pageLayout, footerLayout] = await Promise.all([
+  const [
+    headerLayout,
+    pageLayout,
+    footerLayout,
+    productList,
+    featuredBlogPosts,
+  ] = await Promise.all([
     getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
-    getSiteLayout(ctx.host, ctx.tenantId, "page", page.id).catch(() => null),
+    getSiteLayout(ctx.host, ctx.tenantId, "page", pageRecord.id).catch(
+      () => null,
+    ),
     getSiteLayout(ctx.host, ctx.tenantId, "footer").catch(() => null),
+    getProducts(ctx.host, ctx.tenantId, {
+      page,
+      limit: 24,
+      categoryId,
+      sort,
+      search,
+      minPrice: rawMinPrice ? Number(rawMinPrice) : undefined,
+      maxPrice: rawMaxPrice ? Number(rawMaxPrice) : undefined,
+      vendorId,
+      attr,
+    }),
+    getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
   ]);
 
-  const maxWidth = columnWidth(page.layoutVariant);
+  const maxWidth = columnWidth(pageRecord.layoutVariant);
 
   // Phase 4+: if the tenant has a `page` SiteLayout, render it via the
   // block pipeline with optional header/footer chrome. Otherwise fall through
@@ -103,8 +172,12 @@ export default async function TenantCustomPage({ params }: Props) {
       tenantId: ctx.tenantId,
       categories,
       navPages,
-      products: [],
-      featuredBlogPosts: [],
+      products: productList?.products ?? [],
+      featuredBlogPosts: featuredBlogPosts ?? [],
+      productsPage: productList?.page,
+      productsTotal: productList?.total,
+      searchParams: params_resolved,
+      productFacets: productList?.facets,
     };
 
     return (
@@ -119,10 +192,10 @@ export default async function TenantCustomPage({ params }: Props) {
   return (
     <div data-page="tenant-custom">
       {/* Phase 8 — full-bleed cover spans the viewport above the page chrome. */}
-      {page.coverImageUrl && (
+      {pageRecord.coverImageUrl && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={page.coverImageUrl}
+          src={pageRecord.coverImageUrl}
           alt=""
           aria-hidden="true"
           loading="eager"
@@ -158,7 +231,7 @@ export default async function TenantCustomPage({ params }: Props) {
               gap: "0.65rem",
             }}
           >
-            {page.icon && (
+            {pageRecord.icon && (
               <span
                 aria-hidden="true"
                 style={{
@@ -167,12 +240,12 @@ export default async function TenantCustomPage({ params }: Props) {
                   flexShrink: 0,
                 }}
               >
-                {page.icon}
+                {pageRecord.icon}
               </span>
             )}
-            <span>{page.title}</span>
+            <span>{pageRecord.title}</span>
           </h1>
-          <MarkdownBody source={page.bodyMarkdown} />
+          <MarkdownBody source={pageRecord.bodyMarkdown} />
         </article>
       </main>
     </div>

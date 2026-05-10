@@ -4,3 +4,11 @@ apps/web/.turbo/
 apps/web/playwright-report/
 apps/web/test-results/
 packages/blocks/dist/
+packages/shared/dist/
+
+# Turbo cache (anywhere in the monorepo)
+.turbo/
+
+# Local Claude / agent state
+.claude/
+
