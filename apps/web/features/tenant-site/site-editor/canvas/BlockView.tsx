@@ -97,8 +97,12 @@ export function BlockView({ block, dataContext }: BlockViewProps) {
         onInput={(e) => {
           const innerText = e.currentTarget.innerText;
           handleSlashMenuTrigger(e);
+          // The rich-text schema's strict() object only accepts `source`
+          // (markdown). Writing `text` here used to throw the "Unrecognized
+          // key(s) in object: 'text'" toast on autosave the moment any
+          // user typed into a rich-text block.
           updateBlockProps(block.id, {
-            text: innerText,
+            source: innerText,
           });
         }}
       >

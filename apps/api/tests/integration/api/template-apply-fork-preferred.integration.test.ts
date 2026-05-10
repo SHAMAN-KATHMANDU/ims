@@ -171,6 +171,10 @@ describe("SitesService.pickTemplate — fork preference", () => {
     vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
       undefined,
     );
+    // Same reasoning for seedNavigationFromBlueprint, added in PR #532.
+    vi.spyOn(service, "seedNavigationFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
@@ -200,6 +204,10 @@ describe("SitesService.pickTemplate — fork preference", () => {
     // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
     // the fork-preference resolution path and doesn't need a real DB tenant.
     vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
+    // Same reasoning for seedNavigationFromBlueprint, added in PR #532.
+    vi.spyOn(service, "seedNavigationFromBlueprint" as any).mockResolvedValue(
       undefined,
     );
 
@@ -233,6 +241,10 @@ describe("SitesService.pickTemplate — fork preference", () => {
     vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
       undefined,
     );
+    // Same reasoning for seedNavigationFromBlueprint, added in PR #532.
+    vi.spyOn(service, "seedNavigationFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
@@ -256,6 +268,10 @@ describe("SitesService.pickTemplate — fork preference", () => {
     // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
     // the fork-preference resolution path and doesn't need a real DB tenant.
     vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
+    // Same reasoning for seedNavigationFromBlueprint, added in PR #532.
+    vi.spyOn(service, "seedNavigationFromBlueprint" as any).mockResolvedValue(
       undefined,
     );
 

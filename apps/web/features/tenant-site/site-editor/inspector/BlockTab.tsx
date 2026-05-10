@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import type { BlockNode } from "@repo/shared";
 import { useEditorStore } from "../store/editor-store";
 import { selectUpdateBlockProps } from "../store/selectors";
 import { SchemaDrivenForm } from "./SchemaDrivenForm";
+import { ProductPickerDialog } from "../../components/ProductPickerDialog";
+import { useCategories } from "@/features/products";
 
 interface BlockTabProps {
   block: BlockNode | undefined;
@@ -82,15 +85,18 @@ export function BlockTab({ block }: BlockTabProps) {
       case "rich-text": {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const richText = props as any;
+        // The rich-text schema's strict() object accepts `source` (markdown),
+        // not `text`. Reading/writing `text` here used to break autosave with
+        // the "Unrecognized key(s) in object: 'text'" toast.
         return (
           <div>
             <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
               Text content
             </div>
             <textarea
-              value={richText.text || ""}
+              value={richText.source || ""}
               onChange={(e) =>
-                updateBlockProps(block.id, { text: e.target.value })
+                updateBlockProps(block.id, { source: e.target.value })
               }
               rows={3}
               className="w-full p-2 rounded text-xs"
@@ -250,6 +256,9 @@ export function BlockTab({ block }: BlockTabProps) {
           </div>
         );
       }
+      case "product-grid": {
+        return <ProductGridInspector block={block} />;
+      }
       default:
         return (
           <SchemaDrivenForm
@@ -281,5 +290,199 @@ export function BlockTab({ block }: BlockTabProps) {
       {/* Block-specific properties */}
       {renderBlockProperties()}
     </div>
+  );
+}
+
+// ─── ProductGrid inspector ────────────────────────────────────────────────────
+//
+// Surfaces the product-grid schema's `source` / `productIds` / `categoryId` /
+// `columns` / `limit` / `showPrice` / `showSku` fields. The schema and the
+// renderer's `selectProducts()` already understand `source: "manual"` —
+// previously there was no UI to pick the products, so the "Manual" option was
+// unreachable and the inspector showed "No editable properties".
+
+interface ProductGridInspectorProps {
+  block: BlockNode;
+}
+
+function ProductGridInspector({ block }: ProductGridInspectorProps) {
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const props = block.props as any;
+  const source = (props.source as string | undefined) ?? "all";
+  const productIds = (props.productIds as string[] | undefined) ?? [];
+  const categoryId = (props.categoryId as string | undefined) ?? "";
+  const columns = (props.columns as number | undefined) ?? 3;
+  const limit = (props.limit as number | undefined) ?? 12;
+  const showPrice = props.showPrice !== false;
+  const showSku = props.showSku === true;
+
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { data: categoriesData } = useCategories();
+  // useCategories returns either Category[] directly or { categories: Category[] }
+  // depending on the API shape; normalize both into a plain array.
+  const categories: Array<{ id: string; name: string }> = (() => {
+    if (!categoriesData) return [];
+    if (Array.isArray(categoriesData)) {
+      return categoriesData as Array<{ id: string; name: string }>;
+    }
+    const wrapped = categoriesData as {
+      categories?: Array<{ id: string; name: string }>;
+    };
+    return wrapped.categories ?? [];
+  })();
+
+  const labelStyle = {
+    color: "var(--ink-3)",
+  } as const;
+  const inputStyle = {
+    border: "1px solid var(--line)",
+    backgroundColor: "var(--bg-elev)",
+    color: "var(--ink)",
+    outline: "none",
+  } as const;
+
+  return (
+    <>
+      <div>
+        <div className="text-xs mb-1" style={labelStyle}>
+          Source
+        </div>
+        <select
+          value={source}
+          onChange={(e) =>
+            updateBlockProps(block.id, { source: e.target.value })
+          }
+          className="w-full h-7 px-2 rounded text-xs"
+          style={inputStyle}
+        >
+          <option value="all">All products</option>
+          <option value="category">By category</option>
+          <option value="manual">Manually picked</option>
+          <option value="on-sale">On sale</option>
+        </select>
+      </div>
+
+      {source === "category" && (
+        <div>
+          <div className="text-xs mb-1" style={labelStyle}>
+            Category
+          </div>
+          <select
+            value={categoryId}
+            onChange={(e) =>
+              updateBlockProps(block.id, { categoryId: e.target.value })
+            }
+            className="w-full h-7 px-2 rounded text-xs"
+            style={inputStyle}
+          >
+            <option value="">Select a category…</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {source === "manual" && (
+        <div>
+          <div className="text-xs mb-1" style={labelStyle}>
+            Picked products
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="h-7 px-3 rounded text-xs"
+              style={{
+                ...inputStyle,
+                cursor: "pointer",
+              }}
+            >
+              Pick products
+            </button>
+            <span className="text-xs" style={{ color: "var(--ink-4)" }}>
+              {productIds.length} selected
+            </span>
+          </div>
+          <ProductPickerDialog
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            initialProductIds={productIds}
+            title="Pick products for this grid"
+            onSave={async (ids) => {
+              updateBlockProps(block.id, { productIds: ids });
+              setPickerOpen(false);
+            }}
+          />
+        </div>
+      )}
+
+      <div>
+        <div className="text-xs mb-1" style={labelStyle}>
+          Columns
+        </div>
+        <select
+          value={String(columns)}
+          onChange={(e) =>
+            updateBlockProps(block.id, { columns: parseInt(e.target.value) })
+          }
+          className="w-full h-7 px-2 rounded text-xs"
+          style={inputStyle}
+        >
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <option key={n} value={String(n)}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <div className="text-xs mb-1" style={labelStyle}>
+          Limit
+        </div>
+        <input
+          type="number"
+          min={1}
+          max={50}
+          value={limit}
+          onChange={(e) => {
+            const n = parseInt(e.target.value);
+            if (!Number.isNaN(n)) {
+              updateBlockProps(block.id, { limit: n });
+            }
+          }}
+          className="w-full h-7 px-2 rounded text-xs"
+          style={inputStyle}
+        />
+      </div>
+
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={showPrice}
+          onChange={(e) =>
+            updateBlockProps(block.id, { showPrice: e.target.checked })
+          }
+          style={{ accentColor: "var(--accent)" }}
+        />
+        Show price
+      </label>
+
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={showSku}
+          onChange={(e) =>
+            updateBlockProps(block.id, { showSku: e.target.checked })
+          }
+          style={{ accentColor: "var(--accent)" }}
+        />
+        Show SKU
+      </label>
+    </>
   );
 }
