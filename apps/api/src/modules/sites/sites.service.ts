@@ -176,6 +176,15 @@ export class SitesService {
     if (!template) throw createError("Template not found", 404);
     if (!template.isActive) throw createError("Template is not active", 400);
 
+    // First apply = this tenant has never picked a template. In that case
+    // there's no prior published layout for `seedLayoutsFromBlueprint` to
+    // clobber, so default to publishing immediately. Without this, the
+    // template only writes draftBlocks and the public site renders nothing
+    // until the user finds the Publish button — visually indistinguishable
+    // from "Apply did nothing", which has bitten enough tenants to fix.
+    const isFirstApply = !current?.templateId;
+    const effectiveReset = input.resetBranding === true || isFirstApply;
+
     // Check for a tenant fork of this template
     const tenantFork = await this.repo.findTenantForkOfTemplate(
       tenantId,
@@ -185,7 +194,7 @@ export class SitesService {
     const data: Prisma.SiteConfigUpdateInput = {
       template: { connect: { id: template.id } },
     };
-    if (input.resetBranding) {
+    if (effectiveReset) {
       // Strip identity fields (name/tagline/logoUrl/faviconUrl) from the
       // template's default branding before writing — those belong to
       // TenantBusinessProfile and must survive a template switch.
@@ -212,7 +221,7 @@ export class SitesService {
         string,
         unknown
       > | null;
-      if (!existingTokens || input.resetBranding) {
+      if (!existingTokens || effectiveReset) {
         data.themeTokens =
           blueprint.defaultThemeTokens as unknown as Prisma.InputJsonValue;
       }
@@ -221,25 +230,18 @@ export class SitesService {
     const result = await this.repo.updateConfig(tenantId, data);
 
     // Seed a SiteLayout row for every scope the blueprint covers. The
-    // repository's upsertDraft writes to `draftBlocks`, so on first pick
-    // the tenant opens the block editor and sees the template's starter
-    // layout as a draft they can edit + publish. Re-picking the same
+    // repository's upsertDraft writes to `draftBlocks`. Re-picking the same
     // template updates the draft idempotently. Re-picking a DIFFERENT
-    // template overwrites drafts — we don't clobber published `blocks`
-    // unless the tenant explicitly asks via resetBranding (Phase 9+
-    // could add a `resetLayouts` flag; for now resetBranding implies it
-    // because it's the strongest "I want a clean slate" signal).
+    // template overwrites drafts but preserves the tenant's previously
+    // published `blocks` unless they explicitly asked for a reset (or this
+    // is their first apply — see effectiveReset above).
     if (blueprint) {
-      await this.seedLayoutsFromBlueprint(
-        tenantId,
-        blueprint,
-        input.resetBranding === true,
-      );
+      await this.seedLayoutsFromBlueprint(tenantId, blueprint, effectiveReset);
       // Phase 10H — seed custom pages from defaultPages
       await this.seedCustomPagesFromBlueprint(
         tenantId,
         blueprint,
-        input.resetBranding === true,
+        effectiveReset,
       );
     }
 

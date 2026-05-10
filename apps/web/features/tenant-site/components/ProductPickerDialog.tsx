@@ -13,6 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useProductsPaginated } from "@/features/products";
+import type { Product } from "@/features/products";
+
+const PAGE_SIZE = 25;
 
 interface ProductPickerDialogProps {
   open: boolean;
@@ -36,22 +39,50 @@ export function ProductPickerDialog({
     new Set(initialProductIds),
   );
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  // Accumulator: pages append into one list so the user can scroll
+  // through everything they've loaded so far without losing scroll position
+  // when "Load more" fires.
+  const [accumulated, setAccumulated] = useState<Product[]>([]);
+
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+      // New search → reset to page 1 + clear accumulator. The next query
+      // result will repopulate the list from scratch.
+      setPage(1);
+      setAccumulated([]);
+    }, 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 
   const { data: productsResult, isLoading: isLoadingProducts } =
     useProductsPaginated({
       search: debouncedSearch,
-      page: 1,
-      limit: 50,
+      page,
+      limit: PAGE_SIZE,
     });
 
-  const products = useMemo(
-    () => productsResult?.data ?? [],
-    [productsResult?.data],
-  );
+  // Append fetched page into the accumulator. Page 1 replaces (covers the
+  // search-changed case + the initial mount); higher pages append.
+  useEffect(() => {
+    if (!productsResult?.data) return;
+    setAccumulated((prev) =>
+      page === 1
+        ? productsResult.data
+        : [
+            ...prev,
+            ...productsResult.data.filter(
+              (p) => !prev.some((existing) => existing.id === p.id),
+            ),
+          ],
+    );
+  }, [productsResult?.data, page]);
+
+  const products = accumulated;
+  const pagination = productsResult?.pagination;
+  const hasNextPage = pagination?.hasNextPage ?? false;
+  const totalItems = pagination?.totalItems ?? 0;
 
   const handleToggleProduct = (productId: string) => {
     setSelectedIds((prev) => {
@@ -83,8 +114,14 @@ export function ProductPickerDialog({
     if (!newOpen) {
       setSearchInput("");
       setSelectedIds(new Set(initialProductIds));
+      setPage(1);
+      setAccumulated([]);
     }
     onOpenChange(newOpen);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoadingProducts && hasNextPage) setPage((p) => p + 1);
   };
 
   const allSelected =
@@ -136,7 +173,7 @@ export function ProductPickerDialog({
             )}
 
             {/* Loading State */}
-            {isLoadingProducts && (
+            {isLoadingProducts && products.length === 0 && (
               <div className="px-4 py-8 text-center text-sm text-ink-3">
                 Loading products…
               </div>
@@ -171,14 +208,35 @@ export function ProductPickerDialog({
                     </div>
                   </button>
                 ))}
+                {hasNextPage && (
+                  <div className="border-t border-line-2 px-4 py-3 flex items-center justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLoadMore}
+                      disabled={isLoadingProducts}
+                    >
+                      {isLoadingProducts
+                        ? "Loading…"
+                        : `Load more (${products.length} of ${totalItems})`}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Selected Count */}
-          <div className="text-sm text-ink-4">
-            Selected: {selectedIds.size} product
-            {selectedIds.size !== 1 ? "s" : ""}
+          {/* Selected Count + total */}
+          <div className="text-sm text-ink-4 flex items-center justify-between">
+            <span>
+              Selected: {selectedIds.size} product
+              {selectedIds.size !== 1 ? "s" : ""}
+            </span>
+            {totalItems > 0 && (
+              <span className="text-xs text-ink-4">
+                Showing {products.length} of {totalItems}
+              </span>
+            )}
           </div>
         </div>
 

@@ -161,9 +161,18 @@ jobs:
           API_URL=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_API_URL=' | cut -d'=' -f2-)
           APP_ENV=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_APP_ENV=' | cut -d'=' -f2-)
           FEATURE_FLAGS=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_FEATURE_FLAGS=' | cut -d'=' -f2-)
+          # NEXT_PUBLIC_TENANT_SITE_URL is needed by the Site CMS Preview /
+          # Live-site fallback (apps/web/features/cms-shell + dashboard)
+          # when no verified custom domain is attached. Falls back to the
+          # well-known dev host if the var isn't in DEV_UI.
+          TENANT_SITE_URL=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_TENANT_SITE_URL=' | cut -d'=' -f2-)
+          if [ -z "${TENANT_SITE_URL}" ]; then
+            TENANT_SITE_URL="https://stage-preview.shamankathmandu.com"
+          fi
           echo "next_public_api_url=${API_URL}" >> "$GITHUB_OUTPUT"
           echo "next_public_app_env=${APP_ENV}" >> "$GITHUB_OUTPUT"
           echo "next_public_feature_flags=${FEATURE_FLAGS}" >> "$GITHUB_OUTPUT"
+          echo "next_public_tenant_site_url=${TENANT_SITE_URL}" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -190,6 +199,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ steps.dev_ui.outputs.next_public_api_url }}
             NEXT_PUBLIC_APP_ENV=${{ steps.dev_ui.outputs.next_public_app_env }}
             NEXT_PUBLIC_FEATURE_FLAGS=${{ steps.dev_ui.outputs.next_public_feature_flags }}
+            NEXT_PUBLIC_TENANT_SITE_URL=${{ steps.dev_ui.outputs.next_public_tenant_site_url }}
           cache-from: type=gha,scope=staging-web
           cache-to: type=gha,mode=min,scope=staging-web
 

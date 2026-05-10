@@ -10,22 +10,30 @@ import {
   Share2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { SiteLayoutScope } from "@repo/shared";
 import { useEditorStore } from "./store/editor-store";
+import { usePreviewUrl } from "./hooks/usePreviewUrl";
 
 interface EditorTopBarProps {
   workspace: string;
   pageId: string;
-  scope: string;
+  scope: SiteLayoutScope;
 }
 
 export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
   const router = useRouter();
   const { undo, redo } = useEditorStore();
 
+  // Mint a token-gated preview URL bound to this scope + page so the Preview
+  // button can open the live tenant-site renderer in a new tab. The hook
+  // refreshes the URL on a 25-min cadence (server tokens TTL at 30 min).
+  const { data: previewUrl } = usePreviewUrl(scope, pageId);
+  const handlePreview = () => {
+    if (previewUrl) window.open(previewUrl, "_blank", "noopener,noreferrer");
+  };
+
   const handleBack = () => {
-    router.push(
-      `/[workspace]/(admin)/site/pages`.replace("[workspace]", workspace),
-    );
+    router.push(`/${workspace}/site/pages`);
   };
 
   return (
@@ -124,7 +132,14 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
       </button>
 
       <button
-        className="px-2.5 h-7 rounded text-xs font-medium flex items-center gap-1.5 text-[var(--ink-3)]"
+        onClick={handlePreview}
+        disabled={!previewUrl}
+        title={
+          previewUrl
+            ? "Open this scope's preview in a new tab"
+            : "Preview unavailable — TENANT_SITE_PUBLIC_URL not configured and no verified custom domain"
+        }
+        className="px-2.5 h-7 rounded text-xs font-medium flex items-center gap-1.5 text-[var(--ink-3)] hover:bg-[var(--bg-sunken)] disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
           border: "1px solid transparent",
         }}

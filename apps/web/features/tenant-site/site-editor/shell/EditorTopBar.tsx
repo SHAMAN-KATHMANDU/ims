@@ -31,6 +31,7 @@ import {
   selectLastSaveTime,
 } from "../store/selectors";
 import { useDomains } from "../../hooks/use-domains";
+import { usePreviewUrl } from "../hooks/usePreviewUrl";
 
 export type EditorMode = "design" | "content";
 
@@ -222,15 +223,7 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
             </button>
 
             {/* Preview button */}
-            <button
-              onClick={() => {
-                window.open("#", "_blank");
-              }}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded transition-colors"
-              title="Preview page"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
+            <PreviewButton scope={scope} />
 
             {/* Publish button */}
             <button
@@ -248,6 +241,27 @@ export const EditorTopBar = React.forwardRef<HTMLDivElement, EditorTopBarProps>(
 );
 
 EditorTopBar.displayName = "EditorTopBar";
+
+function PreviewButton({ scope }: { scope: SiteLayoutScope }) {
+  const { data: previewUrl } = usePreviewUrl(scope);
+  const handleClick = () => {
+    if (previewUrl) window.open(previewUrl, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={!previewUrl}
+      title={
+        previewUrl
+          ? "Preview this scope in a new tab"
+          : "Preview unavailable — TENANT_SITE_PUBLIC_URL not configured and no verified custom domain"
+      }
+      className="p-2 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <Eye className="w-4 h-4" />
+    </button>
+  );
+}
 
 /**
  * Segmented Content / Design pill — flips the editor's internal mode so
