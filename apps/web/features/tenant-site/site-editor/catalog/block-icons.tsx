@@ -129,6 +129,7 @@ export function getBlockIcon(kind: BlockKind): React.ReactNode {
     "cart-line-items": <ShoppingCart {...iconProps} />,
     "order-summary": <Receipt {...iconProps} />,
     "account-bar": <User {...iconProps} />,
+    "checkout-form": <CreditCard {...iconProps} />,
     "price-tiers": <DollarSign {...iconProps} />,
 
     // Phase 5
