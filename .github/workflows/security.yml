@@ -1,24 +1,13 @@
 # Security: Trivy filesystem scan for CRITICAL/HIGH CVEs.
-# Triggered on push to main, weekly schedule, and manual dispatch.
-# Per-PR Trivy was removed from ci.yml to save Actions minutes; pre-deploy +
-# weekly cron is the right cadence for catching newly-disclosed CVEs.
+# Triggered on weekly schedule and manual dispatch only — NOT on push to main.
+# Per-PR Trivy was removed from ci.yml to save Actions minutes; the weekly run
+# (plus on-demand `workflow_dispatch`) is the right cadence for newly-disclosed CVEs.
 # Body lifted from the previous `trivy` job in ci.yml.
 # ⚠ To switch back to the self-hosted runner: replace `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
 
 name: Security
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".claude/**"
-      - ".vscode/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - "LICENSE"
-      - ".editorconfig"
-      - ".gitignore"
   schedule:
     # Weekly, Monday 04:00 UTC
     - cron: "0 4 * * 1"
