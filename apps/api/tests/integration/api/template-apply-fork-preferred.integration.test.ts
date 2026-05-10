@@ -165,6 +165,12 @@ describe("SitesService.pickTemplate — fork preference", () => {
     const seedLayoutsSpy = vi
       .spyOn(service, "seedLayoutsFromBlueprint" as any)
       .mockResolvedValue(undefined);
+    // pickTemplate now also writes auto-synthesized TenantPages via
+    // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
+    // the fork-preference resolution path and doesn't need a real DB tenant.
+    vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
@@ -190,6 +196,12 @@ describe("SitesService.pickTemplate — fork preference", () => {
     const seedLayoutsSpy = vi
       .spyOn(service, "seedLayoutsFromBlueprint" as any)
       .mockResolvedValue(undefined);
+    // pickTemplate now also writes auto-synthesized TenantPages via
+    // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
+    // the fork-preference resolution path and doesn't need a real DB tenant.
+    vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
@@ -215,6 +227,12 @@ describe("SitesService.pickTemplate — fork preference", () => {
     const seedLayoutsSpy = vi
       .spyOn(service, "seedLayoutsFromBlueprint" as any)
       .mockResolvedValue(undefined);
+    // pickTemplate now also writes auto-synthesized TenantPages via
+    // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
+    // the fork-preference resolution path and doesn't need a real DB tenant.
+    vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
@@ -234,6 +252,12 @@ describe("SitesService.pickTemplate — fork preference", () => {
     const seedLayoutsSpy = vi
       .spyOn(service, "seedLayoutsFromBlueprint" as any)
       .mockResolvedValue(undefined);
+    // pickTemplate now also writes auto-synthesized TenantPages via
+    // seedCustomPagesFromBlueprint; stub it out so this test stays focused on
+    // the fork-preference resolution path and doesn't need a real DB tenant.
+    vi.spyOn(service, "seedCustomPagesFromBlueprint" as any).mockResolvedValue(
+      undefined,
+    );
 
     await service.pickTemplate("t-1", {
       templateSlug: "auric",
