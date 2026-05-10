@@ -237,7 +237,7 @@ export function PagesListView() {
       const scopePath = page.scope === "404" ? "/404" : `/${page.scope}`;
       return scopePath;
     }
-    return `/${page.slug}`;
+    return page.slug === "/" ? "/" : `/${page.slug}`;
   };
 
   if (isLoading) {
@@ -282,7 +282,7 @@ export function PagesListView() {
           { id: "draft", label: "Drafts" },
           { id: "review", label: "In review" },
           { id: "scheduled", label: "Scheduled" },
-          { id: "layouts", label: "Layouts" },
+          { id: "layouts", label: "Chrome" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -558,7 +558,9 @@ export function PagesListView() {
             className="py-12 text-center text-sm"
             style={{ color: "var(--ink-4)" }}
           >
-            No pages match your filters.
+            {filter === "layouts"
+              ? "No chrome templates to display."
+              : "No pages yet. Apply a template or create a custom page."}
           </div>
         )}
       </Card>
