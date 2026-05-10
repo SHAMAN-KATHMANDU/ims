@@ -60,8 +60,8 @@ export function useAuth() {
         credentials.password,
         credentials.tenantSlug,
       ),
-    onSuccess: ({ token, user, tenant }) => {
-      setAuth(user, token, tenant);
+    onSuccess: ({ token, refreshToken, user, tenant }) => {
+      setAuth(user, token, tenant, refreshToken);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       const root = tenant?.slug
         ? getWorkspaceRoot(tenant.slug)

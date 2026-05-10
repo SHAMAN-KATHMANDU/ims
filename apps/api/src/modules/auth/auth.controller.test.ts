@@ -5,6 +5,7 @@ vi.mock("./auth.service", () => ({
   AuthService: vi.fn(),
   default: {
     login: vi.fn(),
+    refreshAccessToken: vi.fn(),
     getMe: vi.fn(),
     changePassword: vi.fn(),
     createPasswordChangeAuditLog: vi.fn(),
@@ -211,6 +212,54 @@ describe("AuthController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(result);
+    });
+  });
+
+  describe("refresh", () => {
+    it("returns 400 when refreshToken is missing from body", async () => {
+      const req = { body: {} } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.refresh(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "refreshToken is required",
+      });
+      expect(mockService.refreshAccessToken).not.toHaveBeenCalled();
+    });
+
+    it("returns 401 when service rejects with AppError", async () => {
+      mockService.refreshAccessToken.mockRejectedValue(
+        createError("Invalid or expired refresh token", 401),
+      );
+      const req = { body: { refreshToken: "bad" } } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.refresh(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Invalid or expired refresh token",
+      });
+    });
+
+    it("returns 200 with new token pair on success", async () => {
+      mockService.refreshAccessToken.mockResolvedValue({
+        token: "new-access",
+        refreshToken: "new-refresh",
+      });
+      const req = { body: { refreshToken: "ok" } } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.refresh(req, res);
+
+      expect(mockService.refreshAccessToken).toHaveBeenCalledWith("ok");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        token: "new-access",
+        refreshToken: "new-refresh",
+      });
     });
   });
 

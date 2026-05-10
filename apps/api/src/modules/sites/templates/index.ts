@@ -76,42 +76,54 @@ export function getTemplateBlueprint(
 ): TemplateBlueprint | null {
   if (!slug) return null;
 
-  // 1. Prefer tenant fork if provided and has layouts/tokens/pages
-  if (options?.tenantFork) {
-    const fork = options.tenantFork;
-    if (fork.defaultLayouts || fork.defaultThemeTokens || fork.defaultPages) {
-      return {
-        slug,
-        layouts: fork.defaultLayouts
-          ? (fork.defaultLayouts as Partial<Record<string, BlockNode[]>>)
-          : undefined,
-        defaultThemeTokens: fork.defaultThemeTokens as ThemeTokens | undefined,
-        defaultPages: fork.defaultPages as any,
-      };
-    }
-  }
+  // Per-field fallback: fork → canonical → in-code blueprint. The previous
+  // all-or-nothing logic short-circuited on the canonical row when it had
+  // ANY truthy field (notably `defaultPages: []` written by the seed —
+  // empty arrays are truthy in JS), so the resolver returned `layouts:
+  // undefined` and `seedLayoutsFromBlueprint` wrote empty trees for every
+  // scope ⇒ "No blocks yet" after every Apply. Treat empty objects/arrays
+  // as "no override" so the in-code blueprint is what actually fills the
+  // tenant's draft tree.
+  const inCode = TEMPLATE_BLUEPRINTS[slug] ?? null;
 
-  // 2. Fall back to canonical template if provided and has layouts/tokens/pages
-  if (options?.canonicalTemplate) {
-    const canonical = options.canonicalTemplate;
-    if (
-      canonical.defaultLayouts ||
-      canonical.defaultThemeTokens ||
-      canonical.defaultPages
-    ) {
-      return {
-        slug,
-        layouts: canonical.defaultLayouts
-          ? (canonical.defaultLayouts as Partial<Record<string, BlockNode[]>>)
-          : undefined,
-        defaultThemeTokens: canonical.defaultThemeTokens as
-          | ThemeTokens
-          | undefined,
-        defaultPages: canonical.defaultPages as any,
-      };
-    }
-  }
+  const layouts =
+    pickLayoutsOverride(options?.tenantFork?.defaultLayouts) ??
+    pickLayoutsOverride(options?.canonicalTemplate?.defaultLayouts) ??
+    inCode?.layouts;
 
-  // 3. Fall back to in-code blueprint registry
-  return TEMPLATE_BLUEPRINTS[slug] ?? null;
+  const defaultThemeTokens =
+    pickTokensOverride(options?.tenantFork?.defaultThemeTokens) ??
+    pickTokensOverride(options?.canonicalTemplate?.defaultThemeTokens) ??
+    inCode?.defaultThemeTokens;
+
+  const defaultPages =
+    pickPagesOverride(options?.tenantFork?.defaultPages) ??
+    pickPagesOverride(options?.canonicalTemplate?.defaultPages) ??
+    inCode?.defaultPages;
+
+  if (!layouts && !defaultThemeTokens && !defaultPages) return null;
+
+  return { slug, layouts, defaultThemeTokens, defaultPages };
+}
+
+/** Treat null/undefined/empty-object as "no override" so the in-code
+ *  blueprint can provide layouts. */
+function pickLayoutsOverride(
+  value: unknown,
+): Partial<Record<string, BlockNode[]>> | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  if (Object.keys(value as object).length === 0) return undefined;
+  return value as Partial<Record<string, BlockNode[]>>;
+}
+
+function pickTokensOverride(value: unknown): ThemeTokens | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  if (Object.keys(value as object).length === 0) return undefined;
+  return value as ThemeTokens;
+}
+
+function pickPagesOverride(value: unknown): any {
+  if (!Array.isArray(value)) return undefined;
+  if (value.length === 0) return undefined;
+  return value;
 }

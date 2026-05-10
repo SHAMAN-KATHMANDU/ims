@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useTemplatesQuery } from "../hooks/use-templates";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,8 @@ import { Loader2 } from "lucide-react";
 
 export function PlatformTemplatesView() {
   const router = useRouter();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const templatesQuery = useTemplatesQuery();
 
   if (templatesQuery.isLoading) {
@@ -74,7 +76,11 @@ export function PlatformTemplatesView() {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        router.push(`/platform/templates/${template.id}/edit`)
+                        router.push(
+                          workspace
+                            ? `/${workspace}/platform/templates/${template.id}/edit`
+                            : "/",
+                        )
                       }
                     >
                       Edit

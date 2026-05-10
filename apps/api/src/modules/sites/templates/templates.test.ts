@@ -10,7 +10,47 @@
 
 import { describe, it, expect } from "vitest";
 import { BlockTreeSchema } from "@repo/shared";
-import { TEMPLATE_BLUEPRINTS, BLUEPRINT_SCOPES } from "./index";
+import {
+  TEMPLATE_BLUEPRINTS,
+  BLUEPRINT_SCOPES,
+  getTemplateBlueprint,
+} from "./index";
+
+describe("getTemplateBlueprint — fallback resolution", () => {
+  it("falls back to in-code blueprint when canonical row has only empty defaults (regression)", () => {
+    // The DB seed writes `defaultPages: []` (empty array) and leaves
+    // `defaultLayouts` / `defaultThemeTokens` null. The previous all-or-nothing
+    // logic short-circuited on the truthy `[]` and returned a blueprint with
+    // no layouts ⇒ "No blocks yet" after every Apply. Verify the resolver now
+    // looks past empty overrides and uses the in-code blueprint's layouts.
+    const blueprint = getTemplateBlueprint("maison", {
+      canonicalTemplate: {
+        defaultLayouts: null,
+        defaultThemeTokens: null,
+        defaultPages: [],
+      },
+    });
+    expect(blueprint).not.toBeNull();
+    expect(blueprint?.layouts?.home).toBeDefined();
+    expect((blueprint?.layouts?.home ?? []).length).toBeGreaterThan(0);
+  });
+
+  it("uses canonical layouts when they're non-empty", () => {
+    const fakeLayouts = { home: [{ id: "x", type: "spacer", props: {} }] };
+    const blueprint = getTemplateBlueprint("maison", {
+      canonicalTemplate: {
+        defaultLayouts: fakeLayouts,
+        defaultThemeTokens: null,
+        defaultPages: [],
+      },
+    });
+    expect(blueprint?.layouts).toEqual(fakeLayouts);
+  });
+
+  it("returns null for an unknown slug with no overrides", () => {
+    expect(getTemplateBlueprint("does-not-exist")).toBeNull();
+  });
+});
 
 describe("Template blueprints — schema validation", () => {
   for (const [slug, blueprint] of Object.entries(TEMPLATE_BLUEPRINTS)) {

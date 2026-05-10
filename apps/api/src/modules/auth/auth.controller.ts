@@ -7,6 +7,7 @@ import {
   LoginSchema,
   ForgotPasswordSchema,
   ChangePasswordSchema,
+  RefreshTokenBodySchema,
 } from "./auth.schema";
 import authService, { AuthService } from "./auth.service";
 
@@ -91,6 +92,28 @@ class AuthController {
         });
       }
       return sendControllerError(req, res, error, "Get current user error");
+    }
+  };
+
+  refresh = async (req: Request, res: Response) => {
+    try {
+      const parsed = RefreshTokenBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "refreshToken is required" });
+      }
+
+      const result = await this.service.refreshAccessToken(
+        parsed.data.refreshToken,
+      );
+      return res.status(200).json(result);
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({
+          message: appErr.message,
+        });
+      }
+      return sendControllerError(req, res, error, "Refresh token error");
     }
   };
 

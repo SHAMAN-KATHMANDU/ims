@@ -69,6 +69,7 @@ describe("useAuth", () => {
   it("login mutation calls auth service and navigates on success", async () => {
     const loginResponse = {
       token: "jwt-token",
+      refreshToken: "refresh-jwt-token",
       user: { id: "u1", tenantId: "t1", username: "user", role: "admin" },
       tenant: { id: "t1", slug: "acme", name: "Acme", plan: "STARTER" },
     };
@@ -89,6 +90,7 @@ describe("useAuth", () => {
       loginResponse.user,
       loginResponse.token,
       loginResponse.tenant,
+      loginResponse.refreshToken,
     );
     expect(mockNav.push).toHaveBeenCalledWith("/acme");
   });

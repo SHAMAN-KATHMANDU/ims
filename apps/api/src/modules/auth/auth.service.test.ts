@@ -31,14 +31,22 @@ vi.mock("bcryptjs", () => ({
   },
 }));
 
+const mockJwtVerify = vi.fn();
+
 vi.mock("jsonwebtoken", () => ({
   default: {
     sign: (...args: unknown[]) => mockJwtSign(...args),
+    verify: (...args: unknown[]) => mockJwtVerify(...args),
   },
 }));
 
 vi.mock("@/config/env", () => ({
-  env: { jwtSecret: "test-secret" },
+  env: {
+    jwtSecret: "test-secret",
+    jwtRefreshSecret: "test-refresh-secret",
+    jwtAccessTokenTtl: "15m",
+    jwtRefreshTokenTtl: "30d",
+  },
 }));
 
 const authService = new AuthService(mockRepo);
@@ -72,13 +80,15 @@ describe("AuthService", () => {
       updatedAt: new Date(),
     };
 
-    it("returns token and user on successful login", async () => {
+    it("returns token, refresh token, and user on successful login", async () => {
       mockFindTenantBySlug.mockResolvedValue(tenant);
       mockFindUserByTenantAndUsername.mockResolvedValue(user);
       mockBcryptCompare.mockResolvedValue(true);
       mockUpdateUserLastLogin.mockResolvedValue(undefined);
       mockCreateAuditLog.mockResolvedValue(undefined);
-      mockJwtSign.mockReturnValue("jwt-token");
+      mockJwtSign
+        .mockReturnValueOnce("jwt-token")
+        .mockReturnValueOnce("refresh-jwt-token");
 
       const result = await authService.login({
         username: "user",
@@ -87,6 +97,7 @@ describe("AuthService", () => {
       });
 
       expect(result.token).toBe("jwt-token");
+      expect(result.refreshToken).toBe("refresh-jwt-token");
       expect(result.user.id).toBe("u1");
       expect(result.user.username).toBe("user");
       expect(result.tenant.slug).toBe("acme");
@@ -171,6 +182,78 @@ describe("AuthService", () => {
 
       expect(mockUpdateUserLastLogin).not.toHaveBeenCalled();
       expect(mockJwtSign).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("refreshAccessToken", () => {
+    const dbUser = {
+      id: "u1",
+      tenantId: "t1",
+      username: "user",
+      role: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const dbTenant = {
+      id: "t1",
+      slug: "acme",
+      name: "Acme",
+      plan: "free",
+      subscriptionStatus: "active",
+      planExpiresAt: null,
+      trialEndsAt: null,
+      siteConfig: null,
+    };
+
+    it("issues a new access + refresh token when refresh token is valid", async () => {
+      mockJwtVerify.mockReturnValue({ id: "u1", type: "refresh" });
+      (mockRepo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        dbUser,
+      );
+      (mockRepo.findTenantById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        dbTenant,
+      );
+      mockJwtSign
+        .mockReturnValueOnce("new-access-token")
+        .mockReturnValueOnce("new-refresh-token");
+
+      const result = await authService.refreshAccessToken("old-refresh");
+
+      expect(result.token).toBe("new-access-token");
+      expect(result.refreshToken).toBe("new-refresh-token");
+      expect(mockJwtVerify).toHaveBeenCalledWith(
+        "old-refresh",
+        "test-refresh-secret",
+      );
+    });
+
+    it("throws 401 when refresh token verify fails", async () => {
+      mockJwtVerify.mockImplementation(() => {
+        throw new Error("expired");
+      });
+
+      await expect(authService.refreshAccessToken("bad")).rejects.toMatchObject(
+        createError("Invalid or expired refresh token", 401),
+      );
+    });
+
+    it("throws 401 when token payload is the wrong shape (e.g. an access token)", async () => {
+      mockJwtVerify.mockReturnValue({ id: "u1" }); // missing type:"refresh"
+
+      await expect(
+        authService.refreshAccessToken("access-token-replayed"),
+      ).rejects.toMatchObject(createError("Invalid refresh token", 401));
+    });
+
+    it("throws 401 when the user no longer exists", async () => {
+      mockJwtVerify.mockReturnValue({ id: "u1", type: "refresh" });
+      (mockRepo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        null,
+      );
+
+      await expect(authService.refreshAccessToken("ok")).rejects.toMatchObject(
+        createError("User no longer exists", 401),
+      );
     });
   });
 
