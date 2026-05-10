@@ -108,17 +108,28 @@ export function Sidebar() {
     isLoading: countsLoading,
   } = useSidebarCounts();
 
-  // Live preview link — wires the sidebar's "Preview" entry to the tenant's
-  // primary custom domain when one exists. Without a domain we still render
-  // the entry but in a disabled state with an explanatory tooltip.
+  // Live preview link — prefers the tenant's primary custom domain. When the
+  // tenant hasn't attached one yet we fall back to the platform tenant-site
+  // host (NEXT_PUBLIC_TENANT_SITE_URL) with the workspace slug appended so
+  // the Preview entry is always actionable, not just a disabled stub.
   const { data: domains } = useQuery({
     queryKey: ["my-domains"],
     queryFn: listMyDomains,
     staleTime: 2 * 60 * 1000,
   });
   const primaryDomain =
-    domains?.find((d) => d.isPrimary) ?? domains?.[0] ?? null;
-  const previewHref = primaryDomain ? `https://${primaryDomain.hostname}` : "";
+    domains?.find((d) => d.isPrimary && d.appType === "WEBSITE") ??
+    domains?.find((d) => d.appType === "WEBSITE") ??
+    null;
+  const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
+    /\/$/,
+    "",
+  );
+  const previewHref = primaryDomain
+    ? `https://${primaryDomain.hostname}`
+    : fallbackBase && workspace
+      ? `${fallbackBase}/${workspace}`
+      : "";
 
   const baseGroups = getBaseNavGroups();
   const overview = baseGroups[0];
@@ -128,7 +139,9 @@ export function Sidebar() {
       icon: "preview",
       href: previewHref,
       external: true,
-      disabledTitle: "Add a custom domain in Site → Domains to enable preview",
+      disabledTitle: previewHref
+        ? undefined
+        : "Add a custom domain in Site → Domains, or set NEXT_PUBLIC_TENANT_SITE_URL, to enable preview",
     });
   }
   const navGroups: NavGroup[] = baseGroups.map((group) => {

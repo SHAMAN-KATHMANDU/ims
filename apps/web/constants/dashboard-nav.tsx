@@ -312,19 +312,18 @@ export const dashboardNavSections: NavSection[] = [
         permModule: "INVENTORY" as const,
       },
       {
-        // Tenant-site CMS shell at /[workspace]/content — Notion-style admin
+        // Tenant-site CMS shell at /[workspace]/site — Notion-style admin
         // surfacing Pages, Blog, Snippets, Media, Collections, Offers,
-        // Templates, Design, Domains, SEO, Forms, Settings and the block
-        // builder (/site/builder/[pageId]) as siblings inside one shell.
-        // Opens in a new tab so the CMS owns its full chrome (no parent
-        // sidebar/topbar) per the Notion-style design intent.
+        // Templates, Design, Navigation, Domains, SEO, Forms, Settings, and
+        // the block builder (/site/builder/[pageId]) as siblings inside one
+        // shell. Owns its full chrome via its own (cms) route group, so it
+        // doesn't need to open in a new tab.
         path: "site",
         label: "Website",
         icon: Globe,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.TENANT_WEBSITES,
         tenantFeature: "websiteEnabled",
-        openInNewTab: true,
         permModule: "WEBSITE" as const,
       },
     ],

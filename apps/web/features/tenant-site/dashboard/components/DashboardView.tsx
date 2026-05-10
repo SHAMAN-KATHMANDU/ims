@@ -106,12 +106,19 @@ export function DashboardView() {
   }, [recentPages, recentPosts]);
 
   useEffect(() => {
+    const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
+      /\/$/,
+      "",
+    );
     const primaryUrl = primaryDomain?.hostname
       ? `https://${primaryDomain.hostname}`
-      : "#";
+      : fallbackBase && workspace
+        ? `${fallbackBase}/${workspace}`
+        : "#";
+    const liveDisabled = primaryUrl === "#";
     setActions(
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild disabled={!primaryDomain}>
+        <Button variant="outline" size="sm" asChild disabled={liveDisabled}>
           <a href={primaryUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="h-4 w-4" />
             Live site

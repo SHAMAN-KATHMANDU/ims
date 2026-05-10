@@ -1,4 +1,4 @@
-import { TemplateEditorPage } from "@/features/tenant-site/templates/components/TemplateEditorPage";
+import { TemplateEditorPage } from "@/features/tenant-site/templates";
 
 interface PageProps {
   params: {

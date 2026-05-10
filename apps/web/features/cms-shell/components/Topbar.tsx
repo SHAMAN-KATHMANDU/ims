@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { Bell, ExternalLink } from "lucide-react";
 import {
   useTopbarActionsStore,
@@ -48,6 +48,8 @@ function breadcrumbsFromPathname(pathname: string): string[] {
 
 export function Topbar() {
   const pathname = usePathname();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const actions = useTopbarActionsStore(selectTopbarActions);
   const crumbs = breadcrumbsFromPathname(pathname);
 
@@ -57,10 +59,18 @@ export function Topbar() {
     staleTime: 2 * 60 * 1000,
   });
   const primaryDomain =
-    domains?.find((d) => d.isPrimary) ?? domains?.[0] ?? null;
+    domains?.find((d) => d.isPrimary && d.appType === "WEBSITE") ??
+    domains?.find((d) => d.appType === "WEBSITE") ??
+    null;
+  const fallbackBase = process.env.NEXT_PUBLIC_TENANT_SITE_URL?.replace(
+    /\/$/,
+    "",
+  );
   const liveSiteUrl = primaryDomain
     ? `https://${primaryDomain.hostname}`
-    : null;
+    : fallbackBase && workspace
+      ? `${fallbackBase}/${workspace}`
+      : null;
 
   return (
     <div
