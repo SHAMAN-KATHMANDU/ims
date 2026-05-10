@@ -188,6 +188,15 @@ jobs:
         run: pnpm --filter api exec prisma generate
       - name: Run migrations
         run: pnpm --filter api exec prisma migrate deploy
+      - name: Guard Prisma schema drift — migrations must match schema.prisma
+        # Compares the migrated DB to schema.prisma. Exits 2 if anything in the
+        # schema isn't expressed by a migration (or vice versa) — catches the
+        # "added a field without generating a migration" footgun.
+        run: |
+          pnpm --filter api exec prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel apps/api/prisma/schema.prisma \
+            --exit-code
       - name: Run API tests
         run: pnpm exec turbo run test:coverage --filter=api
         env:
