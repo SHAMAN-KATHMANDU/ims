@@ -16,6 +16,18 @@ export function offersLayout(): BlockNode[] {
       alignment: "center",
       eyebrow: "Limited time",
     }),
+    // Active promo codes — pulled live from PromoCode rows where
+    // isActive=true and the validity window includes "now". Renders
+    // empty-state copy when the tenant has no active promos.
+    block("promo-cards", {
+      heading: "Active promo codes",
+      subtitle: "Apply at checkout — limited time only.",
+      showCode: true,
+      showValue: true,
+      limit: 12,
+      layout: "grid",
+      columns: 3,
+    }),
     block("product-grid", {
       source: "on-sale",
       columns: 4,

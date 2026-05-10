@@ -37,6 +37,7 @@ import type { ProductFiltersProps } from "../blocks/product-filters/schema";
 import type { BundleSpotlightProps } from "../blocks/bundle-spotlight/schema";
 import type { GiftCardRedeemProps } from "../blocks/gift-card-redeem/schema";
 import type { AnnouncementBarProps } from "../blocks/announcement-bar/schema";
+import type { PromoCardsProps } from "../blocks/promo-cards/schema";
 import type { CollectionCardsProps } from "../blocks/collection-cards/schema";
 import type { TrustStripProps } from "../blocks/trust-strip/schema";
 import type { StorySplitProps } from "../blocks/story-split/schema";
@@ -102,6 +103,7 @@ export type { ProductFiltersProps } from "../blocks/product-filters/schema";
 export type { BundleSpotlightProps } from "../blocks/bundle-spotlight/schema";
 export type { GiftCardRedeemProps } from "../blocks/gift-card-redeem/schema";
 export type { AnnouncementBarProps } from "../blocks/announcement-bar/schema";
+export type { PromoCardsProps } from "../blocks/promo-cards/schema";
 export type {
   CollectionCardItem,
   CollectionCardsProps,
@@ -196,6 +198,7 @@ export interface BlockPropsMap {
   "product-listing": ProductListingProps;
   // Marketing
   "announcement-bar": AnnouncementBarProps;
+  "promo-cards": PromoCardsProps;
   "collection-cards": CollectionCardsProps;
   "product-filters": ProductFiltersProps;
   "trust-strip": TrustStripProps;

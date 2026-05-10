@@ -478,6 +478,41 @@ export function getOffers(
   });
 }
 
+export interface PublicPromo {
+  id: string;
+  code: string;
+  description: string | null;
+  valueType: string;
+  value: string;
+  validFrom: string | null;
+  validTo: string | null;
+}
+
+/**
+ * Currently-active promo codes for the tenant — read by the
+ * PromoCardsBlock on /offers and surfaced via BlockDataContext.promos.
+ */
+export async function getActivePromos(
+  host: string,
+  tenantId: string,
+): Promise<PublicPromo[]> {
+  try {
+    const result = await publicFetch<{ promos: PublicPromo[] }>(
+      `/public/promos/active`,
+      {
+        host,
+        tenantId,
+        tags: [`tenant:${tenantId}:promos`],
+      },
+    );
+    return result?.promos ?? [];
+  } catch {
+    // Promos are nice-to-have on the storefront — never break the page
+    // render when the public endpoint is unavailable.
+    return [];
+  }
+}
+
 /**
  * Curated collection lookup. Returns null when the slug doesn't exist
  * (or is inactive) so the block falls back to an empty render.

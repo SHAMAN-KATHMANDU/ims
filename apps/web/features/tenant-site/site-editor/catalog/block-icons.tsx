@@ -95,6 +95,7 @@ export function getBlockIcon(kind: BlockKind): React.ReactNode {
     "logo-cloud": <Package {...iconProps} />,
     "collection-cards": <Grid2x2 {...iconProps} />,
     "announcement-bar": <Zap {...iconProps} />,
+    "promo-cards": <Tag {...iconProps} />,
     "bundle-spotlight": <Package {...iconProps} />,
     "gift-card-redeem": <Gift {...iconProps} />,
 

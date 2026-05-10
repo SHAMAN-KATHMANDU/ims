@@ -120,6 +120,19 @@ class PublicSiteController {
     }
   };
 
+  listActivePromos = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const result = await service.listActivePromos(tenantId);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "List active promos error")
+      );
+    }
+  };
+
   listProductReviews = async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);

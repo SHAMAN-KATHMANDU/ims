@@ -13,14 +13,17 @@ import type {
   SubmitReviewInput,
 } from "./public-site.schema";
 import defaultCollectionsRepo from "@/modules/collections/collections.repository";
+import defaultPromoRepo from "@/modules/promos/promo.repository";
 
 type Repo = typeof defaultRepo;
 type CollectionsRepo = typeof defaultCollectionsRepo;
+type PromoRepo = typeof defaultPromoRepo;
 
 export class PublicSiteService {
   constructor(
     private readonly repo: Repo = defaultRepo,
     private readonly collectionsRepo: CollectionsRepo = defaultCollectionsRepo,
+    private readonly promoRepo: PromoRepo = defaultPromoRepo,
   ) {}
 
   private async ensurePublished(tenantId: string): Promise<PublicSiteConfig> {
@@ -128,6 +131,60 @@ export class PublicSiteService {
       onOfferOnly: true,
     });
     return { products, total, page, limit };
+  }
+
+  /**
+   * Currently-active promo codes for the tenant. "Active" =
+   * `isActive=true`, not soft-deleted, and either no validity window or
+   * the current time is within it. Used by the PromoCardsBlock on the
+   * /offers page to surface live discount codes to shoppers.
+   *
+   * Returns a public DTO that strips operator-only fields (usageLimit,
+   * deleted* fields, etc.) so we don't leak internal counters to the
+   * public internet.
+   */
+  async listActivePromos(tenantId: string): Promise<{
+    promos: Array<{
+      id: string;
+      code: string;
+      description: string | null;
+      valueType: string;
+      value: string;
+      validFrom: string | null;
+      validTo: string | null;
+    }>;
+  }> {
+    await this.ensurePublished(tenantId);
+    const now = new Date();
+    const where = {
+      tenantId,
+      isActive: true,
+      deletedAt: null,
+    } as const;
+    const total = await this.promoRepo.count(where);
+    if (total === 0) return { promos: [] };
+    const rows = await this.promoRepo.findMany(
+      where,
+      { createdAt: "desc" },
+      0,
+      Math.min(total, 50),
+    );
+    const active = rows.filter((p) => {
+      if (p.validFrom && new Date(p.validFrom) > now) return false;
+      if (p.validTo && new Date(p.validTo) < now) return false;
+      return true;
+    });
+    return {
+      promos: active.map((p) => ({
+        id: p.id,
+        code: p.code,
+        description: p.description ?? null,
+        valueType: p.valueType,
+        value: p.value.toString(),
+        validFrom: p.validFrom ? p.validFrom.toISOString() : null,
+        validTo: p.validTo ? p.validTo.toISOString() : null,
+      })),
+    };
   }
 
   /**

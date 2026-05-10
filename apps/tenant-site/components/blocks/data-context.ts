@@ -15,6 +15,7 @@ import type {
   PublicProduct,
   PublicProductFacets,
   PublicBlogPostListItem,
+  PublicPromo,
   PublicSite,
 } from "@/lib/api";
 
@@ -41,4 +42,9 @@ export interface BlockDataContext {
    * server routed through `/public/products` (products-index scope).
    */
   productFacets?: PublicProductFacets;
+  /**
+   * Currently-active promo codes — surfaced by PromoCardsBlock on
+   * /offers (and any other page the tenant chooses to drop the block on).
+   */
+  promos?: PublicPromo[];
 }

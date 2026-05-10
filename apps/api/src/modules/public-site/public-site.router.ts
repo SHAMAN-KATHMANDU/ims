@@ -106,6 +106,24 @@ router.get("/offers", asyncHandler(controller.listOffers));
 
 /**
  * @swagger
+ * /public/promos/active:
+ *   get:
+ *     summary: List the tenant's currently-active promo codes for storefront display
+ *     description: |
+ *       Returns the subset of PromoCode rows where isActive=true, not
+ *       soft-deleted, and the current time falls within validFrom..validTo
+ *       (open-ended on either side is allowed). Used by the PromoCardsBlock
+ *       on the offers page. Public DTO strips operator-only fields like
+ *       usageLimit / usageCount / deletedBy / overrideDiscounts.
+ *     tags: [Public]
+ *     responses:
+ *       200: { description: Array of active promos }
+ *       404: { description: Site not published }
+ */
+router.get("/promos/active", asyncHandler(controller.listActivePromos));
+
+/**
+ * @swagger
  * /public/collections/{slug}:
  *   get:
  *     summary: Get a curated collection (featured, exclusives, top-picks, custom) by slug

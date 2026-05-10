@@ -37,6 +37,16 @@ export interface BlockDataContext {
     images?: string[];
     description?: string;
   } | null;
+  /** Currently-active promo codes, surfaced by PromoCardsBlock on /offers. */
+  promos?: Array<{
+    id: string;
+    code: string;
+    description?: string | null;
+    valueType: "PERCENT" | "FIXED" | string;
+    value: number | string;
+    validFrom?: string | null;
+    validTo?: string | null;
+  }>;
   [key: string]: unknown;
 }
 
