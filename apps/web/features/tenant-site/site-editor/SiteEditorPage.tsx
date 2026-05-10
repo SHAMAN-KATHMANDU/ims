@@ -29,7 +29,12 @@ export function SiteEditorPage({
   pageId,
   scope,
 }: SiteEditorPageProps) {
-  const { data: layout, isLoading } = useSiteLayoutQuery(scope);
+  // Custom pages (kind="page") store their blocks in
+  // SiteLayout(scope="page", pageId=<pageId>). Chrome scopes (header,
+  // footer, etc.) store theirs in SiteLayout(scope=<chrome>, pageId=null).
+  // The layoutPageId we send to the API must match the row's keying.
+  const layoutPageId = scope === "page" ? pageId : null;
+  const { data: layout, isLoading } = useSiteLayoutQuery(scope, layoutPageId);
   const load = useEditorStore(selectLoad);
   const loadedRef = useRef(false);
 
@@ -42,7 +47,7 @@ export function SiteEditorPage({
   }, [layout, load]);
 
   // Autosave
-  useAutosave(scope);
+  useAutosave(scope, layoutPageId);
 
   // Draft recovery banner
   const draftRecovery = useDraftRecovery(workspace, scope);

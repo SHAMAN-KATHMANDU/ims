@@ -445,10 +445,15 @@ export function PagesListView() {
                     : undefined,
                 }}
                 onClick={() => {
+                  // For kind="page" pages we pass ?scope=page so the builder
+                  // route reads SiteLayout(scope="page", pageId=<this>) — the
+                  // row written by seedCustomPagesFromBlueprint. Without
+                  // ?scope=, the route falls back to scope="home" and the
+                  // editor renders empty even when the row exists.
                   const url =
                     page.kind === "scope"
                       ? `/${wsString}/site/builder/${page.id}?scope=${page.scope}`
-                      : `/${wsString}/site/builder/${page.id}`;
+                      : `/${wsString}/site/builder/${page.id}?scope=page`;
                   router.push(url);
                 }}
               >
@@ -520,7 +525,7 @@ export function PagesListView() {
                           const url =
                             page.kind === "scope"
                               ? `/${wsString}/site/builder/${page.id}?scope=${page.scope}`
-                              : `/${wsString}/site/builder/${page.id}`;
+                              : `/${wsString}/site/builder/${page.id}?scope=page`;
                           window.open(url, "_blank");
                         }}
                       >

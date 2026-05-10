@@ -26,6 +26,9 @@ interface PublishModalProps {
   open: boolean;
   onClose: () => void;
   scope: SiteLayoutScope;
+  /** Required when scope === "page": the TenantPage id whose SiteLayout
+   *  draft is being promoted. Null/undefined for chrome scopes. */
+  pageId?: string | null;
   draftBlocks: BlockNode[];
   publishedBlocks: BlockNode[] | null;
   /** Called only when publish succeeds, before `onClose`. Use it to bump
@@ -83,11 +86,12 @@ export function PublishModal({
   open,
   onClose,
   scope,
+  pageId = null,
   draftBlocks,
   publishedBlocks,
   onPublished,
 }: PublishModalProps) {
-  const publish = usePublishLayout(scope);
+  const publish = usePublishLayout(scope, pageId);
 
   const diff = useMemo(
     () => diffBlocks(draftBlocks, publishedBlocks),
