@@ -174,8 +174,20 @@ function BlockCard({
       aria-label={`Insert ${block.label} block`}
       className="p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-left space-y-2 group cursor-pointer"
     >
-      <div className="h-24 bg-muted rounded flex items-center justify-center text-muted-foreground group-hover:bg-muted/80 transition-colors overflow-hidden">
-        <div className="pointer-events-none scale-50 origin-top-left w-full">
+      {/*
+        Block renderers were authored against a light canvas (white bg, dark
+        text). The library card sat on `bg-muted` which on dark theme is a
+        dark grey — most renderers' default copy/illustrations were
+        invisible. Force a light surface (with the `light` class so any
+        Tailwind dark-mode tokens inside the renderer resolve to the light
+        palette) and constrain the block to a tile with a top-left scale
+        so the user sees the same first 200% of the rendered block.
+      */}
+      <div className="h-24 bg-white rounded border border-border/40 overflow-hidden relative light">
+        <div
+          className="pointer-events-none absolute inset-0 origin-top-left scale-50"
+          style={{ width: "200%", height: "200%", color: "#1a1a1a" }}
+        >
           <Suspense fallback={<BlockPreviewFallback />}>
             <BlockRenderer
               nodes={[previewNode]}
@@ -228,8 +240,12 @@ function BlockDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Preview */}
-          <div className="h-48 bg-muted rounded-lg border border-border flex items-center justify-center text-muted-foreground overflow-hidden">
+          {/* Preview — light surface so block renderers' default light-mode
+              styling actually shows. */}
+          <div
+            className="h-48 bg-white rounded-lg border border-border overflow-auto light"
+            style={{ color: "#1a1a1a" }}
+          >
             <Suspense fallback={<BlockPreviewFallback />}>
               <BlockRenderer
                 nodes={[previewNode]}
