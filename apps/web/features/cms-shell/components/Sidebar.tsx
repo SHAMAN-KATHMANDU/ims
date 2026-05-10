@@ -72,6 +72,7 @@ const getBaseNavGroups = (): NavGroup[] => [
     items: [
       { label: "Templates", icon: "templates", href: "/content/templates" },
       { label: "Design", icon: "design", href: "/content/design" },
+      { label: "Navigation", icon: "navigation", href: "/content/navigation" },
       { label: "Domains", icon: "domains", href: "/content/domains" },
       { label: "SEO & redirects", icon: "seo", href: "/content/seo" },
       { label: "Forms", icon: "forms", href: "/content/forms" },

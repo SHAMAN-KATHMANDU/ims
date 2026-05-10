@@ -21,6 +21,7 @@ import {
   Gauge,
   LayoutTemplate,
   Eye,
+  Menu,
 } from "lucide-react";
 
 const icons = {
@@ -34,6 +35,7 @@ const icons = {
   offers: Gift,
   templates: LayoutTemplate,
   design: Palette,
+  navigation: Menu,
   domains: Globe,
   seo: SearchX,
   forms: Edit,
