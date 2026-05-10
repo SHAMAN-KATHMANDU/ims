@@ -71,6 +71,7 @@ function template(overrides: Record<string, unknown> = {}) {
 describe("SitesService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe("getConfig", () => {
@@ -82,16 +83,26 @@ describe("SitesService", () => {
       expect(result.tenantId).toBe("t1");
     });
 
-    it("auto-creates SiteConfig when missing", async () => {
+    it("auto-creates SiteConfig when missing, with default theme tokens", async () => {
       (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(null);
       (mockRepo.upsertConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         config(),
       );
       const result = await service.getConfig("t1");
       expect(result.websiteEnabled).toBe(true);
-      expect(mockRepo.upsertConfig).toHaveBeenCalledWith("t1", {
-        websiteEnabled: true,
-      });
+      expect(mockRepo.upsertConfig).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({
+          websiteEnabled: true,
+          // themeTokens seed prevents the editor's Design tab and the public
+          // tenant-site renderer from rendering against null tokens.
+          themeTokens: expect.objectContaining({
+            mode: expect.any(String),
+            colors: expect.any(Object),
+            typography: expect.any(Object),
+          }),
+        }),
+      );
     });
 
     it("throws 403 when websiteEnabled is false", async () => {
@@ -223,6 +234,9 @@ describe("SitesService", () => {
         service as any,
         "seedCustomPagesFromBlueprint",
       ).mockResolvedValue(undefined);
+      vi.spyOn(service as any, "seedNavigationFromBlueprint").mockResolvedValue(
+        undefined,
+      );
 
       await service.pickTemplate("t1", {
         templateSlug: "luxury",
@@ -258,6 +272,9 @@ describe("SitesService", () => {
         service as any,
         "seedCustomPagesFromBlueprint",
       ).mockResolvedValue(undefined);
+      vi.spyOn(service as any, "seedNavigationFromBlueprint").mockResolvedValue(
+        undefined,
+      );
 
       await service.pickTemplate("t1", {
         templateSlug: "luxury",
@@ -312,6 +329,108 @@ describe("SitesService", () => {
           resetBranding: false,
         }),
       ).rejects.toMatchObject({ statusCode: 403 });
+    });
+
+    it("invokes seedNavigationFromBlueprint when blueprint resolves", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ templateId: null }),
+      );
+      (
+        mockRepo.findTemplateBySlug as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(template({ slug: "maison", id: "tpl-maison" }));
+      (
+        mockRepo.findTenantForkOfTemplate as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(null);
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        config({ templateId: "tpl-maison" }),
+      );
+
+      vi.spyOn(service as any, "seedLayoutsFromBlueprint").mockResolvedValue(
+        undefined,
+      );
+      vi.spyOn(
+        service as any,
+        "seedCustomPagesFromBlueprint",
+      ).mockResolvedValue(undefined);
+      const navSpy = vi
+        .spyOn(service as any, "seedNavigationFromBlueprint")
+        .mockResolvedValue(undefined);
+
+      await service.pickTemplate("t1", { templateSlug: "maison" });
+
+      expect(navSpy).toHaveBeenCalledTimes(1);
+      // (tenantId, blueprint, effectiveReset)
+      expect(navSpy.mock.calls[0]?.[0]).toBe("t1");
+      // First-apply logic: templateId was null on the config, so
+      // effectiveReset should be true even without resetBranding.
+      expect(navSpy.mock.calls[0]?.[2]).toBe(true);
+    });
+
+    it("seedNavigationFromBlueprint preserves user nav unless overwriteExisting=true", async () => {
+      const userNav = {
+        primary: [{ id: "user-1", label: "Custom", href: "/custom" }],
+        utility: [],
+        footer: [],
+      };
+      // Direct unit test of the private method via service-as-any.
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...config(),
+        navigation: userNav,
+      });
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockClear();
+
+      // overwriteExisting=false → should leave the user's nav alone.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (service as any).seedNavigationFromBlueprint(
+        "t1",
+        { slug: "maison", layouts: { home: [{ id: "x", kind: "spacer" }] } },
+        false,
+      );
+      const calls = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls;
+      const navCall = calls.find(
+        ([, data]) => (data as { navigation?: unknown }).navigation,
+      );
+      expect(navCall).toBeUndefined();
+    });
+
+    it("seedNavigationFromBlueprint writes primary nav from PAGE_SCOPES on reset", async () => {
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...config(),
+        navigation: null,
+      });
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockClear();
+
+      // Synthetic blueprint with home + products-index + contact populated;
+      // offers/cart/blog-index empty so they're skipped.
+      const blueprint = {
+        slug: "synthetic",
+        layouts: {
+          home: [{ id: "h", kind: "spacer" }],
+          "products-index": [{ id: "p", kind: "spacer" }],
+          contact: [{ id: "c", kind: "spacer" }],
+        },
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (service as any).seedNavigationFromBlueprint("t1", blueprint, true);
+
+      const calls = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls;
+      const navCall = calls.find(
+        ([, data]) => (data as { navigation?: unknown }).navigation,
+      );
+      expect(navCall).toBeDefined();
+      const nav = (
+        navCall![1] as {
+          navigation: { primary: Array<{ href: string; label: string }> };
+        }
+      ).navigation;
+      expect(nav.primary).toHaveLength(3);
+      // Home maps to "/" (the new home slug from PR #528)
+      expect(nav.primary.some((item) => item.href === "/")).toBe(true);
+      expect(nav.primary.some((item) => item.href === "/products")).toBe(true);
+      expect(nav.primary.some((item) => item.href === "/contact")).toBe(true);
     });
   });
 

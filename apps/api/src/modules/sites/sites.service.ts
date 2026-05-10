@@ -27,11 +27,14 @@ import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
 import pagesRepo from "@/modules/pages/pages.repository";
 import { getTemplateBlueprint, type TemplateBlueprint } from "./templates";
+import { blankBlueprint } from "./templates/blank";
 import type { BlockNode, BlockTree } from "@repo/shared";
 import {
   BlockTreeSchema,
   CHROME_SCOPES,
+  PAGE_SCOPE_TO_SLUG,
   synthesizeDefaultPagesFromLayouts,
+  type BlueprintScope,
 } from "@repo/shared";
 import {
   synthesizeHeaderBlocks,
@@ -106,11 +109,20 @@ export class SitesService {
   ): Promise<SiteConfigWithTemplate> {
     let config = await this.repo.findConfig(tenantId);
 
-    // Auto-create if missing
+    // Auto-create if missing. Seed `themeTokens` from the blank-blueprint
+    // tokens so the Design tab and the public renderer both have a valid
+    // tokens object to render against, even before the tenant has explicitly
+    // applied a template. Without this seed, tenants who land on the editor
+    // pre-template see empty Design/font fallbacks and the public site emits
+    // no CSS variables.
     if (!config) {
       logger.info(`Auto-creating SiteConfig for tenant ${tenantId} (missing)`);
       config = await this.repo.upsertConfig(tenantId, {
         websiteEnabled: true,
+        themeTokens: blankBlueprint.defaultThemeTokens as unknown as Record<
+          string,
+          unknown
+        >,
       });
       return config;
     }
@@ -251,10 +263,90 @@ export class SitesService {
         blueprintWithSynthesizedPages,
         effectiveReset,
       );
+      // Seed the Navigation tab's data store too. Without this the
+      // editor's /site/navigation tab is empty even though the rendered
+      // template clearly has a populated header/footer.
+      await this.seedNavigationFromBlueprint(
+        tenantId,
+        blueprint,
+        effectiveReset,
+      );
     }
 
     await this.revalidate(tenantId);
     return result;
+  }
+
+  /**
+   * Seed `SiteConfig.navigation` ({ primary, utility, footer }) from the
+   * blueprint's PAGE_SCOPES, so the editor's Navigation tab is populated
+   * right after Apply. The Navigation tab uses a simpler NavigationConfig
+   * shape than the per-NavBarBlock NavConfig — defined in
+   * `apps/web/features/site-cms/navigation/types.ts`. We synthesize that
+   * simpler shape here from the slugs the synthesizer just created.
+   *
+   * Preserves user edits when `overwriteExisting=false` and the row
+   * already has at least one primary item.
+   */
+  private async seedNavigationFromBlueprint(
+    tenantId: string,
+    blueprint: TemplateBlueprint,
+    overwriteExisting: boolean,
+  ): Promise<void> {
+    const existing = await this.repo.findConfig(tenantId);
+    const existingNav = existing?.navigation as
+      | {
+          primary?: unknown[];
+          utility?: unknown[];
+          footer?: unknown[];
+        }
+      | null
+      | undefined;
+    const hasUserNav =
+      Array.isArray(existingNav?.primary) &&
+      (existingNav?.primary?.length ?? 0) > 0;
+    if (hasUserNav && !overwriteExisting) {
+      return;
+    }
+
+    // Each PAGE_SCOPE the blueprint actually populates becomes a primary
+    // nav link. Skip scopes the template omits (e.g. a minimal template
+    // without a blog).
+    type PrimaryItem = {
+      id: string;
+      label: string;
+      href: string;
+    };
+    const NAV_LABELS: Readonly<Partial<Record<BlueprintScope, string>>> = {
+      home: "Home",
+      "products-index": "Products",
+      offers: "Offers",
+      cart: "Cart",
+      "blog-index": "Blog",
+      contact: "Contact",
+    };
+    const primary: PrimaryItem[] = [];
+    for (const scope of Object.keys(PAGE_SCOPE_TO_SLUG) as BlueprintScope[]) {
+      const blocks = blueprint.layouts?.[scope];
+      if (!blocks || blocks.length === 0) continue;
+      const slug = PAGE_SCOPE_TO_SLUG[scope]!;
+      const href = slug === "/" ? "/" : `/${slug}`;
+      primary.push({
+        id: scope,
+        label: NAV_LABELS[scope] ?? scope,
+        href,
+      });
+    }
+
+    const navigation = {
+      primary,
+      utility: [] as PrimaryItem[],
+      footer: [] as Array<{ id: string; title: string; items: PrimaryItem[] }>,
+    };
+
+    await this.repo.updateConfig(tenantId, {
+      navigation: navigation as unknown as Prisma.InputJsonValue,
+    });
   }
 
   /**
