@@ -8,6 +8,7 @@ import {
   getSiteLayout,
   getProducts,
   getFeaturedBlogPosts,
+  getActivePromos,
   type ProductSort,
 } from "@/lib/api";
 import { getTenantContext } from "@/lib/tenant";
@@ -124,6 +125,7 @@ export default async function TenantCustomPage({
     footerLayout,
     productList,
     featuredBlogPosts,
+    promos,
   ] = await Promise.all([
     getSiteLayout(ctx.host, ctx.tenantId, "header").catch(() => null),
     getSiteLayout(ctx.host, ctx.tenantId, "page", pageRecord.id).catch(
@@ -142,6 +144,7 @@ export default async function TenantCustomPage({
       attr,
     }),
     getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
+    getActivePromos(ctx.host, ctx.tenantId),
   ]);
 
   const maxWidth = columnWidth(pageRecord.layoutVariant);
@@ -178,6 +181,7 @@ export default async function TenantCustomPage({
       productsTotal: productList?.total,
       searchParams: params_resolved,
       productFacets: productList?.facets,
+      promos,
     };
 
     return (

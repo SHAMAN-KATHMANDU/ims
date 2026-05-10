@@ -81,6 +81,7 @@ import {
   AnnouncementBarSchema,
   announcementBarCatalog,
 } from "./announcement-bar";
+import { PromoCardsSchema, promoCardsCatalog } from "./promo-cards";
 import { TrustStripSchema, trustStripCatalog } from "./trust-strip";
 import { StorySplitSchema, storySplitCatalog } from "./story-split";
 import { BentoShowcaseSchema, bentoShowcaseCatalog } from "./bento-showcase";
@@ -175,6 +176,7 @@ export const BLOCK_CATALOG_ENTRIES: readonly CatalogEntry[] = [
   // Marketing
   collectionCardsCatalog,
   announcementBarCatalog,
+  promoCardsCatalog,
   trustStripCatalog,
   storySplitCatalog,
   bentoShowcaseCatalog,
@@ -245,6 +247,7 @@ export const BLOCK_PROPS_SCHEMAS: Record<BlockKind, z.ZodType<unknown>> = {
   "category-tiles": CategoryTilesSchema,
   "product-listing": ProductListingSchema,
   "announcement-bar": AnnouncementBarSchema,
+  "promo-cards": PromoCardsSchema,
   "collection-cards": CollectionCardsSchema,
   "product-filters": ProductFiltersSchema,
   "trust-strip": TrustStripSchema,

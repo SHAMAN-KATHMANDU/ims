@@ -40,6 +40,7 @@ import { PriceTiersBlock } from "./components/commerce/PriceTiersBlock";
 
 // Marketing blocks
 import { AnnouncementBarBlock } from "./components/marketing/AnnouncementBarBlock";
+import { PromoCardsBlock } from "./components/marketing/PromoCardsBlock";
 import { CollectionCardsBlock } from "./components/marketing/CollectionCardsBlock";
 import { TrustStripBlock } from "./components/marketing/TrustStripBlock";
 import { StorySplitBlock } from "./components/marketing/StorySplitBlock";
@@ -124,6 +125,7 @@ export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = {
 
   // Marketing
   "announcement-bar": { component: AnnouncementBarBlock as BlockComponent },
+  "promo-cards": { component: PromoCardsBlock as BlockComponent },
   "collection-cards": { component: CollectionCardsBlock as BlockComponent },
   "trust-strip": { component: TrustStripBlock as BlockComponent },
   "story-split": { component: StorySplitBlock as BlockComponent },
