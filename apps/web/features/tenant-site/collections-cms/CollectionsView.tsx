@@ -13,16 +13,20 @@ import { Input } from "@/components/ui/input";
 import {
   useCollectionsCmsList,
   useUpdateCollectionCms,
+  useSetCollectionCmsProducts,
 } from "./use-collections-cms";
+import { ProductPickerDialog } from "../components/ProductPickerDialog";
 import { Plus } from "lucide-react";
 
 export function CollectionsView() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const { data: collections = [], isLoading } = useCollectionsCmsList();
   const updateCollection = useUpdateCollectionCms();
+  const setProducts = useSetCollectionCmsProducts();
 
   const active = collections.find((c) => c.id === activeId) || collections[0];
 
@@ -43,6 +47,12 @@ export function CollectionsView() {
           },
         },
       );
+    }
+  };
+
+  const handleSaveProducts = async (productIds: string[]) => {
+    if (active) {
+      setProducts.mutate({ id: active.id, productIds });
     }
   };
 
@@ -111,9 +121,18 @@ export function CollectionsView() {
                     /collections/{active.slug}
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={handleEditOpen}>
-                  Edit details
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setProductPickerOpen(true)}
+                  >
+                    Manage products
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleEditOpen}>
+                    Edit details
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -190,6 +209,16 @@ export function CollectionsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Product Picker Dialog */}
+      <ProductPickerDialog
+        open={productPickerOpen}
+        onOpenChange={setProductPickerOpen}
+        initialProductIds={active?.productIds ?? []}
+        onSave={handleSaveProducts}
+        isSaving={setProducts.isPending}
+        title="Manage Collection Products"
+      />
     </div>
   );
 }

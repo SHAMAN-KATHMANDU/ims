@@ -37,3 +37,5 @@ export type {
   SiteTemplate,
   UpdateSiteConfigData,
 } from "./hooks/use-tenant-site";
+
+export { ProductPickerDialog } from "./components/ProductPickerDialog";
