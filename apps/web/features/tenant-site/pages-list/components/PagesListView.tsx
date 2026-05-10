@@ -98,7 +98,14 @@ export function PagesListView() {
     published: statusMap[filter],
   });
 
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages]);
+  // Built-in scope pages (header, footer, home, product-detail, blog-index,
+  // …) are layout templates, not routable user pages. They live in the same
+  // TenantPage table for storage convenience but belong in Templates / Design,
+  // not the Pages list. Hide them here so the list is just user-authored pages.
+  const pages = useMemo(
+    () => (data?.pages ?? []).filter((p) => p.kind !== "scope"),
+    [data?.pages],
+  );
   const _createPage = useCreatePage();
   const deletePage = useDeletePage();
   const publishPage = usePublishPage();
