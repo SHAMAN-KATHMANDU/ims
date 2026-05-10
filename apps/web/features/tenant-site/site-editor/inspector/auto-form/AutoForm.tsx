@@ -32,6 +32,12 @@ import { FaqBuilder } from "../widgets/FaqBuilder";
 import { BentoCellsBuilder } from "../widgets/BentoCellsBuilder";
 import { StatsBuilder } from "../widgets/StatsBuilder";
 import { TrustStripIconsBuilder } from "../widgets/TrustStripIconsBuilder";
+import { LogoCloudBuilder } from "../widgets/LogoCloudBuilder";
+import { SocialLinksBuilder } from "../widgets/SocialLinksBuilder";
+import { PaymentIconsBuilder } from "../widgets/PaymentIconsBuilder";
+import { UtilityBarBuilder } from "../widgets/UtilityBarBuilder";
+import { AnnouncementItemsBuilder } from "../widgets/AnnouncementItemsBuilder";
+import { PolicyStripBuilder } from "../widgets/PolicyStripBuilder";
 
 interface AutoFormProps {
   schema: z.ZodType<unknown>;
@@ -473,6 +479,12 @@ const widgetRegistry: Record<string, LooseWidget> = {
   BentoCellsBuilder: BentoCellsBuilder as unknown as LooseWidget,
   StatsBuilder: StatsBuilder as unknown as LooseWidget,
   TrustStripIconsBuilder: TrustStripIconsBuilder as unknown as LooseWidget,
+  LogoCloudBuilder: LogoCloudBuilder as unknown as LooseWidget,
+  SocialLinksBuilder: SocialLinksBuilder as unknown as LooseWidget,
+  PaymentIconsBuilder: PaymentIconsBuilder as unknown as LooseWidget,
+  UtilityBarBuilder: UtilityBarBuilder as unknown as LooseWidget,
+  AnnouncementItemsBuilder: AnnouncementItemsBuilder as unknown as LooseWidget,
+  PolicyStripBuilder: PolicyStripBuilder as unknown as LooseWidget,
 };
 
 export function AutoForm({

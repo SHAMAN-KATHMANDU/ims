@@ -14,19 +14,34 @@ import {
   useCollectionsCmsList,
   useUpdateCollectionCms,
   useSetCollectionCmsProducts,
+  useCreateCollectionCms,
 } from "./use-collections-cms";
 import { ProductPickerDialog } from "../components/ProductPickerDialog";
 import { Plus } from "lucide-react";
+
+function slugify(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
 
 export function CollectionsView() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
 
   const { data: collections = [], isLoading } = useCollectionsCmsList();
   const updateCollection = useUpdateCollectionCms();
   const setProducts = useSetCollectionCmsProducts();
+  const createCollection = useCreateCollectionCms();
 
   const active = collections.find((c) => c.id === activeId) || collections[0];
 
@@ -56,6 +71,27 @@ export function CollectionsView() {
     }
   };
 
+  const handleCreateOpen = () => {
+    setNewTitle("");
+    setNewSlug("");
+    setSlugTouched(false);
+    setCreateDialogOpen(true);
+  };
+  const handleCreateSave = () => {
+    const slug = (slugTouched ? newSlug : slugify(newTitle)).trim();
+    const title = newTitle.trim();
+    if (!title || !slug) return;
+    createCollection.mutate(
+      { title, slug, isActive: true },
+      {
+        onSuccess: (created) => {
+          setCreateDialogOpen(false);
+          if (created?.id) setActiveId(created.id);
+        },
+      },
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12 text-ink-3">
@@ -74,7 +110,10 @@ export function CollectionsView() {
             Group products into shoppable collections.
           </p>
         </div>
-        <Button className="gap-2 bg-accent text-bg hover:bg-accent/90">
+        <Button
+          onClick={handleCreateOpen}
+          className="gap-2 bg-accent text-bg hover:bg-accent/90"
+        >
           <Plus className="w-4 h-4" />
           New collection
         </Button>
@@ -219,6 +258,60 @@ export function CollectionsView() {
         isSaving={setProducts.isPending}
         title="Manage Collection Products"
       />
+
+      {/* Create Collection Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New collection</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Title</label>
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="e.g. Spring picks"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Slug</label>
+              <Input
+                value={slugTouched ? newSlug : slugify(newTitle)}
+                onChange={(e) => {
+                  setNewSlug(e.target.value);
+                  setSlugTouched(true);
+                }}
+                placeholder="spring-picks"
+              />
+              <p className="text-xs text-ink-4">
+                Used in the public URL. Auto-derived from title; edit if you
+                want a custom slug.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreateDialogOpen(false)}
+              disabled={createCollection.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateSave}
+              disabled={
+                createCollection.isPending ||
+                !newTitle.trim() ||
+                !(slugTouched ? newSlug.trim() : slugify(newTitle))
+              }
+            >
+              {createCollection.isPending ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

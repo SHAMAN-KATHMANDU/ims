@@ -15,7 +15,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   useTemplatesQuery,
   useForkTemplate,
@@ -37,24 +37,16 @@ export function TemplatesView() {
 
   useEffect(() => {
     setTopbarActions(
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <a href="#" target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-4 w-4" />
-            Browse Theme Marketplace
-          </a>
-        </Button>
-        {configQuery.data?.template && (
-          <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
-            <span className="text-sm text-gray-600">
-              Current:{" "}
-              <span className="font-medium">
-                {configQuery.data.template.name}
-              </span>
+      configQuery.data?.template ? (
+        <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
+          <span className="text-sm text-gray-600">
+            Current:{" "}
+            <span className="font-medium">
+              {configQuery.data.template.name}
             </span>
-          </div>
-        )}
-      </div>,
+          </span>
+        </div>
+      ) : null,
     );
 
     return () => setTopbarActions(null);

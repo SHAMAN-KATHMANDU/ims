@@ -292,6 +292,30 @@ export const INSPECTOR_OVERRIDES: Record<string, FieldOverride> = {
     label: "Trust strip icons",
     widget: "TrustStripIconsBuilder",
   },
+  "logo-cloud.logos": {
+    label: "Logos",
+    widget: "LogoCloudBuilder",
+  },
+  "social-links.items": {
+    label: "Social links",
+    widget: "SocialLinksBuilder",
+  },
+  "payment-icons.items": {
+    label: "Payment icons",
+    widget: "PaymentIconsBuilder",
+  },
+  "utility-bar.items": {
+    label: "Utility bar links",
+    widget: "UtilityBarBuilder",
+  },
+  "announcement-bar.items": {
+    label: "Strip claims",
+    widget: "AnnouncementItemsBuilder",
+  },
+  "policy-strip.items": {
+    label: "Policies",
+    widget: "PolicyStripBuilder",
+  },
 };
 
 /**
