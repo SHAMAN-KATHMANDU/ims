@@ -15,7 +15,7 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { useSiteConfig, useUpdateSiteConfig } from "../hooks/use-design";
 import { getContrastRatioString } from "../lib/contrast-ratio";
-import type { ThemeTokens } from "@repo/shared";
+import { defaultThemeTokens, type ThemeTokens } from "@repo/shared";
 
 const FONT_FAMILIES = [
   { label: "Inter", value: "Inter, system-ui, sans-serif" },
@@ -34,8 +34,16 @@ export function DesignThemeView() {
   const [isDirty, setIsDirty] = useState(false);
   const [localTheme, setLocalTheme] = useState<ThemeTokens | null>(null);
 
-  const currentTheme =
-    localTheme || (configQuery.data?.themeTokens as ThemeTokens | undefined);
+  // Fall back to the canonical defaults when the tenant's SiteConfig has no
+  // themeTokens yet (e.g. they haven't applied a template, or first-run before
+  // PR F's auto-publish lands). The editor then shows real fields the user can
+  // tweak and save — far more useful than an empty "No theme data" stub.
+  const persistedTheme = configQuery.data?.themeTokens as
+    | ThemeTokens
+    | undefined
+    | null;
+  const currentTheme: ThemeTokens =
+    localTheme || persistedTheme || defaultThemeTokens();
 
   const handleSave = async (): Promise<void> => {
     if (!localTheme) return;
@@ -135,14 +143,6 @@ export function DesignThemeView() {
     return (
       <div className="flex items-center justify-center h-96 text-muted-foreground">
         Loading theme…
-      </div>
-    );
-  }
-
-  if (!currentTheme) {
-    return (
-      <div className="flex items-center justify-center h-96 text-muted-foreground">
-        No theme data available.
       </div>
     );
   }
