@@ -13,11 +13,23 @@ interface AuthState {
   // State
   user: AuthUser | null;
   token: string | null;
+  refreshToken: string | null;
   tenant: TenantInfo | null;
   isHydrated: boolean;
 
   // Actions
-  setAuth: (user: AuthUser, token: string, tenant?: TenantInfo | null) => void;
+  /**
+   * Replace user/token/tenant atomically. `refreshToken` is optional —
+   * when omitted, the existing refreshToken is preserved (so callers like
+   * `/auth/me` re-hydration don't accidentally wipe it).
+   */
+  setAuth: (
+    user: AuthUser,
+    token: string,
+    tenant?: TenantInfo | null,
+    refreshToken?: string,
+  ) => void;
+  setTokens: (token: string, refreshToken: string) => void;
   setTenant: (tenant: TenantInfo) => void;
   refreshTenant: () => Promise<void>;
   clearAuth: () => void;
@@ -56,12 +68,22 @@ export const useAuthStore = create<AuthState>()(
       // Initial state
       user: null,
       token: null,
+      refreshToken: null,
       tenant: null,
       isHydrated: false,
 
       // Actions
-      setAuth: (user, token, tenant = null) => {
-        set({ user, token, tenant });
+      setAuth: (user, token, tenant = null, refreshToken) => {
+        set((prev) => ({
+          user,
+          token,
+          tenant,
+          refreshToken: refreshToken ?? prev.refreshToken,
+        }));
+      },
+
+      setTokens: (token, refreshToken) => {
+        set({ token, refreshToken });
       },
 
       setTenant: (tenant) => {
@@ -76,7 +98,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
-        set({ user: null, token: null, tenant: null });
+        set({ user: null, token: null, refreshToken: null, tenant: null });
       },
 
       setHydrated: (value) => {
@@ -86,10 +108,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => cookieStorage),
-      // Persist user, token, and tenant
+      // Persist user, both tokens, and tenant
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        refreshToken: state.refreshToken,
         tenant: state.tenant,
       }),
       // Handle hydration
@@ -109,6 +132,7 @@ export const useAuthStore = create<AuthState>()(
 // State selectors
 export const selectUser = (state: AuthState) => state.user;
 export const selectToken = (state: AuthState) => state.token;
+export const selectRefreshToken = (state: AuthState) => state.refreshToken;
 export const selectTenant = (state: AuthState) => state.tenant;
 export const selectIsAuthenticated = (state: AuthState) => !!state.token;
 export const selectIsHydrated = (state: AuthState) => state.isHydrated;
@@ -132,6 +156,7 @@ export const selectSubscriptionStatus = (state: AuthState) =>
 
 // Action selectors
 export const selectSetAuth = (state: AuthState) => state.setAuth;
+export const selectSetTokens = (state: AuthState) => state.setTokens;
 export const selectSetTenant = (state: AuthState) => state.setTenant;
 export const selectRefreshTenant = (state: AuthState) => state.refreshTenant;
 export const selectClearAuth = (state: AuthState) => state.clearAuth;

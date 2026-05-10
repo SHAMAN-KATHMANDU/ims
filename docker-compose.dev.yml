@@ -43,6 +43,7 @@ services:
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ims}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-key}
     command: pnpm --filter api dev
 
   web:

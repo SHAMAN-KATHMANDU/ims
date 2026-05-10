@@ -18,6 +18,27 @@ export const JwtPayloadSchema = z.object({
 
 export type JwtPayload = z.infer<typeof JwtPayloadSchema>;
 
+/**
+ * Refresh-token payload. Carries only the user id and a `type` discriminator
+ * so an access token can never be replayed at /auth/refresh and vice versa.
+ */
+export const RefreshTokenPayloadSchema = z.object({
+  id: z.string().min(1, "Refresh token missing user id"),
+  type: z.literal("refresh", {
+    errorMap: () => ({ message: "Wrong token type for refresh" }),
+  }),
+  iat: z.number().optional(),
+  exp: z.number().optional(),
+});
+
+export type RefreshTokenPayload = z.infer<typeof RefreshTokenPayloadSchema>;
+
+export const RefreshTokenBodySchema = z.object({
+  refreshToken: z.string().min(1, "refreshToken is required"),
+});
+
+export type RefreshTokenBodyDto = z.infer<typeof RefreshTokenBodySchema>;
+
 export const LoginSchema = z.object({
   username: z
     .string()

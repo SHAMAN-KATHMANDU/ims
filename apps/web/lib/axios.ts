@@ -8,11 +8,16 @@
  * - Base URL from environment variable
  * - Automatic auth token injection from Zustand store
  * - Automatic tenant slug injection (X-Tenant-Slug header)
- * - 401 response handling (auto-logout)
- * - Global toast on API error (except 401)
+ * - Silent refresh on 401 via /auth/refresh; only logs out when refresh itself fails
+ * - Global toast on API error (except handled 401s)
  */
 
-import axios, { type InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosHeaders,
+  type AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { useAuthStore } from "@/store/auth-store";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/hooks/useToast";
@@ -26,6 +31,9 @@ declare module "axios" {
      *  Use in mutations that handle errors in their own onError handler to
      *  avoid showing a duplicate toast from both the interceptor and the hook. */
     skipGlobalErrorToast?: boolean;
+    /** Internal flag set by the interceptor when replaying a request after a
+     *  successful silent refresh. Prevents a refresh→retry→refresh loop. */
+    _retriedAfterRefresh?: boolean;
   }
 }
 
@@ -82,20 +90,76 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Guard against multiple concurrent 401s all triggering logout + redirect.
-let isHandling401 = false;
+// ── Silent-refresh state ────────────────────────────────────────────────────
+//
+// While a refresh is in flight, every other 401 must wait on the same promise
+// so we issue exactly ONE /auth/refresh call per access-token expiry, not one
+// per concurrent request. After it resolves, queued requests replay with the
+// new access token; if it rejects, every queued request rejects with the
+// original 401 and we trigger a single logout.
+let refreshPromise: Promise<string | null> | null = null;
+
+function isLoginUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.includes("/auth/login");
+}
+
+function isRefreshUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  return url.includes("/auth/refresh");
+}
+
+/** Hard logout: clear store and bounce to the tenant's /login page. */
+function forceLogoutRedirect(): void {
+  useAuthStore.getState().clearAuth();
+  if (typeof window === "undefined") return;
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  const slug = segments[0];
+  const isOnLoginPage = segments[1] === "login";
+  if (!isOnLoginPage) {
+    window.location.href = slug ? `/${slug}/login` : "/";
+  }
+}
+
+/**
+ * Run the refresh round-trip. De-duped via `refreshPromise` so concurrent
+ * 401s share a single network call. Resolves to the new access token, or
+ * null if refresh failed (caller is then responsible for logging out).
+ */
+async function runRefresh(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  const currentRefresh = useAuthStore.getState().refreshToken;
+  if (!currentRefresh) return null;
+
+  refreshPromise = (async () => {
+    try {
+      // Use a bare axios call (not the `api` instance) so we don't recurse
+      // into this interceptor on a refresh failure.
+      const { data } = await axios.post<{
+        token: string;
+        refreshToken: string;
+      }>(
+        `${API_BASE_URL}/auth/refresh`,
+        { refreshToken: currentRefresh },
+        { headers: { "Content-Type": "application/json" } },
+      );
+      if (!data?.token || !data?.refreshToken) return null;
+      useAuthStore.getState().setTokens(data.token, data.refreshToken);
+      return data.token;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
 
 // Response interceptor: auto-unwrap the {success: true, data: T} envelope
-// produced by apps/api/src/shared/response/ok(), then handle 401 globally
-// and surface other errors via toast.
-//
-// Why: backend controllers are split between raw `res.json({ ... })` and
-// `ok(res, { ... })` (which wraps in {success, data}). Unwrapping here gives
-// every frontend service a single consistent shape (`response.data` is the
-// payload), eliminating the bug class where services mistakenly read
-// `data.<key>` on a wrapped response and got undefined.
-//
-// Raw responses (no `success`/`data` envelope) pass through unchanged.
+// produced by apps/api/src/shared/response/ok(), then handle 401 by running
+// a silent refresh (with queueing) and replaying the original request.
 api.interceptors.response.use(
   (response) => {
     const body = response.data;
@@ -110,40 +174,52 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error: AxiosError) => {
     const status = error.response?.status;
-    const requestUrl = error.config?.url || "";
-    const isAuthMe = requestUrl.includes("/auth/me");
-    const isLoginEndpoint =
-      requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
+    const config = (error.config ?? {}) as InternalAxiosRequestConfig;
+    const requestUrl = config.url || "";
 
-    if (status === 401 || (status === 404 && isAuthMe)) {
-      if (isLoginEndpoint) return Promise.reject(error);
-      if (isHandling401) return Promise.reject(error);
+    // No response (network error, API restarting, CORS preflight failure):
+    // do NOT log out. Just surface the error. Cached state stays intact so
+    // the user is still logged in once the API comes back.
+    if (!error.response) {
+      return Promise.reject(error);
+    }
 
-      isHandling401 = true;
-      const pathname =
-        typeof window !== "undefined" ? window.location.pathname : "";
-      const segments = pathname.split("/").filter(Boolean);
-      const slug = segments[0];
-      const isOnLoginPage = segments[1] === "login";
+    // Login + refresh endpoints handle their own auth errors. A 401 from
+    // /auth/login means wrong credentials; a 401 from /auth/refresh means
+    // the refresh token itself is dead and we have to force a logout.
+    if (status === 401 && isRefreshUrl(requestUrl)) {
+      forceLogoutRedirect();
+      return Promise.reject(error);
+    }
+    if (status === 401 && isLoginUrl(requestUrl)) {
+      return Promise.reject(error);
+    }
 
-      if (!isOnLoginPage) {
-        useAuthStore.getState().clearAuth();
-        if (typeof window !== "undefined") {
-          const loginPath = slug ? `/${slug}/login` : "/";
-          window.location.href = loginPath;
-        }
+    // 401 elsewhere: try a silent refresh exactly once per request, then
+    // replay the original call with the new access token. The refresh call
+    // itself is de-duped across concurrent 401s.
+    if (status === 401 && !config._retriedAfterRefresh) {
+      const newToken = await runRefresh();
+      if (!newToken) {
+        forceLogoutRedirect();
+        return Promise.reject(error);
       }
-      setTimeout(() => {
-        isHandling401 = false;
-      }, 3000);
-    } else {
-      const skipToast = error.config?.skipGlobalErrorToast;
-      if (typeof window !== "undefined" && skipToast !== true) {
-        const message = getApiErrorMessage(error);
-        toast({ title: message, variant: "destructive" });
-      }
+      config._retriedAfterRefresh = true;
+      if (!config.headers) config.headers = new AxiosHeaders();
+      (config.headers as AxiosHeaders).set(
+        "Authorization",
+        `Bearer ${newToken}`,
+      );
+      return api.request(config as AxiosRequestConfig);
+    }
+
+    // Everything else: surface via toast unless the caller opted out.
+    const skipToast = config.skipGlobalErrorToast;
+    if (typeof window !== "undefined" && skipToast !== true) {
+      const message = getApiErrorMessage(error);
+      toast({ title: message, variant: "destructive" });
     }
     return Promise.reject(error);
   },

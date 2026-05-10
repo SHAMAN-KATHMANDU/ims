@@ -51,6 +51,12 @@ const EnvSchema = z
       }),
     HOST: z.string().optional().default("0.0.0.0"),
     JWT_SECRET: z.string().optional().default(""),
+    /** Secret for signing long-lived refresh tokens. Falls back to JWT_SECRET in dev. */
+    JWT_REFRESH_SECRET: z.string().optional().default(""),
+    /** Access-token lifetime (jsonwebtoken `expiresIn` syntax, e.g. "15m", "1h"). */
+    JWT_ACCESS_TOKEN_TTL: z.string().optional().default("15m"),
+    /** Refresh-token lifetime. Determines the max idle session length. */
+    JWT_REFRESH_TOKEN_TTL: z.string().optional().default("30d"),
     DATABASE_URL: z.string().optional().default(""),
     CORS_ORIGIN: z.string().optional(),
     API_PUBLIC_URL: z.string().optional(),
@@ -337,6 +343,10 @@ const EnvSchema = z
       port: raw.PORT,
       host: raw.HOST.trim() || "0.0.0.0",
       jwtSecret: raw.JWT_SECRET ?? "",
+      jwtRefreshSecret:
+        raw.JWT_REFRESH_SECRET?.trim() || raw.JWT_SECRET?.trim() || "",
+      jwtAccessTokenTtl: raw.JWT_ACCESS_TOKEN_TTL,
+      jwtRefreshTokenTtl: raw.JWT_REFRESH_TOKEN_TTL,
       databaseUrl: raw.DATABASE_URL ?? "",
       corsOrigin,
       publicApiUrl,

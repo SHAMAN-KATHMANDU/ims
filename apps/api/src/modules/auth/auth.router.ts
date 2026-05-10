@@ -63,7 +63,10 @@ const authRouter = Router();
  *               properties:
  *                 token:
  *                   type: string
- *                   description: JWT token
+ *                   description: Short-lived JWT access token (default 15m).
+ *                 refreshToken:
+ *                   type: string
+ *                   description: Long-lived JWT refresh token (default 30d). POST to /auth/refresh to mint a new access token.
  *                 user:
  *                   $ref: '#/components/schemas/User'
  *                 tenant:
@@ -124,6 +127,47 @@ const authRouter = Router();
 authRouter.get("/org-name", asyncHandler(authController.getOrgName));
 
 authRouter.post("/login", asyncHandler(authController.logIn));
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Exchange a refresh token for a fresh access + refresh token pair
+ *     description: |
+ *       Verifies the supplied refresh token (signed with JWT_REFRESH_SECRET) and,
+ *       if valid and the user still exists, returns a new short-lived access
+ *       token plus a rotated refresh token. The previous refresh token is not
+ *       revoked server-side (stateless), so the client must always replace it
+ *       with the rotated one. Does NOT require Authorization header.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New token pair
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 refreshToken:
+ *                   type: string
+ *       400:
+ *         description: refreshToken missing in body
+ *       401:
+ *         description: Refresh token is missing, expired, malformed, or user no longer exists
+ */
+authRouter.post("/refresh", asyncHandler(authController.refresh));
 
 /**
  * @swagger

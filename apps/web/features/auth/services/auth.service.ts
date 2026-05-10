@@ -27,8 +27,30 @@ export class ChangeMyPasswordError extends Error {
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
   user: AuthUser;
   tenant: TenantInfo;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  refreshToken: string;
+}
+
+/**
+ * Exchange a refresh token for a fresh access + refresh pair.
+ * Used by the axios response interceptor on 401 — must NOT be called
+ * through the same `api` instance to avoid recursing into the interceptor.
+ */
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<RefreshTokenResponse> {
+  const response = await axios.post<RefreshTokenResponse>(
+    `${api.defaults.baseURL}/auth/refresh`,
+    { refreshToken },
+    { headers: { "Content-Type": "application/json" } },
+  );
+  return response.data;
 }
 
 export interface CurrentUserResponse {

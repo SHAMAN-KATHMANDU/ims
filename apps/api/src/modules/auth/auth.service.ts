@@ -1,9 +1,12 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "@/config/env";
 import { createError } from "@/middlewares/errorHandler";
 import authRepository, { AuthRepository } from "./auth.repository";
-import type { ForgotPasswordDto } from "./auth.schema";
+import {
+  RefreshTokenPayloadSchema,
+  type ForgotPasswordDto,
+} from "./auth.schema";
 
 export interface LoginParams {
   username: string;
@@ -13,8 +16,14 @@ export interface LoginParams {
   userAgent?: string;
 }
 
+export interface RefreshResult {
+  token: string;
+  refreshToken: string;
+}
+
 export interface LoginResult {
   token: string;
+  refreshToken: string;
   user: {
     id: string;
     tenantId: string;
@@ -41,8 +50,66 @@ export interface LoginResult {
   };
 }
 
+function signAccessToken(payload: {
+  id: string;
+  username: string;
+  role: string;
+  tenantId: string;
+  tenantSlug: string;
+}): string {
+  return jwt.sign(payload, env.jwtSecret, {
+    expiresIn: env.jwtAccessTokenTtl as SignOptions["expiresIn"],
+  });
+}
+
+function signRefreshToken(userId: string): string {
+  return jwt.sign({ id: userId, type: "refresh" }, env.jwtRefreshSecret, {
+    expiresIn: env.jwtRefreshTokenTtl as SignOptions["expiresIn"],
+  });
+}
+
 export class AuthService {
   constructor(private repo: AuthRepository) {}
+
+  /**
+   * Verify a refresh token and mint a fresh access + refresh token pair.
+   * Refresh tokens rotate on every use so a leaked token has a bounded window.
+   * Throws 401 when the token is missing/expired/wrong-type, or when the user
+   * no longer exists in the database.
+   */
+  async refreshAccessToken(refreshToken: string): Promise<RefreshResult> {
+    let decoded: unknown;
+    try {
+      decoded = jwt.verify(refreshToken, env.jwtRefreshSecret);
+    } catch {
+      throw createError("Invalid or expired refresh token", 401);
+    }
+
+    const parsed = RefreshTokenPayloadSchema.safeParse(decoded);
+    if (!parsed.success) {
+      throw createError("Invalid refresh token", 401);
+    }
+
+    const user = await this.repo.findUserById(parsed.data.id);
+    if (!user) {
+      throw createError("User no longer exists", 401);
+    }
+
+    const tenant = await this.repo.findTenantById(user.tenantId);
+    if (!tenant) {
+      throw createError("Tenant not found", 401);
+    }
+
+    const token = signAccessToken({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      tenantId: user.tenantId,
+      tenantSlug: tenant.slug,
+    });
+
+    return { token, refreshToken: signRefreshToken(user.id) };
+  }
 
   async login(params: LoginParams): Promise<LoginResult> {
     const { username, password, tenantSlug, ip, userAgent } = params;
@@ -89,14 +156,14 @@ export class AuthService {
       tenantSlug: tenant.slug,
     };
 
-    const token = jwt.sign(tokenPayload, env.jwtSecret, {
-      expiresIn: "24h",
-    });
+    const token = signAccessToken(tokenPayload);
+    const refreshToken = signRefreshToken(user.id);
 
     const { password: _p, ...userWithoutPassword } = user;
 
     return {
       token,
+      refreshToken,
       user: userWithoutPassword,
       tenant: {
         id: tenant.id,
