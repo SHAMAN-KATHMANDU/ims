@@ -116,10 +116,20 @@ export async function getMyDomainVerificationInstructions(
   domainId: string,
 ): Promise<DomainVerificationInstructions> {
   try {
-    const response = await api.get<{
-      instructions: DomainVerificationInstructions;
-    }>(`/tenants/me/domains/${domainId}/verification`);
-    return response.data.instructions;
+    // API returns the instructions spread at the top level alongside `message`,
+    // not wrapped in an `instructions` field — see tenant.controller.ts
+    // `getMyDomainVerification` and platform-domains.controller.ts
+    // `getVerificationInstructions` (`{ message, ...instructions }`).
+    const response = await api.get<
+      { message: string } & DomainVerificationInstructions
+    >(`/tenants/me/domains/${domainId}/verification`);
+    return {
+      domainId: response.data.domainId,
+      aRecordName: response.data.aRecordName,
+      aRecordValue: response.data.aRecordValue,
+      txtName: response.data.txtName,
+      txtValue: response.data.txtValue,
+    };
   } catch (error) {
     handleApiError(error, "get verification instructions");
   }
