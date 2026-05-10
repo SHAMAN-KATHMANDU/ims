@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import {
   useTopbarActionsStore,
   selectTopbarActionsSetActions,
@@ -28,6 +29,8 @@ import { ApplyTemplateConfirmDialog } from "./ApplyTemplateConfirmDialog";
 export function TemplatesView() {
   const setTopbarActions = useTopbarActionsStore(selectTopbarActionsSetActions);
   const tenant = useAuthStore(selectTenant);
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const templatesQuery = useTemplatesQuery();
   const configQuery = useSiteConfig();
   const forkMutation = useForkTemplate();
@@ -91,7 +94,8 @@ export function TemplatesView() {
                 forkMutation.mutate({ id, name });
               }}
               onEditClick={(id) => {
-                window.location.href = `/site/templates/${id}/edit`;
+                if (!workspace) return;
+                window.location.href = `/${workspace}/site/templates/${id}/edit`;
               }}
               onDeleteClick={(id) => {
                 setDeleteConfirm(id);

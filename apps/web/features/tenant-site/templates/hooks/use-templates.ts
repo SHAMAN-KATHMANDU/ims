@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { isAxiosError } from "axios";
 import { pickSiteTemplate } from "../../services/tenant-site.service";
 import { siteTemplatesService } from "../../services/site-templates.service";
@@ -29,6 +29,8 @@ export function useTemplate(id: string) {
 export function useApplyTemplate() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const { toast } = useToast();
 
   return useMutation({
@@ -40,7 +42,7 @@ export function useApplyTemplate() {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("site-template-picked"));
       }
-      router.push("/site/dashboard");
+      router.push(workspace ? `/${workspace}/site/dashboard` : "/");
     },
     onError: (error: unknown) => {
       console.error("[useApplyTemplate] failed", error);
@@ -61,6 +63,8 @@ export function useApplyTemplate() {
 export function useForkTemplate() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const { toast } = useToast();
 
   return useMutation({
@@ -69,7 +73,9 @@ export function useForkTemplate() {
     onSuccess: (template) => {
       queryClient.invalidateQueries({ queryKey: tenantSiteKeys.templates() });
       toast({ title: "Template forked successfully" });
-      router.push(`/site/templates/${template.id}/edit`);
+      router.push(
+        workspace ? `/${workspace}/site/templates/${template.id}/edit` : "/",
+      );
     },
     onError: (error: unknown) => {
       const message =
@@ -126,6 +132,8 @@ export function useUpdateTemplate() {
 export function useDeleteTemplate() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const params = useParams<{ workspace: string }>();
+  const workspace = params?.workspace ?? "";
   const { toast } = useToast();
 
   return useMutation({
@@ -133,7 +141,7 @@ export function useDeleteTemplate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantSiteKeys.templates() });
       toast({ title: "Template deleted successfully" });
-      router.push("/site/templates");
+      router.push(workspace ? `/${workspace}/site/templates` : "/");
     },
     onError: (error: unknown) => {
       const message =
