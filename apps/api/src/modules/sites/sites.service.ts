@@ -26,13 +26,13 @@ import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
 import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
 import pagesRepo from "@/modules/pages/pages.repository";
-import {
-  getTemplateBlueprint,
-  BLUEPRINT_SCOPES,
-  type TemplateBlueprint,
-} from "./templates";
+import { getTemplateBlueprint, type TemplateBlueprint } from "./templates";
 import type { BlockNode, BlockTree } from "@repo/shared";
-import { BlockTreeSchema } from "@repo/shared";
+import {
+  BlockTreeSchema,
+  CHROME_SCOPES,
+  synthesizeDefaultPagesFromLayouts,
+} from "@repo/shared";
 import {
   synthesizeHeaderBlocks,
   synthesizeFooterBlocks,
@@ -236,11 +236,19 @@ export class SitesService {
     // published `blocks` unless they explicitly asked for a reset (or this
     // is their first apply — see effectiveReset above).
     if (blueprint) {
+      // Chrome / dynamic-template scopes (header, footer, 404, product-detail,
+      // blog-post, page) stay scope-keyed and are seeded as SiteLayout rows.
+      // The user-facing page scopes (home, products-index, offers, cart,
+      // blog-index, contact) become real TenantPage rows via the synthesizer
+      // below, so they're editable from the Pages list like any custom page.
       await this.seedLayoutsFromBlueprint(tenantId, blueprint, effectiveReset);
-      // Phase 10H — seed custom pages from defaultPages
+      const blueprintWithSynthesizedPages: TemplateBlueprint = {
+        ...blueprint,
+        defaultPages: synthesizeDefaultPagesFromLayouts(blueprint),
+      };
       await this.seedCustomPagesFromBlueprint(
         tenantId,
-        blueprint,
+        blueprintWithSynthesizedPages,
         effectiveReset,
       );
     }
@@ -267,7 +275,10 @@ export class SitesService {
     blueprint: TemplateBlueprint,
     publishNow: boolean,
   ): Promise<void> {
-    for (const scope of BLUEPRINT_SCOPES) {
+    // Iterate only chrome / dynamic-template scopes here. The user-facing page
+    // scopes (home, products-index, offers, cart, blog-index, contact) are
+    // seeded as TenantPage rows by seedCustomPagesFromBlueprint instead.
+    for (const scope of CHROME_SCOPES) {
       // Use blueprint's layout if provided; fall back to empty array for missing scopes.
       const blocks = blueprint.layouts?.[scope] ?? [];
 

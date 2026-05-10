@@ -27,11 +27,18 @@ export interface TemplatePageDefinition {
 
 export const TemplatePageDefinitionSchema: z.ZodType<TemplatePageDefinition> =
   z.object({
+    // Slug is "/" for the home page (rendered at the tenant-site root) or a
+    // lowercase alphanumeric identifier for any other page (rendered by the
+    // catch-all at /<slug>). Hierarchical slugs (e.g. "about/team") are not
+    // supported — nesting is virtual via the page tree, not the slug.
     slug: z
       .string()
       .min(1, "Slug required")
       .max(80, "Slug too long")
-      .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric + hyphens"),
+      .regex(
+        /^\/$|^[a-z0-9-]+$/,
+        "Slug must be '/' (home) or lowercase alphanumeric + hyphens",
+      ),
     title: z.string().min(1, "Title required").max(200, "Title too long"),
     blocks: z.array(BlockNodeSchema).optional(),
     navOrder: z.number().int().min(0).optional(),
