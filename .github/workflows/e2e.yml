@@ -1,0 +1,125 @@
+# E2E web automation tests.
+# Triggered on push to main, nightly schedule, and manual dispatch.
+# Per-PR E2E was removed from ci.yml to save Actions minutes; this is the
+# pre-deploy + nightly safety net. Body lifted from the previous
+# `e2e-web-automation` job in ci.yml.
+# ⚠ To switch back to the self-hosted runner: replace `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
+
+name: E2E Web (automation)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/**"
+      - ".vscode/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "LICENSE"
+      - ".editorconfig"
+      - ".gitignore"
+  schedule:
+    # Nightly at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  e2e-web-automation:
+    name: E2E Web (automation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ims_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-for-ci
+      # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
+      SEED_PLATFORM_ADMIN_PASSWORD: ci-e2e-platform-admin-ChangeMe123!
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Build shared and API
+        run: |
+          pnpm --filter @repo/shared build
+          pnpm --filter api exec prisma generate
+          pnpm --filter api exec prisma migrate deploy
+          pnpm --filter api exec prisma db seed
+          pnpm --filter api build
+      - name: Resolve Playwright version
+        id: playwright_version
+        run: |
+          VERSION=$(pnpm --filter web exec playwright --version | awk '{print $2}')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright_version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - name: Install Playwright browser
+        # OS-level deps are pre-installed on the runner machine. Only the browser
+        # binary needs to be installed/verified — no sudo required.
+        run: pnpm --filter web exec playwright install chromium
+      - name: Start API and run automation E2E
+        run: |
+          set -e
+          pnpm --filter api start &
+          API_PID=$!
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:4000/health > /dev/null; then
+              echo "API healthy"
+              break
+            fi
+            if [ "$i" -eq 90 ]; then
+              echo "API did not become healthy in time"
+              kill "$API_PID" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+          pnpm --filter web run test:e2e:automation:branching-on
+          E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
+          kill "$API_PID" 2>/dev/null || true
+          wait "$API_PID" 2>/dev/null || true

@@ -1,5 +1,7 @@
-# Continuous Integration: lint, test, typecheck, and security scan.
-# No Docker build/push or deployment. Runs on PRs and non-main branch pushes.
+# Continuous Integration: lint, typecheck, unit tests.
+# PR-only — runs on pull_request events. Drafts are skipped via job-level `if`.
+# E2E and Trivy live in dedicated main + schedule workflows (e2e.yml, security.yml)
+# to keep per-PR Actions-minute consumption low.
 # ⚠ To switch back to the self-hosted runner: replace every `runs-on: ubuntu-latest` with `runs-on: self-hosted`.
 
 name: CI
@@ -15,27 +17,28 @@ permissions:
   pull-requests: read
 
 on:
-  push:
-    branches-ignore: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
   pull_request:
     branches: ["**"]
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "**/*.md"
       - "docs/**"
+      - ".claude/**"
+      - ".vscode/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "LICENSE"
+      - ".editorconfig"
+      - ".gitignore"
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name }}-${{ github.event.pull_request.head.ref }}
   cancel-in-progress: true
 
 jobs:
   pr-title:
     name: PR title check
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event.pull_request.draft == false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,10 +55,11 @@ jobs:
         run: |
           printf '%s\n' "$PR_TITLE" | "$RUNNER_TEMP/commitlint/node_modules/.bin/commitlint" --config commitlint.config.js
 
-  # Detect which paths changed so we can run jobs conditionally.
+  # Detect which paths changed so test jobs can short-circuit when not relevant.
   # For PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so full CI runs.
   changes:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     outputs:
       api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
@@ -64,13 +68,11 @@ jobs:
       any: ${{ steps.changes_filter.outputs.any || steps.fork_outputs.outputs.any }}
     steps:
       - uses: actions/checkout@v4
-      - name: Detect changed paths (same-repo PR or push)
+      - name: Detect changed paths (same-repo PR)
         id: changes_filter
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
-          # base only for push; on pull_request the action ignores base and uses PR base ref
-          base: ${{ github.event_name == 'push' && (github.event.before || 'HEAD~1') || '' }}
           filters: |
             api:
               - "apps/api/**"
@@ -87,7 +89,7 @@ jobs:
               - "packages/**"
       - name: Set all changes for fork PR (no API access)
         id: fork_outputs
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        if: github.event.pull_request.head.repo.full_name != github.repository
         run: |
           echo "api=true" >> "$GITHUB_OUTPUT"
           echo "web=true" >> "$GITHUB_OUTPUT"
@@ -95,11 +97,15 @@ jobs:
           echo "shared=true" >> "$GITHUB_OUTPUT"
           echo "any=true" >> "$GITHUB_OUTPUT"
 
-  lint-api:
-    name: Lint API
+  # Single consolidated static analysis job: lint + typecheck for every package.
+  # Replaces the prior lint-api, lint-web, lint-tenant-site, and typecheck jobs
+  # (each of which spent ~45–60s on its own pnpm install). Turbo's content-hash
+  # cache skips unchanged packages so this is no slower than the old per-job split.
+  static-checks:
+    name: Lint + typecheck
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
+    if: github.event.pull_request.draft == false && needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -117,17 +123,31 @@ jobs:
             exit 1
           fi
           echo "Prisma migration tenant FK guard OK."
-      - name: Lint API (and shared if needed)
-        run: pnpm exec turbo run lint --filter=api --filter=@repo/shared
+      - name: Generate Prisma client
+        # check-types in apps/api needs the generated Prisma client.
+        run: pnpm --filter api exec prisma generate
+      - name: Lint and typecheck
+        run: pnpm exec turbo run lint check-types
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
-  lint-web:
-    name: Lint Web
+  # Single consolidated unit-test job for the no-DB packages.
+  # Replaces the prior test-web, test-tenant-site, and test-shared jobs.
+  # Each package defines exactly one of `test` / `test:unit` / `test:run`; turbo
+  # no-ops the tasks a package doesn't define.
+  # The tenant-site Next.js build that previously ran here was removed — `tsc`
+  # already covers type drift, and the production build runs in build-push-staging.yml on main.
+  test-node:
+    name: Test (web + tenant-site + shared)
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
+    if: |
+      github.event.pull_request.draft == false && (
+        needs.changes.outputs.web == 'true' ||
+        needs.changes.outputs.tenant_site == 'true' ||
+        needs.changes.outputs.shared == 'true'
+      )
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -137,17 +157,24 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Lint Web (and shared if needed)
-        run: pnpm exec turbo run lint --filter=web --filter=@repo/shared
+      - name: Run unit tests (web/tenant-site/shared)
+        run: pnpm exec turbo run test test:unit test:run --filter=web --filter=tenant-site --filter=@repo/shared
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
+  # API tests stay in their own job because they need postgres + redis service
+  # containers and run prisma migrations against a real DB (which is also where
+  # we enforce the schema-drift guard).
   test-api:
     name: Test API
     runs-on: ubuntu-latest
     needs: [changes]
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'
+    if: |
+      github.event.pull_request.draft == false && (
+        needs.changes.outputs.api == 'true' ||
+        needs.changes.outputs.shared == 'true'
+      )
     services:
       postgres:
         image: postgres:16
@@ -202,240 +229,3 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-  test-web:
-    name: Test Web
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Run Web tests
-        run: pnpm exec turbo run test:unit --filter=web
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-  lint-tenant-site:
-    name: Lint tenant-site
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Lint tenant-site (and shared if needed)
-        run: pnpm exec turbo run lint --filter=tenant-site --filter=@repo/shared
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-  test-tenant-site:
-    name: Test tenant-site
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Run tenant-site unit tests
-        run: pnpm exec turbo run test:run --filter=tenant-site
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-      - name: Build tenant-site
-        # Catches runtime errors that tsc --noEmit misses (e.g. Next.js route
-        # type generation drift, missing "use client" directives, etc.). Cheap
-        # after a warm pnpm cache.
-        run: pnpm exec turbo run build --filter=tenant-site
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-          # Build-time stub — the renderer only needs the URL shape for
-          # next.config, the actual upstream is set at runtime on the host.
-          API_INTERNAL_URL: "http://api.internal/api/v1"
-
-  test-shared:
-    name: Test shared package
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: needs.changes.outputs.shared == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Run shared package unit tests
-        run: pnpm exec turbo run test --filter=@repo/shared
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-  typecheck:
-    name: Type check
-    runs-on: ubuntu-latest
-    needs: [changes]
-    # `any` includes tenant-site since Phase C.4, so a tenant-site-only change
-    # still triggers the global typecheck.
-    if: needs.changes.outputs.any == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Generate Prisma client
-        run: pnpm --filter api exec prisma generate
-      - name: Type check
-        run: pnpm exec turbo run check-types
-        env:
-          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-  e2e-web-automation:
-    name: E2E Web (automation)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    needs: [changes]
-    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ims_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
-      REDIS_URL: redis://localhost:6379
-      JWT_SECRET: test-jwt-secret-for-ci
-      # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
-      SEED_PLATFORM_ADMIN_PASSWORD: ci-e2e-platform-admin-ChangeMe123!
-      NODE_ENV: development
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Build shared and API
-        run: |
-          pnpm --filter @repo/shared build
-          pnpm --filter api exec prisma generate
-          pnpm --filter api exec prisma migrate deploy
-          pnpm --filter api exec prisma db seed
-          pnpm --filter api build
-      - name: Resolve Playwright version
-        id: playwright_version
-        run: |
-          VERSION=$(pnpm --filter web exec playwright --version | awk '{print $2}')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: playwright_cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright_version.outputs.version }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Playwright browser
-        # OS-level deps are pre-installed on the runner machine. Only the browser
-        # binary needs to be installed/verified — no sudo required.
-        run: pnpm --filter web exec playwright install chromium
-      - name: Start API and run automation E2E
-        run: |
-          set -e
-          pnpm --filter api start &
-          API_PID=$!
-          for i in $(seq 1 90); do
-            if curl -sf http://127.0.0.1:4000/health > /dev/null; then
-              echo "API healthy"
-              break
-            fi
-            if [ "$i" -eq 90 ]; then
-              echo "API did not become healthy in time"
-              kill "$API_PID" 2>/dev/null || true
-              exit 1
-            fi
-            sleep 1
-          done
-          pnpm --filter web run test:e2e:automation:branching-on
-          E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
-          kill "$API_PID" 2>/dev/null || true
-          wait "$API_PID" 2>/dev/null || true
-
-  trivy:
-    name: Trivy security scan
-    runs-on: ubuntu-latest
-    needs: [changes]
-    if: github.event_name == 'pull_request' && needs.changes.outputs.any == 'true'
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
-      - name: Run Trivy vulnerability scanner (filesystem)
-        # cache-dir points to /tmp so the DB is never inside the scanned workspace
-        # and persists across runs (no forced re-download every time).
-        # timeout raised to 15m — the default 5m is not enough for the self-hosted
-        # runner to complete a full DB download + fs scan.
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          severity: "CRITICAL,HIGH"
-          exit-code: "1"
-          ignore-unfixed: true
-          timeout: "15m"
-          cache-dir: "/tmp/trivy-cache"
