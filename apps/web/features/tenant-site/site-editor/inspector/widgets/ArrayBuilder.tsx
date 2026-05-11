@@ -35,6 +35,14 @@ interface ArrayBuilderProps<T = unknown> {
   renderCollapsedTitle?: (item: T) => React.ReactNode;
   addLabel?: string;
   blockKind?: string;
+  /**
+   * Factory for new items inserted via "Add". Defaults to `{} as T` for
+   * backwards compatibility, but typed array fields (form fields,
+   * nav items, etc.) should provide one so the new row has its
+   * required fields seeded — otherwise it fails the editor's
+   * Zod validation on first save.
+   */
+  defaultItem?: () => T;
 }
 
 interface DraggableRowProps<T = unknown> {
@@ -134,6 +142,7 @@ export function ArrayBuilder<T = unknown>({
   renderCollapsedTitle,
   addLabel = "Add item",
   blockKind,
+  defaultItem,
 }: ArrayBuilderProps<T>) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -170,7 +179,7 @@ export function ArrayBuilder<T = unknown>({
   };
 
   const handleAddItem = () => {
-    const newItem = {} as T;
+    const newItem = defaultItem ? defaultItem() : ({} as T);
     onChange([...value, newItem]);
   };
 

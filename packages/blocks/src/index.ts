@@ -16,3 +16,8 @@ export {
   FALLBACK_PRICE,
 } from "./utils/format";
 export type { FormatPriceOptions } from "./utils/format";
+
+// Form block helpers — re-used by the tenant-site renderer + admin
+// inspector preview so both render fields with identical behaviour.
+export { FormFields } from "./components/content/form/FormFields";
+export { validateFormFields } from "./components/content/form/validate";

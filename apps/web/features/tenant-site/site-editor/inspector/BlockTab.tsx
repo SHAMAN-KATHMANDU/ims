@@ -6,8 +6,11 @@ import { useEditorStore } from "../store/editor-store";
 import { selectUpdateBlockProps } from "../store/selectors";
 import { SchemaDrivenForm } from "./SchemaDrivenForm";
 import { VariantPicker } from "./widgets/VariantPicker";
+import { FormFieldsBuilder } from "./widgets/FormFieldsBuilder";
+import { FormPreviewPanel } from "./widgets/FormPreviewPanel";
 import { ProductPickerDialog } from "../../components/ProductPickerDialog";
 import { useCategories } from "@/features/products";
+import type { FormBlockProps, FormFieldDef } from "@repo/shared";
 
 interface BlockTabProps {
   block: BlockNode | undefined;
@@ -229,33 +232,7 @@ export function BlockTab({ block }: BlockTabProps) {
         );
       }
       case "form": {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const form = props as any;
-        return (
-          <div>
-            <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
-              Form ID (optional)
-            </div>
-            <input
-              type="text"
-              placeholder="Leave empty for inline fields"
-              value={form.formId || ""}
-              onChange={(e) =>
-                updateBlockProps(block.id, { formId: e.target.value })
-              }
-              className="w-full h-7 px-2 rounded text-xs"
-              style={{
-                border: "1px solid var(--line)",
-                backgroundColor: "var(--bg-elev)",
-                color: "var(--ink)",
-                outline: "none",
-              }}
-            />
-            <div className="text-xs mt-1" style={{ color: "var(--ink-4)" }}>
-              Reference a stored form, or define fields inline in the editor.
-            </div>
-          </div>
-        );
+        return <FormBlockInspector block={block} />;
       }
       case "product-grid": {
         return <ProductGridInspector block={block} />;
@@ -572,3 +549,187 @@ function NavBarInspector({ block }: NavBarInspectorProps) {
     </div>
   );
 }
+
+// ─── Form inspector ───────────────────────────────────────────────────────────
+//
+// Combines a live preview of the form (FormPreviewPanel) with the form-level
+// settings (heading, description, submit button, success message, recipients,
+// destination) and the per-field editor (FormFieldsBuilder).
+//
+// The preview re-uses the same `FormFields` component the public renderer
+// uses, so what the editor sees matches what visitors see — no risk of the
+// inspector preview drifting from production rendering.
+
+interface FormBlockInspectorProps {
+  block: BlockNode;
+}
+
+function FormBlockInspector({ block }: FormBlockInspectorProps) {
+  const updateBlockProps = useEditorStore(selectUpdateBlockProps);
+  const props = block.props as FormBlockProps;
+  const fields: FormFieldDef[] = props.fields ?? [];
+  const submitTo: FormBlockProps["submitTo"] = props.submitTo ?? "email";
+  const recipientsText = (props.recipients ?? []).join(", ");
+
+  const update = (patch: Partial<FormBlockProps>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    updateBlockProps(block.id, patch as any);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <FormPreviewPanel fields={fields} submitLabel={props.submitLabel} />
+
+      <details
+        open
+        style={{
+          border: "1px solid var(--line)",
+          borderRadius: 6,
+          padding: "8px 12px",
+          background: "var(--bg)",
+        }}
+      >
+        <summary
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: "var(--ink-3)", cursor: "pointer" }}
+        >
+          Form settings
+        </summary>
+        <div className="flex flex-col gap-3 pt-3">
+          <Field label="Heading">
+            <input
+              type="text"
+              value={props.heading ?? ""}
+              onChange={(e) => update({ heading: e.target.value || undefined })}
+              className="w-full h-7 px-2 rounded text-xs"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Description">
+            <textarea
+              value={props.description ?? ""}
+              onChange={(e) =>
+                update({ description: e.target.value || undefined })
+              }
+              rows={2}
+              className="w-full px-2 py-1.5 rounded text-xs"
+              style={{ ...inputStyle, height: "auto" }}
+            />
+          </Field>
+          <Field label="Submit button label">
+            <input
+              type="text"
+              value={props.submitLabel ?? ""}
+              placeholder="Submit"
+              onChange={(e) =>
+                update({ submitLabel: e.target.value || undefined })
+              }
+              className="w-full h-7 px-2 rounded text-xs"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Success message">
+            <input
+              type="text"
+              value={props.successMessage ?? ""}
+              placeholder="Thanks! We received your submission."
+              onChange={(e) =>
+                update({ successMessage: e.target.value || undefined })
+              }
+              className="w-full h-7 px-2 rounded text-xs"
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Where to send">
+            <select
+              value={submitTo}
+              onChange={(e) =>
+                update({
+                  submitTo: e.target.value as FormBlockProps["submitTo"],
+                })
+              }
+              className="w-full h-7 px-2 rounded text-xs"
+              style={inputStyle}
+            >
+              <option value="email">Email notification</option>
+              <option value="crm-lead">Create CRM lead</option>
+            </select>
+          </Field>
+          {submitTo === "email" && (
+            <Field
+              label="Email recipients"
+              help="Comma-separated. Leave empty to use the site's contact email."
+            >
+              <input
+                type="text"
+                value={recipientsText}
+                placeholder="alex@brand.co, ops@brand.co"
+                onChange={(e) => {
+                  const list = e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s.length > 0);
+                  update({ recipients: list.length > 0 ? list : undefined });
+                }}
+                className="w-full h-7 px-2 rounded text-xs"
+                style={inputStyle}
+              />
+            </Field>
+          )}
+          <Field
+            label="Stored form ID (optional)"
+            help="Reference an existing Form record. Leave empty to use inline fields below."
+          >
+            <input
+              type="text"
+              value={props.formId ?? ""}
+              onChange={(e) => update({ formId: e.target.value || undefined })}
+              className="w-full h-7 px-2 rounded text-xs font-mono"
+              style={inputStyle}
+            />
+          </Field>
+        </div>
+      </details>
+
+      <FormFieldsBuilder
+        value={fields}
+        onChange={(next) => update({ fields: next })}
+        label="Questions"
+      />
+    </div>
+  );
+}
+
+function Field({
+  label,
+  help,
+  children,
+}: {
+  label: string;
+  help?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
+        {label}
+      </div>
+      {children}
+      {help && (
+        <div
+          className="text-xs mt-1"
+          style={{ color: "var(--ink-4)", lineHeight: 1.4 }}
+        >
+          {help}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const inputStyle = {
+  border: "1px solid var(--line)",
+  backgroundColor: "var(--bg-elev)",
+  color: "var(--ink)",
+  outline: "none",
+} as const;
