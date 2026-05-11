@@ -444,8 +444,12 @@ describe("BlockPropsSchemas", () => {
       });
     });
     it("rejects unknown field kind", () => {
+      // `checkbox` was added as a real kind alongside number/url/date/radio
+      // when the form block went production-grade. Use an actually-bogus
+      // string here so this test stays meaningful instead of asserting
+      // against a kind we've since shipped.
       rejectsAs("form", {
-        fields: [{ kind: "checkbox", label: "Agree" }],
+        fields: [{ kind: "color-picker", label: "Brand colour" }],
         submitTo: "email",
       });
     });

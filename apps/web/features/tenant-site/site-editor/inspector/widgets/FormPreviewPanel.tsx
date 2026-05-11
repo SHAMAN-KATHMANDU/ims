@@ -14,7 +14,7 @@
  * canvas-side rendering, not the editor's input form.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormFieldDef } from "@repo/shared";
 import { FormFields } from "@repo/blocks";
 
@@ -23,23 +23,33 @@ interface FormPreviewPanelProps {
   submitLabel?: string;
 }
 
+function buildInitialValues(fields: FormFieldDef[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of fields) out[f.label] = f.defaultValue ?? "";
+  return out;
+}
+
 export function FormPreviewPanel({
   fields,
   submitLabel,
 }: FormPreviewPanelProps) {
-  const initialValues = useMemo(() => {
-    const out: Record<string, string> = {};
-    for (const f of fields) out[f.label] = f.defaultValue ?? "";
-    return out;
-  }, [fields]);
-  const [values, setValues] = useState<Record<string, string>>(initialValues);
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    buildInitialValues(fields),
+  );
 
   // Re-seed values when the field schema changes — labels are the keys
-  // so a label rename would otherwise leave orphan entries around.
-  const fieldSignature = fields.map((f) => f.label).join("|");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => {
-    setValues(initialValues);
+  // so a label rename would otherwise leave orphan entries around. The
+  // signature is keyed on labels + defaultValues only so typing into a
+  // field doesn't reset everything mid-keystroke.
+  const fieldSignature = fields
+    .map((f) => `${f.label}::${f.defaultValue ?? ""}`)
+    .join("|");
+  useEffect(() => {
+    setValues(buildInitialValues(fields));
+    // fieldSignature captures every label + defaultValue change; the
+    // explicit dep makes the deps-array exhaustive without re-running
+    // for unrelated field-config edits like placeholder typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldSignature]);
 
   if (fields.length === 0) {
