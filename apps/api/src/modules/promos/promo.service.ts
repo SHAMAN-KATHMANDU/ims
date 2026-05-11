@@ -12,6 +12,7 @@ import promoRepository, {
   type UpdatePromoRepoData,
 } from "./promo.repository";
 import type { CreatePromoDto, UpdatePromoDto } from "./promo.schema";
+import { revalidateTenantTags, promoTags } from "@/shared/cache/revalidateTags";
 
 const ALLOWED_SORT_FIELDS = [
   "code",
@@ -54,7 +55,9 @@ export class PromoService {
       productIds,
     };
 
-    return this.repo.create(repoData);
+    const created = await this.repo.create(repoData);
+    void revalidateTenantTags(tenantId, promoTags(tenantId), "promos.create");
+    return created;
   }
 
   async findAll(tenantId: string, rawQuery: Record<string, unknown>) {
@@ -134,6 +137,7 @@ export class PromoService {
       data.categoryIds !== undefined ||
       data.subCategories !== undefined;
 
+    let updated;
     if (productTargetingChanged) {
       const productIds = await this.repo.resolveTargetProductIds({
         tenantId,
@@ -144,13 +148,18 @@ export class PromoService {
           ? data.productIds
           : [],
       });
-      return this.repo.updateAndReplaceProducts(id, updateData, productIds);
+      updated = await this.repo.updateAndReplaceProducts(
+        id,
+        updateData,
+        productIds,
+      );
+    } else if (Object.keys(updateData).length === 0) {
+      updated = await this.repo.findById(tenantId, id);
+    } else {
+      updated = await this.repo.update(id, updateData);
     }
-
-    if (Object.keys(updateData).length === 0) {
-      return this.repo.findById(tenantId, id);
-    }
-    return this.repo.update(id, updateData);
+    void revalidateTenantTags(tenantId, promoTags(tenantId), "promos.update");
+    return updated;
   }
 
   async delete(
@@ -173,6 +182,7 @@ export class PromoService {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
     });
+    void revalidateTenantTags(tenantId, promoTags(tenantId), "promos.delete");
     return {};
   }
 }

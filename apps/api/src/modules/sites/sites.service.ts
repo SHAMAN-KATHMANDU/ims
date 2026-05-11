@@ -28,6 +28,12 @@ import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revali
 import pagesRepo from "@/modules/pages/pages.repository";
 import { getTemplateBlueprint, type TemplateBlueprint } from "./templates";
 import { blankBlueprint } from "./templates/blank";
+import {
+  autowireBlockTree,
+  type AutowireTenantContext,
+} from "./template-autowire";
+import collectionsRepo from "@/modules/collections/collections.repository";
+import bundlesRepo from "@/modules/bundles/bundle.repository";
 import type { BlockNode, BlockTree } from "@repo/shared";
 import {
   BlockTreeSchema,
@@ -91,6 +97,34 @@ function stripIdentityFromBranding(
     delete result[key];
   }
   return result;
+}
+
+/**
+ * Apply the autowire pass to every block tree on a blueprint —
+ * `layouts` (chrome + page scopes) and `defaultPages[].blocks`. The
+ * result is a NEW blueprint object so the original in-code constant
+ * stays pristine across applies.
+ */
+function applyAutowireToBlueprint(
+  blueprint: TemplateBlueprint,
+  ctx: AutowireTenantContext,
+): TemplateBlueprint {
+  const wiredLayouts: TemplateBlueprint["layouts"] = {};
+  for (const [scope, blocks] of Object.entries(blueprint.layouts ?? {})) {
+    if (!blocks) continue;
+    wiredLayouts[scope as BlueprintScope] = autowireBlockTree(blocks, ctx);
+  }
+  const wiredPages = Array.isArray(blueprint.defaultPages)
+    ? blueprint.defaultPages.map((page) => ({
+        ...page,
+        blocks: page.blocks ? autowireBlockTree(page.blocks, ctx) : page.blocks,
+      }))
+    : blueprint.defaultPages;
+  return {
+    ...blueprint,
+    layouts: wiredLayouts,
+    defaultPages: wiredPages,
+  };
 }
 
 export class SitesService {
@@ -248,15 +282,24 @@ export class SitesService {
     // published `blocks` unless they explicitly asked for a reset (or this
     // is their first apply — see effectiveReset above).
     if (blueprint) {
+      // Pre-load the tenant's catalogue once and reuse the snapshot for
+      // every layout/page seed pass. Without this each scope would hit
+      // the DB for collections/bundles separately.
+      const autowireCtx = await this.loadAutowireContext(tenantId);
+      const wiredBlueprint = applyAutowireToBlueprint(blueprint, autowireCtx);
       // Chrome / dynamic-template scopes (header, footer, 404, product-detail,
       // blog-post, page) stay scope-keyed and are seeded as SiteLayout rows.
       // The user-facing page scopes (home, products-index, offers, cart,
       // blog-index, contact) become real TenantPage rows via the synthesizer
       // below, so they're editable from the Pages list like any custom page.
-      await this.seedLayoutsFromBlueprint(tenantId, blueprint, effectiveReset);
+      await this.seedLayoutsFromBlueprint(
+        tenantId,
+        wiredBlueprint,
+        effectiveReset,
+      );
       const blueprintWithSynthesizedPages: TemplateBlueprint = {
-        ...blueprint,
-        defaultPages: synthesizeDefaultPagesFromLayouts(blueprint),
+        ...wiredBlueprint,
+        defaultPages: synthesizeDefaultPagesFromLayouts(wiredBlueprint),
       };
       await this.seedCustomPagesFromBlueprint(
         tenantId,
@@ -278,45 +321,56 @@ export class SitesService {
   }
 
   /**
+   * Snapshot of the tenant's IMS the autowire pass needs. Loaded once
+   * per Apply so each scope/page seed pass gets the same view of the
+   * catalogue (no mid-flight inserts can change which collection is
+   * "first").
+   */
+  private async loadAutowireContext(
+    tenantId: string,
+  ): Promise<AutowireTenantContext> {
+    const collections = await collectionsRepo.list(tenantId);
+    // Bundle list shape mirrors the public list endpoint — only active,
+    // non-deleted rows. The bundle repo's findMany requires an explicit
+    // where shape (see BundleWhere); pass the same one the public
+    // service uses.
+    const bundles = await bundlesRepo.findMany(
+      { tenantId, deletedAt: null, active: true },
+      { createdAt: "asc" },
+      0,
+      24,
+    );
+    return {
+      collections: collections
+        .filter((c) => c.isActive)
+        .map((c) => ({ id: c.id, slug: c.slug, title: c.title })),
+      bundles: bundles.map((b) => ({ id: b.id, slug: b.slug, name: b.name })),
+    };
+  }
+
+  /**
    * Seed `SiteConfig.navigation` ({ primary, utility, footer }) from the
    * blueprint's PAGE_SCOPES, so the editor's Navigation tab is populated
-   * right after Apply. The Navigation tab uses a simpler NavigationConfig
-   * shape than the per-NavBarBlock NavConfig — defined in
-   * `apps/web/features/site-cms/navigation/types.ts`. We synthesize that
-   * simpler shape here from the slugs the synthesizer just created.
+   * right after Apply.
    *
-   * Preserves user edits when `overwriteExisting=false` and the row
-   * already has at least one primary item.
+   * Behaviour:
+   *   - `overwriteExisting=true` — replace primary entirely with the
+   *     blueprint's items (used on first apply / explicit reset).
+   *   - `overwriteExisting=false` with NO existing nav — same as above.
+   *   - `overwriteExisting=false` WITH existing nav — preserve every
+   *     user-edited item (id/label/href/order) AND additively append
+   *     items for any new PAGE_SCOPE the template introduces. This
+   *     fixes the round-2 regression where re-applying a template with
+   *     new scopes (e.g. blog) silently dropped them because the
+   *     all-or-nothing skip kicked in once the user had any nav.
    */
   private async seedNavigationFromBlueprint(
     tenantId: string,
     blueprint: TemplateBlueprint,
     overwriteExisting: boolean,
   ): Promise<void> {
-    const existing = await this.repo.findConfig(tenantId);
-    const existingNav = existing?.navigation as
-      | {
-          primary?: unknown[];
-          utility?: unknown[];
-          footer?: unknown[];
-        }
-      | null
-      | undefined;
-    const hasUserNav =
-      Array.isArray(existingNav?.primary) &&
-      (existingNav?.primary?.length ?? 0) > 0;
-    if (hasUserNav && !overwriteExisting) {
-      return;
-    }
+    type PrimaryItem = { id: string; label: string; href: string };
 
-    // Each PAGE_SCOPE the blueprint actually populates becomes a primary
-    // nav link. Skip scopes the template omits (e.g. a minimal template
-    // without a blog).
-    type PrimaryItem = {
-      id: string;
-      label: string;
-      href: string;
-    };
     const NAV_LABELS: Readonly<Partial<Record<BlueprintScope, string>>> = {
       home: "Home",
       "products-index": "Products",
@@ -325,23 +379,52 @@ export class SitesService {
       "blog-index": "Blog",
       contact: "Contact",
     };
-    const primary: PrimaryItem[] = [];
+
+    // Build the full set of items the blueprint expects.
+    const blueprintItems: PrimaryItem[] = [];
     for (const scope of Object.keys(PAGE_SCOPE_TO_SLUG) as BlueprintScope[]) {
       const blocks = blueprint.layouts?.[scope];
       if (!blocks || blocks.length === 0) continue;
       const slug = PAGE_SCOPE_TO_SLUG[scope]!;
       const href = slug === "/" ? "/" : `/${slug}`;
-      primary.push({
+      blueprintItems.push({
         id: scope,
         label: NAV_LABELS[scope] ?? scope,
         href,
       });
     }
 
+    const existing = await this.repo.findConfig(tenantId);
+    const existingNav = existing?.navigation as
+      | {
+          primary?: PrimaryItem[];
+          utility?: PrimaryItem[];
+          footer?: Array<{ id: string; title: string; items: PrimaryItem[] }>;
+        }
+      | null
+      | undefined;
+
+    const userPrimary = Array.isArray(existingNav?.primary)
+      ? existingNav!.primary!
+      : [];
+
+    let primary: PrimaryItem[];
+    if (overwriteExisting || userPrimary.length === 0) {
+      primary = blueprintItems;
+    } else {
+      // Merge: keep user's order/labels for items they already have,
+      // append any blueprint scopes the user is missing. Identity is
+      // BlueprintScope id (e.g. "home", "blog-index"), which the
+      // synthesizer always emits and the user's nav items inherit.
+      const userIds = new Set(userPrimary.map((i) => i.id));
+      const additions = blueprintItems.filter((i) => !userIds.has(i.id));
+      primary = [...userPrimary, ...additions];
+    }
+
     const navigation = {
       primary,
-      utility: [] as PrimaryItem[],
-      footer: [] as Array<{ id: string; title: string; items: PrimaryItem[] }>,
+      utility: existingNav?.utility ?? [],
+      footer: existingNav?.footer ?? [],
     };
 
     await this.repo.updateConfig(tenantId, {

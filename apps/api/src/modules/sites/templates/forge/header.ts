@@ -25,6 +25,7 @@ export function forgeHeader(): BlockNode[] {
       tone: "default",
     }),
     block("nav-bar", {
+      variant: "standard",
       brand: "FORGE / B2B",
       brandStyle: "mono",
       items: [

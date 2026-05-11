@@ -1,25 +1,72 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+/**
+ * Resolve which nav items to render. Priority order:
+ *   1. dataContext.site.navigation.primary — editor-managed (Navigation tab),
+ *      synthesized on Apply by `seedNavigationFromBlueprint`. Single source
+ *      of truth across every header instance.
+ *   2. props.items — the block's own override; populated when a tenant
+ *      explicitly opts out of site nav (Phase 1 inspector toggle).
+ *   3. dataContext.navPages — backward compatibility for tenants who
+ *      haven't re-applied a template since the navigation column was
+ *      introduced; renders the legacy nav-pages list so chrome isn't
+ *      empty pre-migration.
+ */
+function resolveItems(props, dataContext) {
+    const sitePrimary = dataContext?.site?.navigation?.primary;
+    if (Array.isArray(sitePrimary) && sitePrimary.length > 0) {
+        return sitePrimary.map((item) => ({ label: item.label, href: item.href }));
+    }
+    if (Array.isArray(props.items) && props.items.length > 0) {
+        return props.items.map((item) => ({
+            label: item.label,
+            href: item.href,
+        }));
+    }
+    const navPages = dataContext?.navPages ?? [];
+    return navPages.map((page) => ({
+        label: page.name,
+        href: page.slug.startsWith("/") ? page.slug : `/${page.slug}`,
+    }));
+}
 export function NavBarBlock({ props, dataContext, }) {
-    const navPages = dataContext.navPages || [];
+    const items = resolveItems(props, dataContext);
+    const brandText = typeof props.brand === "string"
+        ? props.brand
+        : (props.brand?.text ?? "Brand");
+    const brandHref = props.brandHref ?? "/";
     return (_jsxs("nav", { style: {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            padding: "1rem",
-            backgroundColor: "#fff",
-            borderBottom: "1px solid #ddd",
-        }, children: [_jsx("div", { style: { fontSize: "1.25rem", fontWeight: 700 }, children: typeof props.brand === "string"
-                    ? props.brand
-                    : props.brand?.text || "Logo" }), _jsx("div", { style: { display: "flex", gap: "2rem" }, children: navPages.map((page) => (_jsx("a", { href: page.slug, style: {
-                        color: "#333",
+            padding: "1rem 1.5rem",
+            backgroundColor: "var(--tb-color-surface, #fff)",
+            borderBottom: "1px solid var(--tb-color-border, #e5e7eb)",
+            position: props.sticky ? "sticky" : undefined,
+            top: props.sticky ? 0 : undefined,
+            zIndex: props.sticky ? 10 : undefined,
+        }, children: [_jsx("a", { href: brandHref, style: {
+                    fontSize: "1.25rem",
+                    fontWeight: 700,
+                    color: "var(--tb-color-text, #111)",
+                    textDecoration: "none",
+                }, children: brandText }), _jsx("div", { style: { display: "flex", gap: "1.5rem", alignItems: "center" }, children: items.map((item) => (_jsx("a", { href: item.href, style: {
+                        color: "var(--tb-color-text, #333)",
                         textDecoration: "none",
                         fontSize: "0.875rem",
-                    }, children: page.name }, page.id))) }), _jsx("button", { style: {
+                    }, children: item.label }, `${item.href}-${item.label}`))) }), props.cta ? (_jsx("a", { href: props.cta.href, style: {
                     padding: "0.5rem 1rem",
-                    backgroundColor: "#4a90e2",
-                    color: "white",
-                    border: "none",
+                    backgroundColor: props.cta.style === "primary"
+                        ? "var(--tb-color-primary, #4a90e2)"
+                        : "transparent",
+                    color: props.cta.style === "primary"
+                        ? "#fff"
+                        : "var(--tb-color-primary, #4a90e2)",
+                    border: props.cta.style === "outline"
+                        ? "1px solid var(--tb-color-primary, #4a90e2)"
+                        : "none",
                     borderRadius: "4px",
-                    cursor: "pointer",
-                }, disabled: true, children: "Contact" })] }));
+                    textDecoration: "none",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                }, children: props.cta.label })) : null] }));
 }

@@ -29,7 +29,9 @@ export const ProductComparisonSchema = z
   .object({
     heading: optStr(200),
     description: optStr(500),
-    productIds: z.array(z.string().max(80)).min(2).max(4),
+    // min(0) so a freshly-dropped block from the palette validates
+    // before the user picks comparison products via the inspector.
+    productIds: z.array(z.string().max(80)).min(0).max(4),
     attributes: z
       .array(
         z.enum([

@@ -10,6 +10,7 @@
  */
 
 import type {
+  PublicAssetSummary,
   PublicCategory,
   PublicNavPage,
   PublicProduct,
@@ -27,6 +28,13 @@ export interface BlockDataContext {
   navPages: PublicNavPage[];
   products: PublicProduct[];
   featuredBlogPosts: PublicBlogPostListItem[];
+  /**
+   * Resolved MediaAsset rows for every `{ assetId }` ref in the block
+   * tree. Page routes batch-fetch via `getPublicAssets()` and `collect
+   * AssetIds()` then thread the keyed map here so blocks resolve refs
+   * synchronously at render time.
+   */
+  assets?: Record<string, PublicAssetSummary>;
   /** Present on product-detail routes. */
   activeProduct?: PublicProduct | null;
   /** Related-to-active products (same category). */

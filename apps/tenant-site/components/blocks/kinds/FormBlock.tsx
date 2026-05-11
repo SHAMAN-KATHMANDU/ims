@@ -3,35 +3,83 @@
 /**
  * form block — dynamic contact / lead-capture form.
  *
- * Renders a form from the schema-defined field list; submits to the
- * same-origin proxy at /api/public/form-submissions. The backend
- * stores the submission and optionally creates a CRM Lead when
- * submitTo === "crm-lead".
+ * Field rendering lives in `./form/FormFields` (re-used by the inspector
+ * preview). Validation lives in `./form/validate`. This file owns the
+ * page-level chrome (heading, description, submit button, success
+ * screen) and the submission round-trip.
+ *
+ * On submit:
+ *   1. Run client-side validation (errors render inline next to each
+ *      field; submit aborts with a focus to the first invalid input).
+ *   2. POST to the same-origin proxy at `/api/public/form-submissions`
+ *      which forwards to the API. Backend re-validates.
+ *   3. On success: swap to the success screen with the configured
+ *      message; on failure: show the error inline and keep the form
+ *      values so the user doesn't lose their work.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormBlockProps } from "@repo/shared";
 import type { BlockComponentProps } from "../registry";
+import { FormFields, validateFormFields } from "@repo/blocks";
 
 export function FormBlock({
   node,
   props,
 }: BlockComponentProps<FormBlockProps>) {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const fields = props.fields ?? [];
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    initialValues(fields),
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  // Re-init values when the field list changes (editor live-edits the
+  // schema without a full reload). Keyed on the labels so a value-only
+  // edit doesn't reset everything mid-typing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setValues(initialValues(fields));
+    setErrors({});
+  }, [fields.length, fields.map((f) => f.label).join("|")]);
+
   const wrapperHasPadY = node.style?.paddingY !== undefined;
   const sectionPad = wrapperHasPadY ? undefined : "var(--section-padding) 0";
-  const fields = props.fields ?? [];
 
   const updateField = (label: string, value: string) => {
     setValues((v) => ({ ...v, [label]: value }));
+    if (errors[label]) {
+      setErrors((current) => {
+        const next = { ...current };
+        delete next[label];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSubmitError(null);
+    const validationErrors = validateFormFields(fields, values);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      // Focus the first invalid field so keyboard + screen-reader users
+      // land on the problem instead of the page jumping silently.
+      const firstInvalidLabel = fields.find(
+        (f) => validationErrors[f.label] !== undefined,
+      )?.label;
+      if (firstInvalidLabel && formRef.current) {
+        const el = formRef.current.querySelector<HTMLElement>(
+          `[name="${cssEscape(firstInvalidLabel)}"]`,
+        );
+        el?.focus();
+      }
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/public/form-submissions", {
@@ -43,6 +91,9 @@ export function FormBlock({
             value: values[f.label] ?? "",
           })),
           submitTo: props.submitTo,
+          ...(props.recipients && props.recipients.length > 0
+            ? { recipients: props.recipients }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -54,7 +105,9 @@ export function FormBlock({
       }
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setSubmitError(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +125,7 @@ export function FormBlock({
             style={{
               fontSize: "2rem",
               marginBottom: "1rem",
-              color: "var(--color-success)",
+              color: "var(--color-success, #15803d)",
             }}
           >
             ✓
@@ -84,6 +137,14 @@ export function FormBlock({
       </section>
     );
   }
+
+  const buttonAlign = props.buttonAlignment ?? "start";
+  const buttonClass =
+    props.buttonStyle === "outline"
+      ? "btn btn-outline"
+      : props.buttonStyle === "ghost"
+        ? "btn btn-ghost"
+        : "btn";
 
   return (
     <section style={{ padding: sectionPad }}>
@@ -111,114 +172,82 @@ export function FormBlock({
           </p>
         )}
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
+          noValidate
           style={{
             display: "flex",
             flexDirection: "column",
             gap: "1.25rem",
           }}
         >
-          {fields.map((field) => (
-            <label
-              key={field.label}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.35rem",
-              }}
-            >
-              <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                {field.label}
-                {field.required && (
-                  <span
-                    aria-label="required"
-                    style={{ color: "var(--color-error)" }}
-                  >
-                    {" "}
-                    *
-                  </span>
-                )}
-              </span>
-              {field.kind === "textarea" ? (
-                <textarea
-                  value={values[field.label] ?? ""}
-                  onChange={(e) => updateField(field.label, e.target.value)}
-                  required={field.required}
-                  placeholder={field.placeholder}
-                  rows={4}
-                  style={inputStyle}
-                />
-              ) : field.kind === "select" ? (
-                <select
-                  value={values[field.label] ?? ""}
-                  onChange={(e) => updateField(field.label, e.target.value)}
-                  required={field.required}
-                  style={inputStyle}
-                >
-                  <option value="">{field.placeholder ?? "Select…"}</option>
-                  {(field.options ?? []).map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={
-                    field.kind === "email"
-                      ? "email"
-                      : field.kind === "phone"
-                        ? "tel"
-                        : "text"
-                  }
-                  value={values[field.label] ?? ""}
-                  onChange={(e) => updateField(field.label, e.target.value)}
-                  required={field.required}
-                  placeholder={field.placeholder}
-                  style={inputStyle}
-                />
-              )}
-            </label>
-          ))}
+          <FormFields
+            fields={fields}
+            values={values}
+            onChange={updateField}
+            errors={errors}
+          />
 
-          {error && (
+          {submitError && (
             <p
               role="alert"
               style={{
                 padding: "0.75rem 1rem",
-                background: "var(--color-error-bg)",
-                color: "var(--color-error)",
-                border: "1px solid var(--color-error-border)",
+                background: "var(--color-error-bg, #fef2f2)",
+                color: "var(--color-error, #b91c1c)",
+                border: "1px solid var(--color-error-border, #fecaca)",
                 borderRadius: "var(--radius)",
                 fontSize: "0.88rem",
               }}
             >
-              {error}
+              {submitError}
             </p>
           )}
 
-          <button
-            type="submit"
-            className="btn"
-            disabled={submitting}
-            aria-busy={submitting}
-            style={{ alignSelf: "flex-start", minHeight: 44 }}
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                buttonAlign === "stretch"
+                  ? "stretch"
+                  : buttonAlign === "center"
+                    ? "center"
+                    : "flex-start",
+            }}
           >
-            {submitting ? "Sending…" : (props.submitLabel ?? "Submit")}
-          </button>
+            <button
+              type="submit"
+              className={buttonClass}
+              disabled={submitting}
+              aria-busy={submitting}
+              style={{
+                minHeight: 44,
+                width: buttonAlign === "stretch" ? "100%" : undefined,
+              }}
+            >
+              {submitting ? "Sending…" : (props.submitLabel ?? "Submit")}
+            </button>
+          </div>
         </form>
       </div>
     </section>
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  padding: "0.85rem 1.1rem",
-  minHeight: 44,
-  border: "1px solid var(--color-border)",
-  borderRadius: "var(--radius)",
-  background: "var(--color-background)",
-  color: "var(--color-text)",
-  fontSize: "1rem",
-  fontFamily: "inherit",
-};
+function initialValues(
+  fields: FormBlockProps["fields"],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of fields ?? []) {
+    out[field.label] = field.defaultValue ?? "";
+  }
+  return out;
+}
+
+// Minimal CSS.escape polyfill for old browsers.
+function cssEscape(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+  return value.replace(/(["\\])/g, "\\$1");
+}

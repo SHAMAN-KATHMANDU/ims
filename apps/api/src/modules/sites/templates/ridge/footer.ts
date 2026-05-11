@@ -12,6 +12,7 @@ export function ridgeFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "minimal",
       showBrand: true,
       brand: "RIDGE//",
       tagline: "Performance gear for the next attempt.",

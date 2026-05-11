@@ -12,6 +12,7 @@ export function foxgloveFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "standard",
       showBrand: true,
       brand: "Foxglove & Co.",
       tagline: "An independent bookshop. Quietly read since 2011.",

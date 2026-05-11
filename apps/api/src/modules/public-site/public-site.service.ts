@@ -14,6 +14,7 @@ import type {
 } from "./public-site.schema";
 import defaultCollectionsRepo from "@/modules/collections/collections.repository";
 import defaultPromoRepo from "@/modules/promos/promo.repository";
+import prisma from "@/config/prisma";
 
 type Repo = typeof defaultRepo;
 type CollectionsRepo = typeof defaultCollectionsRepo;
@@ -41,6 +42,7 @@ export class PublicSiteService {
     seo: unknown;
     themeTokens: unknown;
     analytics: unknown;
+    navigation: unknown;
     template: PublicSiteConfig["template"];
     locale: string;
     locales: string[];
@@ -56,6 +58,12 @@ export class PublicSiteService {
       seo: config.seo,
       themeTokens: config.themeTokens,
       analytics: config.analytics,
+      // Navigation { primary, utility, footer } is populated on Apply by
+      // seedNavigationFromBlueprint and edited via the Site editor's
+      // Navigation tab. NavBarBlock + footer blocks read this on the
+      // storefront so a single edit propagates to every header instance
+      // without touching the per-block items prop.
+      navigation: config.navigation,
       template: config.template,
       locale,
       locales,
@@ -185,6 +193,80 @@ export class PublicSiteService {
         validTo: p.validTo ? p.validTo.toISOString() : null,
       })),
     };
+  }
+
+  /**
+   * List the tenant's active collections — used by CollectionCardsBlock's
+   * `source="auto"` mode to render real, editor-managed collections instead
+   * of hardcoded placeholders. The list shape is intentionally narrow: each
+   * card only needs slug + title + subtitle to render. Product cover images
+   * stay out so this stays a single fast query.
+   */
+  async listActiveCollections(
+    tenantId: string,
+    limit = 6,
+  ): Promise<{
+    collections: Array<{
+      id: string;
+      slug: string;
+      title: string;
+      subtitle: string | null;
+    }>;
+  }> {
+    await this.ensurePublished(tenantId);
+    const rows = await this.collectionsRepo.list(tenantId);
+    const active = rows
+      .filter((c) => c.isActive)
+      .slice(0, Math.max(1, Math.min(limit, 24)))
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        title: c.title,
+        subtitle: c.subtitle,
+      }));
+    return { collections: active };
+  }
+
+  // Bundle endpoints (public list + by-slug) live in
+  // `apps/api/src/modules/bundles/bundle.router.ts` — `publicBundleRouter`.
+  // Don't add bundle methods here; the dedicated module owns the contract.
+
+  /**
+   * Batch-resolve MediaAsset rows by id for the storefront.
+   *
+   * The block tree references images by `{ assetId }` so the editor doesn't
+   * pin a CDN URL into JSON (that URL would rot when storage moves). Each
+   * page route collects the assetIds in its block tree, calls this once,
+   * and threads the resulting map into BlockDataContext so blocks render
+   * the resolved publicUrl SSR-time without async wait per block.
+   *
+   * Tenant-scoped + soft-deletion-aware: missing or deleted assetIds are
+   * silently dropped. Callers fall back to text/placeholder when an id
+   * isn't in the result map.
+   */
+  async resolveAssets(
+    tenantId: string,
+    ids: string[],
+  ): Promise<{
+    assets: Array<{
+      id: string;
+      publicUrl: string;
+      altText: string | null;
+      mimeType: string;
+    }>;
+  }> {
+    await this.ensurePublished(tenantId);
+    if (ids.length === 0) return { assets: [] };
+    const rows = await prisma.mediaAsset.findMany({
+      where: { tenantId, deletedAt: null, id: { in: ids } },
+      select: {
+        id: true,
+        publicUrl: true,
+        altText: true,
+        mimeType: true,
+      },
+    });
+    return { assets: rows };
   }
 
   /**

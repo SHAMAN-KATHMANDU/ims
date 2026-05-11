@@ -16,6 +16,7 @@ import { MarkdownBody } from "@/components/blog/MarkdownBody";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockNode } from "@repo/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 
 /**
  * Catch-all route for tenant-authored custom pages (About, FAQ,
@@ -169,6 +170,8 @@ export default async function TenantCustomPage({
         : []),
     ];
 
+    const assets = await buildAssetMap(ctx.host, ctx.tenantId, blocks);
+
     const blockDataContext: BlockDataContext = {
       site,
       host: ctx.host,
@@ -182,6 +185,7 @@ export default async function TenantCustomPage({
       searchParams: params_resolved,
       productFacets: productList?.facets,
       promos,
+      assets,
     };
 
     return (

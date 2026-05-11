@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useEffect } from "react";
 import { z } from "zod";
 import { BLOCK_PROPS_SCHEMAS } from "@repo/shared";
 import { getFieldOverride } from "./inspector-overrides";
+import { getCustomWidget } from "./widgets/registry";
 import { MediaPicker } from "./MediaPicker";
 import { LinkPicker } from "./LinkPicker";
 
@@ -357,15 +358,33 @@ export function SchemaDrivenForm({
           const fieldValue = value[field.name];
           const override = field.override;
 
-          // If there's a bespoke widget, show a placeholder
+          // Bespoke widget — resolve via the registry and mount the
+          // real component. Falls back to a "missing" message when the
+          // registry doesn't know the widget name (catches typos in
+          // inspector-overrides without crashing).
           if (override?.widget) {
+            const Widget = getCustomWidget(override.widget);
+            if (Widget) {
+              return (
+                <div key={field.name}>
+                  <Widget
+                    value={fieldValue}
+                    onChange={(next: unknown) =>
+                      handleFieldChange(field.name, next)
+                    }
+                    label={fieldLabel}
+                    blockKind={blockKind}
+                  />
+                </div>
+              );
+            }
             return (
               <div key={field.name}>
                 <div className="text-xs mb-1" style={{ color: "var(--ink-3)" }}>
                   {fieldLabel}
                 </div>
                 <div className="text-xs" style={{ color: "var(--ink-4)" }}>
-                  Custom editor: {override.widget}
+                  Custom editor missing: {override.widget}
                 </div>
               </div>
             );

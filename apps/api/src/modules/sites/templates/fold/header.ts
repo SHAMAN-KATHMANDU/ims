@@ -23,6 +23,7 @@ export function foldHeader(): BlockNode[] {
       ],
     }),
     block("nav-bar", {
+      variant: "split",
       brand: "FOLD",
       brandStyle: "sans",
       items: [

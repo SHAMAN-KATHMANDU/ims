@@ -217,6 +217,46 @@ class PublicSiteController {
       );
     }
   };
+
+  listActiveCollections = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const limitRaw = Number(req.query.limit);
+      const limit =
+        Number.isFinite(limitRaw) && limitRaw > 0
+          ? Math.min(24, Math.max(1, Math.floor(limitRaw)))
+          : 6;
+      const result = await service.listActiveCollections(tenantId, limit);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "List public collections error")
+      );
+    }
+  };
+
+  resolveAssets = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      // Accept either ?ids=a,b,c or a single ?ids=a (Express collapses
+      // single-value query params to the bare string). Cap the batch so
+      // a misbehaving client can't request the whole library.
+      const raw = req.query.ids;
+      const idList = (typeof raw === "string" ? raw : "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const ids = idList.slice(0, 50);
+      const result = await service.resolveAssets(tenantId, ids);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Resolve public assets error")
+      );
+    }
+  };
 }
 
 export default new PublicSiteController();

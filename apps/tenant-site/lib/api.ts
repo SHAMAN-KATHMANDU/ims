@@ -102,6 +102,29 @@ export interface PublicSiteAnalytics {
   consentMode?: "basic" | "granted";
 }
 
+export interface PublicSiteNavItem {
+  id: string;
+  label: string;
+  href: string;
+}
+
+export interface PublicSiteNavGroup {
+  id: string;
+  title: string;
+  items: PublicSiteNavItem[];
+}
+
+/**
+ * Editor-managed navigation propagated from `SiteConfig.navigation`. The
+ * NavBarBlock + footer-columns block read this so a tenant editing the
+ * Navigation tab updates every header/footer instance at once.
+ */
+export interface PublicSiteNavigation {
+  primary: PublicSiteNavItem[];
+  utility?: PublicSiteNavItem[];
+  footer?: PublicSiteNavGroup[];
+}
+
 export interface PublicSite {
   branding: Record<string, unknown> | null;
   contact: Record<string, unknown> | null;
@@ -111,6 +134,8 @@ export interface PublicSite {
   themeTokens?: Record<string, unknown> | null;
   /** Analytics tracker IDs — GA4, GTM, Meta Pixel, Consent Mode. */
   analytics?: PublicSiteAnalytics | null;
+  /** Editor-managed nav from SiteConfig.navigation; null if never seeded. */
+  navigation?: PublicSiteNavigation | null;
   template: PublicTemplate | null;
   /** BCP-47 tag: tenant's default locale (drives Intl formatting). */
   locale?: string | null;
@@ -532,6 +557,86 @@ export function getCollection(
       tags: [`tenant:${tenantId}:collection:${slug}`],
     },
   );
+}
+
+/**
+ * Resolved MediaAsset summary — what the storefront needs to render an
+ * `<img src>` for an `{ assetId }` block ref. Returned in batches by
+ * `getPublicAssets()` and threaded into BlockDataContext.assets.
+ */
+export interface PublicAssetSummary {
+  id: string;
+  publicUrl: string;
+  altText: string | null;
+  mimeType: string;
+}
+
+/**
+ * Batch-resolve MediaAsset rows by id. Used by page routes to hydrate
+ * every `{ assetId }` ref in the block tree in a single round trip;
+ * blocks then look up their refs synchronously via dataContext.assets.
+ */
+export async function getPublicAssets(
+  host: string,
+  tenantId: string,
+  ids: string[],
+): Promise<PublicAssetSummary[]> {
+  const filtered = Array.from(new Set(ids.filter(Boolean))).slice(0, 50);
+  if (filtered.length === 0) return [];
+  try {
+    const result = await publicFetch<{ assets: PublicAssetSummary[] }>(
+      `/public/assets?ids=${encodeURIComponent(filtered.join(","))}`,
+      {
+        host,
+        tenantId,
+        // Asset URLs are stable per id; cache hard with the asset list tag
+        // so an admin rename / replace busts the storefront in one shot.
+        tags: [`tenant:${tenantId}:assets`],
+      },
+    );
+    return result?.assets ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Lightweight Collection summary for the CollectionCardsBlock auto-mode
+ * resolver — id/slug/title/subtitle, no products. Avoids dragging the
+ * full PublicCollection in when only the cover labels are needed.
+ */
+export interface PublicCollectionSummary {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+}
+
+/**
+ * List the tenant's active collections — drives CollectionCardsBlock
+ * `source="auto"`. Returns [] on any error so the block renders a graceful
+ * empty state instead of breaking the page.
+ */
+export async function getCollections(
+  host: string,
+  tenantId: string,
+  query: { limit?: number } = {},
+): Promise<PublicCollectionSummary[]> {
+  const params = new URLSearchParams();
+  if (query.limit) params.set("limit", String(query.limit));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  try {
+    const result = await publicFetch<{
+      collections: PublicCollectionSummary[];
+    }>(`/public/collections${suffix}`, {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:collections`],
+    });
+    return result?.collections ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export function getProduct(host: string, tenantId: string, id: string) {

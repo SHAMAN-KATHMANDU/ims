@@ -12,69 +12,178 @@ import Link from "next/link";
 import type { BlockComponentProps } from "../registry";
 
 // ---------- footer-columns --------------------------------------------------
+//
+// `variant` switches the layout while preserving the same data contract.
+// Standard is the existing default; minimal/dark/centered are new looks
+// that reuse the columns + brand props without forcing the user to
+// reauthor content. Add another variant by extending the schema's enum
+// and adding a case to the switch.
 
-export interface FooterColumnsProps {
-  showBrand?: boolean;
-  brand?: string;
-  tagline?: string;
-  columns?: Array<{
-    title: string;
-    links?: Array<{
-      label: string;
-      href: string;
-    }>;
-  }>;
-}
+import type { FooterColumnsProps } from "@repo/shared";
 
 export function FooterColumnsBlock({
   props,
 }: BlockComponentProps<FooterColumnsProps>) {
+  switch (props.variant) {
+    case "minimal":
+      return <FooterColumnsMinimal props={props} />;
+    case "dark":
+      return <FooterColumnsDark props={props} />;
+    case "centered":
+      return <FooterColumnsCentered props={props} />;
+    default:
+      return <FooterColumnsStandard props={props} />;
+  }
+}
+
+function FooterColumnsStandard({ props }: { props: FooterColumnsProps }) {
   const {
     showBrand = true,
     brand = "Shaman Goods",
     tagline,
     columns = [],
   } = props;
-
   const totalCols = (showBrand ? 1 : 0) + columns.length;
   const gridCols = Math.max(2, Math.min(totalCols, 5));
-
   return (
     <div
       className="grid gap-10"
       style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0,1fr))` }}
+      data-block-variant="standard"
     >
-      {showBrand && (
-        <div className="flex flex-col gap-2 md:col-span-1">
-          <div className="font-serif text-[20px] text-[var(--t-text)] leading-tight">
-            {brand}
-          </div>
-          {tagline && (
-            <div className="text-[12.5px] text-[var(--t-muted)] leading-[1.6] max-w-[22rem]">
-              {tagline}
-            </div>
-          )}
+      {showBrand && <FooterBrand brand={brand} tagline={tagline} />}
+      {columns.map((col, i) => (
+        <FooterColumn key={i} col={col} />
+      ))}
+    </div>
+  );
+}
+
+function FooterColumnsMinimal({ props }: { props: FooterColumnsProps }) {
+  const { brand = "Shaman Goods", tagline, columns = [] } = props;
+  // Flatten columns into a single inline link bar — no titles, no grid.
+  const links = columns.flatMap((c) => c.links ?? []);
+  return (
+    <div
+      className="flex flex-col gap-3 items-start"
+      data-block-variant="minimal"
+    >
+      <div className="font-serif text-[18px] text-[var(--t-text)] leading-tight">
+        {brand}
+      </div>
+      {tagline && (
+        <div className="text-[12px] text-[var(--t-muted)] max-w-[36rem]">
+          {tagline}
         </div>
       )}
-      {columns.map((col, i) => (
-        <div key={i} className="flex flex-col gap-3">
-          <div className="text-[10.5px] uppercase tracking-[0.16em] text-[var(--t-muted)] font-medium">
-            {col.title}
-          </div>
-          <ul className="flex flex-col gap-2 text-[13px] text-[var(--t-text)] m-0 p-0 list-none">
-            {(col.links || []).map((link, j) => (
-              <li key={j}>
-                <Link
-                  href={link.href}
-                  className="no-underline text-[var(--t-text)] hover:opacity-70 transition-opacity"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {links.length > 0 && (
+        <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] text-[var(--t-text)] m-0 p-0 list-none">
+          {links.map((link, i) => (
+            <li key={i}>
+              <Link
+                href={link.href}
+                className="no-underline text-[var(--t-text)] hover:opacity-70 transition-opacity"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function FooterColumnsDark({ props }: { props: FooterColumnsProps }) {
+  // Same standard grid but inverted via CSS variables — relies on the
+  // section wrapper (set by the inspector or by a parent section block)
+  // for the dark background; the block itself sets local text colour.
+  return (
+    <div
+      className="dark text-[var(--t-text)]"
+      style={{
+        background: "var(--color-text)",
+        color: "var(--color-background)",
+        padding: "1.5rem",
+        borderRadius: "var(--radius)",
+      }}
+      data-block-variant="dark"
+    >
+      <FooterColumnsStandard props={props} />
+    </div>
+  );
+}
+
+function FooterColumnsCentered({ props }: { props: FooterColumnsProps }) {
+  const { brand = "Shaman Goods", tagline, columns = [] } = props;
+  return (
+    <div
+      className="flex flex-col items-center gap-8 text-center"
+      data-block-variant="centered"
+    >
+      <div className="flex flex-col gap-2">
+        <div className="font-serif text-[22px] text-[var(--t-text)] leading-tight">
+          {brand}
         </div>
-      ))}
+        {tagline && (
+          <div className="text-[12.5px] text-[var(--t-muted)] max-w-[40rem]">
+            {tagline}
+          </div>
+        )}
+      </div>
+      <div
+        className="grid gap-10 w-full"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(2, Math.min(columns.length, 4))}, minmax(0,1fr))`,
+        }}
+      >
+        {columns.map((col, i) => (
+          <FooterColumn key={i} col={col} centered />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FooterBrand({ brand, tagline }: { brand: string; tagline?: string }) {
+  return (
+    <div className="flex flex-col gap-2 md:col-span-1">
+      <div className="font-serif text-[20px] text-[var(--t-text)] leading-tight">
+        {brand}
+      </div>
+      {tagline && (
+        <div className="text-[12.5px] text-[var(--t-muted)] leading-[1.6] max-w-[22rem]">
+          {tagline}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FooterColumn({
+  col,
+  centered = false,
+}: {
+  col: NonNullable<FooterColumnsProps["columns"]>[number];
+  centered?: boolean;
+}) {
+  return (
+    <div className={`flex flex-col gap-3 ${centered ? "items-center" : ""}`}>
+      <div className="text-[10.5px] uppercase tracking-[0.16em] text-[var(--t-muted)] font-medium">
+        {col.title}
+      </div>
+      <ul className="flex flex-col gap-2 text-[13px] text-[var(--t-text)] m-0 p-0 list-none">
+        {(col.links || []).map((link, j) => (
+          <li key={j}>
+            <Link
+              href={link.href}
+              className="no-underline text-[var(--t-text)] hover:opacity-70 transition-opacity"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

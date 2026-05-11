@@ -21,12 +21,12 @@ import type {
   CategoryTilesProps,
 } from "@repo/shared";
 import type { PublicProduct } from "@/lib/api";
-import { getCollection, getOffers } from "@/lib/api";
 import { getSiteFormatOptions } from "@/lib/format";
 import { normalizeImageRef } from "@/lib/image";
 import type { BlockComponentProps } from "../registry";
 import { ProductCarousel } from "./ProductCarousel";
 import { BlockGridSkeleton } from "./BlockSkeletons";
+import { resolveProductGridFromDataContext } from "../resolvers/product-grid";
 
 export function HeroBlock({
   props,
@@ -53,92 +53,13 @@ export function HeroBlock({
       ctaLabel={props.ctaLabel ?? "Shop the collection"}
       title={props.title}
       subtitle={props.subtitle}
-      imageUrl={normalizeImageRef(props.imageUrl)}
+      imageUrl={normalizeImageRef(props.imageUrl, dataContext?.assets)}
       heroLayout={props.heroLayout}
       videoUrl={props.videoUrl}
-      videoPoster={normalizeImageRef(props.videoPoster)}
+      videoPoster={normalizeImageRef(props.videoPoster, dataContext?.assets)}
       shoppableProducts={shoppableProducts}
     />
   );
-}
-
-function selectProducts(
-  all: PublicProduct[],
-  source: ProductGridProps["source"],
-  opts: { categoryId?: string; productIds?: string[]; limit: number },
-): PublicProduct[] {
-  if (source === "manual" && opts.productIds && opts.productIds.length > 0) {
-    const byId = new Map(all.map((p) => [p.id, p] as const));
-    return opts.productIds
-      .map((id) => byId.get(id))
-      .filter((p): p is PublicProduct => !!p)
-      .slice(0, opts.limit);
-  }
-  if (source === "category" && opts.categoryId) {
-    return all
-      .filter((p) => p.categoryId === opts.categoryId)
-      .slice(0, opts.limit);
-  }
-  if (source === "on-sale") {
-    return all
-      .filter((p) => p.finalSp && p.mrp && Number(p.finalSp) < Number(p.mrp))
-      .slice(0, opts.limit);
-  }
-  if (source === "newest") {
-    return [...all]
-      .sort(
-        (a, b) =>
-          new Date(b.dateCreated ?? 0).getTime() -
-          new Date(a.dateCreated ?? 0).getTime(),
-      )
-      .slice(0, opts.limit);
-  }
-  if (source === "price-low") {
-    return [...all]
-      .sort((a, b) => Number(a.finalSp) - Number(b.finalSp))
-      .slice(0, opts.limit);
-  }
-  if (source === "price-high") {
-    return [...all]
-      .sort((a, b) => Number(b.finalSp) - Number(a.finalSp))
-      .slice(0, opts.limit);
-  }
-  return all.slice(0, opts.limit);
-}
-
-/**
- * Fetch the right product set for the grid's `source`. For the two new
- * sources (`collection`, `offers`) we hit dedicated endpoints so the
- * home page doesn't have to preload every possible dataset. For legacy
- * sources we keep reading from `dataContext.products`.
- */
-async function resolveProducts(
-  props: ProductGridProps,
-  dataContext: BlockComponentProps<ProductGridProps>["dataContext"],
-): Promise<PublicProduct[]> {
-  if (props.source === "offers") {
-    const res = await getOffers(dataContext.host, dataContext.tenantId, {
-      limit: props.limit,
-    });
-    return res?.products ?? [];
-  }
-  if (props.source === "collection") {
-    if (!props.collectionSlug) return [];
-    const res = await getCollection(
-      dataContext.host,
-      dataContext.tenantId,
-      props.collectionSlug,
-      props.limit,
-    );
-    if (!res) return [];
-    const collection = "collection" in res ? res.collection : res;
-    return collection.products ?? [];
-  }
-  return selectProducts(dataContext.products, props.source, {
-    categoryId: props.categoryId,
-    productIds: props.productIds,
-    limit: props.limit,
-  });
 }
 
 export function ProductGridBlock(args: BlockComponentProps<ProductGridProps>) {
@@ -173,7 +94,7 @@ async function ProductGridInner({
   props,
   dataContext,
 }: BlockComponentProps<ProductGridProps>) {
-  const products = await resolveProducts(props, dataContext);
+  const products = await resolveProductGridFromDataContext(props, dataContext);
   const layout = props.layout ?? "grid";
   const wrapperHasPadY = node.style?.paddingY !== undefined;
   const formatOpts = getSiteFormatOptions(dataContext.site);

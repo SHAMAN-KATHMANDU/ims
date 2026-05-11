@@ -12,6 +12,7 @@ export function auricFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "standard",
       showBrand: true,
       brand: "Auric",
       tagline:

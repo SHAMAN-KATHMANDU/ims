@@ -12,6 +12,7 @@ export function forgeFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "dark",
       showBrand: true,
       brand: "FORGE / B2B",
       tagline:

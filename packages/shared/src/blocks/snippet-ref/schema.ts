@@ -19,7 +19,9 @@ export interface SnippetRefProps {
 
 export const SnippetRefSchema = z
   .object({
-    snippetId: z.string().min(1).max(80),
+    // min(0) so a freshly-dropped snippet-ref from the palette validates
+    // before the user picks a snippet via the inspector.
+    snippetId: z.string().min(0).max(80),
     fallbackTitle: optStr(160),
   })
   .strict();

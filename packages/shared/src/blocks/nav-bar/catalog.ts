@@ -13,7 +13,6 @@ export const navBarCatalog: CatalogEntry<"nav-bar"> = {
     showCart: true,
     showAccount: false,
     sticky: true,
-    variant: "standard",
     align: "between",
     items: [
       { label: "Shop", href: "/products" },

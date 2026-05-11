@@ -10,6 +10,7 @@ import {
 import { notFound } from "next/navigation";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 import { homeMetadata, organizationJsonLd } from "@/lib/seo";
 import type { Metadata } from "next";
@@ -62,6 +63,8 @@ export default async function HomePage() {
       : []),
   ];
 
+  const assets = await buildAssetMap(ctx.host, ctx.tenantId, blocks);
+
   const dataContext: BlockDataContext = {
     site,
     host: ctx.host,
@@ -70,6 +73,7 @@ export default async function HomePage() {
     navPages,
     products: [],
     featuredBlogPosts,
+    assets,
   };
 
   return (

@@ -17,13 +17,25 @@ export interface CollectionCardItem {
 }
 
 /**
- * Collection cards props — 2–4 big image-text cards linking to collections.
+ * Collection cards props — image-text cards linking to collections.
+ *
+ * Two modes:
+ *   - `source="manual"` (default for backward compat): renders the literal
+ *     `cards[]` array exactly as authored.
+ *   - `source="auto"`: ignores `cards[]`; the resolver fetches the tenant's
+ *     active Collection rows (`/public/collections`) and renders them in
+ *     `sortOrder`. Use this on templates that should "just work" against
+ *     whatever collections the tenant has set up.
+ *
+ * `limit` only applies in auto mode (manual already caps at the array
+ * length).
  */
 export interface CollectionCardsProps {
+  source?: "manual" | "auto";
+  limit?: number;
   heading?: string;
   eyebrow?: string;
-  /** 2–4 cards. Each card links to a collection, category, or landing. */
-  cards: CollectionCardItem[];
+  cards?: CollectionCardItem[];
   aspectRatio?: "square" | "portrait" | "landscape";
   overlay?: boolean;
 }
@@ -33,6 +45,8 @@ export interface CollectionCardsProps {
  */
 export const CollectionCardsSchema = z
   .object({
+    source: z.enum(["manual", "auto"]).optional(),
+    limit: z.number().int().min(1).max(12).optional(),
     heading: optStr(200),
     eyebrow: optStr(100),
     cards: z
@@ -47,8 +61,10 @@ export const CollectionCardsSchema = z
           })
           .strict(),
       )
-      .min(1)
-      .max(4),
+      // min(0) so a fresh `source="auto"` block validates with no cards.
+      .min(0)
+      .max(8)
+      .optional(),
     aspectRatio: z.enum(["square", "portrait", "landscape"]).optional(),
     overlay: z.boolean().optional(),
   })

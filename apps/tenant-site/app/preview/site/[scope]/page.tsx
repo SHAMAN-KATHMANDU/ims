@@ -253,6 +253,14 @@ export default async function SitePreviewRoute({
   // human-readable string so an empty brand reads "Your site" instead of
   // leaking a "__preview__" sentinel into the rendered header. Tenant id is
   // never rendered as text — kept as a sentinel for cache-tag scoping.
+  // The preview route uses display sentinels for host / tenantId because
+  // the preview iframe lives on a different surface than the published
+  // storefront. Asset hydration would need a real tenantId to hit
+  // /public/assets — for now the preview renders without resolved assetIds
+  // (image refs that are bare URLs still work). When the preview gets a
+  // real tenant context, plumb it through here.
+  const assets = {};
+
   const dataContext: BlockDataContext = {
     site,
     host: "Your site",
@@ -263,6 +271,7 @@ export default async function SitePreviewRoute({
     featuredBlogPosts: result.featuredBlogPosts,
     activeProduct: result.activeProduct ?? undefined,
     relatedProducts: result.relatedProducts ?? [],
+    assets,
   };
 
   return (

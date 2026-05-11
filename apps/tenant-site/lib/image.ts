@@ -52,27 +52,30 @@ export function resolveImageUrl(
  * normalizeImageRef — converts ImageRef (union of string | { assetId } | { url })
  * to a string URL for rendering.
  *
- * Forward-only compatibility layer: accepts legacy string URLs and ImageRef objects.
- * - If ref is a string, returns it as-is
- * - If ref is { url: "..." }, returns the URL
- * - If ref is { assetId: "..." }, logs a warning and returns empty (deferred to Phase 8.b)
+ *   - Bare string → returned as-is.
+ *   - `{ url }` → unwraps to the URL.
+ *   - `{ assetId }` → looks up `assets[assetId].publicUrl`. Returns empty
+ *     string when no map is provided or the id isn't in the map (block
+ *     renderers handle empty src by rendering nothing or a placeholder).
  *
- * TODO Phase 8.b: fetch MediaAsset by assetId from public API and resolve to URL
+ * Page routes hydrate the map via `buildAssetMap()` and thread it into
+ * `BlockDataContext.assets`; block components call this with that map.
  */
+
+export type AssetMap = Record<string, { publicUrl: string }>;
+
 export function normalizeImageRef(
   ref: string | ImageRef | null | undefined,
+  assets?: AssetMap,
 ): string {
   if (!ref) return "";
   if (typeof ref === "string") return ref;
   if ("url" in ref) return ref.url || "";
   if ("assetId" in ref) {
-    // TODO Phase 8.b: resolve assetId to MediaAsset URL via public API
-    // For now, log and skip. Block renderers will gracefully handle missing src.
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[tenant-site] Image with assetId ${ref.assetId} not yet resolved (Phase 8.b)`,
-    );
-    return "";
+    const id = ref.assetId;
+    if (!id) return "";
+    const resolved = assets?.[id];
+    return resolved?.publicUrl ?? "";
   }
   return "";
 }

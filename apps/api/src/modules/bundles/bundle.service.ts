@@ -11,6 +11,10 @@ import bundleRepository, {
   type UpdateBundleRepoData,
 } from "./bundle.repository";
 import type { CreateBundleDto, UpdateBundleDto } from "./bundle.schema";
+import {
+  revalidateTenantTags,
+  bundleTags,
+} from "@/shared/cache/revalidateTags";
 
 const ALLOWED_SORT_FIELDS = ["name", "slug", "createdAt", "updatedAt"] as const;
 
@@ -34,7 +38,13 @@ export class BundleService {
       fixedPrice: data.fixedPrice ?? null,
       active: data.active,
     };
-    return this.repo.create(repoData);
+    const created = await this.repo.create(repoData);
+    void revalidateTenantTags(
+      tenantId,
+      bundleTags(tenantId, created.slug),
+      "bundles.create",
+    );
+    return created;
   }
 
   async findAll(tenantId: string, rawQuery: Record<string, unknown>) {
@@ -99,13 +109,29 @@ export class BundleService {
     if (Object.keys(updateData).length === 0) {
       return existing;
     }
-    return this.repo.update(id, updateData);
+    const updated = await this.repo.update(id, updateData);
+    // Bust both old + new slug so a slug rename doesn't leave stale.
+    const slugs = new Set([existing.slug, updated.slug]);
+    void revalidateTenantTags(
+      tenantId,
+      [
+        ...bundleTags(tenantId),
+        ...Array.from(slugs).map((s) => `tenant:${tenantId}:bundle:${s}`),
+      ],
+      "bundles.update",
+    );
+    return updated;
   }
 
   async delete(tenantId: string, id: string) {
     const existing = await this.repo.findById(tenantId, id);
     if (!existing) return null;
     await this.repo.softDelete(id);
+    void revalidateTenantTags(
+      tenantId,
+      bundleTags(tenantId, existing.slug),
+      "bundles.delete",
+    );
     return {};
   }
 

@@ -366,7 +366,7 @@ describe("SitesService", () => {
       expect(navSpy.mock.calls[0]?.[2]).toBe(true);
     });
 
-    it("seedNavigationFromBlueprint preserves user nav unless overwriteExisting=true", async () => {
+    it("seedNavigationFromBlueprint merges new template scopes into user nav (preserves user items)", async () => {
       const userNav = {
         primary: [{ id: "user-1", label: "Custom", href: "/custom" }],
         utility: [],
@@ -379,7 +379,8 @@ describe("SitesService", () => {
       });
       (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockClear();
 
-      // overwriteExisting=false → should leave the user's nav alone.
+      // overwriteExisting=false should preserve the user's "user-1" item
+      // AND additively add the new "home" scope from the template.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (service as any).seedNavigationFromBlueprint(
         "t1",
@@ -391,7 +392,50 @@ describe("SitesService", () => {
       const navCall = calls.find(
         ([, data]) => (data as { navigation?: unknown }).navigation,
       );
-      expect(navCall).toBeUndefined();
+      expect(navCall).toBeDefined();
+      const merged = (
+        navCall![1] as {
+          navigation: { primary: Array<{ id: string; href: string }> };
+        }
+      ).navigation;
+      // User's existing item kept first
+      expect(merged.primary[0]?.id).toBe("user-1");
+      // New scope appended
+      expect(merged.primary.some((item) => item.id === "home")).toBe(true);
+    });
+
+    it("seedNavigationFromBlueprint with overwriteExisting=true replaces user nav with template scopes", async () => {
+      const userNav = {
+        primary: [{ id: "user-1", label: "Custom", href: "/custom" }],
+        utility: [],
+        footer: [],
+      };
+      (mockRepo.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...config(),
+        navigation: userNav,
+      });
+      (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mockClear();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (service as any).seedNavigationFromBlueprint(
+        "t1",
+        { slug: "maison", layouts: { home: [{ id: "x", kind: "spacer" }] } },
+        true,
+      );
+      const calls = (mockRepo.updateConfig as ReturnType<typeof vi.fn>).mock
+        .calls;
+      const navCall = calls.find(
+        ([, data]) => (data as { navigation?: unknown }).navigation,
+      );
+      expect(navCall).toBeDefined();
+      const replaced = (
+        navCall![1] as {
+          navigation: { primary: Array<{ id: string }> };
+        }
+      ).navigation;
+      // user-1 dropped, only template scopes survive
+      expect(replaced.primary.every((item) => item.id !== "user-1")).toBe(true);
+      expect(replaced.primary.some((item) => item.id === "home")).toBe(true);
     });
 
     it("seedNavigationFromBlueprint writes primary nav from PAGE_SCOPES on reset", async () => {

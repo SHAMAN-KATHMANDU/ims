@@ -19,6 +19,7 @@ import {
 import { ProductGrid } from "@/components/templates/shared";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 
 interface PageProps {
@@ -76,6 +77,8 @@ export default async function CollectionPage({ params }: PageProps) {
       : []),
   ];
 
+  const assets = await buildAssetMap(ctx.host, ctx.tenantId, blocks);
+
   const dataContext: BlockDataContext = {
     site,
     host: ctx.host,
@@ -84,6 +87,7 @@ export default async function CollectionPage({ params }: PageProps) {
     navPages,
     products: [],
     featuredBlogPosts: [],
+    assets,
   };
 
   return (

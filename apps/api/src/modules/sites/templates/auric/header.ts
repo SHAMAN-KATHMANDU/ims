@@ -17,6 +17,7 @@ export function auricHeader(): BlockNode[] {
       tone: "muted",
     }),
     block("nav-bar", {
+      variant: "centered",
       brand: "Auric",
       brandStyle: "serif",
       items: [

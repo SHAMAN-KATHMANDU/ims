@@ -142,7 +142,12 @@ export type { VideoProps } from "../blocks/video/schema";
 export type { AccordionProps } from "../blocks/accordion/schema";
 export type { GalleryProps } from "../blocks/gallery/schema";
 export type { TabsProps } from "../blocks/tabs/schema";
-export type { FormFieldDef, FormBlockProps } from "../blocks/form/schema";
+export type {
+  FormFieldDef,
+  FormFieldKind,
+  FormFieldOption,
+  FormBlockProps,
+} from "../blocks/form/schema";
 export type { EmptyStateProps } from "../blocks/empty-state/schema";
 export type { CustomHtmlProps } from "../blocks/custom-html/schema";
 export type { NavBarProps } from "../blocks/nav-bar/schema";

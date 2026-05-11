@@ -6,11 +6,11 @@ export const emptyStateCatalog: CatalogEntry<"empty-state"> = {
   description: "Placeholder for not-found / no-results.",
   category: "content",
   createDefaultProps: () => ({
-    preset: "generic",
+    kind: "generic",
     heading: "Nothing here yet",
     subtitle: "Add content to bring this page to life.",
     illustration: "package",
-    primaryCtaLabel: "Go home",
-    primaryCtaHref: "/",
+    ctaLabel: "Go home",
+    ctaHref: "/",
   }),
 };

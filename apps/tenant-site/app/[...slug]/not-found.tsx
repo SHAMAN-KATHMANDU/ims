@@ -6,6 +6,7 @@
 import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
+import { buildAssetMap } from "@/components/blocks/build-asset-map";
 import type { BlockNode } from "@repo/shared";
 
 export default async function SlugNotFound() {
@@ -43,6 +44,8 @@ export default async function SlugNotFound() {
         : []),
     ];
 
+    const assets = await buildAssetMap(host, tenantId, blocks);
+
     const dataContext: BlockDataContext = {
       site,
       host,
@@ -51,6 +54,7 @@ export default async function SlugNotFound() {
       navPages,
       products: [],
       featuredBlogPosts: [],
+      assets,
     };
 
     return (

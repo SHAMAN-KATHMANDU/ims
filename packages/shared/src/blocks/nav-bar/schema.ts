@@ -59,7 +59,17 @@ export interface NavBarMobileDrawer {
  * Phase 2: enriched schema to be a true NavMenu superset.
  * All new fields are optional for backwards compatibility.
  */
+/**
+ * Visual variant. Same data contract; the renderer picks the chrome.
+ *   - standard: logo-left, nav-row-right with actions far right.
+ *   - centered: logo above centered nav row.
+ *   - split: nav left, logo center, actions right (gallery/lookbook style).
+ *   - transparent: borderless overlay header for hero pages.
+ */
+export type NavBarVariant = "standard" | "centered" | "split" | "transparent";
+
 export interface NavBarProps {
+  variant?: NavBarVariant;
   brand: NavBarBrand;
   brandHref?: string;
   brandStyle?: "serif" | "sans" | "mono";
@@ -129,6 +139,9 @@ const NavBarMobileDrawerSchema = z
 
 export const NavBarSchema = z
   .object({
+    variant: z
+      .enum(["standard", "centered", "split", "transparent"])
+      .optional(),
     brand: NavBarBrandSchema,
     brandHref: optStr(500),
     brandStyle: z.enum(["serif", "sans", "mono"]).optional(),

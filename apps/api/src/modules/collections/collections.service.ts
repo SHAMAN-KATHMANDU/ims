@@ -13,6 +13,10 @@ import type {
   CreateCollectionInput,
   UpdateCollectionInput,
 } from "./collections.schema";
+import {
+  revalidateTenantTags,
+  collectionTags,
+} from "@/shared/cache/revalidateTags";
 
 type Repo = typeof defaultRepo;
 
@@ -68,13 +72,19 @@ export class CollectionsService {
         `A collection with slug "${input.slug}" already exists`,
         409,
       );
-    return this.repo.create(tenantId, {
+    const created = await this.repo.create(tenantId, {
       slug: input.slug,
       title: input.title,
       ...(input.subtitle !== undefined ? { subtitle: input.subtitle } : {}),
       ...(input.sort !== undefined ? { sort: input.sort } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     });
+    void revalidateTenantTags(
+      tenantId,
+      collectionTags(tenantId, created.slug),
+      "collections.create",
+    );
+    return created;
   }
 
   async update(
@@ -94,7 +104,7 @@ export class CollectionsService {
         );
       }
     }
-    return this.repo.update(tenantId, id, {
+    const updated = await this.repo.update(tenantId, id, {
       ...(patch.slug !== undefined ? { slug: patch.slug } : {}),
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.subtitle !== undefined
@@ -103,6 +113,19 @@ export class CollectionsService {
       ...(patch.sort !== undefined ? { sort: patch.sort } : {}),
       ...(patch.isActive !== undefined ? { isActive: patch.isActive } : {}),
     });
+    // Bust both the new slug AND the old slug — a slug rename leaves a
+    // stale cache entry under the old key otherwise. existing.slug is the
+    // pre-update value; updated.slug is the post-update value.
+    const slugs = new Set([existing.slug, updated.slug]);
+    void revalidateTenantTags(
+      tenantId,
+      [
+        ...collectionTags(tenantId),
+        ...Array.from(slugs).map((s) => `tenant:${tenantId}:collection:${s}`),
+      ],
+      "collections.update",
+    );
+    return updated;
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
@@ -110,6 +133,11 @@ export class CollectionsService {
     const existing = await this.repo.findById(tenantId, id);
     if (!existing) throw createError("Collection not found", 404);
     await this.repo.delete(tenantId, id);
+    void revalidateTenantTags(
+      tenantId,
+      collectionTags(tenantId, existing.slug),
+      "collections.remove",
+    );
   }
 
   async setProducts(
@@ -120,7 +148,13 @@ export class CollectionsService {
     await this.assertEnabled(tenantId);
     const existing = await this.repo.findById(tenantId, id);
     if (!existing) throw createError("Collection not found", 404);
-    return this.repo.setProducts(tenantId, id, productIds);
+    const result = await this.repo.setProducts(tenantId, id, productIds);
+    void revalidateTenantTags(
+      tenantId,
+      collectionTags(tenantId, existing.slug),
+      "collections.setProducts",
+    );
+    return result;
   }
 
   /**

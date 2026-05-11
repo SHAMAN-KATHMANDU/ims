@@ -107,7 +107,7 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                 className={`tb-hide-mobile tb-hide-tablet ${className ?? ""}`}
                 style={wrapperStyle}
               >
-                <BlockErrorBoundary>
+                <BlockErrorBoundary blockKind={node.kind}>
                   <Component
                     node={node}
                     props={node.props}
@@ -123,7 +123,7 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                   className={`tb-hide-desktop tb-hide-mobile ${className ?? ""}`}
                   style={wrapperStyle}
                 >
-                  <BlockErrorBoundary>
+                  <BlockErrorBoundary blockKind={node.kind}>
                     <Component
                       node={{
                         ...node,
@@ -143,7 +143,7 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                   className={`tb-hide-desktop tb-hide-tablet ${className ?? ""}`}
                   style={wrapperStyle}
                 >
-                  <BlockErrorBoundary>
+                  <BlockErrorBoundary blockKind={node.kind}>
                     <Component
                       node={{
                         ...node,
@@ -170,7 +170,7 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
             className={className}
             style={wrapperStyle}
           >
-            <BlockErrorBoundary>
+            <BlockErrorBoundary blockKind={node.kind}>
               <Component
                 node={node}
                 props={node.props}

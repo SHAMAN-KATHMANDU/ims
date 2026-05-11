@@ -12,6 +12,7 @@ export function verdantFooter(): BlockNode[] {
   resetIdCounter();
   return [
     block("footer-columns", {
+      variant: "centered",
       showBrand: true,
       brand: "Verdant",
       tagline: "Hand-grown plants from a working nursery north of Pune.",

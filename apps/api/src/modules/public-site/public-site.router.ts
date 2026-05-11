@@ -144,6 +144,55 @@ router.get("/collections/:slug", asyncHandler(controller.getCollectionBySlug));
 
 /**
  * @swagger
+ * /public/collections:
+ *   get:
+ *     summary: List the tenant's active collections (id, slug, title, subtitle)
+ *     description: |
+ *       Powers `CollectionCardsBlock` `source="auto"` and the template
+ *       autowire pass. Capped at 24 to keep the payload small; clients
+ *       that need a larger window should hit the admin endpoints.
+ *     tags: [Public]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 24, default: 6 }
+ *     responses:
+ *       200: { description: Active collections }
+ *       404: { description: Site not published }
+ */
+router.get("/collections", asyncHandler(controller.listActiveCollections));
+
+// `/public/bundles` and `/public/bundles/:slug` are owned by
+// `publicBundleRouter` (mounted at `/public/bundles` in router.config.ts).
+// Don't add bundle routes here — Express's `router.use("/public", ...)`
+// match would shadow the dedicated bundle router.
+
+/**
+ * @swagger
+ * /public/assets:
+ *   get:
+ *     summary: Batch-resolve MediaAsset rows by id for storefront blocks
+ *     description: |
+ *       The block tree stores image references as `{ assetId }` so the
+ *       editor doesn't pin a CDN URL into JSON. The storefront page
+ *       route collects all assetIds in the tree and calls this endpoint
+ *       once to resolve them into publicUrls + altText. Capped at 50
+ *       ids per request.
+ *     tags: [Public]
+ *     parameters:
+ *       - in: query
+ *         name: ids
+ *         required: true
+ *         schema: { type: string }
+ *         description: Comma-separated MediaAsset ids
+ *     responses:
+ *       200: { description: Resolved assets (missing/deleted ids dropped) }
+ *       404: { description: Site not published }
+ */
+router.get("/assets", asyncHandler(controller.resolveAssets));
+
+/**
+ * @swagger
  * /public/products/{id}/reviews:
  *   get:
  *     summary: List APPROVED reviews for a product (newest first, paginated)
