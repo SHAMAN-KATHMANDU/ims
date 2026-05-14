@@ -18,10 +18,11 @@ const dashboardRouter = Router();
  *       200:
  *         description: User summary
  *       401: { description: Unauthorized }
+ *       403: { description: Forbidden — missing REPORTS.DASHBOARD.PERSONAL_VIEW }
  */
 dashboardRouter.get(
   "/user-summary",
-  requirePermission("REPORTS.DASHBOARDS.VIEW", workspaceLocator()),
+  requirePermission("REPORTS.DASHBOARD.PERSONAL_VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getUserSummary),
 );
 

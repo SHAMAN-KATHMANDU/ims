@@ -134,9 +134,12 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex gap-8">
+    <div className="flex min-w-0 flex-col gap-6 md:flex-row md:gap-8">
       {/* ── Left nav rail ───────────────────────────────────────────────── */}
-      <nav aria-label="Settings" className="w-48 shrink-0 space-y-6">
+      <nav
+        aria-label="Settings"
+        className="w-full shrink-0 space-y-6 md:w-48 md:max-w-[12rem]"
+      >
         {GROUPS.map((group) => {
           const items = sectionsByGroup.get(group) ?? [];
           if (items.length === 0) return null;

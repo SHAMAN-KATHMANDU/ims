@@ -76,7 +76,7 @@ export function ContentHub() {
         description:
           "Custom landing pages, About, Contact — anything outside the storefront flows.",
         icon: FileText,
-        path: "content/pages",
+        path: "settings/site/pages",
         group: "Site content",
         count: fmtCount(pagesTotal, "page", pagesQuery.isLoading),
       },
@@ -86,7 +86,7 @@ export function ContentHub() {
         description:
           "Posts, drafts, and categories. Markdown today; rich blocks in the next phase.",
         icon: Newspaper,
-        path: "content/blog",
+        path: "settings/site/blog",
         group: "Site content",
         count: fmtCount(postsTotal, "post", blogQuery.isLoading),
       },

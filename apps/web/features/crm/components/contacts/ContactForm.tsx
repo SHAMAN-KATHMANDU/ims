@@ -32,19 +32,45 @@ import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@repo/shared";
 import { getApiErrorMessage } from "@/lib/api-error";
 import type { CreateContactData } from "../../services/contact.service";
-import { ContactProfileFieldsSchema } from "@repo/shared";
+import {
+  ContactProfileFieldsSchema,
+  CONTACT_GENDER_VALUES,
+  type ContactGender,
+} from "@repo/shared";
+
+const genderEnum = z.enum(CONTACT_GENDER_VALUES);
+
+function coerceGender(
+  value: string | null | undefined,
+): ContactGender | undefined {
+  if (value == null || !String(value).trim()) return undefined;
+  const v = String(value).trim().toLowerCase();
+  if (v === "m" || v === "male") return "male";
+  if (v === "f" || v === "female") return "female";
+  if (CONTACT_GENDER_VALUES.includes(v as ContactGender)) {
+    return v as ContactGender;
+  }
+  return undefined;
+}
 
 const schema = z
   .object({
-    firstName: z.string().min(1, "First name is required"),
+    firstName: z
+      .string()
+      .min(1, "First name is required")
+      .refine(
+        (s) => !/^\d+$/.test(s.trim()),
+        "First name must include letters (cannot be numbers only)",
+      ),
     lastName: z.string().optional(),
     email: z.string().email().optional().or(z.literal("")),
     phone: z.string().optional(),
     companyId: z.string().optional(),
     tagIds: z.array(z.string()).optional(),
     source: z.string().optional(),
+    gender: genderEnum.optional().nullable(),
   })
-  .merge(ContactProfileFieldsSchema);
+  .merge(ContactProfileFieldsSchema.omit({ gender: true }));
 
 type FormValues = z.infer<typeof schema>;
 
@@ -101,7 +127,7 @@ export function ContactForm({
       lastName: defaultValues?.lastName ?? "",
       email: defaultValues?.email ?? "",
       phone: defaultValues?.phone ?? "",
-      gender: defaultValues?.gender ?? "",
+      gender: coerceGender(defaultValues?.gender) ?? undefined,
       birthDate: toDateInput(defaultValues?.birthDate),
       companyId: defaultValues?.companyId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
@@ -122,7 +148,7 @@ export function ContactForm({
       lastName: defaultValues.lastName ?? "",
       email: defaultValues.email ?? "",
       phone: defaultValues.phone ?? "",
-      gender: defaultValues.gender ?? "",
+      gender: coerceGender(defaultValues.gender) ?? undefined,
       birthDate: toDateInput(defaultValues.birthDate),
       companyId: defaultValues.companyId ?? "",
       tagIds: defaultValues.tagIds ?? [],
@@ -174,7 +200,7 @@ export function ContactForm({
             lastName: values.lastName || undefined,
             email: values.email || undefined,
             phone: values.phone?.trim() || undefined,
-            gender: values.gender?.trim() || null,
+            gender: values.gender ?? null,
             birthDate: values.birthDate?.trim()
               ? new Date(values.birthDate.trim()).toISOString()
               : null,
@@ -188,7 +214,7 @@ export function ContactForm({
           });
         }
       })}
-      className="space-y-4 px-6 py-6 sm:px-6 pb-safe"
+      className="space-y-4 px-6 py-6 sm:px-6 pb-safe min-w-0"
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -240,21 +266,49 @@ export function ContactForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="gender">Gender</Label>
-          <Input
-            id="gender"
-            placeholder="Optional"
-            {...form.register("gender")}
-            className="mt-1"
-          />
+          <Select
+            value={form.watch("gender") ?? "__none__"}
+            onValueChange={(v) =>
+              form.setValue(
+                "gender",
+                v === "__none__" ? undefined : (v as ContactGender),
+                { shouldValidate: true, shouldDirty: true },
+              )
+            }
+          >
+            <SelectTrigger id="gender" className="mt-1">
+              <SelectValue placeholder="Optional" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Not specified</SelectItem>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+              <SelectItem value="prefer_not_to_say">
+                Prefer not to say
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {form.formState.errors.gender && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.gender.message}
+            </p>
+          )}
         </div>
         <div>
           <Label htmlFor="birthDate">Birth date</Label>
           <Input
             id="birthDate"
             type="date"
+            max={new Date().toISOString().slice(0, 10)}
             {...form.register("birthDate")}
             className="mt-1"
           />
+          {form.formState.errors.birthDate && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.birthDate.message}
+            </p>
+          )}
         </div>
       </div>
       <div>

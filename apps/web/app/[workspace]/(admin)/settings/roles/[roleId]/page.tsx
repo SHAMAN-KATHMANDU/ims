@@ -1,5 +1,4 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { PermissionGate } from "@/features/permissions";
 import { RoleEditor } from "@/features/settings/role-management";
 
@@ -15,13 +14,10 @@ export default async function Page({
   const id = roleId === "new" ? undefined : roleId;
 
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
+    <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
       <PermissionGate perm="SETTINGS.ROLES.VIEW">
         <RoleEditor roleId={id} />
       </PermissionGate>
-    </AuthGuard>
+    </AuthGuardWithWorkspace>
   );
 }

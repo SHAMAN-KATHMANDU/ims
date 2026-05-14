@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { type Role } from "@prisma/client";
+import { Prisma, type Role } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
 import {
   getPaginationParams,
@@ -84,7 +84,20 @@ export class UserService {
       throw createError("Cannot delete the platform admin.", 403);
     }
 
-    await this.repo.delete(id);
+    try {
+      await this.repo.delete(id);
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw createError(
+          "This user cannot be deleted while they are linked to CRM contacts or other records. Reassign or remove those links first, then try again.",
+          409,
+        );
+      }
+      throw error;
+    }
   }
 
   async getPasswordResetRequests(

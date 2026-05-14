@@ -21,7 +21,7 @@ export function resolveImageUrl(url, opts) {
     }
     return parsed.toString();
 }
-export function normalizeImageRef(ref) {
+export function normalizeImageRef(ref, assets) {
     if (!ref)
         return "";
     if (typeof ref === "string")
@@ -29,8 +29,11 @@ export function normalizeImageRef(ref) {
     if ("url" in ref)
         return ref.url || "";
     if ("assetId" in ref) {
-        // TODO: resolve assetId to MediaAsset URL via public API
-        return "";
+        const id = ref.assetId;
+        if (!id)
+            return "";
+        const resolved = assets?.[id];
+        return resolved?.publicUrl ?? "";
     }
     return "";
 }

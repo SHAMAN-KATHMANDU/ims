@@ -131,7 +131,8 @@ export function useDeleteContact() {
       if (!crmEnabled) throw new Error("Feature disabled: SALES_PIPELINE");
       return deleteContact(id);
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
+      qc.removeQueries({ queryKey: contactKeys.detail(deletedId) });
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });

@@ -4,7 +4,10 @@ import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
 import memberService, { MemberService } from "./member.service";
 import { CreateMemberSchema, UpdateMemberSchema } from "./member.schema";
-import { parseAndValidatePhone } from "@/utils/phone";
+import {
+  parseAndValidatePhone,
+  parsePhoneForMemberLookup,
+} from "@/utils/phone";
 import fs from "fs";
 
 function getParam(req: Request, key: "id" | "phone"): string {
@@ -140,7 +143,7 @@ class MemberController {
       const tenantId = req.user!.tenantId;
       const phone = getParam(req, "phone");
 
-      const parsed = parseAndValidatePhone(phone);
+      const parsed = parsePhoneForMemberLookup(phone);
       if (!parsed.valid) {
         const err = parsed as { valid: false; message: string };
         return res.status(400).json({ message: err.message });

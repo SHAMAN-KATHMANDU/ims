@@ -1,5 +1,4 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
@@ -15,12 +14,9 @@ export default function ReportsCrmPage() {
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.CRM_REPORTS}>
       <FeaturePageGuard feature={Feature.ANALYTICS_ADVANCED}>
-        <AuthGuard
-          roles={["admin", "superAdmin"]}
-          unauthorizedPath={WORKSPACE_ROOT}
-        >
+        <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
           <CrmReportsPage />
-        </AuthGuard>
+        </AuthGuardWithWorkspace>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>
   );
