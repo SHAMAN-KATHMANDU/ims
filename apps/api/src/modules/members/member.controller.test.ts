@@ -20,8 +20,8 @@ vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
 
-vi.mock("@/utils/phone", () => ({
-  parseAndValidatePhone: vi.fn((val: string) => {
+vi.mock("@/utils/phone", () => {
+  const stub = (val: string) => {
     if (!val || String(val).trim() === "") {
       return { valid: false, message: "Phone number is required" };
     }
@@ -29,8 +29,12 @@ vi.mock("@/utils/phone", () => ({
       return { valid: false, message: "Invalid phone number" };
     }
     return { valid: true, e164: "+9779841234567" };
-  }),
-}));
+  };
+  return {
+    parseAndValidatePhone: vi.fn(stub),
+    parsePhoneForMemberLookup: vi.fn(stub),
+  };
+});
 
 vi.mock("@/config/prisma", () => ({ default: {} }));
 

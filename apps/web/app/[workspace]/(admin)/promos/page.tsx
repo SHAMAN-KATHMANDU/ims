@@ -1,5 +1,4 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { PromoPage } from "@/features/promos";
 import { EnvFeature } from "@/features/flags";
@@ -13,14 +12,11 @@ export default function Promos() {
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.PROMOTIONS}>
       <FeaturePageGuard feature={Feature.PROMO_MANAGEMENT}>
-        <AuthGuard
-          roles={["admin", "superAdmin"]}
-          unauthorizedPath={WORKSPACE_ROOT}
-        >
+        <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
           <PermissionGate perm="INVENTORY.PROMOS.VIEW">
             <PromoPage />
           </PermissionGate>
-        </AuthGuard>
+        </AuthGuardWithWorkspace>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>
   );

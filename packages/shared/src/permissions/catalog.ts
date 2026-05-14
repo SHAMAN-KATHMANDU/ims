@@ -1911,6 +1911,16 @@ const REPORTS_ANALYTICS = [
 
 const REPORTS_DASHBOARDS = [
   {
+    key: "REPORTS.DASHBOARD.PERSONAL_VIEW",
+    bit: 241,
+    module: "REPORTS" as const,
+    submodule: "Dashboards",
+    action: "VIEW",
+    label: "View personal dashboard",
+    description:
+      "View your own sales, revenue, and credit metrics (data scoped to the signed-in user).",
+  },
+  {
     key: "REPORTS.DASHBOARDS.VIEW",
     bit: 173,
     module: "REPORTS" as const,
@@ -1918,6 +1928,7 @@ const REPORTS_DASHBOARDS = [
     action: "VIEW",
     label: "View dashboards",
     description: "See custom dashboards.",
+    implies: ["REPORTS.DASHBOARD.PERSONAL_VIEW"],
   },
   {
     key: "REPORTS.DASHBOARDS.CREATE",

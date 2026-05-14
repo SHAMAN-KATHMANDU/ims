@@ -14,6 +14,37 @@ export type PhoneParseResult =
 /**
  * Parse and validate a phone number. Returns E.164 format on success.
  */
+/**
+ * Lenient parse for member **lookup** by phone (e.g. New Sale debounced check).
+ * Nepal mobiles: accept `isPossible()` so valid carrier ranges that fail strict
+ * `isValidPhoneNumber` still resolve. Other countries stay strict.
+ */
+export function parsePhoneForMemberLookup(
+  value: string,
+  defaultCountry: CountryCode = DEFAULT_COUNTRY,
+): PhoneParseResult {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) {
+    return { valid: false, message: "Phone number is required" };
+  }
+
+  try {
+    const parsed = parsePhoneNumberFromString(trimmed, defaultCountry);
+    if (!parsed) {
+      return { valid: false, message: "Invalid phone number" };
+    }
+    if (parsed.country === "NP" && parsed.isPossible()) {
+      return { valid: true, e164: parsed.format("E.164") };
+    }
+    if (!isValidPhoneNumber(trimmed, defaultCountry)) {
+      return { valid: false, message: "Invalid phone number" };
+    }
+    return { valid: true, e164: parsed.format("E.164") };
+  } catch {
+    return { valid: false, message: "Invalid phone number" };
+  }
+}
+
 export function parseAndValidatePhone(
   value: string,
   defaultCountry: CountryCode = DEFAULT_COUNTRY,

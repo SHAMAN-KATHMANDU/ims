@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 import { LoadingPage } from "@/components/layout/loading-page";
 
@@ -18,12 +17,9 @@ const AutomationsHubPage = dynamic(
 export default function AutomationsOverviewPage() {
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.SETTINGS}>
-      <AuthGuard
-        roles={["admin", "superAdmin"]}
-        unauthorizedPath={WORKSPACE_ROOT}
-      >
+      <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
         <AutomationsHubPage />
-      </AuthGuard>
+      </AuthGuardWithWorkspace>
     </EnvFeaturePageGuard>
   );
 }

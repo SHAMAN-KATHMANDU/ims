@@ -36,11 +36,35 @@ describe("CreateContactSchema", () => {
   it("accepts optional profile fields", () => {
     const result = CreateContactSchema.parse({
       firstName: "Jane",
-      gender: "Female",
+      gender: "female",
       birthDate: "1990-05-15",
     });
-    expect(result.gender).toBe("Female");
+    expect(result.gender).toBe("female");
     expect(result.birthDate).toBe("1990-05-15");
+  });
+
+  it("rejects firstName that is only digits", () => {
+    expect(() => CreateContactSchema.parse({ firstName: "123" })).toThrow(
+      /letters/,
+    );
+  });
+
+  it("rejects future birthDate", () => {
+    expect(() =>
+      CreateContactSchema.parse({
+        firstName: "Jane",
+        birthDate: "2099-01-01",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects invalid gender value", () => {
+    expect(() =>
+      CreateContactSchema.parse({
+        firstName: "Jane",
+        gender: "invalid",
+      }),
+    ).toThrow();
   });
 
   it("rejects empty firstName", () => {

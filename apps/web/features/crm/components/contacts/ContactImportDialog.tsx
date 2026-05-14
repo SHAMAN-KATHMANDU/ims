@@ -65,9 +65,19 @@ export function ContactImportDialog({
       <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>Import Contacts</DialogTitle>
-          <DialogDescription>
-            Upload a CSV file with columns: firstName, lastName, email, phone,
-            companyName
+          <DialogDescription className="space-y-2">
+            <p>
+              Upload a CSV file. Required columns:{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                firstName, lastName, email, phone, companyName
+              </code>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Example row:{" "}
+              <code className="break-all">
+                Jane,Doe,jane@example.com,+9779812345670,Acme Corp
+              </code>
+            </p>
           </DialogDescription>
         </DialogHeader>
         <div

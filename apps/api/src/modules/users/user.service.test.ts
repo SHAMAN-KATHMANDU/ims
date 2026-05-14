@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Prisma } from "@prisma/client";
 import { UserService } from "./user.service";
 import type { UserRepository } from "./user.repository";
 import { createError } from "@/middlewares/errorHandler";
@@ -203,6 +204,23 @@ describe("UserService", () => {
       ).rejects.toMatchObject(createError("User not found", 404));
 
       expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("throws 409 when delete violates foreign key (P2003)", async () => {
+      mockFindByIdRaw.mockResolvedValue({
+        id: "u1",
+        role: "admin",
+      });
+      mockDelete.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("FK", {
+          code: "P2003",
+          clientVersion: "test",
+        }),
+      );
+
+      await expect(userService.delete("u1", "admin-id")).rejects.toThrow(
+        /cannot be deleted while they are linked to CRM contacts/,
+      );
     });
   });
 });
