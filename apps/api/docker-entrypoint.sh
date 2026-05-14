@@ -46,5 +46,28 @@ if ! $PRISMA_CLI migrate deploy $PRISMA_SCHEMA; then
   exit 1
 fi
 
+# Essential seed — converges platform data (plan limits, system tenant, site
+# templates, backfills) on every boot. Idempotent upserts, so reruns are no-ops.
+# Skips when SEED_PLATFORM_ADMIN_PASSWORD is unset (lets PR previews boot
+# without the secret); fails the container if the seed itself errors so we
+# don't silently boot with broken platform data.
+if [ "${SKIP_ESSENTIAL_SEED:-0}" = "1" ]; then
+  echo "Skipping essential seed (SKIP_ESSENTIAL_SEED=1)."
+elif [ -z "${SEED_PLATFORM_ADMIN_PASSWORD:-}" ]; then
+  echo "WARN: SEED_PLATFORM_ADMIN_PASSWORD unset — skipping essential seed."
+  echo "      Set it in the compose env to bootstrap platform data on boot."
+else
+  echo "Running essential seed..."
+  if ! node /app/apps/api/prisma/seed-essential.js; then
+    echo ""
+    echo "=========================================="
+    echo "ERROR: essential seed failed — aborting boot."
+    echo "=========================================="
+    echo "Booting with stale platform data is worse than a restart loop."
+    echo "Set SKIP_ESSENTIAL_SEED=1 to bypass while you investigate."
+    exit 1
+  fi
+fi
+
 echo "Starting application..."
 exec node apps/api/dist/index.js
