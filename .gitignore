@@ -12,3 +12,4 @@ packages/shared/dist/
 # Local Claude / agent state
 .claude/
 
+node_modules
