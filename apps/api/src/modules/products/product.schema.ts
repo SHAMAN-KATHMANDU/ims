@@ -1,5 +1,35 @@
 import { z } from "zod";
 
+// ─── Money / decimal validators ──────────────────────────────────────────────
+// Price and dimension columns are Postgres NUMERIC(10,2) and the discount value
+// column is NUMERIC(12,2). Bare `z.coerce.number()` accepts NaN, Infinity, and
+// values outside the column's range — those reach Prisma and explode into an
+// opaque 500 ("Error Saving Product") instead of a clean validation error.
+// Bound them to the column domain up front so an invalid price returns a 400.
+const DECIMAL_10_2_MAX = 99_999_999.99;
+const DECIMAL_12_2_MAX = 9_999_999_999.99;
+
+/** Non-negative NUMERIC(10,2)-safe amount (prices, dimensions, overrides). */
+const decimal10 = z.coerce
+  .number()
+  .finite("Value must be a finite number")
+  .min(0, "Value cannot be negative")
+  .max(DECIMAL_10_2_MAX, "Value exceeds the maximum allowed amount");
+
+/** Strictly-positive NUMERIC(10,2)-safe dimension (length/breadth/height/weight). */
+const decimalDim = z.coerce
+  .number()
+  .finite("Value must be a finite number")
+  .positive("Value must be greater than 0")
+  .max(DECIMAL_10_2_MAX, "Value exceeds the maximum allowed amount");
+
+/** Non-negative NUMERIC(12,2)-safe amount (discount value). */
+const decimal12 = z.coerce
+  .number()
+  .finite("Value must be a finite number")
+  .min(0, "Value cannot be negative")
+  .max(DECIMAL_12_2_MAX, "Value exceeds the maximum allowed amount");
+
 // ─── Query schemas (for list and export) ─────────────────────────────────────
 
 export const GetAllProductsQuerySchema = z.object({
@@ -143,9 +173,9 @@ const VariationSchema = z.object({
     .default(0),
   /** When editing existing variation stock, specify which location's inventory to update */
   locationId: z.string().uuid().optional(),
-  costPriceOverride: z.coerce.number().nullish(),
-  mrpOverride: z.coerce.number().nullish(),
-  finalSpOverride: z.coerce.number().nullish(),
+  costPriceOverride: decimal10.nullish(),
+  mrpOverride: decimal10.nullish(),
+  finalSpOverride: decimal10.nullish(),
   attributes: z
     .array(
       z.object({
@@ -186,7 +216,7 @@ const DiscountSchema = z.object({
       .max(100, "Discount percentage must be between 0 and 100"),
   ),
   valueType: z.enum(["PERCENTAGE", "FLAT"]).default("PERCENTAGE"),
-  value: z.coerce.number().optional(),
+  value: decimal12.optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   isActive: z.boolean().default(true),
@@ -206,12 +236,20 @@ export const CreateProductSchema = z.object({
     .uuid("Category ID must be a valid UUID"),
   description: z.string().nullish(),
   subCategory: z.string().nullish(),
-  length: z.coerce.number().positive().nullish(),
-  breadth: z.coerce.number().positive().nullish(),
-  height: z.coerce.number().positive().nullish(),
-  weight: z.coerce.number().positive().nullish(),
-  costPrice: z.coerce.number({ required_error: "Cost price is required" }),
-  mrp: z.coerce.number({ required_error: "MRP is required" }),
+  length: decimalDim.nullish(),
+  breadth: decimalDim.nullish(),
+  height: decimalDim.nullish(),
+  weight: decimalDim.nullish(),
+  costPrice: z.coerce
+    .number({ required_error: "Cost price is required" })
+    .finite("Cost price must be a valid number")
+    .min(0, "Cost price cannot be negative")
+    .max(DECIMAL_10_2_MAX, "Cost price exceeds the maximum allowed value"),
+  mrp: z.coerce
+    .number({ required_error: "MRP is required" })
+    .finite("MRP must be a valid number")
+    .min(0, "MRP cannot be negative")
+    .max(DECIMAL_10_2_MAX, "MRP exceeds the maximum allowed value"),
   vendorId: z.string().uuid().nullish(),
   defaultLocationId: z.string().uuid().nullish(),
   attributeTypeIds: z.array(z.string().uuid()).optional(),
@@ -237,12 +275,12 @@ export const UpdateProductSchema = z.object({
   categoryId: z.string().uuid().optional(),
   description: z.string().nullish(),
   subCategory: z.string().nullish(),
-  length: z.coerce.number().positive().nullish(),
-  breadth: z.coerce.number().positive().nullish(),
-  height: z.coerce.number().positive().nullish(),
-  weight: z.coerce.number().positive().nullish(),
-  costPrice: z.coerce.number().optional(),
-  mrp: z.coerce.number().optional(),
+  length: decimalDim.nullish(),
+  breadth: decimalDim.nullish(),
+  height: decimalDim.nullish(),
+  weight: decimalDim.nullish(),
+  costPrice: decimal10.optional(),
+  mrp: decimal10.optional(),
   vendorId: z.string().uuid().nullish(),
   attributeTypeIds: z.array(z.string().uuid()).optional(),
   /**
