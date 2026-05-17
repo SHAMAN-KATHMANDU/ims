@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { hashPassword, verifyPassword } from "./utils";
+import { hashPassword, verifyPassword } from "../utils";
 
 export interface SystemTenantResult {
   systemTenantId: string;
