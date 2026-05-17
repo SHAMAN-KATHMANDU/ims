@@ -162,6 +162,57 @@ describe("UpdateProductSchema", () => {
   });
 });
 
+// Issue #544: editing a product price returned a generic 500
+// ("Error Saving Product"). Root cause: bare z.coerce.number() let NaN /
+// Infinity / out-of-range values reach Prisma, which exploded on the
+// NUMERIC(10,2) column instead of failing validation cleanly. These guard
+// the DB column domain so an invalid price is a 400, and valid prices pass.
+describe("Product price domain (issue #544)", () => {
+  const DECIMAL_10_2_MAX = 99_999_999.99;
+
+  it("accepts a normal in-range price on update", () => {
+    const result = UpdateProductSchema.parse({ costPrice: 1234.56, mrp: 1999 });
+    expect(result.costPrice).toBe(1234.56);
+    expect(result.mrp).toBe(1999);
+  });
+
+  it("accepts the maximum NUMERIC(10,2) price", () => {
+    const result = UpdateProductSchema.parse({ mrp: DECIMAL_10_2_MAX });
+    expect(result.mrp).toBe(DECIMAL_10_2_MAX);
+  });
+
+  it("rejects a price beyond the NUMERIC(10,2) range", () => {
+    expect(() => UpdateProductSchema.parse({ mrp: 100_000_000 })).toThrow();
+    expect(() =>
+      CreateProductSchema.parse({ ...minimalValidProduct, costPrice: 1e12 }),
+    ).toThrow();
+  });
+
+  it("rejects NaN and non-finite prices instead of 500ing on save", () => {
+    expect(() => UpdateProductSchema.parse({ costPrice: NaN })).toThrow();
+    expect(() => UpdateProductSchema.parse({ mrp: Infinity })).toThrow();
+    expect(() =>
+      CreateProductSchema.parse({ ...minimalValidProduct, mrp: "abc" }),
+    ).toThrow();
+  });
+
+  it("rejects negative prices", () => {
+    expect(() => UpdateProductSchema.parse({ costPrice: -1 })).toThrow();
+  });
+
+  it("bounds variation price overrides to the column domain", () => {
+    expect(() =>
+      UpdateProductSchema.parse({
+        variations: [{ stockQuantity: 1, mrpOverride: 1e12 }],
+      }),
+    ).toThrow();
+    const ok = UpdateProductSchema.parse({
+      variations: [{ stockQuantity: 1, mrpOverride: 500.5 }],
+    });
+    expect(ok.variations![0].mrpOverride).toBe(500.5);
+  });
+});
+
 describe("CreateDiscountTypeSchema", () => {
   it("accepts valid name only", () => {
     const result = CreateDiscountTypeSchema.parse({ name: "Normal" });

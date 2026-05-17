@@ -40,6 +40,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/features/locations";
 import type { CreateTransferData } from "../hooks/use-transfers";
 import { CreateTransferSchema, type CreateTransferInput } from "../validation";
+import { BulkProductSelectionDialog } from "./BulkProductSelectionDialog";
 
 interface InventoryItem {
   id: string;
@@ -127,6 +128,8 @@ export function TransferForm({
   const [sortBy, setSortBy] = useState<string>("name");
   /** Cache of inventory items added to the transfer, for display when search results change */
   const addedItemsCacheRef = useRef<InventoryItem[]>([]);
+  /** Bulk selection dialog state */
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   const form = useForm<CreateTransferInput>({
     resolver: zodResolver(CreateTransferSchema),
@@ -224,6 +227,7 @@ export function TransferForm({
       setTotalPages(1);
       setSortBy("name");
       addedItemsCacheRef.current = [];
+      setBulkDialogOpen(false);
     }
   }, [open, inline, form]);
 
@@ -275,6 +279,15 @@ export function TransferForm({
   const handleAddFromResult = (inv: InventoryItem) => {
     addItemToTransfer(inv, 1);
     setProductSearch("");
+  };
+
+  /** Bulk add multiple products from dialog */
+  const handleBulkAdd = (
+    items: Array<{ item: InventoryItem; quantity: number }>,
+  ) => {
+    items.forEach(({ item, quantity }) => {
+      addItemToTransfer(item, quantity);
+    });
   };
 
   const handleIncreaseQuantity = (
@@ -513,7 +526,19 @@ export function TransferForm({
 
         {fromLocationId && (
           <div className="grid gap-2">
-            <Label>Add Product</Label>
+            <div className="flex items-center justify-between">
+              <Label>Add Product</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkDialogOpen(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Multiple
+              </Button>
+            </div>
             <div className="space-y-3">
               <div className="relative">
                 <Search
@@ -827,23 +852,45 @@ export function TransferForm({
 
   if (inline) {
     return (
-      <Card className="max-w-2xl">
-        <CardContent className="pt-6">{formContent}</CardContent>
-      </Card>
+      <>
+        <Card className="max-w-2xl">
+          <CardContent className="pt-6">{formContent}</CardContent>
+        </Card>
+        <BulkProductSelectionDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+          locationId={fromLocationId}
+          alreadyAdded={addedItemsCacheRef.current}
+          onAddProducts={handleBulkAdd}
+          isLoading={isLoading}
+          getLocationInventory={getLocationInventory}
+        />
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-          New Transfer
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl" allowDismiss={false}>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            New Transfer
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl" allowDismiss={false}>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+      <BulkProductSelectionDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        locationId={fromLocationId}
+        alreadyAdded={addedItemsCacheRef.current}
+        onAddProducts={handleBulkAdd}
+        isLoading={isLoading}
+        getLocationInventory={getLocationInventory}
+      />
+    </>
   );
 }
