@@ -944,7 +944,7 @@ export class ProductService {
       );
     }
 
-    let updatedProduct;
+    let updatedProduct: Awaited<ReturnType<typeof this.repo.updateProduct>>;
     try {
       updatedProduct = await this.repo.updateProduct(id, updateData);
     } catch (err: unknown) {
@@ -973,7 +973,7 @@ export class ProductService {
         entityType: "PRODUCT",
         entityId: updatedProduct.id,
         actorUserId: userId,
-        dedupeKey: `product-updated:${updatedProduct.id}:${updatedProduct.updatedAt.toISOString()}`,
+        dedupeKey: `product-updated:${updatedProduct.id}:${updatedProduct.dateModified.toISOString()}`,
         payload: {
           productId: updatedProduct.id,
           name: updatedProduct.name,
