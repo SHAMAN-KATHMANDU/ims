@@ -74,12 +74,15 @@ export async function seedBackfillScopePages(
         continue;
       }
 
-      // Upsert scope page
+      // Upsert keyed on the same (tenantId, slug) the create uses, so an
+      // existing page already occupying this slug (e.g. a user-created
+      // custom page named "cart"/"contact") resolves to the no-op update
+      // instead of throwing P2002 and aborting container boot.
       await prisma.tenantPage.upsert({
         where: {
           tenantId_slug: {
             tenantId,
-            slug: `__scope_${scope}__`,
+            slug: scope,
           },
         },
         create: {
