@@ -106,6 +106,13 @@ export function useAuth() {
   return {
     user: currentUserData?.user ?? user,
     tenant: currentUserData?.tenant ?? tenant,
+    /**
+     * Tenant as confirmed by the server (`/auth/me`), or `null` when that
+     * request has not resolved or has failed. Unlike `tenant`, this never
+     * falls back to the persisted `auth-storage` cookie — use it for
+     * tenant-isolation checks that must not act on a stale client copy.
+     */
+    serverTenant: currentUserData?.tenant ?? null,
     isAuthenticated,
     isLoading: !isHydrated || isLoadingUser,
     isHydrated,
