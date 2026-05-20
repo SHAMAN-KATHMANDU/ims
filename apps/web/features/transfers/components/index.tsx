@@ -334,8 +334,8 @@ export function TransfersPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:flex-1">
           <div className="relative">
             <Search
               className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -380,20 +380,38 @@ export function TransfersPage() {
             allValue="all"
             className="w-full sm:w-[160px]"
           />
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={handleDateFromChange}
-            className="w-full sm:w-[140px]"
-            placeholder="From date"
-          />
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={handleDateToChange}
-            className="w-full sm:w-[140px]"
-            placeholder="To date"
-          />
+          <div className="flex flex-col gap-1 sm:w-[140px]">
+            <label
+              htmlFor="transfer-date-from"
+              className="text-xs text-muted-foreground"
+            >
+              From date
+            </label>
+            <Input
+              id="transfer-date-from"
+              type="date"
+              value={dateFrom}
+              onChange={handleDateFromChange}
+              className="w-full"
+              aria-label="From date"
+            />
+          </div>
+          <div className="flex flex-col gap-1 sm:w-[140px]">
+            <label
+              htmlFor="transfer-date-to"
+              className="text-xs text-muted-foreground"
+            >
+              To date
+            </label>
+            <Input
+              id="transfer-date-to"
+              type="date"
+              value={dateTo}
+              onChange={handleDateToChange}
+              className="w-full"
+              aria-label="To date"
+            />
+          </div>
           {hasActiveFilters && (
             <Button
               variant="ghost"

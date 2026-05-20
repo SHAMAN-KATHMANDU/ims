@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useCallback } from "react";
 import {
   ArrowRight,
   CheckCircle,
@@ -93,6 +94,122 @@ export function TransferTable({
     "INVENTORY.TRANSFERS.COMPLETE",
   );
   const { allowed: canCancelTransfer } = useCan("INVENTORY.TRANSFERS.CANCEL");
+
+  const renderMobileCard = useCallback(
+    (t: Transfer) => (
+      <div className="rounded-md border bg-card p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-sm font-mono min-w-0 break-words">
+            {t.transferCode}
+          </p>
+          <Badge variant={getStatusBadgeVariant(t.status)}>
+            {getStatusLabel(t.status)}
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="font-medium min-w-0 break-words">
+            {t.fromLocation.name}
+          </span>
+          <ArrowRight
+            className="h-3 w-3 text-muted-foreground shrink-0"
+            aria-hidden="true"
+          />
+          <span className="font-medium min-w-0 break-words">
+            {t.toLocation.name}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">Items</p>
+            <p className="font-medium">{t._count?.items || 0}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Created</p>
+            <p className="font-medium">
+              {format(new Date(t.createdAt), "MMM d, yyyy")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-1 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs flex-1"
+            onClick={() => onView(t)}
+          >
+            View
+          </Button>
+          {canManage && (
+            <>
+              {canApprove(t) && canApproveTransfer && onApproveAndFulfill && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  disabled={fulfillingTransferId === t.id}
+                  onClick={() => onApproveAndFulfill(t)}
+                >
+                  Approve
+                </Button>
+              )}
+              {canStartTransit(t) && canStartTransfer && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => onStartTransit(t)}
+                >
+                  Transit
+                </Button>
+              )}
+              {canComplete(t) && canCompleteTransfer && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => onComplete(t)}
+                >
+                  Done
+                </Button>
+              )}
+              {canCancel(t) && canCancelTransfer && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+                  onClick={() => onCancel(t)}
+                >
+                  Cancel
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    ),
+    [
+      onView,
+      canManage,
+      canApproveTransfer,
+      canStartTransfer,
+      canCompleteTransfer,
+      canCancelTransfer,
+      fulfillingTransferId,
+      onApproveAndFulfill,
+      onStartTransit,
+      onComplete,
+      onCancel,
+    ],
+  );
+
   const columns: DataTableColumn<Transfer>[] = [
     {
       id: "transferCode",
@@ -181,6 +298,8 @@ export function TransferTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actionsHeader="Actions"
       actions={(t) => (
         <DropdownMenu>

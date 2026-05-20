@@ -566,55 +566,31 @@ function PipelineSettings() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHead
-                    sortKey="name"
-                    currentSortBy={pipelineSortBy}
-                    currentSortOrder={pipelineSortOrder}
-                    onSort={(nextSortBy, nextSortOrder) => {
-                      setPipelineSortBy(nextSortBy as "name" | "default");
-                      setPipelineSortOrder(nextSortOrder);
-                    }}
-                  >
-                    Name
-                  </SortableTableHead>
-                  <TableHead>Stages</TableHead>
-                  <SortableTableHead
-                    sortKey="default"
-                    currentSortBy={pipelineSortBy}
-                    currentSortOrder={pipelineSortOrder}
-                    onSort={(nextSortBy, nextSortOrder) => {
-                      setPipelineSortBy(nextSortBy as "name" | "default");
-                      setPipelineSortOrder(nextSortOrder);
-                    }}
-                    className="w-24"
-                  >
-                    Default
-                  </SortableTableHead>
-                  <TableHead className="w-20 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPipelines.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      <span className="flex items-center gap-2">
-                        {p.name}
+          <>
+            {/* ── Mobile card list ─────────────────────────────────────────── */}
+            <div className="md:hidden space-y-2">
+              {sortedPipelines.map((p) => (
+                <div key={p.id} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium break-words">{p.name}</p>
                         {p.type && p.type !== "GENERAL" && (
                           <Badge
                             variant="outline"
-                            className="text-[10px] px-1.5 py-0"
+                            className="text-[10px] px-1.5 py-0 shrink-0"
                           >
                             {PIPELINE_TYPE_LABELS[p.type] ?? p.type}
                           </Badge>
                         )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-muted-foreground">
+                    <div>
+                      <span className="font-medium">Stages:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
                         {p.stages.map((s) => (
                           <Badge
                             key={s.id}
@@ -625,51 +601,163 @@ function PipelineSettings() {
                           </Badge>
                         ))}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {p.isDefault && (
+                    </div>
+                    {p.isDefault && (
+                      <div>
                         <Badge variant="default" className="text-xs">
                           Default
                         </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8"
-                          onClick={() => openEdit(p)}
-                          aria-label={`Edit pipeline ${p.name}`}
-                        >
-                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => deleteMutation.mutate(p.id)}
-                          disabled={p.isDefault || deleteMutation.isPending}
-                          title={
-                            p.isDefault
-                              ? "Cannot delete default pipeline"
-                              : "Delete pipeline"
-                          }
-                          aria-label={
-                            p.isDefault
-                              ? `Cannot delete default pipeline ${p.name}`
-                              : `Delete pipeline ${p.name}`
-                          }
-                        >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
                       </div>
-                    </TableCell>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs flex-1"
+                      onClick={() => openEdit(p)}
+                      aria-label={`Edit pipeline ${p.name}`}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={() => deleteMutation.mutate(p.id)}
+                      disabled={p.isDefault || deleteMutation.isPending}
+                      title={
+                        p.isDefault
+                          ? "Cannot delete default pipeline"
+                          : "Delete pipeline"
+                      }
+                      aria-label={
+                        p.isDefault
+                          ? `Cannot delete default pipeline ${p.name}`
+                          : `Delete pipeline ${p.name}`
+                      }
+                    >
+                      <Trash2 className="h-3 w-3" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table ────────────────────────────────────────────── */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableTableHead
+                      sortKey="name"
+                      currentSortBy={pipelineSortBy}
+                      currentSortOrder={pipelineSortOrder}
+                      onSort={(nextSortBy, nextSortOrder) => {
+                        setPipelineSortBy(nextSortBy as "name" | "default");
+                        setPipelineSortOrder(nextSortOrder);
+                      }}
+                    >
+                      Name
+                    </SortableTableHead>
+                    <TableHead>Stages</TableHead>
+                    <SortableTableHead
+                      sortKey="default"
+                      currentSortBy={pipelineSortBy}
+                      currentSortOrder={pipelineSortOrder}
+                      onSort={(nextSortBy, nextSortOrder) => {
+                        setPipelineSortBy(nextSortBy as "name" | "default");
+                        setPipelineSortOrder(nextSortOrder);
+                      }}
+                      className="w-24"
+                    >
+                      Default
+                    </SortableTableHead>
+                    <TableHead className="w-20 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {sortedPipelines.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-2">
+                          {p.name}
+                          {p.type && p.type !== "GENERAL" && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              {PIPELINE_TYPE_LABELS[p.type] ?? p.type}
+                            </Badge>
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {p.stages.map((s) => (
+                            <Badge
+                              key={s.id}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {s.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {p.isDefault && (
+                          <Badge variant="default" className="text-xs">
+                            Default
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => openEdit(p)}
+                            aria-label={`Edit pipeline ${p.name}`}
+                          >
+                            <Pencil
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => deleteMutation.mutate(p.id)}
+                            disabled={p.isDefault || deleteMutation.isPending}
+                            title={
+                              p.isDefault
+                                ? "Cannot delete default pipeline"
+                                : "Delete pipeline"
+                            }
+                            aria-label={
+                              p.isDefault
+                                ? `Cannot delete default pipeline ${p.name}`
+                                : `Delete pipeline ${p.name}`
+                            }
+                          >
+                            <Trash2
+                              className="h-3.5 w-3.5"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
         {pipelinePagination && (
           <DataTablePagination
