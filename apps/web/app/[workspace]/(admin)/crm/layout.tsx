@@ -15,7 +15,7 @@ export default async function CrmLayout({ children, params }: Props) {
   return (
     <FeaturePageGuard feature={Feature.SALES_PIPELINE}>
       <AuthGuard
-        roles={["admin", "superAdmin"]}
+        roles={["user", "admin", "superAdmin"]}
         loginPath={getLoginPath(slug)}
         unauthorizedPath={getWorkspaceRoot(slug)}
       >
