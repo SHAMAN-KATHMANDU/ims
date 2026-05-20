@@ -1,6 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import taskController from "./task.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,9 +13,6 @@ const taskRouter = Router();
 
 taskRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 taskRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -26,23 +27,23 @@ const idLocator = (req: Request): string => req.params.id;
  */
 taskRouter.post(
   "/",
-  requirePermission("CRM.TASKS.CREATE", workspaceLocator),
+  requirePermission("CRM.TASKS.CREATE", workspaceLocator()),
   asyncHandler(taskController.create),
 );
 
 taskRouter.post(
   "/bulk-complete",
-  requirePermission("CRM.TASKS.UPDATE", workspaceLocator),
+  requirePermission("CRM.TASKS.UPDATE", workspaceLocator()),
   asyncHandler(taskController.bulkComplete),
 );
 taskRouter.post(
   "/bulk-delete",
-  requirePermission("CRM.TASKS.DELETE", workspaceLocator),
+  requirePermission("CRM.TASKS.DELETE", workspaceLocator()),
   asyncHandler(taskController.bulkDelete),
 );
 taskRouter.delete(
   "/bulk",
-  requirePermission("CRM.TASKS.DELETE", workspaceLocator),
+  requirePermission("CRM.TASKS.DELETE", workspaceLocator()),
   asyncHandler(taskController.bulkDelete),
 );
 
@@ -59,7 +60,7 @@ taskRouter.delete(
  */
 taskRouter.get(
   "/",
-  requirePermission("CRM.TASKS.VIEW", workspaceLocator),
+  requirePermission("CRM.TASKS.VIEW", workspaceLocator()),
   asyncHandler(taskController.getAll),
 );
 
@@ -77,7 +78,7 @@ taskRouter.get(
  */
 taskRouter.get(
   "/:id",
-  requirePermission("CRM.TASKS.VIEW", idLocator),
+  requirePermission("CRM.TASKS.VIEW", paramLocator("TASK")),
   asyncHandler(taskController.getById),
 );
 
@@ -94,7 +95,7 @@ taskRouter.get(
  */
 taskRouter.put(
   "/:id",
-  requirePermission("CRM.TASKS.UPDATE", idLocator),
+  requirePermission("CRM.TASKS.UPDATE", paramLocator("TASK")),
   asyncHandler(taskController.update),
 );
 
@@ -111,7 +112,7 @@ taskRouter.put(
  */
 taskRouter.post(
   "/:id/complete",
-  requirePermission("CRM.TASKS.UPDATE", idLocator),
+  requirePermission("CRM.TASKS.UPDATE", paramLocator("TASK")),
   asyncHandler(taskController.complete),
 );
 
@@ -128,7 +129,7 @@ taskRouter.post(
  */
 taskRouter.delete(
   "/:id",
-  requirePermission("CRM.TASKS.DELETE", idLocator),
+  requirePermission("CRM.TASKS.DELETE", paramLocator("TASK")),
   asyncHandler(taskController.delete),
 );
 

@@ -1,6 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import companyController from "./company.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,9 +13,6 @@ const companyRouter = Router();
 
 companyRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 companyRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -26,7 +27,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 companyRouter.get(
   "/list",
-  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator),
+  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator()),
   asyncHandler(companyController.listForSelect),
 );
 
@@ -43,7 +44,7 @@ companyRouter.get(
  */
 companyRouter.post(
   "/",
-  requirePermission("CRM.COMPANIES.CREATE", workspaceLocator),
+  requirePermission("CRM.COMPANIES.CREATE", workspaceLocator()),
   asyncHandler(companyController.create),
 );
 
@@ -60,7 +61,7 @@ companyRouter.post(
  */
 companyRouter.get(
   "/",
-  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator),
+  requirePermission("CRM.COMPANIES.VIEW", workspaceLocator()),
   asyncHandler(companyController.getAll),
 );
 
@@ -77,7 +78,7 @@ companyRouter.get(
  */
 companyRouter.get(
   "/:id",
-  requirePermission("CRM.COMPANIES.VIEW", idLocator),
+  requirePermission("CRM.COMPANIES.VIEW", paramLocator("COMPANY")),
   asyncHandler(companyController.getById),
 );
 
@@ -94,7 +95,7 @@ companyRouter.get(
  */
 companyRouter.put(
   "/:id",
-  requirePermission("CRM.COMPANIES.UPDATE", idLocator),
+  requirePermission("CRM.COMPANIES.UPDATE", paramLocator("COMPANY")),
   asyncHandler(companyController.update),
 );
 
@@ -111,7 +112,7 @@ companyRouter.put(
  */
 companyRouter.delete(
   "/:id",
-  requirePermission("CRM.COMPANIES.DELETE", idLocator),
+  requirePermission("CRM.COMPANIES.DELETE", paramLocator("COMPANY")),
   asyncHandler(companyController.delete),
 );
 

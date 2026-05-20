@@ -1,7 +1,11 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import dealController from "./deal.controller";
@@ -12,9 +16,6 @@ const dealRouter = Router();
 dealRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 dealRouter.use(enforceEnvFeature(EnvFeature.CRM_DEALS));
 dealRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -43,7 +44,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 dealRouter.post(
   "/",
-  requirePermission("CRM.DEALS.CREATE", workspaceLocator),
+  requirePermission("CRM.DEALS.CREATE", workspaceLocator()),
   asyncHandler(dealController.create),
 );
 
@@ -70,7 +71,7 @@ dealRouter.post(
  */
 dealRouter.post(
   "/check-discount",
-  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator()),
   asyncHandler(dealController.checkDiscount),
 );
 
@@ -92,7 +93,7 @@ dealRouter.post(
  */
 dealRouter.get(
   "/kanban",
-  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator()),
   asyncHandler(dealController.getByPipeline),
 );
 
@@ -136,7 +137,7 @@ dealRouter.get(
  */
 dealRouter.get(
   "/",
-  requirePermission("CRM.DEALS.VIEW", workspaceLocator),
+  requirePermission("CRM.DEALS.VIEW", workspaceLocator()),
   asyncHandler(dealController.getAll),
 );
 
@@ -159,7 +160,7 @@ dealRouter.get(
  */
 dealRouter.get(
   "/:id",
-  requirePermission("CRM.DEALS.VIEW", idLocator),
+  requirePermission("CRM.DEALS.VIEW", paramLocator("DEAL")),
   asyncHandler(dealController.getById),
 );
 
@@ -190,7 +191,7 @@ dealRouter.get(
  */
 dealRouter.put(
   "/:id",
-  requirePermission("CRM.DEALS.UPDATE", idLocator),
+  requirePermission("CRM.DEALS.UPDATE", paramLocator("DEAL")),
   asyncHandler(dealController.update),
 );
 
@@ -227,23 +228,23 @@ dealRouter.put(
  */
 dealRouter.patch(
   "/:id/stage",
-  requirePermission("CRM.DEALS.CHANGE_STAGE", idLocator),
+  requirePermission("CRM.DEALS.CHANGE_STAGE", paramLocator("DEAL")),
   asyncHandler(dealController.updateStage),
 );
 
 dealRouter.post(
   "/:id/line-items",
-  requirePermission("CRM.DEALS.CHANGE_VALUE", idLocator),
+  requirePermission("CRM.DEALS.CHANGE_VALUE", paramLocator("DEAL")),
   asyncHandler(dealController.addLineItem),
 );
 dealRouter.delete(
   "/:id/line-items/:lineItemId",
-  requirePermission("CRM.DEALS.CHANGE_VALUE", idLocator),
+  requirePermission("CRM.DEALS.CHANGE_VALUE", paramLocator("DEAL")),
   asyncHandler(dealController.removeLineItem),
 );
 dealRouter.post(
   "/:id/convert-to-sale",
-  requirePermission("CRM.DEALS.UPDATE", idLocator),
+  requirePermission("CRM.DEALS.UPDATE", paramLocator("DEAL")),
   asyncHandler(dealController.convertToSale),
 );
 
@@ -265,7 +266,7 @@ dealRouter.post(
  */
 dealRouter.delete(
   "/:id",
-  requirePermission("CRM.DEALS.DELETE", idLocator),
+  requirePermission("CRM.DEALS.DELETE", paramLocator("DEAL")),
   asyncHandler(dealController.delete),
 );
 
