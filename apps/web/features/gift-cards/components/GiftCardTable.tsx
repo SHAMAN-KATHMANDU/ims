@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { format } from "date-fns";
 import { Ban } from "lucide-react";
 import { useCan } from "@/features/permissions";
@@ -56,6 +57,73 @@ export function GiftCardTable({
   onClearFilters,
 }: GiftCardTableProps) {
   const { allowed: canVoidGiftCard } = useCan("INVENTORY.GIFT_CARDS.VOID");
+
+  const renderMobileCard = useCallback(
+    (gc: GiftCard) => {
+      const busy = pendingId === gc.id;
+      const canVoid = gc.status === "ACTIVE" && canVoidGiftCard;
+      return (
+        <div className="rounded-md border bg-card p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-mono text-sm font-semibold min-w-0 break-words">
+              {gc.code}
+            </p>
+            <StatusBadge
+              variant={STATUS_VARIANT[gc.status]}
+              className="shrink-0"
+            >
+              {STATUS_LABEL[gc.status]}
+            </StatusBadge>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Amount</p>
+              <p className="font-medium">{formatCents(gc.amount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Balance</p>
+              <p className="font-medium">{formatCents(gc.balance)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Expires</p>
+              <p className="text-xs">
+                {gc.expiresAt
+                  ? format(new Date(gc.expiresAt), "MMM d, yyyy")
+                  : "Never"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Issued</p>
+              <p className="text-xs">
+                {format(new Date(gc.createdAt), "MMM d, yyyy")}
+              </p>
+            </div>
+          </div>
+          {gc.recipientEmail && (
+            <div className="text-sm">
+              <p className="text-xs text-muted-foreground">Recipient</p>
+              <p className="text-xs min-w-0 break-words">{gc.recipientEmail}</p>
+            </div>
+          )}
+          {canVoid && (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={busy}
+              onClick={() => onVoid(gc)}
+              className="w-full h-7 text-xs"
+            >
+              <Ban className="mr-1 h-4 w-4" aria-hidden="true" />
+              Void Card
+            </Button>
+          )}
+        </div>
+      );
+    },
+    [pendingId, canVoidGiftCard, onVoid],
+  );
+
   const columns: DataTableColumn<GiftCard>[] = [
     {
       id: "code",
@@ -131,6 +199,8 @@ export function GiftCardTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       renderRow={(gc, defaultCells, { rowKey }) => {
         const busy = pendingId === gc.id;
         return (

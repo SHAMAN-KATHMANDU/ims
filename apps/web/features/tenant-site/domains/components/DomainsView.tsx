@@ -239,23 +239,48 @@ export function DomainsView() {
         </div>
       )}
 
-      {!domainsQuery.isLoading && visibleDomains.length === 0 && (
+      {!domainsQuery.isLoading && domainsQuery.isError && (
         <Empty>
           <EmptyMedia variant="icon">
-            <Globe className="h-6 w-6" />
+            <AlertCircle className="h-6 w-6" />
           </EmptyMedia>
           <EmptyContent>
-            <EmptyTitle>No custom domains</EmptyTitle>
+            <EmptyTitle>Couldn&apos;t load domains</EmptyTitle>
             <EmptyDescription>
-              Add a domain to point it at your site, IMS, or API.
+              {domainsQuery.error instanceof Error
+                ? domainsQuery.error.message
+                : "Something went wrong while loading your domains."}
             </EmptyDescription>
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Add domain
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => domainsQuery.refetch()}
+            >
+              Try again
             </Button>
           </EmptyContent>
         </Empty>
       )}
+
+      {!domainsQuery.isLoading &&
+        !domainsQuery.isError &&
+        visibleDomains.length === 0 && (
+          <Empty>
+            <EmptyMedia variant="icon">
+              <Globe className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyContent>
+              <EmptyTitle>No custom domains</EmptyTitle>
+              <EmptyDescription>
+                Add a domain to point it at your site, IMS, or API.
+              </EmptyDescription>
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Add domain
+              </Button>
+            </EmptyContent>
+          </Empty>
+        )}
 
       {visibleDomains.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">

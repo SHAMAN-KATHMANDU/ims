@@ -615,7 +615,100 @@ export default function WorkflowEditorPage() {
             )
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* ── Mobile card list ─────────────────────────────────────────── */}
+              <div className="md:hidden space-y-2">
+                {sortedWorkflows.map((w) => (
+                  <div key={w.id} className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium break-words">{w.name}</p>
+                      </div>
+                      <div className="shrink-0">
+                        {w.isActive ? (
+                          <Badge variant="default" className="text-xs">
+                            Active
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">
+                            Off
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div>
+                        <span className="font-medium">Pipeline: </span>
+                        <span className="break-words">
+                          {w.pipeline?.name ?? w.pipelineId}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {w.origin === "CUSTOM" ? "Custom" : "Template"}
+                        </Badge>
+                        {w.templateKey && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs shrink-0"
+                          >
+                            {w.templateKey}
+                          </Badge>
+                        )}
+                      </div>
+                      {w.rules.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {w.rules.slice(0, 2).map((r) => (
+                            <Badge
+                              key={r.id}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {getWorkflowTriggerLabel(r.trigger)} →{" "}
+                              {getWorkflowActionLabel(r.action)}
+                            </Badge>
+                          ))}
+                          {w.rules.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{w.rules.length - 2} more
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Runs: {w.runCount ?? 0}
+                        {w.failureCount ? `, failures: ${w.failureCount}` : ""}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => setEditWorkflow(w)}
+                        aria-label={`Edit workflow ${w.name}`}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(w.id)}
+                        disabled={deleteMutation.isPending}
+                        aria-label={`Delete workflow ${w.name}`}
+                      >
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Desktop table ────────────────────────────────────────────── */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

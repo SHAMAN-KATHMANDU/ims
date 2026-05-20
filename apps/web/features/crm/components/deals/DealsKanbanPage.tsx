@@ -91,7 +91,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import type { Deal } from "../../services/deal.service";
 import type {
   Pipeline,
@@ -299,9 +298,9 @@ export function DealsKanbanPage() {
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
+            <div className="flex w-full items-center gap-1 sm:w-auto">
               <Select value={pipelineId} onValueChange={setPipelineId}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="min-w-0 flex-1 sm:w-[200px] sm:flex-none">
                   <SelectValue placeholder="Select pipeline" />
                 </SelectTrigger>
                 <SelectContent>
@@ -315,11 +314,6 @@ export function DealsKanbanPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {currentPipeline?.type && currentPipeline.type !== "GENERAL" && (
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {currentPipeline.type.replace("_", " ")}
-                </Badge>
-              )}
               {currentPipeline && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

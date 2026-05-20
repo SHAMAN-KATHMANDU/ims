@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { type SortOrder } from "@/components/ui/table";
@@ -33,6 +34,54 @@ export function UserTable({
   hasActiveFilters,
   onClearFilters,
 }: UserTableProps) {
+  const renderMobileCard = useCallback(
+    (u: User) => (
+      <div className="rounded-md border bg-card p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-sm min-w-0 break-words">
+            {u.username}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted-foreground">Role</p>
+          <p className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+            {u.role}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-muted-foreground">Created At</p>
+          <p className="text-sm font-medium">
+            {new Date(u.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+
+        <div className="flex gap-1 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs flex-1"
+            onClick={() => onEdit(u)}
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+            onClick={() => onDelete(u)}
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    ),
+    [onEdit, onDelete],
+  );
+
   const columns: DataTableColumn<User>[] = [
     {
       id: "username",
@@ -102,6 +151,8 @@ export function UserTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actions={(u) => (
         <div className="inline-flex gap-1">
           <Button

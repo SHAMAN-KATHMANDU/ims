@@ -1570,14 +1570,14 @@ export function NewSaleForm({
                                     /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- inventory picker row; keyboard navigation handled by combobox parent */
                                     <div
                                       key={inv.id}
-                                      className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                                      className="flex flex-col gap-2 p-3 hover:bg-muted/50 transition-colors cursor-pointer sm:flex-row sm:items-start sm:justify-between"
                                       onClick={() => {
                                         handleAddItem(inv);
                                         setProductSearch("");
                                       }}
                                     >
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-medium text-sm break-words">
                                           {inv.variation.product.name}
                                           {variantLabel && (
                                             <span className="text-muted-foreground font-normal ml-1.5">
@@ -1585,7 +1585,7 @@ export function NewSaleForm({
                                             </span>
                                           )}
                                         </div>
-                                        <div className="text-xs text-muted-foreground font-mono tabular-nums mt-0.5">
+                                        <div className="text-xs text-muted-foreground font-mono tabular-nums mt-0.5 break-words">
                                           {inv.variation.product.imsCode}
                                           {inv.variation.product.category
                                             ?.name && (
@@ -1599,8 +1599,8 @@ export function NewSaleForm({
                                           )}
                                         </div>
                                       </div>
-                                      <div className="ml-4 flex items-center gap-4 shrink-0">
-                                        <div className="text-right">
+                                      <div className="flex shrink-0 items-center justify-between gap-3 sm:ml-4 sm:justify-end sm:gap-4">
+                                        <div className="text-left sm:text-right">
                                           <div className="font-semibold text-sm">
                                             {formatCurrency(
                                               Number(inv.variation.product.mrp),
