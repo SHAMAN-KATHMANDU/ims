@@ -45,16 +45,28 @@ export class PermissionService {
       return cached;
     }
 
-    // 1a. Legacy admin shortcut — `platformAdmin` and `superAdmin` are the
-    // tenant-default admin roles. They keep ADMINISTRATOR bypass regardless
-    // of whether the new RbacRole rows have been seeded. This is permanent
-    // (not just a migration helper): the legacy enum remains the source of
-    // truth for who is an admin in a tenant.
+    // 1a. Legacy admin shortcut — `admin`, `superAdmin`, and `platformAdmin`
+    // are all tenant-admin roles in the legacy `User.role` enum. They keep
+    // ADMINISTRATOR bypass regardless of whether the new RbacRole rows have
+    // been seeded. This is permanent (not just a migration helper): the
+    // legacy enum remains the source of truth for who is an admin in a tenant.
+    //
+    // `admin` MUST be included: it is the most common tenant-admin role, and
+    // the RbacRole seed maps both `admin` and `superAdmin` to TENANT_ADMIN.
+    // Omitting it here left legacy `admin` users at the mercy of their
+    // RbacRole link — a stale or mis-seeded link (e.g. the earlier
+    // admin→EDITOR seed bug) stripped them of sales / CRM / dashboard access
+    // and surfaced as "Unauthorized"/"Forbidden" toasts (#488, #486, #530,
+    // #535, #538, #539, #540).
     const legacyRole = await permissionRepository.getLegacyUserRole(
       tenantId,
       userId,
     );
-    if (legacyRole === "platformAdmin" || legacyRole === "superAdmin") {
+    if (
+      legacyRole === "admin" ||
+      legacyRole === "superAdmin" ||
+      legacyRole === "platformAdmin"
+    ) {
       const adminMask = setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT);
       await permissionCache.set(tenantId, userId, resourceId, adminMask);
       return adminMask;
