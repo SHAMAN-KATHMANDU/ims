@@ -1,6 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import activityController from "./activity.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,11 +13,6 @@ const activityRouter = Router();
 
 activityRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 activityRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
-const contactLocator = (req: Request): string => req.params.contactId;
-const dealLocator = (req: Request): string => req.params.dealId;
 
 /**
  * @swagger
@@ -28,7 +27,7 @@ const dealLocator = (req: Request): string => req.params.dealId;
  */
 activityRouter.post(
   "/",
-  requirePermission("CRM.ACTIVITIES.CREATE", workspaceLocator),
+  requirePermission("CRM.ACTIVITIES.CREATE", workspaceLocator()),
   asyncHandler(activityController.create),
 );
 
@@ -45,7 +44,10 @@ activityRouter.post(
  */
 activityRouter.get(
   "/contact/:contactId",
-  requirePermission("CRM.ACTIVITIES.VIEW", contactLocator),
+  requirePermission(
+    "CRM.ACTIVITIES.VIEW",
+    paramLocator("CONTACT", "contactId"),
+  ),
   asyncHandler(activityController.getByContact),
 );
 
@@ -62,7 +64,7 @@ activityRouter.get(
  */
 activityRouter.get(
   "/deal/:dealId",
-  requirePermission("CRM.ACTIVITIES.VIEW", dealLocator),
+  requirePermission("CRM.ACTIVITIES.VIEW", paramLocator("DEAL", "dealId")),
   asyncHandler(activityController.getByDeal),
 );
 
@@ -80,7 +82,7 @@ activityRouter.get(
  */
 activityRouter.get(
   "/:id",
-  requirePermission("CRM.ACTIVITIES.VIEW", idLocator),
+  requirePermission("CRM.ACTIVITIES.VIEW", paramLocator("ACTIVITY")),
   asyncHandler(activityController.getById),
 );
 
@@ -97,7 +99,7 @@ activityRouter.get(
  */
 activityRouter.delete(
   "/:id",
-  requirePermission("CRM.ACTIVITIES.DELETE", idLocator),
+  requirePermission("CRM.ACTIVITIES.DELETE", paramLocator("ACTIVITY")),
   asyncHandler(activityController.delete),
 );
 

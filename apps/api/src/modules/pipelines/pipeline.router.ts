@@ -1,7 +1,11 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import pipelineController from "./pipeline.controller";
@@ -12,9 +16,6 @@ const pipelineRouter = Router();
 pipelineRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 pipelineRouter.use(enforceEnvFeature(EnvFeature.CRM_PIPELINES_TAB));
 pipelineRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -39,7 +40,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 pipelineRouter.post(
   "/",
-  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator),
+  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator()),
   asyncHandler(pipelineController.create),
 );
 
@@ -56,7 +57,7 @@ pipelineRouter.post(
  */
 pipelineRouter.post(
   "/seed-framework",
-  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator),
+  requirePermission("CRM.PIPELINES.CREATE", workspaceLocator()),
   asyncHandler(pipelineController.seedFramework),
 );
 
@@ -85,7 +86,7 @@ pipelineRouter.post(
  */
 pipelineRouter.get(
   "/",
-  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator),
+  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator()),
   asyncHandler(pipelineController.getAll),
 );
 
@@ -104,7 +105,7 @@ pipelineRouter.get(
  */
 pipelineRouter.get(
   "/templates",
-  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator),
+  requirePermission("CRM.PIPELINES.VIEW", workspaceLocator()),
   asyncHandler(pipelineController.listTemplates),
 );
 
@@ -127,7 +128,7 @@ pipelineRouter.get(
  */
 pipelineRouter.get(
   "/:id",
-  requirePermission("CRM.PIPELINES.VIEW", idLocator),
+  requirePermission("CRM.PIPELINES.VIEW", paramLocator("PIPELINE")),
   asyncHandler(pipelineController.getById),
 );
 
@@ -157,7 +158,7 @@ pipelineRouter.get(
  */
 pipelineRouter.put(
   "/:id",
-  requirePermission("CRM.PIPELINES.UPDATE", idLocator),
+  requirePermission("CRM.PIPELINES.UPDATE", paramLocator("PIPELINE")),
   asyncHandler(pipelineController.update),
 );
 
@@ -179,7 +180,7 @@ pipelineRouter.put(
  */
 pipelineRouter.delete(
   "/:id",
-  requirePermission("CRM.PIPELINES.DELETE", idLocator),
+  requirePermission("CRM.PIPELINES.DELETE", paramLocator("PIPELINE")),
   asyncHandler(pipelineController.delete),
 );
 

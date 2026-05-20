@@ -1,6 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import leadController from "./lead.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -9,9 +13,6 @@ const leadRouter = Router();
 
 leadRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 leadRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -26,7 +27,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 leadRouter.post(
   "/",
-  requirePermission("CRM.LEADS.CREATE", workspaceLocator),
+  requirePermission("CRM.LEADS.CREATE", workspaceLocator()),
   asyncHandler(leadController.create),
 );
 
@@ -43,7 +44,7 @@ leadRouter.post(
  */
 leadRouter.get(
   "/",
-  requirePermission("CRM.LEADS.VIEW", workspaceLocator),
+  requirePermission("CRM.LEADS.VIEW", workspaceLocator()),
   asyncHandler(leadController.getAll),
 );
 
@@ -61,7 +62,7 @@ leadRouter.get(
  */
 leadRouter.get(
   "/:id",
-  requirePermission("CRM.LEADS.VIEW", idLocator),
+  requirePermission("CRM.LEADS.VIEW", paramLocator("LEAD")),
   asyncHandler(leadController.getById),
 );
 
@@ -78,7 +79,7 @@ leadRouter.get(
  */
 leadRouter.put(
   "/:id",
-  requirePermission("CRM.LEADS.UPDATE", idLocator),
+  requirePermission("CRM.LEADS.UPDATE", paramLocator("LEAD")),
   asyncHandler(leadController.update),
 );
 
@@ -95,7 +96,7 @@ leadRouter.put(
  */
 leadRouter.delete(
   "/:id",
-  requirePermission("CRM.LEADS.DELETE", idLocator),
+  requirePermission("CRM.LEADS.DELETE", paramLocator("LEAD")),
   asyncHandler(leadController.delete),
 );
 
@@ -112,7 +113,7 @@ leadRouter.delete(
  */
 leadRouter.post(
   "/:id/convert",
-  requirePermission("CRM.LEADS.CONVERT", idLocator),
+  requirePermission("CRM.LEADS.CONVERT", paramLocator("LEAD")),
   asyncHandler(leadController.convert),
 );
 
@@ -129,7 +130,7 @@ leadRouter.post(
  */
 leadRouter.post(
   "/:id/assign",
-  requirePermission("CRM.LEADS.ASSIGN", idLocator),
+  requirePermission("CRM.LEADS.ASSIGN", paramLocator("LEAD")),
   asyncHandler(leadController.assign),
 );
 

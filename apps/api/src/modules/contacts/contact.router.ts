@@ -1,6 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import {
   enforcePlanLimits,
   enforcePlanFeature,
@@ -13,9 +17,6 @@ const contactRouter = Router();
 
 contactRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 contactRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -30,7 +31,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 contactRouter.get(
   "/tags",
-  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator),
+  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator()),
   asyncHandler(contactController.getTags),
 );
 
@@ -47,19 +48,19 @@ contactRouter.get(
  */
 contactRouter.post(
   "/tags",
-  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator()),
   asyncHandler(contactController.createTag),
 );
 
 contactRouter.patch(
   "/tags/:tagId",
-  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator()),
   asyncHandler(contactController.updateTag),
 );
 
 contactRouter.delete(
   "/tags/:tagId",
-  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", workspaceLocator()),
   asyncHandler(contactController.deleteTag),
 );
 
@@ -76,7 +77,7 @@ contactRouter.delete(
  */
 contactRouter.post(
   "/",
-  requirePermission("CRM.CONTACTS.CREATE", workspaceLocator),
+  requirePermission("CRM.CONTACTS.CREATE", workspaceLocator()),
   enforcePlanLimits("customers"),
   asyncHandler(contactController.create),
 );
@@ -94,7 +95,7 @@ contactRouter.post(
  */
 contactRouter.get(
   "/",
-  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator),
+  requirePermission("CRM.CONTACTS.VIEW", workspaceLocator()),
   asyncHandler(contactController.getAll),
 );
 
@@ -111,7 +112,7 @@ contactRouter.get(
  */
 contactRouter.get(
   "/export",
-  requirePermission("CRM.CONTACTS.EXPORT", workspaceLocator),
+  requirePermission("CRM.CONTACTS.EXPORT", workspaceLocator()),
   asyncHandler(contactController.exportCsv),
 );
 
@@ -128,7 +129,7 @@ contactRouter.get(
  */
 contactRouter.post(
   "/import",
-  requirePermission("CRM.CONTACTS.IMPORT", workspaceLocator),
+  requirePermission("CRM.CONTACTS.IMPORT", workspaceLocator()),
   uploadSingle,
   asyncHandler(contactController.importCsv),
 );
@@ -147,7 +148,7 @@ contactRouter.post(
  */
 contactRouter.get(
   "/:id",
-  requirePermission("CRM.CONTACTS.VIEW", idLocator),
+  requirePermission("CRM.CONTACTS.VIEW", paramLocator("CONTACT")),
   asyncHandler(contactController.getById),
 );
 
@@ -164,7 +165,7 @@ contactRouter.get(
  */
 contactRouter.put(
   "/:id",
-  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", paramLocator("CONTACT")),
   asyncHandler(contactController.update),
 );
 
@@ -181,7 +182,7 @@ contactRouter.put(
  */
 contactRouter.delete(
   "/:id",
-  requirePermission("CRM.CONTACTS.DELETE", idLocator),
+  requirePermission("CRM.CONTACTS.DELETE", paramLocator("CONTACT")),
   asyncHandler(contactController.delete),
 );
 
@@ -198,7 +199,7 @@ contactRouter.delete(
  */
 contactRouter.post(
   "/:id/notes",
-  requirePermission("CRM.CONTACT_NOTES.CREATE", idLocator),
+  requirePermission("CRM.CONTACT_NOTES.CREATE", paramLocator("CONTACT")),
   asyncHandler(contactController.addNote),
 );
 
@@ -215,7 +216,10 @@ contactRouter.post(
  */
 contactRouter.delete(
   "/:id/notes/:noteId",
-  requirePermission("CRM.CONTACT_NOTES.DELETE", (req) => req.params.noteId),
+  requirePermission(
+    "CRM.CONTACT_NOTES.DELETE",
+    paramLocator("CONTACT_NOTE", "noteId"),
+  ),
   asyncHandler(contactController.deleteNote),
 );
 
@@ -232,7 +236,7 @@ contactRouter.delete(
  */
 contactRouter.post(
   "/:id/attachments",
-  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", paramLocator("CONTACT")),
   asyncHandler(contactController.addAttachment),
 );
 
@@ -249,7 +253,7 @@ contactRouter.post(
  */
 contactRouter.delete(
   "/:id/attachments/:attachmentId",
-  requirePermission("CRM.CONTACTS.UPDATE", idLocator),
+  requirePermission("CRM.CONTACTS.UPDATE", paramLocator("CONTACT")),
   asyncHandler(contactController.deleteAttachment),
 );
 
@@ -266,7 +270,10 @@ contactRouter.delete(
  */
 contactRouter.post(
   "/:id/communications",
-  requirePermission("CRM.CONTACT_COMMUNICATIONS.CREATE", idLocator),
+  requirePermission(
+    "CRM.CONTACT_COMMUNICATIONS.CREATE",
+    paramLocator("CONTACT"),
+  ),
   asyncHandler(contactController.addCommunication),
 );
 

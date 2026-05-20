@@ -1,7 +1,11 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -12,9 +16,6 @@ const workflowRouter = Router();
 workflowRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 workflowRouter.use(enforceEnvFeature(EnvFeature.CRM_WORKFLOWS));
 workflowRouter.use(enforcePlanFeature("salesPipeline"));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -30,7 +31,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 workflowRouter.get(
   "/templates",
-  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator),
+  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator()),
   asyncHandler(workflowController.getTemplates),
 );
 
@@ -68,7 +69,7 @@ workflowRouter.get(
  */
 workflowRouter.post(
   "/templates/:templateKey/install",
-  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator),
+  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator()),
   asyncHandler(workflowController.installTemplate),
 );
 
@@ -121,7 +122,7 @@ workflowRouter.post(
  */
 workflowRouter.get(
   "/",
-  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator),
+  requirePermission("CRM.WORKFLOWS.VIEW", workspaceLocator()),
   asyncHandler(workflowController.getAll),
 );
 
@@ -166,7 +167,7 @@ workflowRouter.get(
  */
 workflowRouter.get(
   "/:id",
-  requirePermission("CRM.WORKFLOWS.VIEW", idLocator),
+  requirePermission("CRM.WORKFLOWS.VIEW", paramLocator("WORKFLOW")),
   asyncHandler(workflowController.getById),
 );
 
@@ -197,7 +198,7 @@ workflowRouter.get(
  */
 workflowRouter.get(
   "/:id/runs",
-  requirePermission("CRM.WORKFLOWS.VIEW", idLocator),
+  requirePermission("CRM.WORKFLOWS.VIEW", paramLocator("WORKFLOW")),
   asyncHandler(workflowController.getRuns),
 );
 
@@ -237,7 +238,7 @@ workflowRouter.get(
  */
 workflowRouter.post(
   "/",
-  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator),
+  requirePermission("CRM.WORKFLOWS.CREATE", workspaceLocator()),
   asyncHandler(workflowController.create),
 );
 
@@ -286,7 +287,7 @@ workflowRouter.post(
  */
 workflowRouter.put(
   "/:id",
-  requirePermission("CRM.WORKFLOWS.UPDATE", idLocator),
+  requirePermission("CRM.WORKFLOWS.UPDATE", paramLocator("WORKFLOW")),
   asyncHandler(workflowController.update),
 );
 
@@ -330,7 +331,7 @@ workflowRouter.put(
  */
 workflowRouter.delete(
   "/:id",
-  requirePermission("CRM.WORKFLOWS.DELETE", idLocator),
+  requirePermission("CRM.WORKFLOWS.DELETE", paramLocator("WORKFLOW")),
   asyncHandler(workflowController.delete),
 );
 
