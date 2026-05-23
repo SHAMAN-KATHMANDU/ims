@@ -31,8 +31,9 @@ export class AuthRepository {
   }
 
   async findUserByTenantAndUsername(tenantId: string, username: string) {
+    // deletedAt: null — archived (soft-deleted, issue #537) users cannot log in.
     return basePrisma.user.findFirst({
-      where: { tenantId, username },
+      where: { tenantId, username, deletedAt: null },
     });
   }
 
@@ -70,8 +71,9 @@ export class AuthRepository {
   }
 
   async findUserById(userId: string) {
-    return basePrisma.user.findUnique({
-      where: { id: userId },
+    // deletedAt: null — archived users must not pass session refresh / getMe.
+    return basePrisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
       select: {
         id: true,
         tenantId: true,
@@ -100,8 +102,9 @@ export class AuthRepository {
   }
 
   async findUserWithPassword(userId: string) {
-    return basePrisma.user.findUnique({
-      where: { id: userId },
+    // Archived users cannot change passwords either — fail closed.
+    return basePrisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
     });
   }
 

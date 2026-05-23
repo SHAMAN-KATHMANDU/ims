@@ -25,12 +25,12 @@ const USER_PUBLIC_SELECT = {
 
 export class UserRepository {
   async findByUsername(username: string) {
-    return prisma.user.findFirst({ where: { username } });
+    return prisma.user.findFirst({ where: { username, deletedAt: null } });
   }
 
   async findByUsernameExcluding(username: string, excludeId: string) {
     return prisma.user.findFirst({
-      where: { username, id: { not: excludeId } },
+      where: { username, id: { not: excludeId }, deletedAt: null },
     });
   }
 
@@ -62,7 +62,10 @@ export class UserRepository {
       createdAt: "desc" as const,
     };
 
-    const where: Parameters<typeof prisma.user.findMany>[0]["where"] = {};
+    const where: Parameters<typeof prisma.user.findMany>[0]["where"] = {
+      // Hide soft-deleted (archived) users from the admin list — issue #537.
+      deletedAt: null,
+    };
 
     if (search) {
       where.OR = [{ username: { contains: search, mode: "insensitive" } }];
@@ -89,14 +92,14 @@ export class UserRepository {
   }
 
   async findById(id: string) {
-    return prisma.user.findUnique({
-      where: { id },
+    return prisma.user.findFirst({
+      where: { id, deletedAt: null },
       select: USER_PUBLIC_SELECT,
     });
   }
 
   async findByIdRaw(id: string) {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findFirst({ where: { id, deletedAt: null } });
   }
 
   async update(
@@ -110,8 +113,18 @@ export class UserRepository {
     });
   }
 
-  async delete(id: string) {
-    return prisma.user.delete({ where: { id } });
+  /**
+   * Soft-delete (archive) a user — issue #537. Hard-deleting fails because
+   * onDelete: Restrict relations point at this user from contacts, deals,
+   * leads, tasks, etc.; archiving keeps those references intact while the
+   * row disappears from the admin list and from login lookups.
+   */
+  async softDelete(id: string) {
+    return prisma.user.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+      select: USER_PUBLIC_SELECT,
+    });
   }
 }
 
