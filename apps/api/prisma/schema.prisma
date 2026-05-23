@@ -917,6 +917,11 @@ model User {
   lastLoginAt DateTime? @map("last_login_at")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  // Soft-delete tombstone (issue #537). Deleting a user is blocked by
+  // onDelete: Restrict relations (contacts, deals, leads, etc.). Instead
+  // we set deletedAt so the row is hidden from the UI and login, while
+  // existing references continue to resolve to the archived account.
+  deletedAt   DateTime? @map("deleted_at")
 
   // Relations
   tenant                         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -972,6 +977,7 @@ model User {
   overwrites PermissionOverwrite[]
 
   @@unique([tenantId, username])
+  @@index([tenantId, deletedAt])
   @@map("users")
 }
 
