@@ -34,7 +34,12 @@ import { ProductTable } from "./ProductTable";
 import { ProductDetailSheet } from "./ProductDetailSheet";
 import { ProductDeleteDialog } from "./dialogs/ProductDeleteDialog";
 import { VariationDeleteDialog } from "./dialogs/VariationDeleteDialog";
-import { getVariationAttributeDisplay } from "./utils/helpers";
+import {
+  getVariationAttributeDisplay,
+  variationWithAddedPhoto,
+  variationWithPrimaryPhoto,
+  variationWithRemovedPhoto,
+} from "./utils/helpers";
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./BulkUploadDialog";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
@@ -741,14 +746,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = variation.photos || [];
-    const isPrimary = photos.length === 0;
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: [...photos, { photoUrl, isPrimary, fileName }],
-    };
+    updated[variationIndex] = variationWithAddedPhoto(
+      variation,
+      photoUrl,
+      fileName,
+    );
     setProductVariations(updated);
   };
 
@@ -759,17 +761,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = variation.photos || [];
-    const newPhotos = photos.filter((_, i) => i !== photoIndex);
-    if (photos[photoIndex]?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
-      newPhotos[0].isPrimary = true;
-    }
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: newPhotos,
-    };
+    updated[variationIndex] = variationWithRemovedPhoto(variation, photoIndex);
     setProductVariations(updated);
   };
 
@@ -777,16 +769,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = [...(variation.photos || [])];
-    photos.forEach((photo, i) => {
-      photo.isPrimary = i === photoIndex;
-    });
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: photos,
-    };
+    updated[variationIndex] = variationWithPrimaryPhoto(variation, photoIndex);
     setProductVariations(updated);
   };
 
