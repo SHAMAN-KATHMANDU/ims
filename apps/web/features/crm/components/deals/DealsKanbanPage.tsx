@@ -127,7 +127,11 @@ export function DealsKanbanPage() {
   const { data: pipelinesData } = usePipelines(undefined, {
     enabled: envDealsEnabled && salesPipelineEnabled,
   });
-  const { data: selectedDealData } = useDeal(selectedDealId ?? "", {
+  const {
+    data: selectedDealData,
+    isError: selectedDealIsError,
+    error: selectedDealError,
+  } = useDeal(selectedDealId ?? "", {
     enabled: envDealsEnabled && salesPipelineEnabled && !!selectedDealId,
   });
   const updateStageMutation = useUpdateDealStage();
@@ -570,7 +574,7 @@ export function DealsKanbanPage() {
           )}
           {drawerMode === "edit" &&
             selectedDealId &&
-            selectedDealData?.deal && (
+            (selectedDealData?.deal ? (
               <DealForm
                 mode="edit"
                 deal={selectedDealData.deal}
@@ -601,7 +605,29 @@ export function DealsKanbanPage() {
                 onCancel={() => setDrawerMode("view")}
                 isLoading={updateDealMutation.isPending}
               />
-            )}
+            ) : selectedDealIsError ? (
+              <div className="p-6 space-y-3">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 space-y-2">
+                  <p className="text-sm font-medium">
+                    We couldn&rsquo;t load this deal.
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {selectedDealError instanceof Error
+                      ? selectedDealError.message
+                      : "It may have been updated by someone else. Close this and reopen from the board to get the latest."}
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={closeDrawer}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6">
+                <Skeleton className="h-64 w-full" />
+              </div>
+            ))}
         </ResponsiveDrawer>
 
         <AlertDialog

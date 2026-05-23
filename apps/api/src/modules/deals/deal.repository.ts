@@ -190,8 +190,44 @@ export class DealRepository {
   }
 
   async findById(tenantId: string, id: string) {
-    return prisma.deal.findFirst({
+    // Fast path: the id IS the latest revision (the typical case for fresh
+    // links and a non-stale kanban cache).
+    const direct = await prisma.deal.findFirst({
       where: { id, tenantId, deletedAt: null, isLatest: true },
+      include: DEAL_DETAIL_INCLUDE,
+    });
+    if (direct) return direct;
+
+    // Fallback: the caller passed an id that's no longer isLatest=true.
+    // Updating a deal creates a new revision with a new id and flips the
+    // old one to isLatest=false (see createDealRevision). A stale id can
+    // arrive from a cached kanban, an in-flight optimistic mutation, a
+    // bookmarked link to a previous revision, or a notification deep link.
+    // Returning 404 here made the Line Items section toast "Deal not found"
+    // on deals that had ever been edited (issue #562). Walk forward through
+    // the revision chain (parentDealId → child) to the head and serve that.
+    const stale = await prisma.deal.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!stale) return null;
+
+    let cursorId: string = stale.id;
+    // Defensive cap — revision chains are short in practice; a much larger
+    // value here would only matter if the data were corrupt with a cycle.
+    for (let i = 0; i < 50; i++) {
+      const child = await prisma.deal.findFirst({
+        where: { parentDealId: cursorId, tenantId, deletedAt: null },
+        select: { id: true, isLatest: true },
+      });
+      if (!child) break;
+      cursorId = child.id;
+      if (child.isLatest) break;
+    }
+    if (cursorId === stale.id) return null;
+
+    return prisma.deal.findFirst({
+      where: { id: cursorId, tenantId, deletedAt: null, isLatest: true },
       include: DEAL_DETAIL_INCLUDE,
     });
   }
