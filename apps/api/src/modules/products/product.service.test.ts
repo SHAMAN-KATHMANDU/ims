@@ -303,4 +303,256 @@ describe("ProductService", () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  // Companion guard to #561: an existing variation's photo list must be
+  // honoured as the new full state when an array (including []) is provided.
+  // Sending an empty array should clear all photos; sending `undefined`
+  // should leave them alone.
+  describe("update — variation photo replacement", () => {
+    const baseCtx = { tenantId: "tenant-1", userId: "user-1" };
+
+    const mockFindVariationsWithDependents = vi.fn();
+    const mockDeleteVariationPhotos = vi.fn();
+    const mockUpdateProductVariation = vi.fn();
+    const mockUpdateProductRepo = vi.fn();
+    const mockSetVariationAttributes = vi.fn();
+    const mockFindDefaultWarehouse = vi.fn();
+    const mockCountLocInvForSub = vi.fn();
+    const mockCountSaleItemsForSub = vi.fn();
+    const mockCountTransferItemsForSub = vi.fn();
+    const mockDeleteSubVariation = vi.fn();
+    const mockCreateSubVariation = vi.fn();
+
+    const wireRepo = (repo: ProductRepository) => {
+      Object.assign(repo, {
+        findProductForUpdate: vi.fn().mockResolvedValue({
+          id: "p1",
+          tenantId: "tenant-1",
+          name: "Rope Bracelet",
+          imsCode: "RB-1",
+          categoryId: "c1",
+        }),
+        findVariationsWithDependents: mockFindVariationsWithDependents,
+        deleteVariationPhotos: mockDeleteVariationPhotos,
+        updateProductVariation: mockUpdateProductVariation,
+        updateProduct: mockUpdateProductRepo,
+        setVariationAttributes: mockSetVariationAttributes,
+        findDefaultWarehouse: mockFindDefaultWarehouse,
+        countLocationInventoryForSubVariation: mockCountLocInvForSub,
+        countSaleItemsForSubVariation: mockCountSaleItemsForSub,
+        countTransferItemsForSubVariation: mockCountTransferItemsForSub,
+        deleteProductSubVariation: mockDeleteSubVariation,
+        createProductSubVariation: mockCreateSubVariation,
+      });
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      wireRepo(mockRepo);
+      mockFindVariationsWithDependents.mockResolvedValue([
+        {
+          id: "var-1",
+          stockQuantity: 5,
+          subVariations: [],
+          _count: { saleItems: 0, transferItems: 0 },
+        },
+      ]);
+      mockUpdateProductRepo.mockResolvedValue({
+        id: "p1",
+        name: "Rope Bracelet",
+        imsCode: "RB-1",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        dateModified: new Date("2026-01-01T00:00:00Z"),
+      });
+    });
+
+    it("clears existing photos when the client sends an empty photos array", async () => {
+      await productService.update(
+        "p1",
+        {
+          variations: [{ id: "var-1", stockQuantity: 5, photos: [] }],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      expect(mockDeleteVariationPhotos).toHaveBeenCalledWith("var-1");
+      expect(mockUpdateProductVariation).toHaveBeenCalledWith(
+        "var-1",
+        expect.not.objectContaining({ photos: expect.anything() }),
+      );
+    });
+
+    it("leaves photos alone when the photos field is omitted", async () => {
+      await productService.update(
+        "p1",
+        {
+          variations: [{ id: "var-1", stockQuantity: 5 }],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      expect(mockDeleteVariationPhotos).not.toHaveBeenCalled();
+    });
+
+    it("replaces photos when the client sends a new list", async () => {
+      await productService.update(
+        "p1",
+        {
+          variations: [
+            {
+              id: "var-1",
+              stockQuantity: 5,
+              photos: [
+                { photoUrl: "https://example.com/a.jpg", isPrimary: true },
+              ],
+            },
+          ],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      expect(mockDeleteVariationPhotos).toHaveBeenCalledWith("var-1");
+      expect(mockUpdateProductVariation).toHaveBeenCalledWith(
+        "var-1",
+        expect.objectContaining({
+          photos: {
+            create: [
+              { photoUrl: "https://example.com/a.jpg", isPrimary: true },
+            ],
+          },
+        }),
+      );
+    });
+  });
+
+  // Bad attribute UUIDs (stale picker, mismatched type/value, or hand-edited
+  // payload) used to bubble out as Prisma P2025 FK failures → generic 500.
+  // The pre-write validator must catch them as 400 errors.
+  describe("update — variation attribute validation", () => {
+    const baseCtx = { tenantId: "tenant-1", userId: "user-1" };
+
+    const mockFindVariationsWithDependents = vi.fn();
+    const mockUpdateProductVariation = vi.fn();
+    const mockUpdateProductRepo = vi.fn();
+    const mockSetVariationAttributes = vi.fn();
+    const mockFindTypesByIdsAndTenant = vi.fn();
+    const mockFindValuesByIdsAndTenant = vi.fn();
+    const mockDeleteVariationPhotos = vi.fn();
+
+    const wireRepo = (repo: ProductRepository) => {
+      Object.assign(repo, {
+        findProductForUpdate: vi.fn().mockResolvedValue({
+          id: "p1",
+          tenantId: "tenant-1",
+          name: "Rope Bracelet",
+          imsCode: "RB-1",
+          categoryId: "c1",
+        }),
+        findVariationsWithDependents: mockFindVariationsWithDependents,
+        deleteVariationPhotos: mockDeleteVariationPhotos,
+        updateProductVariation: mockUpdateProductVariation,
+        updateProduct: mockUpdateProductRepo,
+        setVariationAttributes: mockSetVariationAttributes,
+        findAttributeTypesByIdsAndTenant: mockFindTypesByIdsAndTenant,
+        findAttributeValuesByIdsAndTenant: mockFindValuesByIdsAndTenant,
+      });
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      wireRepo(mockRepo);
+      mockFindVariationsWithDependents.mockResolvedValue([
+        {
+          id: "var-1",
+          stockQuantity: 5,
+          subVariations: [],
+          _count: { saleItems: 0, transferItems: 0 },
+        },
+      ]);
+      mockUpdateProductRepo.mockResolvedValue({
+        id: "p1",
+        name: "Rope Bracelet",
+        imsCode: "RB-1",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        dateModified: new Date("2026-01-01T00:00:00Z"),
+      });
+    });
+
+    const payload = (
+      attrs: Array<{ attributeTypeId: string; attributeValueId: string }>,
+    ) =>
+      ({
+        variations: [{ id: "var-1", stockQuantity: 5, attributes: attrs }],
+      }) as Parameters<typeof productService.update>[1];
+
+    it("rejects unknown attribute type id with 400", async () => {
+      mockFindTypesByIdsAndTenant.mockResolvedValue([]);
+      mockFindValuesByIdsAndTenant.mockResolvedValue([
+        { id: "val-1", attributeTypeId: "type-1" },
+      ]);
+
+      await expect(
+        productService.update(
+          "p1",
+          payload([{ attributeTypeId: "type-1", attributeValueId: "val-1" }]),
+          baseCtx,
+        ),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(mockSetVariationAttributes).not.toHaveBeenCalled();
+    });
+
+    it("rejects unknown attribute value id with 400", async () => {
+      mockFindTypesByIdsAndTenant.mockResolvedValue([{ id: "type-1" }]);
+      mockFindValuesByIdsAndTenant.mockResolvedValue([]);
+
+      await expect(
+        productService.update(
+          "p1",
+          payload([{ attributeTypeId: "type-1", attributeValueId: "val-X" }]),
+          baseCtx,
+        ),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(mockSetVariationAttributes).not.toHaveBeenCalled();
+    });
+
+    it("rejects a value belonging to a different type with 400", async () => {
+      // val-1 actually belongs to type-OTHER, not the supplied type-1
+      mockFindTypesByIdsAndTenant.mockResolvedValue([{ id: "type-1" }]);
+      mockFindValuesByIdsAndTenant.mockResolvedValue([
+        { id: "val-1", attributeTypeId: "type-OTHER" },
+      ]);
+
+      await expect(
+        productService.update(
+          "p1",
+          payload([{ attributeTypeId: "type-1", attributeValueId: "val-1" }]),
+          baseCtx,
+        ),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(mockSetVariationAttributes).not.toHaveBeenCalled();
+    });
+
+    it("passes valid attribute ids through to setVariationAttributes", async () => {
+      mockFindTypesByIdsAndTenant.mockResolvedValue([{ id: "type-1" }]);
+      mockFindValuesByIdsAndTenant.mockResolvedValue([
+        { id: "val-1", attributeTypeId: "type-1" },
+      ]);
+
+      await productService.update(
+        "p1",
+        payload([{ attributeTypeId: "type-1", attributeValueId: "val-1" }]),
+        baseCtx,
+      );
+
+      expect(mockSetVariationAttributes).toHaveBeenCalledWith("var-1", [
+        { attributeTypeId: "type-1", attributeValueId: "val-1" },
+      ]);
+    });
+  });
 });

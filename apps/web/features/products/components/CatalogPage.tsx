@@ -34,7 +34,12 @@ import { ProductTable } from "./ProductTable";
 import { ProductDetailSheet } from "./ProductDetailSheet";
 import { ProductDeleteDialog } from "./dialogs/ProductDeleteDialog";
 import { VariationDeleteDialog } from "./dialogs/VariationDeleteDialog";
-import { getVariationAttributeDisplay } from "./utils/helpers";
+import {
+  getVariationAttributeDisplay,
+  variationWithAddedPhoto,
+  variationWithPrimaryPhoto,
+  variationWithRemovedPhoto,
+} from "./utils/helpers";
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./BulkUploadDialog";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
@@ -454,13 +459,14 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               v.subVariants && v.subVariants.length > 0
                 ? v.subVariants.filter(Boolean)
                 : undefined,
-            photos:
-              v.photos && v.photos.length > 0
-                ? v.photos.map((p) => ({
-                    photoUrl: p.photoUrl,
-                    isPrimary: p.isPrimary,
-                  }))
-                : undefined,
+            // Always send the photos array (even when empty) so the API can
+            // distinguish "no change" (field absent) from "clear all photos"
+            // (empty array). Sending `undefined` here would silently keep
+            // stale photos after the user removed them in the form.
+            photos: (v.photos ?? []).map((p) => ({
+              photoUrl: p.photoUrl,
+              isPrimary: p.isPrimary,
+            })),
             attributes:
               v.attributes && v.attributes.length > 0
                 ? v.attributes
@@ -497,6 +503,13 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                       photoUrl: p.photoUrl,
                       isPrimary: p.isPrimary,
                     }))
+                  : undefined,
+              // Include EAV attributes on create — previously omitted, so
+              // any attribute values the user set on variations during
+              // product creation were silently dropped.
+              attributes:
+                v.attributes && v.attributes.length > 0
+                  ? v.attributes
                   : undefined,
             }));
           }
@@ -741,14 +754,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = variation.photos || [];
-    const isPrimary = photos.length === 0;
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: [...photos, { photoUrl, isPrimary, fileName }],
-    };
+    updated[variationIndex] = variationWithAddedPhoto(
+      variation,
+      photoUrl,
+      fileName,
+    );
     setProductVariations(updated);
   };
 
@@ -759,17 +769,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = variation.photos || [];
-    const newPhotos = photos.filter((_, i) => i !== photoIndex);
-    if (photos[photoIndex]?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
-      newPhotos[0].isPrimary = true;
-    }
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: newPhotos,
-    };
+    updated[variationIndex] = variationWithRemovedPhoto(variation, photoIndex);
     setProductVariations(updated);
   };
 
@@ -777,16 +777,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
-    const photos = [...(variation.photos || [])];
-    photos.forEach((photo, i) => {
-      photo.isPrimary = i === photoIndex;
-    });
-    updated[variationIndex] = {
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: photos,
-    };
+    updated[variationIndex] = variationWithPrimaryPhoto(variation, photoIndex);
     setProductVariations(updated);
   };
 
