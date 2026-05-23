@@ -10,7 +10,18 @@ const dashboardRouter = Router();
  * @swagger
  * /dashboard/user-summary:
  *   get:
- *     summary: Get user dashboard summary
+ *     summary: Get the authenticated user's personal dashboard summary
+ *     description: |
+ *       Returns sales, revenue, credit and trend data for the authenticated
+ *       user (resolved from the JWT). Auth-only — no RBAC permission gate.
+ *       The data set is intrinsically personal: `getUserSummary(userId)` uses
+ *       the JWT userId verbatim and every underlying query is scoped to that
+ *       userId, so there is nothing for a permission check to isolate.
+ *
+ *       Adding `REPORTS.DASHBOARD.PERSONAL_VIEW` here previously produced
+ *       "Forbidden" toasts on the user dashboard for any legacy `user` whose
+ *       RBAC seed had not yet linked them to the STAFF role (issue #530 —
+ *       same seed-drift family as #486 / #488 / #535 / #538-#540).
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -18,11 +29,9 @@ const dashboardRouter = Router();
  *       200:
  *         description: User summary
  *       401: { description: Unauthorized }
- *       403: { description: Forbidden — missing REPORTS.DASHBOARD.PERSONAL_VIEW }
  */
 dashboardRouter.get(
   "/user-summary",
-  requirePermission("REPORTS.DASHBOARD.PERSONAL_VIEW", workspaceLocator()),
   asyncHandler(dashboardController.getUserSummary),
 );
 
