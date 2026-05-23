@@ -42,7 +42,7 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
     DEFAULT_ACTIVITY_PAGE_SIZE,
   );
   const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
-  const { data, isLoading } = useDeal(dealId);
+  const { data, isPending, isError, error, refetch } = useDeal(dealId);
   const { data: activitiesData } = useActivitiesByDeal(dealId, {
     page: activityPage,
     limit: activityPageSize,
@@ -60,8 +60,30 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
   const stages = useStagesFromDeal(deal);
   const tasks = deal?.tasks ?? [];
 
-  if (isLoading || !deal) {
+  if (isPending && !isError) {
     return <Skeleton className="h-96 w-full" />;
+  }
+  if (isError || !deal) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 space-y-3">
+        <p className="text-sm font-medium">We couldn&rsquo;t load this deal.</p>
+        <p className="text-muted-foreground text-sm">
+          {error instanceof Error
+            ? error.message
+            : "It may have been updated, replaced, or removed. Refreshing the deals list usually clears this up."}
+        </p>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
+          <Link href={`${basePath}/crm/deals`}>
+            <Button size="sm" variant="outline">
+              Back to Deals
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const handleStageChange = (stage: string) => {
