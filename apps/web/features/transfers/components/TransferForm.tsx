@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Plus, Trash2, ArrowRight, Search, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, ArrowRight, Search, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/features/locations";
@@ -319,6 +319,24 @@ export function TransferForm({
     }
     const newItems = [...currentItems];
     newItems[idx] = { ...item, quantity: item.quantity + 1 };
+    form.setValue("items", newItems, { shouldValidate: true });
+  };
+
+  const handleDecreaseQuantity = (
+    variationId: string,
+    subVariationId?: string | null,
+  ) => {
+    const currentItems = form.getValues("items") ?? [];
+    const idx = currentItems.findIndex(
+      (item) =>
+        item.variationId === variationId &&
+        (item.subVariationId ?? null) === (subVariationId ?? null),
+    );
+    if (idx < 0) return;
+    const item = currentItems[idx];
+    if (!item || item.quantity <= 1) return;
+    const newItems = [...currentItems];
+    newItems[idx] = { ...item, quantity: item.quantity - 1 };
     form.setValue("items", newItems, { shouldValidate: true });
   };
 
@@ -765,7 +783,23 @@ export function TransferForm({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <span className="tabular-nums w-8">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                handleDecreaseQuantity(
+                                  item.variationId,
+                                  item.subVariationId,
+                                )
+                              }
+                              disabled={item.quantity <= 1}
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                            <span className="tabular-nums w-8 text-center">
                               {item.quantity}
                             </span>
                             <Button
