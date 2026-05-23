@@ -459,13 +459,14 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               v.subVariants && v.subVariants.length > 0
                 ? v.subVariants.filter(Boolean)
                 : undefined,
-            photos:
-              v.photos && v.photos.length > 0
-                ? v.photos.map((p) => ({
-                    photoUrl: p.photoUrl,
-                    isPrimary: p.isPrimary,
-                  }))
-                : undefined,
+            // Always send the photos array (even when empty) so the API can
+            // distinguish "no change" (field absent) from "clear all photos"
+            // (empty array). Sending `undefined` here would silently keep
+            // stale photos after the user removed them in the form.
+            photos: (v.photos ?? []).map((p) => ({
+              photoUrl: p.photoUrl,
+              isPrimary: p.isPrimary,
+            })),
             attributes:
               v.attributes && v.attributes.length > 0
                 ? v.attributes
@@ -502,6 +503,13 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                       photoUrl: p.photoUrl,
                       isPrimary: p.isPrimary,
                     }))
+                  : undefined,
+              // Include EAV attributes on create — previously omitted, so
+              // any attribute values the user set on variations during
+              // product creation were silently dropped.
+              attributes:
+                v.attributes && v.attributes.length > 0
+                  ? v.attributes
                   : undefined,
             }));
           }

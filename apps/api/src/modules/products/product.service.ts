@@ -661,14 +661,19 @@ export class ProductService {
         if (incomingIds.has(existing.id)) {
           const payload = incomingVariations.find((v) => v.id === existing.id);
           if (payload) {
-            const newPhotos =
-              payload.photos && Array.isArray(payload.photos)
-                ? payload.photos.map((p) => ({
-                    photoUrl: p.photoUrl,
-                    isPrimary: p.isPrimary ?? false,
-                  }))
-                : [];
-            if (newPhotos.length > 0) {
+            // `payload.photos === undefined` means "client didn't touch
+            // photos — leave them alone". An explicit array (including `[]`)
+            // means "this is the new full list", so we clear existing rows
+            // first and recreate from the array. Without distinguishing the
+            // two, users couldn't clear all photos via the edit form.
+            const photosProvided = Array.isArray(payload.photos);
+            const newPhotos = photosProvided
+              ? payload.photos!.map((p) => ({
+                  photoUrl: p.photoUrl,
+                  isPrimary: p.isPrimary ?? false,
+                }))
+              : [];
+            if (photosProvided) {
               await this.repo.deleteVariationPhotos(existing.id);
             }
             const incomingSubArr =
