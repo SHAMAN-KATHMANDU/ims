@@ -92,6 +92,78 @@ export class ProductService {
     throw err as Error;
   }
 
+  /**
+   * Batch-validate every (attributeTypeId, attributeValueId) pair across an
+   * incoming variations payload before any write. Without this, bad UUIDs
+   * surfaced as Prisma P2025 foreign-key failures mid-transaction and the
+   * client saw a generic 500 instead of a meaningful validation error.
+   *
+   * Three failure modes, all returned as 400:
+   *   - attributeTypeId not owned by tenant (or doesn't exist)
+   *   - attributeValueId not owned by tenant (or doesn't exist)
+   *   - the value belongs to a different attribute type than the one supplied
+   *     (e.g. a Color value sent against the Size type)
+   */
+  private async assertVariationAttributesValid(
+    tenantId: string,
+    variations: Array<{
+      attributes?: Array<{
+        attributeTypeId?: string;
+        attributeValueId?: string;
+      }>;
+    }>,
+  ): Promise<void> {
+    const typeIds = new Set<string>();
+    const valueIds = new Set<string>();
+    for (const v of variations) {
+      if (!Array.isArray(v.attributes)) continue;
+      for (const a of v.attributes) {
+        if (a?.attributeTypeId) typeIds.add(a.attributeTypeId);
+        if (a?.attributeValueId) valueIds.add(a.attributeValueId);
+      }
+    }
+    if (typeIds.size === 0 && valueIds.size === 0) return;
+
+    const [validTypes, validValues] = await Promise.all([
+      typeIds.size > 0
+        ? this.repo.findAttributeTypesByIdsAndTenant(tenantId, [...typeIds])
+        : Promise.resolve([] as Array<{ id: string }>),
+      valueIds.size > 0
+        ? this.repo.findAttributeValuesByIdsAndTenant(tenantId, [...valueIds])
+        : Promise.resolve([] as Array<{ id: string; attributeTypeId: string }>),
+    ]);
+    const validTypeIds = new Set(validTypes.map((t) => t.id));
+    const valueTypeById = new Map(
+      validValues.map((v) => [v.id, v.attributeTypeId] as const),
+    );
+
+    for (const v of variations) {
+      if (!Array.isArray(v.attributes)) continue;
+      for (const a of v.attributes) {
+        if (!a?.attributeTypeId || !a?.attributeValueId) continue;
+        if (!validTypeIds.has(a.attributeTypeId)) {
+          throw createError(
+            `Unknown variation attribute type: ${a.attributeTypeId}`,
+            400,
+          );
+        }
+        const ownerType = valueTypeById.get(a.attributeValueId);
+        if (ownerType === undefined) {
+          throw createError(
+            `Unknown variation attribute value: ${a.attributeValueId}`,
+            400,
+          );
+        }
+        if (ownerType !== a.attributeTypeId) {
+          throw createError(
+            `Attribute value ${a.attributeValueId} does not belong to attribute type ${a.attributeTypeId}`,
+            400,
+          );
+        }
+      }
+    }
+  }
+
   async create(data: CreateProductDto, ctx: CreateProductContext) {
     const { tenantId, userId, ip, userAgent } = ctx;
 
@@ -117,6 +189,10 @@ export class ProductService {
         throw err;
       }
     }
+
+    // Validate EAV attribute UUIDs up front so a stale picker value
+    // surfaces as a 400 instead of a mid-create Prisma FK failure.
+    await this.assertVariationAttributesValid(tenantId, data.variations);
 
     const resolvedDiscounts: Prisma.ProductDiscountUncheckedCreateWithoutProductInput[] =
       [];
@@ -642,11 +718,14 @@ export class ProductService {
       updateData.vendorId = data.vendorId ?? null;
 
     if (data.variations !== undefined) {
-      const existingVariations =
-        await this.repo.findVariationsWithDependents(id);
       const incomingVariations = Array.isArray(data.variations)
         ? data.variations
         : [];
+      // Validate EAV attribute UUIDs up front so a stale picker value
+      // surfaces as a 400 instead of a Prisma FK failure mid-transaction.
+      await this.assertVariationAttributesValid(tenantId, incomingVariations);
+      const existingVariations =
+        await this.repo.findVariationsWithDependents(id);
       const incomingIds = new Set(
         incomingVariations
           .map((v) => v.id)
