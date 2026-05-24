@@ -377,4 +377,4 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 
 ## Full Deployment Guide
 
-See [docs/SERVER-DEPLOYMENT.md](../docs/SERVER-DEPLOYMENT.md) for CI/CD pipeline details, rollback procedures, and infra setup.
+See [docs/deployment/SERVER-DEPLOYMENT.md](../docs/deployment/SERVER-DEPLOYMENT.md) for CI/CD pipeline details, rollback procedures, and infra setup.

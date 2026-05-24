@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { DealDetail } from "@/features/crm";
+import { DealDetail } from "@/features/crm/components/deals/DealDetail";
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 
 export default function DealDetailPage() {

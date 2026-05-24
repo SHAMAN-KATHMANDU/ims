@@ -7,7 +7,8 @@ export function ProductListingBlock({
   dataContext,
 }: BlockComponentProps<ProductListingProps>) {
   const products = dataContext.products || [];
-  const { locale = "en-IN", currency = "INR" } = dataContext.site || {};
+  const locale = dataContext.site?.locale ?? "en-IN";
+  const currency = dataContext.site?.currency ?? "INR";
 
   return (
     <div style={{ marginBlock: "1rem" }}>

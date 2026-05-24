@@ -199,7 +199,7 @@ vi.mock("@/features/analytics", () => ({
   }),
 }));
 
-vi.mock("@/features/crm", () => ({
+vi.mock("@/features/crm/hooks", () => ({
   useContactsPaginated: vi.fn().mockReturnValue({
     data: { data: [] },
   }),

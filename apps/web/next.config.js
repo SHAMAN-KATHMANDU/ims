@@ -32,6 +32,8 @@ const nextConfig = {
     root: monorepoRoot,
   },
 
+  transpilePackages: ["@repo/blocks", "@repo/shared"],
+
   // Standalone output for optimized Docker builds
   // This creates a minimal production bundle with only necessary files
   output: "standalone",

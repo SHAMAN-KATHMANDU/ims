@@ -4,7 +4,6 @@
     "apps/api": {
       "entry": [
         "src/index.ts",
-        "src/instrumentation.ts",
         "src/jobs/*.ts",
         "src/queues/*.worker.ts",
         "src/queues/queue.config.ts",

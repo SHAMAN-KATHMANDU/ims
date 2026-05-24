@@ -25,6 +25,7 @@ const nextConfig = {
   turbopack: {
     root: monorepoRoot,
   },
+  transpilePackages: ["@repo/blocks", "@repo/shared"],
   // Multi-stage Docker builds need a minimal standalone bundle.
   output: "standalone",
   // Host-header passthrough: Next 16 respects the incoming Host header by

@@ -3,7 +3,7 @@ import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
-import { CrmReportsPage } from "@/features/crm";
+import { CrmReportsPage } from "@/features/crm/components/reports/CrmReportsPage";
 
 export const metadata = { title: "CRM Reports" };
 

@@ -1,7 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
-import { WorkflowEditorPage } from "@/features/crm";
+import WorkflowEditorPage from "@/features/crm/components/workflows/WorkflowEditorPage";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 

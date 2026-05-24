@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useLead, useUpdateLead } from "@/features/crm";
-import { LeadForm } from "@/features/crm";
+import { useLead, useUpdateLead } from "@/features/crm/hooks";
+import { LeadForm } from "@/features/crm/components/leads/LeadForm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";

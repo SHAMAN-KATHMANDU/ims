@@ -1,7 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
-import { CrmSettingsPage } from "@/features/crm";
+import CrmSettingsPage from "@/features/crm/components/settings/CrmSettingsPage";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useContact } from "@/features/crm";
-import { ContactDetail } from "@/features/crm";
+import { useContact } from "@/features/crm/hooks";
+import { ContactDetail } from "@/features/crm/components/contacts/ContactDetail";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft } from "lucide-react";

@@ -6,7 +6,8 @@ export function PdpBuyboxBlock({
   props,
   dataContext,
 }: BlockComponentProps<PdpBuyboxProps>) {
-  const { locale = "en-IN", currency = "INR" } = dataContext.site || {};
+  const locale = dataContext.site?.locale ?? "en-IN";
+  const currency = dataContext.site?.currency ?? "INR";
   const product =
     dataContext.activeProduct ?? dataContext.products?.[0] ?? null;
   const productName = product?.name ?? "Product Name";

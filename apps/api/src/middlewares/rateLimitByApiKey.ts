@@ -8,7 +8,7 @@
  * Must run AFTER publicApiKeyAuth (which loads `req.apiKey`).
  */
 
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request } from "express";
 
 const FALLBACK_PER_MIN = 120;
@@ -22,7 +22,9 @@ export const rateLimitByApiKey = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Key by api-key id, not IP — the whole point is to limit per credential.
-  keyGenerator: (req: Request) => req.apiKey?.id ?? `ip:${req.ip}`,
+  // Fallback uses ipKeyGenerator for IPv6-safe key derivation.
+  keyGenerator: (req: Request, res) =>
+    req.apiKey?.id ?? `ip:${ipKeyGenerator(req.ip ?? "")}`,
   handler: (_req, res) => {
     res.status(429).json({
       success: false,

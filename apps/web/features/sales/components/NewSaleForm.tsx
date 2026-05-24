@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/features/members";
-import { useContactsPaginated } from "@/features/crm";
+import { useContactsPaginated } from "@/features/crm/hooks";
 import { useToast } from "@/hooks/useToast";
 import {
   useLocationInventory,
