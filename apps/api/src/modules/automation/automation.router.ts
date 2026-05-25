@@ -1,7 +1,11 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { requirePermission } from "@/middlewares/requirePermission";
+import {
+  paramLocator,
+  workspaceLocator,
+} from "@/shared/permissions/resourceLocator";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import automationController from "./automation.controller";
@@ -10,9 +14,6 @@ const automationRouter = Router();
 
 automationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 automationRouter.use(enforceEnvFeature(EnvFeature.AUTOMATION));
-
-const workspaceLocator = (): string => "WORKSPACE";
-const idLocator = (req: Request): string => req.params.id;
 
 /**
  * @swagger
@@ -27,7 +28,7 @@ const idLocator = (req: Request): string => req.params.id;
  */
 automationRouter.get(
   "/definitions",
-  requirePermission("CRM.AUTOMATIONS.VIEW", workspaceLocator),
+  requirePermission("CRM.AUTOMATIONS.VIEW", workspaceLocator()),
   asyncHandler(automationController.getDefinitions),
 );
 
@@ -49,7 +50,7 @@ automationRouter.get(
  */
 automationRouter.get(
   "/definitions/:id",
-  requirePermission("CRM.AUTOMATIONS.VIEW", idLocator),
+  requirePermission("CRM.AUTOMATIONS.VIEW", paramLocator("AUTOMATION")),
   asyncHandler(automationController.getDefinitionById),
 );
 
@@ -66,7 +67,7 @@ automationRouter.get(
  */
 automationRouter.post(
   "/definitions",
-  requirePermission("CRM.AUTOMATIONS.CREATE", workspaceLocator),
+  requirePermission("CRM.AUTOMATIONS.CREATE", workspaceLocator()),
   asyncHandler(automationController.createDefinition),
 );
 
@@ -83,7 +84,7 @@ automationRouter.post(
  */
 automationRouter.put(
   "/definitions/:id",
-  requirePermission("CRM.AUTOMATIONS.UPDATE", idLocator),
+  requirePermission("CRM.AUTOMATIONS.UPDATE", paramLocator("AUTOMATION")),
   asyncHandler(automationController.updateDefinition),
 );
 
@@ -100,7 +101,7 @@ automationRouter.put(
  */
 automationRouter.delete(
   "/definitions/:id",
-  requirePermission("CRM.AUTOMATIONS.DELETE", idLocator),
+  requirePermission("CRM.AUTOMATIONS.DELETE", paramLocator("AUTOMATION")),
   asyncHandler(automationController.archiveDefinition),
 );
 
@@ -133,7 +134,7 @@ automationRouter.delete(
  */
 automationRouter.patch(
   "/definitions/:id/toggle",
-  requirePermission("CRM.AUTOMATIONS.UPDATE", idLocator),
+  requirePermission("CRM.AUTOMATIONS.UPDATE", paramLocator("AUTOMATION")),
   asyncHandler(automationController.toggleDefinition),
 );
 
@@ -150,7 +151,7 @@ automationRouter.patch(
  */
 automationRouter.get(
   "/definitions/:id/runs",
-  requirePermission("CRM.AUTOMATIONS.VIEW", idLocator),
+  requirePermission("CRM.AUTOMATIONS.VIEW", paramLocator("AUTOMATION")),
   asyncHandler(automationController.getRuns),
 );
 
@@ -172,7 +173,7 @@ automationRouter.get(
  */
 automationRouter.get(
   "/definitions/:id/analytics",
-  requirePermission("CRM.AUTOMATIONS.VIEW", idLocator),
+  requirePermission("CRM.AUTOMATIONS.VIEW", paramLocator("AUTOMATION")),
   asyncHandler(automationController.getAnalytics),
 );
 

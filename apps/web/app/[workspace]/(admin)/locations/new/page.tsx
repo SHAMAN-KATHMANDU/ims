@@ -1,14 +1,10 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { NewLocationPage } from "@/features/locations";
 
 export default function NewLocationRoute() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
+    <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
       <NewLocationPage />
-    </AuthGuard>
+    </AuthGuardWithWorkspace>
   );
 }

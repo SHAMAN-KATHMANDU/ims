@@ -16,6 +16,7 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
     "seed": "node prisma/seed.js",
+    "seed:essential": "node prisma/seed-essential.js",
     "prisma:reset": "prisma migrate reset --force",
     "delete-tenants": "node prisma/delete-tenants-by-slug.cjs",
     "check-user": "tsx scripts/check-user.ts",
@@ -62,6 +63,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "swagger-ui-themes": "^3.0.1",
+    "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "zod": "3.25.76"
   },

@@ -1,5 +1,4 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { PermissionGate } from "@/features/permissions";
 import { SettingsPage } from "@/features/settings";
 
@@ -8,13 +7,10 @@ export const metadata = { title: "Settings" };
 /** Workspace settings – admin/superAdmin only. */
 export default function Settings() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
+    <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
       <PermissionGate perm="SETTINGS.TENANT.VIEW">
         <SettingsPage />
       </PermissionGate>
-    </AuthGuard>
+    </AuthGuardWithWorkspace>
   );
 }

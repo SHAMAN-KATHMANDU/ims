@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { isEnvFeatureEnabled, parseFeatureFlagsEnv } from "@repo/shared";
 import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { usePlanFeatures } from "@/features/flags";
@@ -12,6 +12,15 @@ import {
   SETTINGS_SECTIONS,
   type SettingsSection,
 } from "@/features/settings/config/sections";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/utils/auth";
 
@@ -80,6 +89,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const params = useParams() as { workspace?: string };
   const workspace = params.workspace ?? "";
   const pathname = usePathname();
+  const router = useRouter();
   const userRole = useAuthStore(selectUserRole);
   const planFeatures = usePlanFeatures();
   const appEnv = getAppEnv();
@@ -134,9 +144,45 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex gap-8">
-      {/* ── Left nav rail ───────────────────────────────────────────────── */}
-      <nav aria-label="Settings" className="w-48 shrink-0 space-y-6">
+    <div className="flex min-w-0 flex-col gap-6 md:flex-row md:gap-8">
+      {/* ── Section nav ─────────────────────────────────────────────────── */}
+      {/* Mobile (< md): compact dropdown. The vertical rail dumped the full
+          settings nav above the page content on phones (issue #529). */}
+      <div className="md:hidden">
+        <Select
+          value={activeHref ?? undefined}
+          onValueChange={(href) => router.push(href)}
+        >
+          <SelectTrigger aria-label="Settings section" className="w-full">
+            <SelectValue placeholder="Select a settings section" />
+          </SelectTrigger>
+          <SelectContent>
+            {GROUPS.map((group) => {
+              const items = sectionsByGroup.get(group) ?? [];
+              if (items.length === 0) return null;
+              return (
+                <SelectGroup key={group}>
+                  <SelectLabel>{GROUP_LABELS[group]}</SelectLabel>
+                  {items.map((section) => (
+                    <SelectItem
+                      key={section.id}
+                      value={`/${workspace}/${section.path}`}
+                    >
+                      {section.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Desktop (md+): persistent vertical rail. */}
+      <nav
+        aria-label="Settings"
+        className="hidden w-full shrink-0 space-y-6 md:block md:w-48 md:max-w-[12rem]"
+      >
         {GROUPS.map((group) => {
           const items = sectionsByGroup.get(group) ?? [];
           if (items.length === 0) return null;

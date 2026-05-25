@@ -65,4 +65,18 @@ test.describe("CRM core coverage", () => {
     await page.goto(`/${E2E_SLUG}/crm/settings`);
     await expect(page).toHaveURL(new RegExp(`/${E2E_SLUG}/settings/crm$`));
   });
+
+  test("CRM overview loads on mobile viewport (no Unauthorized shell)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/${E2E_SLUG}/crm`);
+    await expect(page).toHaveURL(new RegExp(`/${E2E_SLUG}/crm$`));
+    await expect(
+      page.getByRole("heading", { name: /crm overview/i }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("heading", { name: /unauthorized access/i }),
+    ).toHaveCount(0);
+  });
 });

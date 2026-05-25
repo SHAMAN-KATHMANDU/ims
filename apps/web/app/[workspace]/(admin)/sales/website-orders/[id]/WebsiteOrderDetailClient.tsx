@@ -1,7 +1,6 @@
 "use client";
 
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 import { PermissionGate } from "@/features/permissions";
 import { WebsiteOrderDetailPage } from "@/features/website-orders";
@@ -17,9 +16,9 @@ export default function WebsiteOrderDetailClient({
 }: WebsiteOrderDetailClientProps) {
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.TENANT_WEBSITES}>
-      <AuthGuard
+      <AuthGuardWithWorkspace
         roles={["admin", "superAdmin"]}
-        unauthorizedPath={WORKSPACE_ROOT}
+        workspaceSlug={workspace}
       >
         <PermissionGate perm="SALES.WEBSITE_ORDERS.VIEW">
           <WebsiteOrderDetailPage
@@ -27,7 +26,7 @@ export default function WebsiteOrderDetailClient({
             backHref={`/${workspace}/sales/website-orders`}
           />
         </PermissionGate>
-      </AuthGuard>
+      </AuthGuardWithWorkspace>
     </EnvFeaturePageGuard>
   );
 }

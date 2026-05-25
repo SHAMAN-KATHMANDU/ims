@@ -22,9 +22,11 @@ export const rateLimitByApiKey = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Key by api-key id, not IP — the whole point is to limit per credential.
-  // Fallback uses ipKeyGenerator for IPv6-safe key derivation.
-  keyGenerator: (req: Request, res) =>
-    req.apiKey?.id ?? `ip:${ipKeyGenerator(req.ip ?? "")}`,
+  // Fallback (no api key loaded) keys by IP, normalized via the lib helper
+  // that masks IPv6 to a subnet — bare req.ip throws ERR_ERL_KEY_GEN_IPV6
+  // under express-rate-limit's validator and lets IPv6 clients evade limits.
+  keyGenerator: (req: Request) =>
+    req.apiKey?.id ?? `ip:${ipKeyGenerator(req.ip ?? "unknown")}`,
   handler: (_req, res) => {
     res.status(429).json({
       success: false,

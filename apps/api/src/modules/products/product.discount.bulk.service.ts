@@ -126,7 +126,14 @@ export async function buildDiscountBulkTemplate(): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Discounts");
 
-  ws.addRow(["Discount Bulk Upload Template"]);
+  // Row 1 MUST be the column headers — `parseBulkFile` (utils/bulkParse.ts:248)
+  // always reads `worksheet.getRow(1)` for header detection. An earlier
+  // version of this template prepended a "Discount Bulk Upload Template"
+  // title row, which moved the real headers to row 2 and caused every
+  // upload of the unedited template to fail with "Missing required columns
+  // in Excel file" (issue #560). Keep headers in row 1; row 2 holds an
+  // italic Required/Optional annotation row that mirrors the products
+  // template (matches `getProductBulkParseOptions().skipExcelRows = 2`).
   ws.addRow([
     "Product Code",
     "Product Name",
@@ -136,23 +143,33 @@ export async function buildDiscountBulkTemplate(): Promise<Buffer> {
     "End Date",
     "Is Active",
   ]);
-  ws.addRow(["", "", "", "", "", "", ""]);
+  ws.addRow([
+    "Optional",
+    "Optional",
+    "Required",
+    "Required",
+    "Optional",
+    "Optional",
+    "Optional",
+  ]);
 
-  ws.getRow(1).font = { bold: true, size: 14 };
-  ws.getRow(2).font = { bold: true };
-  ws.getRow(2).fill = {
+  ws.getRow(1).font = { bold: true };
+  ws.getRow(1).fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FFD9EAD3" },
   };
+  ws.getRow(2).font = { italic: true, color: { argb: "FF888888" } };
 
-  ws.getCell("A3").note =
+  // Cell notes ride on the header cells so the hints survive after the
+  // user pastes their own rows below.
+  ws.getCell("A1").note =
     "Either Product Code or Product Name is required per row";
-  ws.getCell("C3").note = "Must match an existing Discount Type name exactly";
-  ws.getCell("D3").note = "Enter a number between 0 and 100";
-  ws.getCell("E3").note = "Optional. Format: YYYY-MM-DD";
-  ws.getCell("F3").note = "Optional. Format: YYYY-MM-DD";
-  ws.getCell("G3").note = "Optional. true/false (default: true)";
+  ws.getCell("C1").note = "Must match an existing Discount Type name exactly";
+  ws.getCell("D1").note = "Enter a number between 0 and 100";
+  ws.getCell("E1").note = "Optional. Format: YYYY-MM-DD";
+  ws.getCell("F1").note = "Optional. Format: YYYY-MM-DD";
+  ws.getCell("G1").note = "Optional. true/false (default: true)";
 
   ws.getColumn(1).width = 18;
   ws.getColumn(2).width = 30;

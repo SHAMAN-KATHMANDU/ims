@@ -45,9 +45,12 @@ function getPermissionKeysForAction(action: string): string[] {
  * Seed RBAC roles with permission bitsets. Idempotent: upsert by tenantId + name.
  *
  * Role hierarchy:
- * - TENANT_ADMIN: every tenant-scoped permission (all modules except SETTINGS.ADMINISTRATOR)
- * - EDITOR: Website content + inventory view (WEBSITE.*, INVENTORY.PRODUCTS.VIEW)
- * - STAFF: Read-only permissions (VIEW actions only)
+ * - TENANT_ADMIN: every tenant-scoped permission (all modules except SETTINGS.ADMINISTRATOR).
+ *   Auto-assigned to legacy `User.role` values `admin` and `superAdmin`.
+ * - EDITOR: Website content + inventory view (WEBSITE.*, INVENTORY.PRODUCTS.VIEW).
+ *   Opt-in only — never auto-assigned from legacy `User.role`.
+ * - STAFF: Read-only permissions (VIEW actions only).
+ *   Auto-assigned to all other legacy `User.role` values (e.g. `user`).
  */
 export async function seedRbacRolesPermissions(
   prisma: PrismaClient,
@@ -118,12 +121,14 @@ export async function seedRbacRolesPermissions(
     select: { id: true, role: true },
   });
 
+  const editorRoleId = roleMap.get("EDITOR");
+  const staffRoleId = roleMap.get("STAFF");
+  const tenantAdminRoleId = roleMap.get("TENANT_ADMIN");
+
   for (const user of users) {
     let targetRoleName: string;
-    if (user.role === "superAdmin") {
+    if (user.role === "superAdmin" || user.role === "admin") {
       targetRoleName = "TENANT_ADMIN";
-    } else if (user.role === "admin") {
-      targetRoleName = "EDITOR";
     } else {
       targetRoleName = "STAFF";
     }
@@ -131,6 +136,26 @@ export async function seedRbacRolesPermissions(
     const roleId = roleMap.get(targetRoleName);
     if (!roleId) {
       throw new Error(`Role ${targetRoleName} not found`);
+    }
+
+    // Repair: an earlier version of this seed mapped legacy `admin` →
+    // `EDITOR`, which stripped tenant admins of locations / sales / CRM /
+    // dashboard permissions and produced the onboarding loop + Forbidden
+    // toasts (#540, #539, #538, #535, #530, #488, #486). Drop any stale link
+    // from the wrong RBAC role before the upsert below re-links to the right
+    // one. Only stale links are removed — the user's correct role link (if
+    // already present from this run) is preserved by the `not` clause.
+    const staleRoleIds = [editorRoleId, staffRoleId, tenantAdminRoleId].filter(
+      (id): id is string => typeof id === "string" && id !== roleId,
+    );
+    if (staleRoleIds.length > 0) {
+      await prisma.userRole.deleteMany({
+        where: {
+          userId: user.id,
+          tenantId,
+          roleId: { in: staleRoleIds },
+        },
+      });
     }
 
     const existing = await prisma.userRole.findUnique({

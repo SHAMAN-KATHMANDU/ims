@@ -297,164 +297,257 @@ export function AttributeTypesPage() {
               (e.g. Color, Size).
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Values</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* ── Mobile card list ─────────────────────────────────────────── */}
+              <div className="md:hidden space-y-2">
                 {attributeTypes.map((type) => (
-                  <Fragment key={type.id}>
-                    <TableRow>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => toggleExpanded(type.id)}
-                          aria-expanded={expandedTypes.has(type.id)}
-                          aria-label={
-                            expandedTypes.has(type.id)
-                              ? `Collapse values for ${type.name}`
-                              : `Expand values for ${type.name}`
-                          }
-                        >
-                          {expandedTypes.has(type.id) ? (
-                            <ChevronDown
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <ChevronRight
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-medium">{type.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{type.code}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {!type.values || type.values.length === 0 ? (
-                          <span className="text-muted-foreground text-sm">
-                            —
+                  <div
+                    key={type.id}
+                    className="rounded-md border p-3 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium break-words">{type.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <div>
+                        <span className="font-medium">Code: </span>
+                        <Badge variant="secondary" className="ml-1">
+                          {type.code}
+                        </Badge>
+                      </div>
+                      {!type.values || type.values.length === 0 ? (
+                        <div>
+                          <span className="text-muted-foreground">
+                            No values
                           </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5 max-w-[280px]">
-                            {type.values
-                              .sort(
-                                (a, b) =>
-                                  a.displayOrder - b.displayOrder ||
-                                  a.value.localeCompare(b.value),
-                              )
-                              .map((v) => (
-                                <Badge
-                                  key={v.id}
-                                  variant="outline"
-                                  className="font-normal text-xs"
-                                >
-                                  {v.value}
-                                </Badge>
-                              ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => openEditType(type)}
-                          aria-label={`Edit ${type.name}`}
-                        >
-                          <Pencil className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => setDeleteTypeTarget(type)}
-                          aria-label={`Delete ${type.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="ml-1 gap-1"
-                          onClick={() => openAddValue(type)}
-                          aria-label={`Add value to ${type.name}`}
-                        >
-                          <Plus className="h-3 w-3" aria-hidden="true" /> Value
-                        </Button>
-                      </TableCell>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {type.values
+                            .sort(
+                              (a, b) =>
+                                a.displayOrder - b.displayOrder ||
+                                a.value.localeCompare(b.value),
+                            )
+                            .map((v) => (
+                              <Badge
+                                key={v.id}
+                                variant="outline"
+                                className="font-normal text-xs"
+                              >
+                                {v.value}
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => openEditType(type)}
+                        aria-label={`Edit ${type.name}`}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => openAddValue(type)}
+                        aria-label={`Add value to ${type.name}`}
+                      >
+                        <Plus className="h-3 w-3 mr-1" aria-hidden="true" />
+                        Value
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={() => setDeleteTypeTarget(type)}
+                        aria-label={`Delete ${type.name}`}
+                      >
+                        <Trash2 className="h-3 w-3" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Desktop table ────────────────────────────────────────────── */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10" />
+                      <TableHead>Name</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Values</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                    {expandedTypes.has(type.id) && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="bg-muted/30">
-                          <div className="py-2 pl-8">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">
-                              Values
-                            </p>
+                  </TableHeader>
+                  <TableBody>
+                    {attributeTypes.map((type) => (
+                      <Fragment key={type.id}>
+                        <TableRow>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => toggleExpanded(type.id)}
+                              aria-expanded={expandedTypes.has(type.id)}
+                              aria-label={
+                                expandedTypes.has(type.id)
+                                  ? `Collapse values for ${type.name}`
+                                  : `Expand values for ${type.name}`
+                              }
+                            >
+                              {expandedTypes.has(type.id) ? (
+                                <ChevronDown
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <ChevronRight
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {type.name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{type.code}</Badge>
+                          </TableCell>
+                          <TableCell>
                             {!type.values || type.values.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                No values. Add one to use this type on
-                                variations.
-                              </p>
+                              <span className="text-muted-foreground text-sm">
+                                —
+                              </span>
                             ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {type.values.map((v) => (
-                                  <Badge
-                                    key={v.id}
-                                    variant="outline"
-                                    className="gap-1 pr-1"
-                                  >
-                                    {v.value}
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-4 w-4"
-                                      onClick={() => openEditValue(type, v)}
-                                      aria-label={`Edit value ${v.value}`}
+                              <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                                {type.values
+                                  .sort(
+                                    (a, b) =>
+                                      a.displayOrder - b.displayOrder ||
+                                      a.value.localeCompare(b.value),
+                                  )
+                                  .map((v) => (
+                                    <Badge
+                                      key={v.id}
+                                      variant="outline"
+                                      className="font-normal text-xs"
                                     >
-                                      <Pencil
-                                        className="h-3 w-3"
-                                        aria-hidden="true"
-                                      />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-4 w-4 text-destructive"
-                                      onClick={() =>
-                                        setDeleteValueTarget({ type, value: v })
-                                      }
-                                      aria-label={`Delete value ${v.value}`}
-                                    >
-                                      <Trash2
-                                        className="h-3 w-3"
-                                        aria-hidden="true"
-                                      />
-                                    </Button>
-                                  </Badge>
-                                ))}
+                                      {v.value}
+                                    </Badge>
+                                  ))}
                               </div>
                             )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEditType(type)}
+                              aria-label={`Edit ${type.name}`}
+                            >
+                              <Pencil className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => setDeleteTypeTarget(type)}
+                              aria-label={`Delete ${type.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-1 gap-1"
+                              onClick={() => openAddValue(type)}
+                              aria-label={`Add value to ${type.name}`}
+                            >
+                              <Plus className="h-3 w-3" aria-hidden="true" />{" "}
+                              Value
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expandedTypes.has(type.id) && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="bg-muted/30">
+                              <div className="py-2 pl-8">
+                                <p className="text-xs font-medium text-muted-foreground mb-2">
+                                  Values
+                                </p>
+                                {!type.values || type.values.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    No values. Add one to use this type on
+                                    variations.
+                                  </p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    {type.values.map((v) => (
+                                      <Badge
+                                        key={v.id}
+                                        variant="outline"
+                                        className="gap-1 pr-1"
+                                      >
+                                        {v.value}
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-4 w-4"
+                                          onClick={() => openEditValue(type, v)}
+                                          aria-label={`Edit value ${v.value}`}
+                                        >
+                                          <Pencil
+                                            className="h-3 w-3"
+                                            aria-hidden="true"
+                                          />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-4 w-4 text-destructive"
+                                          onClick={() =>
+                                            setDeleteValueTarget({
+                                              type,
+                                              value: v,
+                                            })
+                                          }
+                                          aria-label={`Delete value ${v.value}`}
+                                        >
+                                          <Trash2
+                                            className="h-3 w-3"
+                                            aria-hidden="true"
+                                          />
+                                        </Button>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           {pagination && (
             <DataTablePagination

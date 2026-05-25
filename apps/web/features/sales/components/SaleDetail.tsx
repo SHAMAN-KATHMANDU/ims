@@ -605,32 +605,33 @@ export function SaleDetail({
                     <div className="flex justify-between font-bold print:text-[14pt]">
                       <span>Total</span>
                       <span className="shrink-0 tabular-nums">
-                        {formatCurrency(Number(sale.total))}
+                        {formatCurrency(Number(displaySale.total))}
                       </span>
                     </div>
-                    {sale.payments && sale.payments.length > 0 && (
-                      <>
-                        <Separator className="my-2" />
-                        <div className="space-y-1">
-                          <div className="text-xs font-medium text-muted-foreground print:text-[9pt]">
-                            Payment
+                    {displaySale.payments &&
+                      displaySale.payments.length > 0 && (
+                        <>
+                          <Separator className="my-2" />
+                          <div className="space-y-1">
+                            <div className="text-xs font-medium text-muted-foreground print:text-[9pt]">
+                              Payment
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {(displaySale.payments ?? []).map(
+                                (payment, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium print:border-gray-400"
+                                  >
+                                    {payment.method}:{" "}
+                                    {formatCurrency(Number(payment.amount))}
+                                  </span>
+                                ),
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {(displaySale.payments ?? []).map(
-                              (payment, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium print:border-gray-400"
-                                >
-                                  {payment.method}:{" "}
-                                  {formatCurrency(Number(payment.amount))}
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                        </>
+                      )}
                     {isCreditSale && (
                       <>
                         <Separator className="my-2" />

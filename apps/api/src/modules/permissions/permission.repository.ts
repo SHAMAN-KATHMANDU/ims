@@ -28,9 +28,9 @@ export interface OverwriteRow {
 export class PermissionRepository {
   /**
    * Read the legacy `User.role` enum value. Used by the resolution engine to
-   * preserve `platformAdmin` / `superAdmin` admin semantics regardless of
-   * whether the new RbacRole rows have been seeded — these tenant-default
-   * admin roles always bypass permission checks.
+   * preserve `admin` / `superAdmin` / `platformAdmin` admin semantics
+   * regardless of whether the new RbacRole rows have been seeded — these
+   * tenant-default admin roles always bypass permission checks.
    */
   async getLegacyUserRole(
     tenantId: string,

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { useCallback } from "react";
 import { Eye } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,144 @@ export function SalesTable({
   hasActiveFilters,
   onClearFilters,
 }: SalesTableProps) {
+  const renderMobileCard = useCallback(
+    (sale: Sale) => {
+      const amountPaid =
+        sale.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+      const fullyPaid = amountPaid >= Number(sale.total);
+      const isCreditUnpaid = sale.isCreditSale === true && !fullyPaid;
+
+      return (
+        <div className="rounded-md border bg-card p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-semibold text-sm min-w-0 break-words">
+              {sale.saleCode}
+            </p>
+            <div className="flex flex-col gap-1 shrink-0">
+              <Badge className={getSaleTypeColor(sale.type)} variant="outline">
+                {getSaleTypeLabel(sale.type)}
+              </Badge>
+              {isCreditUnpaid && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs"
+                >
+                  Unpaid
+                </Badge>
+              )}
+              {sale.revisionNo != null && sale.revisionNo > 1 && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-normal"
+                >
+                  Edited
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="font-medium tabular-nums">
+                {formatCurrency(Number(sale.total))}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Subtotal</p>
+              <p className="font-medium tabular-nums text-muted-foreground">
+                {formatCurrency(Number(sale.subtotal))}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Discount</p>
+              <p className="font-medium tabular-nums text-muted-foreground">
+                {formatCurrency(Number(sale.discount))}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Credit</p>
+              <p className="font-medium">
+                {sale.isCreditSale === true ? (
+                  fullyPaid ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-muted/50 text-foreground dark:text-white text-xs"
+                    >
+                      Paid
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs"
+                    >
+                      Yes
+                    </Badge>
+                  )
+                ) : (
+                  <span className="text-muted-foreground">No</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {sale.member ? (
+            <div>
+              <p className="text-xs text-muted-foreground">Customer</p>
+              <p className="font-medium min-w-0 break-words">
+                {sale.member.phone}
+              </p>
+              {sale.member.name && (
+                <p className="text-sm text-muted-foreground min-w-0 break-words">
+                  {sale.member.name}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-muted-foreground">Customer</p>
+              <p className="text-sm text-muted-foreground">Walk-in</p>
+            </div>
+          )}
+
+          <div>
+            <p className="text-xs text-muted-foreground">Location</p>
+            <p className="text-sm font-medium min-w-0 break-words">
+              {sale.location.name}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs text-muted-foreground">Payment Method</p>
+            <Badge variant="outline" className="text-xs">
+              {sale.payments && sale.payments.length > 0
+                ? (sale.payments[0]?.method ?? "N/A")
+                : "N/A"}
+            </Badge>
+          </div>
+
+          <div>
+            <p className="text-xs text-muted-foreground">Date</p>
+            <p className="text-sm font-medium">
+              {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full h-7 text-xs mt-1"
+            onClick={() => onView(sale)}
+          >
+            View
+          </Button>
+        </div>
+      );
+    },
+    [onView],
+  );
+
   const columns: DataTableColumn<Sale>[] = [
     {
       id: "sn",
@@ -226,6 +365,8 @@ export function SalesTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actions={(sale) => (
         <Button
           variant="ghost"
@@ -237,7 +378,6 @@ export function SalesTable({
         </Button>
       )}
       className="rounded-md border overflow-x-auto"
-      tableClassName="min-w-[640px]"
     />
   );
 }

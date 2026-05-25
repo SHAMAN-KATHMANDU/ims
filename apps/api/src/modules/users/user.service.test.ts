@@ -10,7 +10,7 @@ const mockFindAll = vi.fn();
 const mockFindById = vi.fn();
 const mockFindByIdRaw = vi.fn();
 const mockUpdate = vi.fn();
-const mockDelete = vi.fn();
+const mockSoftDelete = vi.fn();
 
 const mockRepo: UserRepository = {
   findByUsername: mockFindByUsername,
@@ -20,7 +20,7 @@ const mockRepo: UserRepository = {
   findById: mockFindById,
   findByIdRaw: mockFindByIdRaw,
   update: mockUpdate,
-  delete: mockDelete,
+  softDelete: mockSoftDelete,
 };
 
 const mockBcryptHash = vi.fn();
@@ -157,17 +157,17 @@ describe("UserService", () => {
     });
   });
 
-  describe("delete", () => {
-    it("deletes user when not self and not platformAdmin", async () => {
+  describe("delete (soft-delete, issue #537)", () => {
+    it("archives user via softDelete when not self and not platformAdmin", async () => {
       mockFindByIdRaw.mockResolvedValue({
         id: "u1",
         role: "admin",
       });
-      mockDelete.mockResolvedValue(undefined);
+      mockSoftDelete.mockResolvedValue({ id: "u1", username: "alice" });
 
       await userService.delete("u1", "admin-id");
 
-      expect(mockDelete).toHaveBeenCalledWith("u1");
+      expect(mockSoftDelete).toHaveBeenCalledWith("u1");
     });
 
     it("throws 400 when deleting own account", async () => {
@@ -177,7 +177,7 @@ describe("UserService", () => {
         createError("You cannot delete your own account", 400),
       );
 
-      expect(mockDelete).not.toHaveBeenCalled();
+      expect(mockSoftDelete).not.toHaveBeenCalled();
     });
 
     it("throws 403 when deleting platform admin", async () => {
@@ -192,17 +192,17 @@ describe("UserService", () => {
         createError("Cannot delete the platform admin.", 403),
       );
 
-      expect(mockDelete).not.toHaveBeenCalled();
+      expect(mockSoftDelete).not.toHaveBeenCalled();
     });
 
-    it("throws 404 when user not found", async () => {
+    it("throws 404 when user not found (already archived counts as not found)", async () => {
       mockFindByIdRaw.mockResolvedValue(null);
 
       await expect(
         userService.delete("nobody", "admin-id"),
       ).rejects.toMatchObject(createError("User not found", 404));
 
-      expect(mockDelete).not.toHaveBeenCalled();
+      expect(mockSoftDelete).not.toHaveBeenCalled();
     });
   });
 });

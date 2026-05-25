@@ -3,7 +3,14 @@ import { ContactProfileFieldsSchema } from "@repo/shared";
 
 export const CreateContactSchema = z
   .object({
-    firstName: z.string().min(1, "First name is required").max(255),
+    firstName: z
+      .string()
+      .min(1, "First name is required")
+      .max(255)
+      .refine(
+        (s) => !/^\d+$/.test(s.trim()),
+        "First name must include letters (cannot be numbers only)",
+      ),
     lastName: z.string().max(255).optional(),
     email: z.string().email("Invalid email").optional().or(z.literal("")),
     phone: z.string().optional(),

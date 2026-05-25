@@ -73,6 +73,72 @@ export function TenantTable({
     });
   }, [tenants, sortBy, sortOrder]);
 
+  const renderMobileCard = useCallback(
+    (t: Tenant) => {
+      return (
+        <div className="rounded-md border bg-card p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm min-w-0 break-words">
+                {t.name}
+              </p>
+              <p className="font-mono text-xs text-muted-foreground min-w-0 break-words">
+                {t.slug}
+              </p>
+            </div>
+            <Badge
+              variant={STATUS_VARIANT[t.subscriptionStatus] ?? "secondary"}
+              className="shrink-0"
+            >
+              {t.subscriptionStatus}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Plan</p>
+              <p className="font-medium text-xs">{t.plan}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Users</p>
+              <p className="font-medium text-xs">{t._count?.users ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Products</p>
+              <p className="font-medium text-xs">{t._count?.products ?? "—"}</p>
+            </div>
+          </div>
+          <div className="flex gap-1 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs flex-1"
+              asChild
+            >
+              <Link href={`${basePath}/platform/tenants/${t.id}/edit`}>
+                <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
+                Edit
+              </Link>
+            </Button>
+            {t.isActive && onDeactivate && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+                onClick={() => onDeactivate(t)}
+              >
+                <UserX className="h-3 w-3 mr-1" aria-hidden="true" />
+                Deactivate
+              </Button>
+            )}
+          </div>
+        </div>
+      );
+    },
+    [basePath, onDeactivate],
+  );
+
   const columns: DataTableColumn<Tenant>[] = [
     {
       id: "name",
@@ -135,6 +201,8 @@ export function TenantTable({
           </>
         ),
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actions={(t) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

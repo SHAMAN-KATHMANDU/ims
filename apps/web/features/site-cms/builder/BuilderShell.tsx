@@ -3,7 +3,11 @@
 import type { JSX } from "react";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Monitor } from "lucide-react";
 import type { BlockNode } from "@repo/shared";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useMobile";
 import { useHideCmsTopbar } from "../hooks/use-breadcrumbs";
 import { useEditorStore } from "@/features/tenant-site/site-editor/store/editor-store";
 import {
@@ -31,6 +35,7 @@ export function BuilderShell({
   pageId,
 }: BuilderShellProps): JSX.Element {
   const router = useRouter();
+  const isMobile = useIsMobile();
   useHideCmsTopbar();
 
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">(
@@ -85,6 +90,33 @@ export function BuilderShell({
 
   if (!pageId) {
     return <></>;
+  }
+
+  // The builder relies on fixed-width side panels and a desktop-sized canvas,
+  // which cannot fit on a phone. Show a notice instead of a broken layout.
+  if (isMobile) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <Monitor
+            className="h-8 w-8 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </div>
+        <div className="space-y-1">
+          <h1 className="text-lg font-semibold">
+            Open the builder on a larger screen
+          </h1>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            The website builder needs more room than a phone can give. Please
+            use a tablet or desktop to edit this page.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={`/${workspace}/site/pages`}>Back to pages</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (

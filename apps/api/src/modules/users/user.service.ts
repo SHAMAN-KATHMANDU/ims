@@ -72,6 +72,12 @@ export class UserService {
     return this.repo.update(id, updateData);
   }
 
+  /**
+   * Archive (soft-delete) a user — issue #537. Hard delete used to fail with
+   * P2003 when the user owned contacts/deals/leads/tasks; instead we mark the
+   * row deletedAt so existing references keep resolving while the user is
+   * hidden from the admin list and blocked from logging in.
+   */
   async delete(id: string, requestingUserId: string) {
     const existing = await this.repo.findByIdRaw(id);
     if (!existing) throw createError("User not found", 404);
@@ -84,7 +90,7 @@ export class UserService {
       throw createError("Cannot delete the platform admin.", 403);
     }
 
-    await this.repo.delete(id);
+    await this.repo.softDelete(id);
   }
 
   async getPasswordResetRequests(

@@ -1,4 +1,57 @@
 import type { Product } from "@/features/products";
+import type { ProductVariationForm } from "../types";
+
+/**
+ * Photo transform helpers for the product edit form. Each returns a NEW
+ * variation object that preserves every field on the input — most importantly
+ * `id`, `attributes`, `locationId`, `locationName`. Issue #561 was caused by
+ * inline rebuilds that dropped those fields, which made the API treat edited
+ * variations as new on save and 500'd the update.
+ */
+export function variationWithAddedPhoto(
+  variation: ProductVariationForm,
+  photoUrl: string,
+  fileName?: string,
+): ProductVariationForm {
+  const photos = variation.photos ?? [];
+  const isPrimary = photos.length === 0;
+  return {
+    ...variation,
+    photos: [...photos, { photoUrl, isPrimary, fileName }],
+  };
+}
+
+export function variationWithRemovedPhoto(
+  variation: ProductVariationForm,
+  photoIndex: number,
+): ProductVariationForm {
+  const photos = variation.photos ?? [];
+  const removed = photos[photoIndex];
+  const newPhotos = photos.filter((_, i) => i !== photoIndex);
+  // If we just removed the primary, promote the new first photo so the
+  // backend doesn't end up with zero primaries.
+  if (removed?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
+    newPhotos[0] = { ...newPhotos[0], isPrimary: true };
+  }
+  return {
+    ...variation,
+    photos: newPhotos,
+  };
+}
+
+export function variationWithPrimaryPhoto(
+  variation: ProductVariationForm,
+  photoIndex: number,
+): ProductVariationForm {
+  const photos = (variation.photos ?? []).map((photo, i) => ({
+    ...photo,
+    isPrimary: i === photoIndex,
+  }));
+  return {
+    ...variation,
+    photos,
+  };
+}
 
 /**
  * Calculate discounted price from MRP and discount percentage

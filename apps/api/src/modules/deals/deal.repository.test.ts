@@ -145,6 +145,44 @@ describe("DealRepository", () => {
       );
       expect(result?.id).toBe("d1");
     });
+
+    it("walks the revision chain when the id is an older revision, so callers get the current head instead of 404", async () => {
+      // Fast path miss → chain probe (id exists but isn't latest) →
+      // child of d1 is d2 (latest) → final detail fetch on d2.
+      mockFindFirst
+        .mockResolvedValueOnce(null) // fast path: no isLatest match
+        .mockResolvedValueOnce({ id: "d1" }) // stale-id probe
+        .mockResolvedValueOnce({ id: "d2", isLatest: true }) // child of d1
+        .mockResolvedValueOnce({ id: "d2", name: "Deal 1 (rev 2)" }); // resolved
+
+      const result = await dealRepository.findById("t1", "d1");
+
+      expect(result?.id).toBe("d2");
+      // 4 reads: fast path, stale probe, child walk, final detail.
+      expect(mockFindFirst).toHaveBeenCalledTimes(4);
+      // The chain walk must scope by parentDealId and tenant.
+      expect(mockFindFirst).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          where: expect.objectContaining({
+            parentDealId: "d1",
+            tenantId: "t1",
+            deletedAt: null,
+          }),
+        }),
+      );
+    });
+
+    it("returns null when the id doesn't exist at all (no revision in the chain)", async () => {
+      mockFindFirst
+        .mockResolvedValueOnce(null) // fast path
+        .mockResolvedValueOnce(null); // stale-id probe
+
+      const result = await dealRepository.findById("t1", "missing");
+
+      expect(result).toBeNull();
+      expect(mockFindFirst).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("createDealRevision", () => {

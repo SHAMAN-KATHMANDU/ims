@@ -1,5 +1,4 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { PlanLimitsPage } from "@/features/plan-limits";
 
 export const metadata = { title: "Plan limits" };
@@ -7,8 +6,8 @@ export const metadata = { title: "Plan limits" };
 /** Platform plan limits – platformAdmin only. */
 export default function PlatformPlanLimitsRoute() {
   return (
-    <AuthGuard roles={["platformAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
+    <AuthGuardWithWorkspace roles={["platformAdmin"]}>
       <PlanLimitsPage />
-    </AuthGuard>
+    </AuthGuardWithWorkspace>
   );
 }

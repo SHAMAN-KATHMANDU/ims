@@ -50,6 +50,44 @@ describe("PermissionService", () => {
 
       expect(result).toEqual(setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT));
     });
+
+    it("returns ADMINISTRATOR bitset for User.role='admin' even with a stale RbacRole link (#488)", async () => {
+      vi.mocked(permissionCache.get).mockResolvedValue(null);
+      vi.mocked(permissionRepository.getLegacyUserRole).mockResolvedValue(
+        "admin",
+      );
+      vi.mocked(permissionCache.set).mockResolvedValue(undefined);
+
+      const result = await service.getEffectivePermissions(
+        "tenant1",
+        "user1",
+        "resource1",
+      );
+
+      expect(result).toEqual(setBit(EMPTY_BITSET(), ADMINISTRATOR_BIT));
+      // Legacy admins bypass RBAC entirely — no role lookup, no chain walk.
+      expect(permissionRepository.getUserRoles).not.toHaveBeenCalled();
+      expect(permissionRepository.getResourceChain).not.toHaveBeenCalled();
+    });
+
+    it("does NOT bypass for User.role='user' — staff resolve via RbacRole rows", async () => {
+      vi.mocked(permissionCache.get).mockResolvedValue(null);
+      vi.mocked(permissionRepository.getLegacyUserRole).mockResolvedValue(
+        "user",
+      );
+      vi.mocked(permissionRepository.getUserRoles).mockResolvedValue([]);
+      vi.mocked(permissionRepository.getResourceChain).mockResolvedValue([]);
+      vi.mocked(permissionRepository.getOverwritesForChain).mockResolvedValue(
+        [],
+      );
+      vi.mocked(permissionCache.set).mockResolvedValue(undefined);
+
+      const result = await service.getEffectivePermissions("t", "u", "r");
+
+      // No legacy bypass — staff fall through to the RbacRole resolution path.
+      expect(permissionRepository.getUserRoles).toHaveBeenCalled();
+      expect(result).toEqual(EMPTY_BITSET());
+    });
   });
 
   describe("getEffectivePermissions", () => {

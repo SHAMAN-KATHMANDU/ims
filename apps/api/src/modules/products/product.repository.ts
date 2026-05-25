@@ -302,6 +302,26 @@ export class ProductRepository {
     });
   }
 
+  /**
+   * Tenant-scoped lookup for attribute values. Returns the parent
+   * `attributeTypeId` for each so the service can verify that an incoming
+   * (typeId, valueId) pair is actually consistent (i.e. a Color value isn't
+   * being assigned against the Size type).
+   */
+  findAttributeValuesByIdsAndTenant(tenantId: string, ids: string[]) {
+    if (ids.length === 0)
+      return Promise.resolve(
+        [] as Array<{ id: string; attributeTypeId: string }>,
+      );
+    return prisma.attributeValue.findMany({
+      where: {
+        id: { in: ids },
+        attributeType: { tenantId },
+      },
+      select: { id: true, attributeTypeId: true },
+    });
+  }
+
   // LocationInventory
   findLocationInventory(
     locationId: string,

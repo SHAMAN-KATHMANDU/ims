@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { SalesTable } from "./SalesTable";
 import type { Sale } from "../hooks/use-sales";
 
@@ -50,12 +50,15 @@ describe("SalesTable", () => {
     expect(screen.getByRole("table")).toBeInTheDocument();
   });
 
+  // SalesTable renders both a mobile card list and a desktop table from the
+  // same data; scope assertions to the table to avoid duplicate matches.
   it("renders empty state when no sales", () => {
     render(<SalesTable sales={[]} isLoading={false} onView={mockOnView} />);
 
-    expect(screen.getByText(/no sales yet/i)).toBeInTheDocument();
+    const table = screen.getByRole("table", { hidden: true });
+    expect(within(table).getByText(/no sales yet/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/new sales will appear here once recorded/i),
+      within(table).getByText(/new sales will appear here once recorded/i),
     ).toBeInTheDocument();
   });
 
@@ -71,10 +74,13 @@ describe("SalesTable", () => {
       />,
     );
 
+    const table = screen.getByRole("table", { hidden: true });
     expect(
-      screen.getByText(/no sales match your filters/i),
+      within(table).getByText(/no sales match your filters/i),
     ).toBeInTheDocument();
-    const clearBtn = screen.getByRole("button", { name: /clear filters/i });
+    const clearBtn = within(table).getByRole("button", {
+      name: /clear filters/i,
+    });
     fireEvent.click(clearBtn);
     expect(onClearFilters).toHaveBeenCalledTimes(1);
   });
@@ -84,10 +90,13 @@ describe("SalesTable", () => {
       <SalesTable sales={mockSales} isLoading={false} onView={mockOnView} />,
     );
 
-    expect(screen.getByText("S-001")).toBeInTheDocument();
-    expect(screen.getByText("S-002")).toBeInTheDocument();
+    const table = screen.getByRole("table", { hidden: true });
+    expect(within(table).getByText("S-001")).toBeInTheDocument();
+    expect(within(table).getByText("S-002")).toBeInTheDocument();
 
-    const viewButtons = screen.getAllByRole("button", { name: /view/i });
+    const viewButtons = within(table).getAllByRole("button", {
+      name: /view/i,
+    });
     fireEvent.click(viewButtons[0]!);
 
     expect(mockOnView).toHaveBeenCalledWith(mockSales[0]);

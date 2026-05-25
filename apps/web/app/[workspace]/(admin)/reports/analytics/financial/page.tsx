@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
@@ -24,14 +23,11 @@ export default function ReportsAnalyticsFinancialPage() {
   return (
     <EnvFeaturePageGuard envFeature={EnvFeature.REPORTS_FINANCIAL}>
       <FeaturePageGuard feature={Feature.ANALYTICS_ADVANCED}>
-        <AuthGuard
-          roles={["admin", "superAdmin"]}
-          unauthorizedPath={WORKSPACE_ROOT}
-        >
+        <AuthGuardWithWorkspace roles={["admin", "superAdmin"]}>
           <PermissionGate perm="REPORTS.ANALYTICS.VIEW">
             <FinancialPage />
           </PermissionGate>
-        </AuthGuard>
+        </AuthGuardWithWorkspace>
       </FeaturePageGuard>
     </EnvFeaturePageGuard>
   );

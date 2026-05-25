@@ -34,12 +34,13 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Plus, Trash2, ArrowRight, Search, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, ArrowRight, Search, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/features/locations";
 import type { CreateTransferData } from "../hooks/use-transfers";
 import { CreateTransferSchema, type CreateTransferInput } from "../validation";
+import { BulkProductSelectionDialog } from "./BulkProductSelectionDialog";
 
 interface InventoryItem {
   id: string;
@@ -127,6 +128,8 @@ export function TransferForm({
   const [sortBy, setSortBy] = useState<string>("name");
   /** Cache of inventory items added to the transfer, for display when search results change */
   const addedItemsCacheRef = useRef<InventoryItem[]>([]);
+  /** Bulk selection dialog state */
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   const form = useForm<CreateTransferInput>({
     resolver: zodResolver(CreateTransferSchema),
@@ -224,6 +227,7 @@ export function TransferForm({
       setTotalPages(1);
       setSortBy("name");
       addedItemsCacheRef.current = [];
+      setBulkDialogOpen(false);
     }
   }, [open, inline, form]);
 
@@ -277,6 +281,15 @@ export function TransferForm({
     setProductSearch("");
   };
 
+  /** Bulk add multiple products from dialog */
+  const handleBulkAdd = (
+    items: Array<{ item: InventoryItem; quantity: number }>,
+  ) => {
+    items.forEach(({ item, quantity }) => {
+      addItemToTransfer(item, quantity);
+    });
+  };
+
   const handleIncreaseQuantity = (
     variationId: string,
     subVariationId?: string | null,
@@ -306,6 +319,24 @@ export function TransferForm({
     }
     const newItems = [...currentItems];
     newItems[idx] = { ...item, quantity: item.quantity + 1 };
+    form.setValue("items", newItems, { shouldValidate: true });
+  };
+
+  const handleDecreaseQuantity = (
+    variationId: string,
+    subVariationId?: string | null,
+  ) => {
+    const currentItems = form.getValues("items") ?? [];
+    const idx = currentItems.findIndex(
+      (item) =>
+        item.variationId === variationId &&
+        (item.subVariationId ?? null) === (subVariationId ?? null),
+    );
+    if (idx < 0) return;
+    const item = currentItems[idx];
+    if (!item || item.quantity <= 1) return;
+    const newItems = [...currentItems];
+    newItems[idx] = { ...item, quantity: item.quantity - 1 };
     form.setValue("items", newItems, { shouldValidate: true });
   };
 
@@ -513,7 +544,19 @@ export function TransferForm({
 
         {fromLocationId && (
           <div className="grid gap-2">
-            <Label>Add Product</Label>
+            <div className="flex items-center justify-between">
+              <Label>Add Product</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkDialogOpen(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Multiple
+              </Button>
+            </div>
             <div className="space-y-3">
               <div className="relative">
                 <Search
@@ -740,7 +783,23 @@ export function TransferForm({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <span className="tabular-nums w-8">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                handleDecreaseQuantity(
+                                  item.variationId,
+                                  item.subVariationId,
+                                )
+                              }
+                              disabled={item.quantity <= 1}
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                            <span className="tabular-nums w-8 text-center">
                               {item.quantity}
                             </span>
                             <Button
@@ -827,23 +886,45 @@ export function TransferForm({
 
   if (inline) {
     return (
-      <Card className="max-w-2xl">
-        <CardContent className="pt-6">{formContent}</CardContent>
-      </Card>
+      <>
+        <Card className="max-w-2xl">
+          <CardContent className="pt-6">{formContent}</CardContent>
+        </Card>
+        <BulkProductSelectionDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+          locationId={fromLocationId}
+          alreadyAdded={addedItemsCacheRef.current}
+          onAddProducts={handleBulkAdd}
+          isLoading={isLoading}
+          getLocationInventory={getLocationInventory}
+        />
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-          New Transfer
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl" allowDismiss={false}>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            New Transfer
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl" allowDismiss={false}>
+          {formContent}
+        </DialogContent>
+      </Dialog>
+      <BulkProductSelectionDialog
+        open={bulkDialogOpen}
+        onOpenChange={setBulkDialogOpen}
+        locationId={fromLocationId}
+        alreadyAdded={addedItemsCacheRef.current}
+        onAddProducts={handleBulkAdd}
+        isLoading={isLoading}
+        getLocationInventory={getLocationInventory}
+      />
+    </>
   );
 }

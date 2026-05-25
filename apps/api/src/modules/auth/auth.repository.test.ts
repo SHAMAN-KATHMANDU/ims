@@ -57,7 +57,8 @@ describe("AuthRepository", () => {
   });
 
   describe("findUserByTenantAndUsername", () => {
-    it("calls basePrisma.user.findFirst with tenantId and username", async () => {
+    it("calls basePrisma.user.findFirst with tenantId, username, and deletedAt: null", async () => {
+      // deletedAt: null guards login against archived (soft-deleted) users — issue #537.
       mockFindFirst.mockResolvedValue({
         id: "u1",
         tenantId: "t1",
@@ -67,7 +68,7 @@ describe("AuthRepository", () => {
       await authRepo.findUserByTenantAndUsername("t1", "admin");
 
       expect(mockFindFirst).toHaveBeenCalledWith({
-        where: { tenantId: "t1", username: "admin" },
+        where: { tenantId: "t1", username: "admin", deletedAt: null },
       });
     });
   });

@@ -126,8 +126,11 @@ describe("WorkflowEditorPage", () => {
     });
 
     render(<WorkflowEditorPage />);
-    expect(screen.getByText("Auto follow-up")).toBeInTheDocument();
-    expect(screen.getByText("Main")).toBeInTheDocument();
+    // The page renders both a mobile card list and a desktop table from the
+    // same data; scope assertions to the table to avoid duplicate matches.
+    const table = screen.getByRole("table", { hidden: true });
+    expect(within(table).getByText("Auto follow-up")).toBeInTheDocument();
+    expect(within(table).getByText("Main")).toBeInTheDocument();
   });
 
   it("opens create workflow dialog", () => {

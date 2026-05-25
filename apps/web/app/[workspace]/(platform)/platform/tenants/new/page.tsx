@@ -1,11 +1,10 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/constants/routes";
+import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-workspace";
 import { NewTenantPage } from "@/features/tenants";
 
 export default function NewTenantRoute() {
   return (
-    <AuthGuard roles={["platformAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
+    <AuthGuardWithWorkspace roles={["platformAdmin"]}>
       <NewTenantPage />
-    </AuthGuard>
+    </AuthGuardWithWorkspace>
   );
 }

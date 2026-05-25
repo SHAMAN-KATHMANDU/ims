@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { format } from "date-fns";
 import { Eye, Edit } from "lucide-react";
 
@@ -78,6 +79,61 @@ export function MemberTable({
     },
   ];
 
+  const renderMobileCard = useCallback(
+    (m: Member) => {
+      return (
+        <div className="rounded-md border bg-card p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold">{m.phone}</p>
+            <StatusBadge
+              variant={m.isActive ? "success" : "muted"}
+              className="shrink-0"
+            >
+              {m.isActive ? "Active" : "Inactive"}
+            </StatusBadge>
+          </div>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            {m.name && <p>{m.name}</p>}
+            {m.email && <p className="min-w-0 break-words">{m.email}</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Sales</p>
+              <p className="font-medium">{m._count?.sales ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Joined</p>
+              <p className="text-xs">
+                {format(new Date(m.createdAt), "MMM d, yyyy")}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs flex-1"
+              onClick={() => onView(m)}
+            >
+              View
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs flex-1"
+              onClick={() => onEdit(m)}
+            >
+              Edit
+            </Button>
+          </div>
+        </div>
+      );
+    },
+    [onView, onEdit],
+  );
+
   return (
     <DataTable<Member>
       data={members}
@@ -122,6 +178,8 @@ export function MemberTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actions={(m) => (
         <div className="flex justify-end gap-1">
           <Button

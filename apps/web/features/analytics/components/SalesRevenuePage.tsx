@@ -357,8 +357,8 @@ export function SalesRevenuePage() {
                     <div
                       className={
                         isPrimary
-                          ? "text-2xl font-bold tracking-tight md:text-3xl"
-                          : "text-xl font-semibold"
+                          ? "text-xl font-bold leading-tight tracking-tight break-words sm:text-2xl md:text-3xl"
+                          : "text-lg font-semibold leading-tight break-words sm:text-xl"
                       }
                     >
                       {k.value}

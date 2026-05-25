@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { format } from "date-fns";
 import { Check, Star, Trash2, X } from "lucide-react";
 
@@ -40,6 +41,79 @@ export function ReviewTable({
   hasActiveFilters,
   onClearFilters,
 }: ReviewTableProps) {
+  const renderMobileCard = useCallback(
+    (r: Review) => {
+      const busy = pendingId === r.id;
+      return (
+        <div className="rounded-md border bg-card p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm">{r.product?.name ?? "—"}</p>
+              <RatingStars value={r.rating} />
+            </div>
+            <ReviewStatusBadge status={r.status} />
+          </div>
+          {(r.title || r.body) && (
+            <div className="space-y-1 text-sm">
+              {r.title && <p className="font-medium text-sm">{r.title}</p>}
+              {r.body && (
+                <p className="text-xs text-muted-foreground line-clamp-3">
+                  {r.body}
+                </p>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {r.authorName ?? "Anonymous"} ·{" "}
+            {format(new Date(r.createdAt), "MMM d, yyyy")}
+          </p>
+          <div className="flex gap-1 pt-1">
+            <Can perm="WEBSITE.REVIEWS.APPROVE" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy || r.status === "APPROVED"}
+                onClick={() => onApprove(r)}
+                className="h-7 text-xs flex-1"
+              >
+                <Check className="h-3 w-3 mr-1" aria-hidden="true" />
+                Approve
+              </Button>
+            </Can>
+            <Can perm="WEBSITE.REVIEWS.REJECT" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy || r.status === "REJECTED"}
+                onClick={() => onReject(r)}
+                className="h-7 text-xs flex-1"
+              >
+                <X className="h-3 w-3 mr-1" aria-hidden="true" />
+                Reject
+              </Button>
+            </Can>
+            <Can perm="WEBSITE.REVIEWS.DELETE" fallback={null}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => onDelete(r)}
+                className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" />
+                Delete
+              </Button>
+            </Can>
+          </div>
+        </div>
+      );
+    },
+    [pendingId, onApprove, onReject, onDelete],
+  );
+
   const columns: DataTableColumn<Review>[] = [
     {
       id: "product",
@@ -125,6 +199,8 @@ export function ReviewTable({
             </Button>
           ) : undefined,
       }}
+      renderMobileCard={renderMobileCard}
+      mobileBreakpoint="md"
       actions={(r) => {
         const busy = pendingId === r.id;
         return (

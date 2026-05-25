@@ -89,9 +89,9 @@ import {
   X,
   Trash2,
   ArrowRight,
+  MoreVertical,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import type { Deal } from "../../services/deal.service";
 import type {
   Pipeline,
@@ -119,6 +119,7 @@ export function DealsKanbanPage() {
   const [editStagesOpen, setEditStagesOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [mobileDeleteDeal, setMobileDeleteDeal] = useState<Deal | null>(null);
 
   const { data, isLoading } = useDealsKanban(pipelineId || undefined, {
     enabled: envDealsEnabled && salesPipelineEnabled,
@@ -126,7 +127,11 @@ export function DealsKanbanPage() {
   const { data: pipelinesData } = usePipelines(undefined, {
     enabled: envDealsEnabled && salesPipelineEnabled,
   });
-  const { data: selectedDealData } = useDeal(selectedDealId ?? "", {
+  const {
+    data: selectedDealData,
+    isError: selectedDealIsError,
+    error: selectedDealError,
+  } = useDeal(selectedDealId ?? "", {
     enabled: envDealsEnabled && salesPipelineEnabled && !!selectedDealId,
   });
   const updateStageMutation = useUpdateDealStage();
@@ -299,9 +304,9 @@ export function DealsKanbanPage() {
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
+            <div className="flex w-full items-center gap-1 sm:w-auto">
               <Select value={pipelineId} onValueChange={setPipelineId}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="min-w-0 flex-1 sm:w-[200px] sm:flex-none">
                   <SelectValue placeholder="Select pipeline" />
                 </SelectTrigger>
                 <SelectContent>
@@ -315,11 +320,6 @@ export function DealsKanbanPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {currentPipeline?.type && currentPipeline.type !== "GENERAL" && (
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {currentPipeline.type.replace("_", " ")}
-                </Badge>
-              )}
               {currentPipeline && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -412,41 +412,84 @@ export function DealsKanbanPage() {
                   </h3>
                   <div className="space-y-2">
                     {col.deals.map((deal) => (
-                      <button
-                        type="button"
+                      <div
                         key={deal.id}
-                        className="w-full text-left rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
-                        onClick={() =>
-                          router.push(`${basePath}/crm/deals/${deal.id}`)
-                        }
+                        className="relative rounded-lg border bg-card"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-medium">
-                            {deal.name}
-                          </span>
-                          <span className="text-sm font-semibold text-primary shrink-0">
-                            {formatCurrency(Number(deal.value))}
-                          </span>
-                        </div>
-                        {(deal.contact || deal.expectedCloseDate) && (
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                            {deal.contact && (
-                              <span>
-                                {deal.contact.firstName}{" "}
-                                {deal.contact.lastName || ""}
-                              </span>
-                            )}
-                            {deal.expectedCloseDate && (
-                              <span>
-                                Closes{" "}
-                                {new Date(
-                                  deal.expectedCloseDate,
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
+                        <button
+                          type="button"
+                          className="w-full text-left p-3 pr-10 space-y-1.5 cursor-pointer"
+                          onClick={() =>
+                            router.push(`${basePath}/crm/deals/${deal.id}`)
+                          }
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-medium">
+                              {deal.name}
+                            </span>
+                            <span className="text-sm font-semibold text-primary shrink-0">
+                              {formatCurrency(Number(deal.value))}
+                            </span>
                           </div>
-                        )}
-                      </button>
+                          {(deal.contact || deal.expectedCloseDate) && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                              {deal.contact && (
+                                <span>
+                                  {deal.contact.firstName}{" "}
+                                  {deal.contact.lastName || ""}
+                                </span>
+                              )}
+                              {deal.expectedCloseDate && (
+                                <span>
+                                  Closes{" "}
+                                  {new Date(
+                                    deal.expectedCloseDate,
+                                  ).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                        <div className="absolute right-1.5 top-1.5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground"
+                                aria-label={`Actions for ${deal.name}`}
+                              >
+                                <MoreVertical
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openEdit(deal.id)}
+                              >
+                                <Pencil
+                                  className="h-4 w-4 mr-2"
+                                  aria-hidden="true"
+                                />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setMobileDeleteDeal(deal)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2
+                                  className="h-4 w-4 mr-2"
+                                  aria-hidden="true"
+                                />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -531,7 +574,7 @@ export function DealsKanbanPage() {
           )}
           {drawerMode === "edit" &&
             selectedDealId &&
-            selectedDealData?.deal && (
+            (selectedDealData?.deal ? (
               <DealForm
                 mode="edit"
                 deal={selectedDealData.deal}
@@ -562,8 +605,59 @@ export function DealsKanbanPage() {
                 onCancel={() => setDrawerMode("view")}
                 isLoading={updateDealMutation.isPending}
               />
-            )}
+            ) : selectedDealIsError ? (
+              <div className="p-6 space-y-3">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 space-y-2">
+                  <p className="text-sm font-medium">
+                    We couldn&rsquo;t load this deal.
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {selectedDealError instanceof Error
+                      ? selectedDealError.message
+                      : "It may have been updated by someone else. Close this and reopen from the board to get the latest."}
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={closeDrawer}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6">
+                <Skeleton className="h-64 w-full" />
+              </div>
+            ))}
         </ResponsiveDrawer>
+
+        <AlertDialog
+          open={mobileDeleteDeal !== null}
+          onOpenChange={(o) => !o && setMobileDeleteDeal(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete deal</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete &quot;{mobileDeleteDeal?.name}
+                &quot;? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (mobileDeleteDeal) {
+                    deleteDealMutation.mutate(mobileDeleteDeal.id);
+                  }
+                  setMobileDeleteDeal(null);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteDealMutation.isPending ? "Deleting…" : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PermissionGate>
   );

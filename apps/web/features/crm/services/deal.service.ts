@@ -140,7 +140,12 @@ export async function getDealsKanban(pipelineId?: string): Promise<{
 }
 
 export async function getDealById(id: string): Promise<{ deal: Deal }> {
-  const res = await api.get(`/deals/${id}`);
+  // Suppress the global axios error toast: DealDetail renders an inline
+  // error state on failure, so a top-level "Deal not found" toast would
+  // either duplicate that or — when stale-cache prior data still paints
+  // through TanStack Query — appear next to a deal that visibly loaded
+  // fine (issue #562).
+  const res = await api.get(`/deals/${id}`, { skipGlobalErrorToast: true });
   return res.data;
 }
 

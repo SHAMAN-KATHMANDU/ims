@@ -71,7 +71,7 @@ export function ModuleNavRail({
   const searching = search.trim().length > 0;
 
   return (
-    <aside className="flex w-[280px] flex-col border-r bg-muted/30">
+    <aside className="flex w-full flex-col border-r bg-muted/30 md:w-[280px]">
       <div className="space-y-3 border-b p-3">
         <Input
           type="search"

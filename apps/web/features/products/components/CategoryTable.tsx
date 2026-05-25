@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import { Edit2, RotateCcw, Trash2, MoreHorizontal } from "lucide-react";
+import { useCallback } from "react";
 
 import {
   Card,
@@ -54,6 +55,105 @@ export function CategoryTable({
   onSelectionChange,
   highlightCategoryId,
 }: CategoryTableProps) {
+  const renderMobileCard = useCallback(
+    (c: Category) => (
+      <div className="rounded-md border bg-card p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-sm min-w-0 break-words">{c.name}</p>
+          <div className="shrink-0">
+            {c.deletedAt ? (
+              <Badge variant="secondary">Deactivated</Badge>
+            ) : (
+              <Badge variant="default" className="bg-green-600">
+                Active
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {c.description && (
+          <p className="text-sm text-muted-foreground min-w-0 break-words">
+            {c.description}
+          </p>
+        )}
+
+        {subcategoriesByCategory[c.id] &&
+          subcategoriesByCategory[c.id]!.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">
+                Subcategories
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {subcategoriesByCategory[c.id]!.map((sub) => (
+                  <span
+                    key={sub}
+                    className="px-2 py-0.5 rounded-full bg-muted text-xs"
+                  >
+                    {sub}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+        <div>
+          <p className="text-xs text-muted-foreground">Created</p>
+          <p className="text-sm font-medium">
+            {c.createdAt ? format(new Date(c.createdAt), "MMM d, yyyy") : "—"}
+          </p>
+        </div>
+
+        {canManageProducts && (
+          <div className="flex gap-1 pt-1">
+            {c.deletedAt ? (
+              onRestore && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => onRestore(c)}
+                  disabled={isRestoring}
+                >
+                  Restore
+                </Button>
+              )
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => onEdit(c)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1 text-destructive hover:text-destructive"
+                  onClick={() => onDelete(c)}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    ),
+    [
+      canManageProducts,
+      subcategoriesByCategory,
+      onEdit,
+      onDelete,
+      onRestore,
+      isRestoring,
+    ],
+  );
+
   const columns: DataTableColumn<Category>[] = [
     {
       id: "name",
@@ -139,6 +239,8 @@ export function CategoryTable({
               ? "bg-amber-100 dark:bg-amber-950/50 animate-pulse"
               : undefined
           }
+          renderMobileCard={renderMobileCard}
+          mobileBreakpoint="md"
           actions={
             canManageProducts
               ? (c) => (
