@@ -131,6 +131,9 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          # tsc on apps/api OOMs at the default 4 GB heap on the ubuntu-latest
+          # runner; bump to 6 GB so the API typecheck has headroom.
+          NODE_OPTIONS: "--max-old-space-size=6144"
 
   # Single consolidated unit-test job for the no-DB packages.
   # Replaces the prior test-web, test-tenant-site, and test-shared jobs.
