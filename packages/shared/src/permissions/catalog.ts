@@ -2609,6 +2609,19 @@ const SETTINGS_AI = [
   },
 ] as const;
 
+const SETTINGS_MCP = [
+  {
+    key: "SETTINGS.MCP.MANAGE",
+    bit: 237,
+    module: "SETTINGS" as const,
+    submodule: "MCP",
+    action: "MANAGE",
+    label: "Manage MCP tokens",
+    description:
+      "Issue, list and revoke MCP access tokens for the current user.",
+  },
+] as const;
+
 // ADMINISTRATOR is the last permission, pinned at bit 511
 const SETTINGS_ADMINISTRATOR = [
   {
@@ -2677,6 +2690,7 @@ export const PERMISSIONS = [
   ...SETTINGS_API_ACCESS,
   ...SETTINGS_INTEGRATIONS,
   ...SETTINGS_AI,
+  ...SETTINGS_MCP,
   ...SETTINGS_ADMINISTRATOR,
 ] as const;
 

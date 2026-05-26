@@ -114,12 +114,12 @@ router.use("/auth", authRouter);
 // Mounted BEFORE the global verifyToken chain so its bespoke
 // mcpAuthMiddleware can validate the "ims-mcp" audience claim.
 //
-// /mcp/token is mounted FIRST (more specific path wins on Express prefix
-// match) and applies the standard JWT chain locally so callers exchange
-// their access token for an MCP-audience token.
+// /mcp/tokens is mounted FIRST (more specific path wins on Express prefix
+// match) and applies the standard JWT chain locally so callers can issue,
+// list and revoke MCP-audience tokens from the settings UI.
 // ============================================
 router.use(
-  "/mcp/token",
+  "/mcp/tokens",
   verifyToken,
   resolveTenant,
   checkSubscription,

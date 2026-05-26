@@ -30,7 +30,7 @@ export async function mcpAuthMiddleware(
 
   let payload;
   try {
-    payload = verifyMcpToken(token);
+    payload = await verifyMcpToken(token);
   } catch (err) {
     logger.warn("MCP token verification failed", undefined, { err });
     return res.status(401).json({
