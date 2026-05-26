@@ -3,10 +3,12 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useCreateCompany } from "@/features/crm";
+import {
+  useCreateCompany,
+  CompanyForm,
+  type CreateCompanyData,
+} from "@/features/crm";
 import { Button } from "@/components/ui/button";
-import { CompanyForm } from "@/features/crm";
-import type { CreateCompanyData } from "@/features/crm";
 
 export default function NewCompanyPage() {
   const params = useParams();

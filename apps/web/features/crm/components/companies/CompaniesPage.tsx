@@ -387,11 +387,18 @@ export function CompaniesPage() {
             </div>
           ) : (
             companies.map((c) => (
-              <button
-                type="button"
+              <div
                 key={c.id}
+                role="button"
+                tabIndex={0}
                 className="w-full text-left rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
                 onClick={() => openView(c.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openView(c.id);
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -440,7 +447,7 @@ export function CompaniesPage() {
                     <Trash2 className="h-3 w-3" aria-hidden="true" />
                   </Button>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>

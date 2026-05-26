@@ -3,13 +3,19 @@
 import type React from "react";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
-import { CommandPalette } from "./command-palette";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useSidebarStore } from "@/store/sidebar-store";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
+
+const CommandPalette = dynamic(
+  () =>
+    import("./command-palette").then((m) => ({ default: m.CommandPalette })),
+  { ssr: false },
+);
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();

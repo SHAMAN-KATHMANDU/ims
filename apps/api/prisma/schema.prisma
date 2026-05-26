@@ -91,6 +91,10 @@ model Tenant {
   // third-party frontends running on their own infrastructure.
   publicApiKeys TenantApiKey[]
 
+  // MCP access tokens issued to users in this tenant for connecting MCP
+  // clients (Claude Desktop, etc.) to the /mcp transport.
+  mcpTokens McpToken[]
+
   // Blog relations
   blogPosts      BlogPost[]
   blogCategories BlogCategory[]
@@ -204,6 +208,28 @@ model TenantApiKey {
   @@index([tenantId])
   @@index([tenantDomainId])
   @@map("tenant_api_keys")
+}
+
+// MCP access tokens — long-lived audience-scoped JWTs the user pastes into
+// their MCP client (e.g. Claude Desktop). The JWT's jti is looked up here on
+// every /mcp request so revocation is immediate; stateless verify alone
+// would have to wait for expiry.
+model McpToken {
+  id         String    @id @default(uuid())
+  tenantId   String    @map("tenant_id")
+  userId     String    @map("user_id")
+  name       String // user-given label, e.g. "Roshan's laptop — Claude Desktop"
+  jti        String    @unique // JWT id; what verifyMcpToken looks up
+  expiresAt  DateTime  @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@map("mcp_tokens")
 }
 
 enum TenantDomainApp {
@@ -975,6 +1001,9 @@ model User {
   // RBAC relations
   userRoles  UserRole[]
   overwrites PermissionOverwrite[]
+
+  // MCP tokens this user has minted for their MCP clients.
+  mcpTokens McpToken[]
 
   @@unique([tenantId, username])
   @@index([tenantId, deletedAt])

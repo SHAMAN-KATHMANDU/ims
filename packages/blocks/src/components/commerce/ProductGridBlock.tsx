@@ -9,7 +9,8 @@ export function ProductGridBlock({
 }: BlockComponentProps<ProductGridProps>) {
   const products = dataContext.products || [];
   const columns = props.columns ?? 3;
-  const { locale = "en-IN", currency = "INR" } = dataContext.site || {};
+  const locale = dataContext.site?.locale ?? "en-IN";
+  const currency = dataContext.site?.currency ?? "INR";
 
   return (
     <div

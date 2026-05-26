@@ -83,6 +83,8 @@ import businessProfileRouter from "@/modules/business-profile/business-profile.r
 import publicApiKeysRouter from "@/modules/public-api-keys/public-api-keys.router";
 import publicDataApiRouter from "@/modules/public-data-api/public-data-api.router";
 import formsRouter from "@/modules/forms/forms.router";
+import mcpRouter from "@/modules/mcp/mcp.router";
+import mcpTokenRouter from "@/modules/mcp/mcp.token.router";
 import {
   siteTemplatesRouter,
   siteTemplatesPlatformRouter,
@@ -106,6 +108,24 @@ router.use("/webhooks", webhookRouter);
 // Auth routes (no tenant middleware; tenant from X-Tenant-Slug)
 // ============================================
 router.use("/auth", authRouter);
+
+// ============================================
+// MCP Streamable HTTP transport (own audience-scoped token, not JWT).
+// Mounted BEFORE the global verifyToken chain so its bespoke
+// mcpAuthMiddleware can validate the "ims-mcp" audience claim.
+//
+// /mcp/tokens is mounted FIRST (more specific path wins on Express prefix
+// match) and applies the standard JWT chain locally so callers can issue,
+// list and revoke MCP-audience tokens from the settings UI.
+// ============================================
+router.use(
+  "/mcp/tokens",
+  verifyToken,
+  resolveTenant,
+  checkSubscription,
+  mcpTokenRouter,
+);
+router.use("/mcp", mcpRouter);
 
 // ============================================
 // Public website routes (no JWT; tenant resolved from Host header)

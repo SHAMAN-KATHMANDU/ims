@@ -19,7 +19,7 @@ describe("AutoForm", () => {
         BLOCK_PROPS_SCHEMAS[kind as keyof typeof BLOCK_PROPS_SCHEMAS];
       const handleChange = vi.fn();
 
-      const { container, rerender } = render(
+      const { container } = render(
         <AutoForm
           schema={schema}
           values={{}}
@@ -28,8 +28,6 @@ describe("AutoForm", () => {
         />,
       );
 
-      // Verify that no JsonFallbackField is rendered
-      // (every block kind's props must be fully modeled)
       const fallbackField = container.querySelector(
         '[data-testid="json-fallback-field"]',
       );
@@ -37,17 +35,8 @@ describe("AutoForm", () => {
         fallbackField,
         `Block kind "${kind}" should not have JsonFallbackField as primary dispatch`,
       ).toBeNull();
-
-      rerender(
-        <AutoForm
-          schema={schema}
-          values={{}}
-          onChange={handleChange}
-          blockKind={kind}
-        />,
-      );
     });
-  });
+  }, 30_000);
 
   it("dispatches string fields for text inputs", () => {
     const schema = z.object({

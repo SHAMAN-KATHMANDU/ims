@@ -19,7 +19,8 @@ export const CreateContactSchema = z
     tagIds: z.array(z.string().uuid()).optional(),
     source: z.string().max(100).optional().nullable(),
   })
-  .merge(ContactProfileFieldsSchema);
+  .merge(ContactProfileFieldsSchema)
+  .strict();
 
 export const UpdateContactSchema = CreateContactSchema.partial();
 

@@ -9,7 +9,6 @@ import { env } from "@/config/env";
 import { errorHandler } from "@/middlewares/errorHandler";
 import { requestIdMiddleware } from "@/middlewares/requestId";
 import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
-import { metricsMiddleware, getMetrics } from "@/middlewares/metricsMiddleware";
 import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
 
@@ -32,9 +31,6 @@ app.use(requestIdMiddleware);
 // Request logging for all /api/v1 calls (method, path, status, duration)
 app.use(requestLoggingMiddleware);
 
-// Prometheus metrics (request count, duration) - skips /health, /metrics
-app.use(metricsMiddleware);
-
 // CORS middleware - uses CORS_ORIGIN from environment
 // In production, this must be set to specific frontend origin(s)
 app.use(
@@ -50,17 +46,6 @@ app.use("/api/v1/webhooks", express.raw({ type: "application/json" }));
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Prometheus metrics endpoint (unauthenticated, for scraping)
-app.get("/metrics", async (req, res) => {
-  res.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
-  try {
-    const metrics = await getMetrics();
-    res.send(metrics);
-  } catch {
-    res.status(500).send("# Error collecting metrics");
-  }
-});
 
 // Health check endpoint for container orchestration
 app.get("/health", async (req, res) => {

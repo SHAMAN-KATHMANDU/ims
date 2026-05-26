@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getWorkspaceRoot } from "@/constants/routes";
 import { Button } from "../ui/button";
@@ -37,7 +38,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { MediaLibraryPanel } from "@/features/media";
+const MediaLibraryPanel = dynamic(
+  () =>
+    import("@/features/media").then((m) => ({ default: m.MediaLibraryPanel })),
+  { ssr: false },
+);
 import { useIsMobile } from "@/hooks/useMobile";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {

@@ -93,6 +93,17 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     group: "workspace",
     roles: ["admin", "superAdmin"],
   },
+  // MCP — token management + Claude Desktop / other MCP client setup.
+  // No env/plan gate; the MCP server is on in every environment. Page
+  // enforces SETTINGS.MCP.MANAGE via PermissionGate.
+  {
+    id: "mcp",
+    label: "MCP",
+    description: "Generate tokens and set up Claude Desktop or other MCP clients",
+    path: "settings/mcp",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
+  },
   // Automations hub — canonical plural form; /settings/automation redirects here.
   // EnvFeature.SETTINGS mirrors the page's EnvFeaturePageGuard.
   {

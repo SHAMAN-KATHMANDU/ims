@@ -47,6 +47,7 @@ const TENANT_SCOPED_MODELS = new Set([
   "AutomationRun",
   "WorkItem",
   "InventorySignal",
+  "McpToken",
 ]);
 
 /**

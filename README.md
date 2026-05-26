@@ -154,7 +154,7 @@ docker-compose -f docker-compose.prod.yml up -d
 - **Staging** — auto-deploys when PRs are squash-merged into `main`.
 - **Production** — manual release via [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github). Tags (e.g. `v1.0.0`) control prod.
 
-See [.github/WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md), [.github/COMMIT_CONVENTION.md](.github/COMMIT_CONVENTION.md), [.github/RELEASE_PROCESS.md](.github/RELEASE_PROCESS.md) for details. For server deployment (EC2, Watchtower, rollback), see [docs/SERVER-DEPLOYMENT.md](docs/SERVER-DEPLOYMENT.md).
+See [.github/WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md), [.github/COMMIT_CONVENTION.md](.github/COMMIT_CONVENTION.md), [.github/RELEASE_PROCESS.md](.github/RELEASE_PROCESS.md) for details. For server deployment (EC2, Watchtower, rollback), see [docs/deployment/SERVER-DEPLOYMENT.md](docs/deployment/SERVER-DEPLOYMENT.md).
 
 ### GitHub Actions
 
