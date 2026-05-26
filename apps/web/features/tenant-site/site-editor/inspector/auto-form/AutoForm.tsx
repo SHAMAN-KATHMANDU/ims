@@ -145,10 +145,11 @@ function introspectZod(schema: z.ZodType<unknown>): FieldMapping {
 
   // Handle z.union of literals (discriminated union pattern)
   if (current instanceof z.ZodUnion) {
-    const literals = (current._def as { options: unknown[] }).options.filter(
+    const options = (current._def as { options: z.ZodType<unknown>[] }).options;
+    const literals = options.filter(
       (opt) => opt instanceof z.ZodLiteral,
     ) as z.ZodLiteral<string | number>[];
-    if (literals.length === current._def.options.length) {
+    if (literals.length === options.length) {
       return {
         type: "enum",
         zodType: schema,
@@ -156,13 +157,23 @@ function introspectZod(schema: z.ZodType<unknown>): FieldMapping {
         enumValues: literals.map((lit) => lit._def.value),
       };
     }
+    // Mixed unions containing a string branch (e.g. `string | ImageRef` for
+    // media fields) — surface as a string field so the dispatcher picks an
+    // appropriate input (textarea/MediaPicker via field-name heuristics).
+    if (options.some((opt) => opt instanceof z.ZodString)) {
+      return { type: "string", zodType: schema, isOptional };
+    }
   }
 
   // Array
   if (current instanceof z.ZodArray) {
     const elementSchema = current._def.type;
-    // Array of strings
-    if (elementSchema instanceof z.ZodString) {
+    // Array of strings (free text or enum values) — both render as a
+    // string-list field; enum values are constrained by runtime validation.
+    if (
+      elementSchema instanceof z.ZodString ||
+      elementSchema instanceof z.ZodEnum
+    ) {
       return {
         type: "array",
         zodType: schema,
