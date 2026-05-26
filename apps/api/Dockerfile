@@ -29,7 +29,9 @@ COPY --from=builder /app/out/full/ .
 # Generate Prisma client
 RUN pnpm --filter api prisma:generate
 
-# Build the app
+# Build the app — bump V8 heap because `tsc` for the API project peaks above
+# the default ~4 GB limit and OOMs (exit 134) on the Docker builder.
+ENV NODE_OPTIONS="--max-old-space-size=6144"
 RUN pnpm turbo build
 
 # Clean up source files only (keep node_modules with Prisma client)
