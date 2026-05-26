@@ -1,4 +1,4 @@
-import { LeadsPage } from "@/features/crm/components/leads/LeadsPage";
+import { LeadsPage } from "@/features/crm";
 
 export default function CrmLeads() {
   return <LeadsPage />;

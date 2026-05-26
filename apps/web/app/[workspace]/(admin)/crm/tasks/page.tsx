@@ -1,4 +1,4 @@
-import { TasksPage } from "@/features/crm/components/tasks/TasksPage";
+import { TasksPage } from "@/features/crm";
 
 export default function CrmTasks() {
   return <TasksPage />;

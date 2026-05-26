@@ -49,7 +49,7 @@ import {
   useNotifications,
   useUnreadNotificationCount,
   useDeleteAllNotifications,
-} from "@/features/crm/hooks";
+} from "@/features/crm";
 
 function NotificationsBell({ basePath }: { basePath: string }) {
   const { data: countData } = useUnreadNotificationCount();

@@ -1,4 +1,4 @@
-import { CompaniesPage } from "@/features/crm/components/companies/CompaniesPage";
+import { CompaniesPage } from "@/features/crm";
 
 export default function CrmCompaniesPage() {
   return <CompaniesPage />;

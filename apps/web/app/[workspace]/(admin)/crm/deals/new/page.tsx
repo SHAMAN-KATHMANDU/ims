@@ -3,10 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useCreateDeal } from "@/features/crm/hooks";
+import { useCreateDeal, DealForm, type CreateDealData } from "@/features/crm";
 import { Button } from "@/components/ui/button";
-import { DealForm } from "@/features/crm/components/deals/DealForm";
-import type { CreateDealData } from "@/features/crm/types";
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 
 export default function NewDealPage() {

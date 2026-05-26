@@ -1,5 +1,5 @@
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
-import { DealsKanbanPage } from "@/features/crm/components/deals/DealsKanbanPage";
+import { DealsKanbanPage } from "@/features/crm";
 
 export default function CrmDeals() {
   return (

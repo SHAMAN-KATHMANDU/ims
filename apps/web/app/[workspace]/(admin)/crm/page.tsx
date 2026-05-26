@@ -1,4 +1,4 @@
-import { CrmDashboardPage } from "@/features/crm/components/CrmDashboardPage";
+import { CrmDashboardPage } from "@/features/crm";
 
 export const metadata = { title: "CRM" };
 

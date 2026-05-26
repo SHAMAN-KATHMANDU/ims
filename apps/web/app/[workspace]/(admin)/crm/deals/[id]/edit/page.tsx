@@ -3,11 +3,14 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useDeal, useUpdateDeal } from "@/features/crm/hooks";
+import {
+  useDeal,
+  useUpdateDeal,
+  DealForm,
+  type UpdateDealData,
+} from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DealForm } from "@/features/crm/components/deals/DealForm";
-import type { UpdateDealData } from "@/features/crm/types";
 import { EnvFeaturePageGuard, EnvFeature } from "@/features/flags";
 
 export default function EditDealPage() {

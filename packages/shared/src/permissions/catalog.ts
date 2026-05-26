@@ -2612,7 +2612,7 @@ const SETTINGS_AI = [
 const SETTINGS_MCP = [
   {
     key: "SETTINGS.MCP.MANAGE",
-    bit: 237,
+    bit: 242,
     module: "SETTINGS" as const,
     submodule: "MCP",
     action: "MANAGE",

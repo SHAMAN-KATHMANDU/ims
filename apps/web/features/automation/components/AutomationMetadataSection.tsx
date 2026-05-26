@@ -24,7 +24,7 @@ import {
 import { HelpTopicSheet } from "@/components/help-topic-sheet";
 import { Package } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { usePipelines } from "@/features/crm/hooks";
+import { usePipelines } from "@/features/crm";
 import { useActiveLocations } from "@/features/locations";
 import {
   AUTOMATION_EXECUTION_MODE_LABELS,

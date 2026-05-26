@@ -11,7 +11,7 @@ import {
   dealKeys,
   taskKeys,
   workflowKeys,
-} from "@/features/crm/hooks";
+} from "@/features/crm";
 import {
   getSales,
   getSaleById,

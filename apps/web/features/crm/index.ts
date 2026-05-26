@@ -1,0 +1,21 @@
+export * from "./hooks";
+export * from "./types";
+export * from "./store";
+
+export { CrmDashboardPage } from "./components/CrmDashboardPage";
+export { ContactsPage } from "./components/contacts/ContactsPage";
+export { ContactDetail } from "./components/contacts/ContactDetail";
+export { ContactForm } from "./components/contacts/ContactForm";
+export { LeadsPage } from "./components/leads/LeadsPage";
+export { LeadForm } from "./components/leads/LeadForm";
+export { DealsKanbanPage } from "./components/deals/DealsKanbanPage";
+export { DealDetail } from "./components/deals/DealDetail";
+export { DealForm } from "./components/deals/DealForm";
+export { CompaniesPage } from "./components/companies/CompaniesPage";
+export { CompanyForm } from "./components/companies/CompanyForm";
+export { TasksPage } from "./components/tasks/TasksPage";
+export { TaskForm } from "./components/tasks/TaskForm";
+export { NotificationsPage } from "./components/notifications/NotificationsPage";
+export { default as CrmSettingsPage } from "./components/settings/CrmSettingsPage";
+export { default as WorkflowEditorPage } from "./components/workflows/WorkflowEditorPage";
+export { CrmReportsPage } from "./components/reports/CrmReportsPage";

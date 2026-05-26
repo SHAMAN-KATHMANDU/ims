@@ -2,7 +2,7 @@ import { AuthGuardWithWorkspace } from "@/components/auth/auth-guard-with-worksp
 import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
-import { CrmReportsPage } from "@/features/crm/components/reports/CrmReportsPage";
+import { CrmReportsPage } from "@/features/crm";
 
 export const metadata = { title: "CRM Reports" };
 

@@ -1,4 +1,4 @@
-import { NotificationsPage } from "@/features/crm/components/notifications/NotificationsPage";
+import { NotificationsPage } from "@/features/crm";
 
 export const metadata = { title: "Notifications" };
 

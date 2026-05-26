@@ -49,7 +49,7 @@ vi.mock("@/components/ui/switch", () => ({
   ),
 }));
 
-vi.mock("@/features/crm/hooks", () => ({
+vi.mock("@/features/crm", () => ({
   usePipelines: () => ({
     data: { pipelines: [{ id: "pipe-1", name: "Default pipeline" }] },
   }),
