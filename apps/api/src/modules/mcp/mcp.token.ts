@@ -58,7 +58,7 @@ export async function signMcpToken(
   const jti = randomUUID();
   const { name, ...claims } = input;
 
-  const token = jwt.sign({ ...claims, jti }, env.jwtSecret, {
+  const token = jwt.sign(claims, env.jwtSecret, {
     expiresIn: ttl as any,
     audience: MCP_AUDIENCE,
     jwtid: jti,
