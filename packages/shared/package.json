@@ -2,20 +2,25 @@
   "name": "@repo/shared",
   "version": "1.0.0",
   "description": "Shared utilities and types for the monorepo",
-  "main": "./index.ts",
-  "types": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./blocks": {
-      "types": "./src/blocks/index.ts",
-      "default": "./src/blocks/index.ts"
+      "types": "./dist/src/blocks/index.d.ts",
+      "require": "./dist/src/blocks/index.js",
+      "import": "./dist/src/blocks/index.js",
+      "default": "./dist/src/blocks/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
+    "dev": "tsc --watch",
     "lint": "eslint . --max-warnings 0",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
