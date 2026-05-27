@@ -27,7 +27,21 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     version: getVersion(),
   });
 
-  server.registerTool(
+  // The SDK's registerTool overloads tangle with our strictNullChecks=false
+  // tsconfig — TS hits TS2589 ("excessively deep") on the deeper inputSchema
+  // inference. Bypass the overload by aliasing the method to a loose
+  // signature; Zod still validates at runtime so handler safety is unchanged.
+  const registerTool = server.registerTool.bind(server) as (
+    name: string,
+    config: {
+      title?: string;
+      description?: string;
+      inputSchema?: Record<string, z.ZodTypeAny>;
+    },
+    handler: (args: any) => Promise<unknown> | unknown,
+  ) => unknown;
+
+  registerTool(
     "list_products",
     {
       title: "List products",
@@ -43,6 +57,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
       },
     },
     async ({ search, limit, cursor }) => {
+      const take = limit ?? 25;
       const where = search
         ? {
             OR: [
@@ -54,7 +69,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
 
       const rows = await prisma.product.findMany({
         where,
-        take: limit,
+        take,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         orderBy: { dateCreated: "desc" },
         select: {
@@ -74,7 +89,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "list_contacts",
     {
       title: "List contacts",
@@ -90,6 +105,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
       },
     },
     async ({ search, limit, cursor }) => {
+      const take = limit ?? 25;
       const where = search
         ? {
             OR: [
@@ -103,7 +119,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
 
       const rows = await prisma.contact.findMany({
         where,
-        take: limit,
+        take,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         orderBy: { createdAt: "desc" },
         select: {
@@ -123,7 +139,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "sales_summary",
     {
       title: "Sales summary",
@@ -175,7 +191,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "list_deals",
     {
       title: "List deals",
@@ -187,13 +203,14 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
       },
     },
     async ({ stage, status, limit }) => {
+      const take = limit ?? 25;
       const where: Record<string, unknown> = {};
       if (stage) where.stage = stage;
       if (status) where.status = status;
 
       const rows = await prisma.deal.findMany({
         where,
-        take: limit,
+        take,
         orderBy: { updatedAt: "desc" },
         select: {
           id: true,
@@ -213,7 +230,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "inventory_levels",
     {
       title: "Inventory levels",
@@ -263,7 +280,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "create_sale",
     {
       title: "Create sale",
@@ -321,7 +338,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
             userId: authCtx.userId,
             userRole: authCtx.userRole,
           },
-          dto,
+          dto as Parameters<typeof createSale>[1],
         );
 
         return {
