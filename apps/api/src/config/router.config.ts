@@ -89,6 +89,7 @@ import {
   siteTemplatesRouter,
   siteTemplatesPlatformRouter,
 } from "@/modules/site-templates/site-templates.router";
+import reportRouter from "@/modules/reports/report.router";
 
 const router = Router();
 
@@ -225,5 +226,6 @@ router.use("/permissions", permissionsRouter);
 router.use("/roles", permissionsRouter);
 router.use("/tenants", tenantRouter);
 router.use("/public-api-keys", publicApiKeysRouter);
+router.use("/reports", reportRouter);
 
 export default router;
