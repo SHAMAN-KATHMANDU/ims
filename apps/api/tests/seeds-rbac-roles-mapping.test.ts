@@ -145,7 +145,7 @@ describe("seedRbacRolesPermissions — legacy role mapping", () => {
     expect(links).toEqual([{ userId: "admin-1", roleName: "TENANT_ADMIN" }]);
   });
 
-  it("links legacy superAdmin → TENANT_ADMIN", async () => {
+  it("links legacy superAdmin → TENANT_SUPER_ADMIN", async () => {
     const { prisma, snapshot } = buildMockPrisma({
       users: [{ id: "super-1", role: "superAdmin" }],
     });
@@ -153,7 +153,7 @@ describe("seedRbacRolesPermissions — legacy role mapping", () => {
     await seedRbacRolesPermissions(prisma, ctx);
 
     expect(snapshot()).toEqual([
-      { userId: "super-1", roleName: "TENANT_ADMIN" },
+      { userId: "super-1", roleName: "TENANT_SUPER_ADMIN" },
     ]);
   });
 
@@ -177,6 +177,19 @@ describe("seedRbacRolesPermissions — legacy role mapping", () => {
 
     expect(snapshot()).toEqual([
       { userId: "admin-1", roleName: "TENANT_ADMIN" },
+    ]);
+  });
+
+  it("re-runs are corrective: a legacy superAdmin previously linked to TENANT_ADMIN is promoted to TENANT_SUPER_ADMIN", async () => {
+    const { prisma, snapshot } = buildMockPrisma({
+      users: [{ id: "super-1", role: "superAdmin" }],
+      existingUserRoles: [{ userId: "super-1", roleName: "TENANT_ADMIN" }],
+    });
+
+    await seedRbacRolesPermissions(prisma, ctx);
+
+    expect(snapshot()).toEqual([
+      { userId: "super-1", roleName: "TENANT_SUPER_ADMIN" },
     ]);
   });
 
