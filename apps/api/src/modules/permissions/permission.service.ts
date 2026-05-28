@@ -51,9 +51,11 @@ export class PermissionService {
     // been seeded. This is permanent (not just a migration helper): the
     // legacy enum remains the source of truth for who is an admin in a tenant.
     //
-    // `admin` MUST be included: it is the most common tenant-admin role, and
-    // the RbacRole seed maps both `admin` and `superAdmin` to TENANT_ADMIN.
-    // Omitting it here left legacy `admin` users at the mercy of their
+    // `admin` MUST be included: it is the most common tenant-admin role.
+    // The RbacRole seed splits legacy `superAdmin` → TENANT_SUPER_ADMIN and
+    // legacy `admin` → TENANT_ADMIN; this bypass keeps both tiers (plus
+    // `platformAdmin`) immune to RbacRole drift / mis-seeding.
+    // Omitting `admin` here previously left legacy `admin` users at the mercy of their
     // RbacRole link — a stale or mis-seeded link (e.g. the earlier
     // admin→EDITOR seed bug) stripped them of sales / CRM / dashboard access
     // and surfaced as "Unauthorized"/"Forbidden" toasts (#488, #486, #530,

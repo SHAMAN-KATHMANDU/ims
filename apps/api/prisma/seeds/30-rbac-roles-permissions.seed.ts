@@ -31,26 +31,33 @@ function buildBitset(permissionKeys: readonly string[]): Buffer {
 }
 
 /**
- * Collect all permission keys for a given module, action, or filter.
+ * SETTINGS permissions that can wipe state, rotate secrets, change billing, or
+ * eject members. Excluded from TENANT_ADMIN; available only to TENANT_SUPER_ADMIN.
  */
-function getPermissionKeysForModule(module: string): string[] {
-  return PERMISSIONS.filter((p) => p.module === module).map((p) => p.key);
-}
-
-function getPermissionKeysForAction(action: string): string[] {
-  return PERMISSIONS.filter((p) => p.action === action).map((p) => p.key);
-}
+const DANGEROUS_SETTINGS_KEYS = new Set<string>([
+  "SETTINGS.USERS.FORCE_LOGOUT",
+  "SETTINGS.AUDIT.PURGE",
+  "SETTINGS.TRASH.PURGE",
+  "SETTINGS.WEBHOOKS.ROTATE_SECRET",
+  "SETTINGS.API_ACCESS.ROTATE_KEY",
+  "SETTINGS.API_ACCESS.REVOKE_KEY",
+  "SETTINGS.TENANT.UPDATE_PLAN",
+  "SETTINGS.MEMBERS.REVOKE",
+]);
 
 /**
  * Seed RBAC roles with permission bitsets. Idempotent: upsert by tenantId + name.
  *
- * Role hierarchy:
- * - TENANT_ADMIN: every tenant-scoped permission (all modules except SETTINGS.ADMINISTRATOR).
- *   Auto-assigned to legacy `User.role` values `admin` and `superAdmin`.
- * - EDITOR: Website content + inventory view (WEBSITE.*, INVENTORY.PRODUCTS.VIEW).
- *   Opt-in only — never auto-assigned from legacy `User.role`.
- * - STAFF: Read-only permissions (VIEW actions only).
- *   Auto-assigned to all other legacy `User.role` values (e.g. `user`).
+ * Role hierarchy (priority desc):
+ * - TENANT_SUPER_ADMIN: every permission including SETTINGS.ADMINISTRATOR and
+ *   the destructive SETTINGS keys (rotate secrets, purge audit/trash, update
+ *   plan, revoke members, force logout). Auto-assigned to legacy `superAdmin`.
+ * - TENANT_ADMIN: every permission except SETTINGS.ADMINISTRATOR and the
+ *   destructive SETTINGS keys above. Auto-assigned to legacy `admin`.
+ * - EDITOR: Website content + inventory product view. Opt-in only.
+ * - STAFF: Full CRUD across INVENTORY, SALES, CRM (operational work) plus
+ *   VIEW-only on WEBSITE, REPORTS, and SETTINGS. Auto-assigned to legacy
+ *   `user` and any other legacy role.
  */
 export async function seedRbacRolesPermissions(
   prisma: PrismaClient,
@@ -58,28 +65,51 @@ export async function seedRbacRolesPermissions(
 ): Promise<SeedContext> {
   const tenantId = ctx.tenantId;
 
-  // TENANT_ADMIN: every permission except SETTINGS.ADMINISTRATOR
+  // TENANT_SUPER_ADMIN: every permission, no exclusions.
+  const tenantSuperAdminKeys = PERMISSIONS.map((p) => p.key);
+
+  // TENANT_ADMIN: everything except SETTINGS.ADMINISTRATOR and destructive
+  // SETTINGS keys (kept exclusive to TENANT_SUPER_ADMIN).
   const tenantAdminKeys = PERMISSIONS.filter(
-    (p) => p.key !== "SETTINGS.ADMINISTRATOR",
+    (p) =>
+      p.key !== "SETTINGS.ADMINISTRATOR" && !DANGEROUS_SETTINGS_KEYS.has(p.key),
   ).map((p) => p.key);
 
-  // EDITOR: Website + inventory product view
+  // EDITOR: Website + inventory product view.
   const editorKeys = [
-    ...getPermissionKeysForModule("WEBSITE"),
+    ...PERMISSIONS.filter((p) => p.module === "WEBSITE").map((p) => p.key),
     "INVENTORY.PRODUCTS.VIEW",
   ];
 
-  // STAFF: VIEW-only permissions across all modules
-  const staffKeys = [...getPermissionKeysForAction("VIEW")];
+  // STAFF: full CRUD on INVENTORY/SALES/CRM, VIEW elsewhere. Mirrors what
+  // legacy `user` accounts could do via the pre-RBAC backend (CRM routers
+  // explicitly allowed `user`; sales/inventory routers had no role gate at
+  // all). VIEW on WEBSITE/REPORTS/SETTINGS lets staff browse those surfaces
+  // without editing.
+  const operationalModules = new Set(["INVENTORY", "SALES", "CRM"]);
+  const readOnlyModules = new Set(["WEBSITE", "REPORTS", "SETTINGS"]);
+  const staffKeys = PERMISSIONS.filter(
+    (p) =>
+      operationalModules.has(p.module) ||
+      (readOnlyModules.has(p.module) &&
+        (p.action === "VIEW" || p.action === "VIEW_OWN_ONLY")),
+  ).map((p) => p.key);
 
   const roleSpecs: Array<{
     name: string;
     priority: number;
     keys: string[];
+    color: string;
   }> = [
-    { name: "TENANT_ADMIN", priority: 100, keys: tenantAdminKeys },
-    { name: "EDITOR", priority: 50, keys: editorKeys },
-    { name: "STAFF", priority: 25, keys: staffKeys },
+    {
+      name: "TENANT_SUPER_ADMIN",
+      priority: 200,
+      keys: tenantSuperAdminKeys,
+      color: "red",
+    },
+    { name: "TENANT_ADMIN", priority: 100, keys: tenantAdminKeys, color: "blue" },
+    { name: "EDITOR", priority: 50, keys: editorKeys, color: "gray" },
+    { name: "STAFF", priority: 25, keys: staffKeys, color: "gray" },
   ];
 
   let createdCount = 0;
@@ -99,7 +129,7 @@ export async function seedRbacRolesPermissions(
         priority: spec.priority,
         permissions: bitset,
         isSystem: true,
-        color: spec.name === "TENANT_ADMIN" ? "blue" : "gray",
+        color: spec.color,
       },
       update: {
         permissions: bitset,
@@ -121,13 +151,16 @@ export async function seedRbacRolesPermissions(
     select: { id: true, role: true },
   });
 
+  const tenantSuperAdminRoleId = roleMap.get("TENANT_SUPER_ADMIN");
+  const tenantAdminRoleId = roleMap.get("TENANT_ADMIN");
   const editorRoleId = roleMap.get("EDITOR");
   const staffRoleId = roleMap.get("STAFF");
-  const tenantAdminRoleId = roleMap.get("TENANT_ADMIN");
 
   for (const user of users) {
     let targetRoleName: string;
-    if (user.role === "superAdmin" || user.role === "admin") {
+    if (user.role === "superAdmin") {
+      targetRoleName = "TENANT_SUPER_ADMIN";
+    } else if (user.role === "admin") {
       targetRoleName = "TENANT_ADMIN";
     } else {
       targetRoleName = "STAFF";
@@ -138,16 +171,18 @@ export async function seedRbacRolesPermissions(
       throw new Error(`Role ${targetRoleName} not found`);
     }
 
-    // Repair: an earlier version of this seed mapped legacy `admin` →
-    // `EDITOR`, which stripped tenant admins of locations / sales / CRM /
-    // dashboard permissions and produced the onboarding loop + Forbidden
-    // toasts (#540, #539, #538, #535, #530, #488, #486). Drop any stale link
-    // from the wrong RBAC role before the upsert below re-links to the right
-    // one. Only stale links are removed — the user's correct role link (if
-    // already present from this run) is preserved by the `not` clause.
-    const staleRoleIds = [editorRoleId, staffRoleId, tenantAdminRoleId].filter(
-      (id): id is string => typeof id === "string" && id !== roleId,
-    );
+    // Drop any stale system-role link before linking to the correct one. An
+    // earlier version of this seed mapped legacy `admin` → `EDITOR`, which
+    // stripped tenant admins of locations / sales / CRM / dashboard perms
+    // (#540, #539, #538, #535, #530, #488, #486). The cleanup also covers the
+    // tier change introduced when TENANT_SUPER_ADMIN was split out of
+    // TENANT_ADMIN — promoted/demoted users get their old link removed.
+    const staleRoleIds = [
+      tenantSuperAdminRoleId,
+      tenantAdminRoleId,
+      editorRoleId,
+      staffRoleId,
+    ].filter((id): id is string => typeof id === "string" && id !== roleId);
     if (staleRoleIds.length > 0) {
       await prisma.userRole.deleteMany({
         where: {
