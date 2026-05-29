@@ -201,7 +201,7 @@ export function VariationsTab({
                   <Label htmlFor={`var-stock-${index}`} className="text-xs">
                     {variation.locationName
                       ? `Stock @ ${variation.locationName}`
-                      : "Default stock"}
+                      : "Stock (total)"}
                   </Label>
                   <NumericInput
                     id={`var-stock-${index}`}

@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
-import { buildProductBulkTemplate } from "./product.bulk.service";
+import {
+  buildProductBulkTemplate,
+  processProductBulkRows,
+} from "./product.bulk.service";
+import type { ExcelProductRow } from "./bulkUpload.validation";
 
 async function loadTemplate(buffer: Buffer): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
@@ -126,5 +130,60 @@ describe("buildProductBulkTemplate", () => {
       .eachCell((cell) => headersB.push(cell.value));
 
     expect(headersA).toEqual(headersB);
+  });
+});
+
+describe("processProductBulkRows placeholder-header guard", () => {
+  const baseRow = (
+    dynamicAttributes: Record<string, string>,
+  ): ExcelProductRow => ({
+    imsCode: null,
+    location: "Main Warehouse",
+    category: "Clothing",
+    subCategory: null,
+    name: "T-Shirt",
+    description: null,
+    length: null,
+    breadth: null,
+    height: null,
+    weight: null,
+    vendor: null,
+    quantity: 1,
+    costPrice: 10,
+    finalSP: 20,
+    dynamicAttributes,
+  });
+
+  it("rejects uploads that leave 'Attribute 1' / 'Attribute 2' headers unchanged", async () => {
+    const result = await processProductBulkRows(
+      [baseRow({ "Attribute 1": "M", "Attribute 2": "Red" })],
+      { tenantId: "t1", userId: "u1" },
+    );
+    expect(result.created).toHaveLength(0);
+    expect(result.updated).toHaveLength(0);
+    expect(result.errors).toHaveLength(1);
+    const [err] = result.errors;
+    expect(err.row).toBe(1);
+    expect(err.field).toBe("headers");
+    expect(err.message).toMatch(/Attribute 1.*Attribute 2/);
+    expect(err.message).toMatch(/Rename/i);
+  });
+
+  it("rejects mixed rows where only some carry the placeholder header", async () => {
+    const result = await processProductBulkRows(
+      [baseRow({ Color: "Red" }), baseRow({ "Attribute 3": "Cotton" })],
+      { tenantId: "t1", userId: "u1" },
+    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.value).toBe("Attribute 3");
+  });
+
+  it("matches placeholder regex case-insensitively and with extra whitespace", async () => {
+    const result = await processProductBulkRows(
+      [baseRow({ "attribute  5": "Wool" })],
+      { tenantId: "t1", userId: "u1" },
+    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]!.field).toBe("headers");
   });
 });
