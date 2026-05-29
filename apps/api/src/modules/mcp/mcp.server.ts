@@ -17,6 +17,28 @@ import { registerCrmAnalyticsTools } from "@/modules/crm/mcp-tools";
 import { registerReportTools } from "@/modules/reports/mcp-tools";
 import { registerYantraPrompts } from "./prompts";
 
+// Create-side mutation tools (one per domain).
+import { registerProductsCreateMcpTools } from "@/modules/products/mcp-tools-create";
+import { registerContactsCreateMcpTools } from "@/modules/contacts/mcp-tools-create";
+import { registerDealsCreateMcpTools } from "@/modules/deals/mcp-tools-create";
+import { registerActivitiesCreateMcpTools } from "@/modules/activities/mcp-tools-create";
+import { registerTasksCreateMcpTools } from "@/modules/tasks/mcp-tools-create";
+import { registerInventoryCreateMcpTools } from "@/modules/inventory/mcp-tools-create";
+import { registerCompaniesCreateMcpTools } from "@/modules/companies/mcp-tools-create";
+import { registerVendorsCreateMcpTools } from "@/modules/vendors/mcp-tools-create";
+import { registerLocationsCreateMcpTools } from "@/modules/locations/mcp-tools-create";
+import { registerLeadsCreateMcpTools } from "@/modules/leads/mcp-tools-create";
+import { registerCategoriesCreateMcpTools } from "@/modules/categories/mcp-tools-create";
+import { registerBundlesCreateMcpTools } from "@/modules/bundles/mcp-tools-create";
+import { registerTransfersCreateMcpTools } from "@/modules/transfers/mcp-tools-create";
+import { registerPromosCreateMcpTools } from "@/modules/promos/mcp-tools-create";
+import { registerMembersCreateMcpTools } from "@/modules/members/mcp-tools-create";
+import { registerPipelinesCreateMcpTools } from "@/modules/pipelines/mcp-tools-create";
+import { registerAutomationCreateMcpTools } from "@/modules/automation/mcp-tools-create";
+import { registerBlogCreateMcpTools } from "@/modules/blog/mcp-tools-create";
+import { registerPagesCreateMcpTools } from "@/modules/pages/mcp-tools-create";
+import { registerMediaCreateMcpTools } from "@/modules/media/mcp-tools-create";
+
 export interface McpAuthContext {
   tenantId: string;
   tenantSlug: string;
@@ -30,11 +52,34 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
     version: getVersion(),
   });
 
+  // Read / analytics tools.
   registerProductsMcpTools(server, authCtx);
   registerSalesAnalyticsTools(server, authCtx);
   registerInventoryAnalyticsTools(server, authCtx);
   registerCrmAnalyticsTools(server, authCtx);
   registerReportTools(server, authCtx);
+
+  // Create / mutation tools.
+  registerProductsCreateMcpTools(server, authCtx);
+  registerContactsCreateMcpTools(server, authCtx);
+  registerDealsCreateMcpTools(server, authCtx);
+  registerActivitiesCreateMcpTools(server, authCtx);
+  registerTasksCreateMcpTools(server, authCtx);
+  registerInventoryCreateMcpTools(server, authCtx);
+  registerCompaniesCreateMcpTools(server, authCtx);
+  registerVendorsCreateMcpTools(server, authCtx);
+  registerLocationsCreateMcpTools(server, authCtx);
+  registerLeadsCreateMcpTools(server, authCtx);
+  registerCategoriesCreateMcpTools(server, authCtx);
+  registerBundlesCreateMcpTools(server, authCtx);
+  registerTransfersCreateMcpTools(server, authCtx);
+  registerPromosCreateMcpTools(server, authCtx);
+  registerMembersCreateMcpTools(server, authCtx);
+  registerPipelinesCreateMcpTools(server, authCtx);
+  registerAutomationCreateMcpTools(server, authCtx);
+  registerBlogCreateMcpTools(server, authCtx);
+  registerPagesCreateMcpTools(server, authCtx);
+  registerMediaCreateMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 

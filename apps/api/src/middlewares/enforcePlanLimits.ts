@@ -62,6 +62,139 @@ const RESOURCE_TO_TENANT_OVERRIDE: Record<
 };
 
 /**
+ * Resolve plan limits for a tenant (from PlanLimit row, falling back to DEFAULT_PLAN_LIMITS).
+ */
+async function resolvePlanLimits(plan: PlanTier): Promise<PlanLimits> {
+  try {
+    const planLimitRow = await basePrisma.planLimit.findUnique({
+      where: { tier: plan },
+    });
+    if (planLimitRow) {
+      const row = planLimitRow as typeof planLimitRow & {
+        maxCustomers: number;
+      };
+      return {
+        maxUsers: row.maxUsers,
+        maxProducts: row.maxProducts,
+        maxLocations: row.maxLocations,
+        maxMembers: row.maxMembers,
+        maxCustomers: row.maxCustomers,
+        bulkUpload: row.bulkUpload,
+        analytics: row.analytics,
+        promoManagement: row.promoManagement,
+        auditLogs: row.auditLogs,
+        apiAccess: row.apiAccess,
+        salesPipeline: row.salesPipeline,
+        messaging: row.messaging,
+      };
+    }
+    return DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
+  } catch {
+    return DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
+  }
+}
+
+async function countResource(resource: PlanLimitResource): Promise<number> {
+  switch (resource) {
+    case "users":
+      return prisma.user.count();
+    case "products":
+      return prisma.product.count();
+    case "locations":
+      return prisma.location.count();
+    case "members":
+      return prisma.member.count();
+    case "customers":
+      return prisma.contact.count();
+  }
+}
+
+export class PlanLimitExceededError extends Error {
+  statusCode = 403;
+  resource: PlanLimitResource;
+  limit: number;
+  current: number;
+  constructor(
+    resource: PlanLimitResource,
+    limit: number,
+    current: number,
+    label: string,
+  ) {
+    super(
+      `Your plan allows a maximum of ${limit} ${label}. Upgrade your plan to add more.`,
+    );
+    this.resource = resource;
+    this.limit = limit;
+    this.current = current;
+  }
+}
+
+/**
+ * Resolve and enforce the plan limit for a tenant + resource. Throws
+ * PlanLimitExceededError if the tenant is at/over the limit. Usable from
+ * any non-Express context (e.g. MCP tool handlers).
+ *
+ * `tenantOverrides` carries the customMax* fields from the tenant row.
+ */
+export async function assertPlanLimit(
+  tenant: {
+    plan: PlanTier | string;
+    customMaxUsers?: number | null;
+    customMaxProducts?: number | null;
+    customMaxLocations?: number | null;
+    customMaxMembers?: number | null;
+    customMaxCustomers?: number | null;
+  },
+  resource: PlanLimitResource,
+): Promise<void> {
+  const plan = tenant.plan as PlanTier;
+  const limitKey = RESOURCE_TO_LIMIT_KEY[resource];
+  const label = RESOURCE_LABEL[resource];
+
+  const limits = await resolvePlanLimits(plan);
+
+  let limit = limits[limitKey] as number;
+  const overrideKey = RESOURCE_TO_TENANT_OVERRIDE[resource];
+  const tenantOverride = (
+    tenant as unknown as Record<string, number | null | undefined>
+  )[overrideKey];
+  if (tenantOverride !== undefined && tenantOverride !== null) {
+    limit = tenantOverride;
+  }
+  if (limit === -1) return;
+
+  const currentCount = await countResource(resource);
+
+  if (currentCount >= limit) {
+    throw new PlanLimitExceededError(resource, limit, currentCount, label);
+  }
+}
+
+/**
+ * MCP-friendly variant: resolves the tenant row from the database by id and
+ * then calls `assertPlanLimit`. Used by MCP create tools that only have a
+ * tenantId in their auth context.
+ */
+export async function assertPlanLimitByTenantId(
+  tenantId: string,
+  resource: PlanLimitResource,
+): Promise<void> {
+  const tenant = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      plan: true,
+      customMaxUsers: true,
+      customMaxProducts: true,
+      customMaxLocations: true,
+      customMaxMembers: true,
+      customMaxCustomers: true,
+    },
+  });
+  if (!tenant) return;
+  await assertPlanLimit(tenant, resource);
+}
+
+/**
  * Returns a middleware that enforces the plan limit for the given resource.
  * If the tenant is at or over the limit, responds with 403 and does not call next().
  */
@@ -73,90 +206,24 @@ export function enforcePlanLimits(resource: PlanLimitResource) {
       return next();
     }
 
-    const plan = tenant.plan as PlanTier;
-    const limitKey = RESOURCE_TO_LIMIT_KEY[resource];
-    const label = RESOURCE_LABEL[resource];
-
-    let limits: PlanLimits;
-
     try {
-      const planLimitRow = await basePrisma.planLimit.findUnique({
-        where: { tier: plan },
-      });
-      if (planLimitRow) {
-        const row = planLimitRow as typeof planLimitRow & {
-          maxCustomers: number;
-        };
-        limits = {
-          maxUsers: row.maxUsers,
-          maxProducts: row.maxProducts,
-          maxLocations: row.maxLocations,
-          maxMembers: row.maxMembers,
-          maxCustomers: row.maxCustomers,
-          bulkUpload: row.bulkUpload,
-          analytics: row.analytics,
-          promoManagement: row.promoManagement,
-          auditLogs: row.auditLogs,
-          apiAccess: row.apiAccess,
-          salesPipeline: row.salesPipeline,
-          messaging: row.messaging,
-        };
-      } else {
-        limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
-      }
-    } catch {
-      limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
-    }
-
-    let limit = limits[limitKey] as number;
-    const overrideKey = RESOURCE_TO_TENANT_OVERRIDE[resource];
-    const tenantOverride = (
-      tenant as unknown as Record<string, number | null | undefined>
-    )[overrideKey];
-    if (tenantOverride !== undefined && tenantOverride !== null) {
-      limit = tenantOverride;
-    }
-    if (limit === -1) {
+      await assertPlanLimit(
+        tenant as unknown as Parameters<typeof assertPlanLimit>[0],
+        resource,
+      );
       return next();
-    }
-
-    let currentCount: number;
-
-    try {
-      switch (resource) {
-        case "users":
-          currentCount = await prisma.user.count();
-          break;
-        case "products":
-          currentCount = await prisma.product.count();
-          break;
-        case "locations":
-          currentCount = await prisma.location.count();
-          break;
-        case "members":
-          currentCount = await prisma.member.count();
-          break;
-        case "customers":
-          currentCount = await prisma.contact.count();
-          break;
-        default:
-          return next();
-      }
     } catch (err) {
+      if (err instanceof PlanLimitExceededError) {
+        return res.status(403).json({
+          error: "plan_limit_exceeded",
+          message: err.message,
+          resource: err.resource,
+          limit: err.limit,
+          current: err.current,
+        });
+      }
       return next(err);
     }
-
-    if (currentCount >= limit) {
-      return res.status(403).json({
-        error: "plan_limit_exceeded",
-        message: `Your plan allows a maximum of ${limit} ${label}. Upgrade your plan to add more.`,
-        resource,
-        limit,
-        current: currentCount,
-      });
-    }
-
-    next();
   };
 }
 
