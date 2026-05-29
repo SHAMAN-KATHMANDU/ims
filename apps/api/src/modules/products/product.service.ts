@@ -840,8 +840,22 @@ export class ProductService {
                   : {}),
               });
             } else {
+              // No locationId in payload: never trust payload.stockQuantity to
+              // overwrite the denormalized aggregate. The form is per-location;
+              // accepting its raw stockQuantity here would silently set the
+              // cross-location cache to a single location's value, drifting
+              // ProductVariation.stockQuantity away from sum(LocationInventory)
+              // permanently. Always recompute from LocationInventory instead.
+              const allInv =
+                await this.repo.findAllLocationInventoryForVariation(
+                  existing.id,
+                );
+              const totalStock = allInv.reduce(
+                (sum, inv) => sum + inv.quantity,
+                0,
+              );
               await this.repo.updateProductVariation(existing.id, {
-                stockQuantity: payload.stockQuantity ?? existing.stockQuantity,
+                stockQuantity: totalStock,
                 ...(newPhotos.length > 0
                   ? { photos: { create: newPhotos } }
                   : {}),

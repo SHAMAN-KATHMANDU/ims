@@ -322,6 +322,7 @@ describe("ProductService", () => {
     const mockCountTransferItemsForSub = vi.fn();
     const mockDeleteSubVariation = vi.fn();
     const mockCreateSubVariation = vi.fn();
+    const mockFindAllLocInvForVariation = vi.fn();
 
     const wireRepo = (repo: ProductRepository) => {
       Object.assign(repo, {
@@ -343,6 +344,7 @@ describe("ProductService", () => {
         countTransferItemsForSubVariation: mockCountTransferItemsForSub,
         deleteProductSubVariation: mockDeleteSubVariation,
         createProductSubVariation: mockCreateSubVariation,
+        findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
       });
     };
 
@@ -367,6 +369,7 @@ describe("ProductService", () => {
         mrp: 200,
         dateModified: new Date("2026-01-01T00:00:00Z"),
       });
+      mockFindAllLocInvForVariation.mockResolvedValue([]);
     });
 
     it("clears existing photos when the client sends an empty photos array", async () => {
@@ -441,6 +444,7 @@ describe("ProductService", () => {
     const mockFindTypesByIdsAndTenant = vi.fn();
     const mockFindValuesByIdsAndTenant = vi.fn();
     const mockDeleteVariationPhotos = vi.fn();
+    const mockFindAllLocInvForVariation = vi.fn();
 
     const wireRepo = (repo: ProductRepository) => {
       Object.assign(repo, {
@@ -458,6 +462,7 @@ describe("ProductService", () => {
         setVariationAttributes: mockSetVariationAttributes,
         findAttributeTypesByIdsAndTenant: mockFindTypesByIdsAndTenant,
         findAttributeValuesByIdsAndTenant: mockFindValuesByIdsAndTenant,
+        findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
       });
     };
 
@@ -482,6 +487,7 @@ describe("ProductService", () => {
         mrp: 200,
         dateModified: new Date("2026-01-01T00:00:00Z"),
       });
+      mockFindAllLocInvForVariation.mockResolvedValue([]);
     });
 
     const payload = (
@@ -553,6 +559,116 @@ describe("ProductService", () => {
       expect(mockSetVariationAttributes).toHaveBeenCalledWith("var-1", [
         { attributeTypeId: "type-1", attributeValueId: "val-1" },
       ]);
+    });
+  });
+
+  // Regression: ProductVariation.stockQuantity is a denormalized aggregate of
+  // sum(LocationInventory.quantity) for the variation. The variation form is
+  // per-location, so its stockQuantity value reflects ONE location. If the API
+  // wrote that single-location number into the cached aggregate when no
+  // locationId was supplied, the cache would drift away from reality and the
+  // outside table (computed from LocationInventory) would disagree with the
+  // form. See plan: investigate-the-matter-lazy-ritchie.
+  describe("update — stockQuantity drift guard", () => {
+    const baseCtx = { tenantId: "tenant-1", userId: "user-1" };
+
+    const mockFindVariationsWithDependents = vi.fn();
+    const mockUpdateProductVariation = vi.fn();
+    const mockUpdateProductRepo = vi.fn();
+    const mockSetVariationAttributes = vi.fn();
+    const mockFindAllLocInvForVariation = vi.fn();
+    const mockFindLocInv = vi.fn();
+    const mockSetLocInvQuantity = vi.fn();
+
+    const wireRepo = (repo: ProductRepository) => {
+      Object.assign(repo, {
+        findProductForUpdate: vi.fn().mockResolvedValue({
+          id: "p1",
+          tenantId: "tenant-1",
+          name: "Rope Bracelet",
+          imsCode: "RB-1",
+          categoryId: "c1",
+        }),
+        findVariationsWithDependents: mockFindVariationsWithDependents,
+        updateProductVariation: mockUpdateProductVariation,
+        updateProduct: mockUpdateProductRepo,
+        setVariationAttributes: mockSetVariationAttributes,
+        findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
+        findLocationInventory: mockFindLocInv,
+        setLocationInventoryQuantity: mockSetLocInvQuantity,
+      });
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      wireRepo(mockRepo);
+      mockFindVariationsWithDependents.mockResolvedValue([
+        {
+          id: "var-1",
+          stockQuantity: 24,
+          subVariations: [],
+          _count: { saleItems: 0, transferItems: 0 },
+        },
+      ]);
+      mockUpdateProductRepo.mockResolvedValue({
+        id: "p1",
+        name: "Rope Bracelet",
+        imsCode: "RB-1",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        dateModified: new Date("2026-01-01T00:00:00Z"),
+      });
+    });
+
+    it("recomputes stockQuantity from LocationInventory when payload omits locationId", async () => {
+      // Real per-location rows total 24; the form sent 17 (one location's view).
+      mockFindAllLocInvForVariation.mockResolvedValue([
+        { quantity: 17 },
+        { quantity: 7 },
+      ]);
+
+      await productService.update(
+        "p1",
+        {
+          variations: [{ id: "var-1", stockQuantity: 17 }],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      expect(mockFindAllLocInvForVariation).toHaveBeenCalledWith("var-1");
+      expect(mockUpdateProductVariation).toHaveBeenCalledWith(
+        "var-1",
+        expect.objectContaining({ stockQuantity: 24 }),
+      );
+      // Crucially, the form's 17 must NOT have leaked through.
+      expect(mockUpdateProductVariation).not.toHaveBeenCalledWith(
+        "var-1",
+        expect.objectContaining({ stockQuantity: 17 }),
+      );
+    });
+
+    it("still honours the locationId path: write LocationInventory then recompute aggregate", async () => {
+      mockFindLocInv.mockResolvedValue({ id: "li-1" });
+      mockFindAllLocInvForVariation.mockResolvedValue([
+        { quantity: 9 },
+        { quantity: 7 },
+      ]);
+
+      await productService.update(
+        "p1",
+        {
+          variations: [{ id: "var-1", stockQuantity: 9, locationId: "loc-1" }],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      expect(mockSetLocInvQuantity).toHaveBeenCalledWith("li-1", 9);
+      expect(mockUpdateProductVariation).toHaveBeenCalledWith(
+        "var-1",
+        expect.objectContaining({ stockQuantity: 16 }),
+      );
     });
   });
 });
