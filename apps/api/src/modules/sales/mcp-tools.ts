@@ -10,7 +10,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import prisma from "@/config/prisma";
 import type { McpAuthContext } from "@/modules/mcp/mcp.server";
-import { createSale } from "@/modules/sales/sale.service";
+import {
+  createSale,
+  previewSale,
+  addPayment,
+} from "@/modules/sales/sale.service";
+import {
+  assertMcpPermission,
+  mcpErrorResponse,
+  mcpJsonResponse,
+} from "@/modules/mcp/mcp.rbac";
 import {
   getDailyBreakdown,
   getComparePeriodData,
@@ -360,6 +369,80 @@ export function registerSalesAnalyticsTools(
             },
           ],
         };
+      }
+    },
+  );
+
+  registerTool(
+    "preview_sale",
+    {
+      title: "Preview sale (dry-run)",
+      description:
+        "Compute totals, line breakdown, and applicable discounts/promos for a proposed sale WITHOUT persisting it. Mirrors POST /sales/preview.",
+      inputSchema: {
+        locationId: z.string().uuid().describe("Showroom location id"),
+        memberPhone: z.string().optional(),
+        memberName: z.string().optional(),
+        contactId: z.string().uuid().nullable().optional(),
+        items: z
+          .array(
+            z.object({
+              variationId: z.string().uuid(),
+              subVariationId: z.string().uuid().nullable().optional(),
+              quantity: z.number().int().positive(),
+              manualDiscountPercent: z.number().min(0).max(100).optional(),
+              manualDiscountAmount: z.number().min(0).optional(),
+              discountReason: z.string().max(500).optional(),
+              promoCode: z.string().optional(),
+            }),
+          )
+          .min(1),
+      },
+    },
+    async (dto) => {
+      try {
+        await assertMcpPermission(authCtx, "SALES.SALES.CREATE");
+        const preview = await previewSale(
+          { tenantId: authCtx.tenantId },
+          dto as Parameters<typeof previewSale>[1],
+        );
+        return mcpJsonResponse(preview);
+      } catch (err) {
+        return mcpErrorResponse(err, "preview_sale failed");
+      }
+    },
+  );
+
+  registerTool(
+    "add_sale_payment",
+    {
+      title: "Add payment to credit sale",
+      description:
+        "Record an additional payment against an existing credit sale (reduces outstanding balance). Mirrors POST /sales/:id/payments.",
+      inputSchema: {
+        saleId: z.string().uuid().describe("Target sale id"),
+        method: z
+          .string()
+          .regex(/^[A-Z0-9_]+$/, "Use uppercase codes like CASH, CARD")
+          .describe("Payment method code"),
+        amount: z.number().min(0).describe("Payment amount"),
+      },
+    },
+    async ({
+      saleId,
+      method,
+      amount,
+    }: {
+      saleId: string;
+      method: string;
+      amount: number;
+    }) => {
+      try {
+        await assertMcpPermission(authCtx, "SALES.SALES.CREATE");
+        const result = await addPayment(saleId, { method, amount });
+        return mcpJsonResponse(result);
+      } catch (err) {
+        return mcpErrorResponse(err, "add_sale_payment failed");
       }
     },
   );
