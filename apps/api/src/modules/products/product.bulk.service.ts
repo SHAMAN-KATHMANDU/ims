@@ -67,6 +67,31 @@ export async function processProductBulkRows(
   const skipped: ProcessProductBulkResult["skipped"] = [];
   const errors: ValidationError[] = [];
 
+  // Reject the template's placeholder attribute headers ("Attribute 1",
+  // "Attribute 2", …). If they reach ensureAttributeTypeAndValue we'd create
+  // tenant-wide AttributeTypes with those literal names and attach them to
+  // every variation alongside the real Color/Size pickers — manifesting as
+  // doubled attribute pickers in the variation panel. Reject before any DB write.
+  const placeholderPattern = /^attribute\s*\d+$/i;
+  const placeholderHeaders = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row.dynamicAttributes ?? {})) {
+      if (placeholderPattern.test(key.trim())) {
+        placeholderHeaders.add(key.trim());
+      }
+    }
+  }
+  if (placeholderHeaders.size > 0) {
+    const list = [...placeholderHeaders].sort().join(", ");
+    errors.push({
+      row: 1,
+      field: "headers",
+      message: `Template placeholder header(s) detected: ${list}. Rename these columns to your real attribute names (e.g. Color, Size, Material) in row 1 before uploading. See the Instructions sheet.`,
+      value: list,
+    });
+    return { created, updated, skipped, errors };
+  }
+
   const [allCategories, allLocations, allVendors, tenantRow] =
     await Promise.all([
       productRepository.findCategoriesByTenant(tenantId),
