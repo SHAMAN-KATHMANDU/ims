@@ -112,8 +112,6 @@ export class SaleCalculationError extends Error {
 
 // ── Core calculation ──────────────────────────────────────────────────────
 
-const MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT = 20;
-const AUTHORIZED_ROLES = ["admin", "superAdmin", "platformAdmin"];
 const HIGH_VALUE_SALE_THRESHOLD = 5000;
 
 /**
@@ -125,8 +123,10 @@ const HIGH_VALUE_SALE_THRESHOLD = 5000;
  * Throws `SaleCalculationError` on validation failures (bad item, missing
  * stock, unknown variation, etc.).
  *
- * When manual discount is used, opts.userId and opts.userRole must be
- * provided for create/edit. For preview, opts may be omitted.
+ * When manual discount is used, opts.userId is recorded as the applier for
+ * audit purposes on create/edit. Manual discounts are unrestricted (no
+ * percentage threshold or role gate — issue #576). For preview, opts may be
+ * omitted.
  */
 export async function calculateSaleItems(
   items: SaleItemInput[],
@@ -238,31 +238,18 @@ export async function calculateSaleItems(
       }
       discountReason = item.discountReason.trim();
 
-      let manualEffectivePercent = 0;
       if (hasManualAmount) {
         const amt = Math.min(item.manualDiscountAmount!, itemSubtotal);
         discountAmount = amt;
         manualDiscountAmount = amt;
-        manualEffectivePercent =
-          itemSubtotal > 0 ? (amt / itemSubtotal) * 100 : 0;
       } else {
         discountPercent = Math.min(item.manualDiscountPercent!, 100);
         manualDiscountPercent = discountPercent;
-        manualEffectivePercent = discountPercent;
       }
 
-      // Authorization threshold: manual discount > 20% requires admin/superadmin/platformAdmin
-      if (
-        manualEffectivePercent > MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT &&
-        opts
-      ) {
-        if (!AUTHORIZED_ROLES.includes(opts.userRole)) {
-          throw new SaleCalculationError(
-            403,
-            `Manual discount above ${MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT}% requires admin approval`,
-          );
-        }
-      }
+      // Manual discounts are unrestricted (issue #576): any percentage up to
+      // 100% may be applied by any role with no admin-approval threshold. We
+      // still record who applied the discount for audit purposes.
       if (opts?.userId) {
         discountApprovedById = opts.userId;
       }
