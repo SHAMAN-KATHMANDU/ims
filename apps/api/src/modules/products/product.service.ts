@@ -798,7 +798,22 @@ export class ProductService {
                     } => Boolean(a?.attributeTypeId && a?.attributeValueId),
                   )
                 : [];
-              await this.repo.setVariationAttributes(existing.id, attrs);
+              // Defence-in-depth for #599: never persist an attribute whose
+              // type isn't part of the product. A stale client payload that
+              // still carries a deselected/re-created type would otherwise
+              // leave orphan rows that leak into the variant name as
+              // historical/duplicate values. Only enforce when the caller
+              // declares the product's types (an empty/absent list means
+              // "types untouched", so we leave the attributes as sent).
+              const allowedTypeIds =
+                Array.isArray(data.attributeTypeIds) &&
+                data.attributeTypeIds.length > 0
+                  ? new Set(data.attributeTypeIds)
+                  : null;
+              const cleaned = allowedTypeIds
+                ? attrs.filter((a) => allowedTypeIds.has(a.attributeTypeId))
+                : attrs;
+              await this.repo.setVariationAttributes(existing.id, cleaned);
             }
             // A variation's stock lives in LocationInventory in one of two
             // mutually exclusive shapes: variation-level (subVariationId null)

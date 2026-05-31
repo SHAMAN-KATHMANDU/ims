@@ -36,7 +36,10 @@ import { ProductForm } from "./ProductForm";
 import { ProductTable } from "./ProductTable";
 import { ProductDeleteDialog } from "./dialogs/ProductDeleteDialog";
 import { VariationDeleteDialog } from "./dialogs/VariationDeleteDialog";
-import { getVariationAttributeDisplay } from "./utils/helpers";
+import {
+  getVariationAttributeDisplay,
+  pruneVariationAttributes,
+} from "./utils/helpers";
 import { ErrorDialog } from "./dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./BulkUploadDialog";
 import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
@@ -707,10 +710,13 @@ export function ProductPage() {
                     isPrimary: p.isPrimary,
                   }))
                 : undefined,
-            attributes:
-              v.attributes && v.attributes.length > 0
-                ? v.attributes
-                : undefined,
+            attributes: (() => {
+              const pruned = pruneVariationAttributes(
+                v.attributes,
+                productAttributeTypeIds,
+              );
+              return pruned.length > 0 ? pruned : undefined;
+            })(),
           }));
 
           data.discounts = productDiscounts
@@ -744,10 +750,13 @@ export function ProductPage() {
                       isPrimary: p.isPrimary,
                     }))
                   : undefined,
-              attributes:
-                v.attributes && v.attributes.length > 0
-                  ? v.attributes
-                  : undefined,
+              attributes: (() => {
+                const pruned = pruneVariationAttributes(
+                  v.attributes,
+                  productAttributeTypeIds,
+                );
+                return pruned.length > 0 ? pruned : undefined;
+              })(),
             }));
           }
 

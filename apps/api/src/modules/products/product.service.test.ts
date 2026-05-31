@@ -560,6 +560,48 @@ describe("ProductService", () => {
         { attributeTypeId: "type-1", attributeValueId: "val-1" },
       ]);
     });
+
+    // Regression for #599: a stale payload that still carries a deselected /
+    // re-created attribute type must not persist that orphan row, otherwise it
+    // leaks into the variant name as a historical/duplicate value.
+    it("drops attributes whose type is not in the product's attributeTypeIds", async () => {
+      Object.assign(mockRepo, {
+        deleteProductAttributeTypes: vi.fn().mockResolvedValue(undefined),
+        createProductAttributeTypes: vi.fn().mockResolvedValue(undefined),
+      });
+      // Both the current type and the orphaned old type pass UUID validation…
+      mockFindTypesByIdsAndTenant.mockResolvedValue([
+        { id: "type-1" },
+        { id: "type-OLD" },
+      ]);
+      mockFindValuesByIdsAndTenant.mockResolvedValue([
+        { id: "val-1", attributeTypeId: "type-1" },
+        { id: "val-old", attributeTypeId: "type-OLD" },
+      ]);
+
+      await productService.update(
+        "p1",
+        {
+          attributeTypeIds: ["type-1"],
+          variations: [
+            {
+              id: "var-1",
+              stockQuantity: 5,
+              attributes: [
+                { attributeTypeId: "type-OLD", attributeValueId: "val-old" },
+                { attributeTypeId: "type-1", attributeValueId: "val-1" },
+              ],
+            },
+          ],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      // …but only the selected type survives into the stored attributes.
+      expect(mockSetVariationAttributes).toHaveBeenCalledWith("var-1", [
+        { attributeTypeId: "type-1", attributeValueId: "val-1" },
+      ]);
+    });
   });
 
   // Regression: ProductVariation.stockQuantity is a denormalized aggregate of

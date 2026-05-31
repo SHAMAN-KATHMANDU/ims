@@ -89,6 +89,41 @@ export function getVariationAttributeDisplay(
   return "—";
 }
 
+/**
+ * Strip variation attribute entries that no longer belong to the product's
+ * currently-selected attribute types, and collapse any duplicate entries for
+ * the same type (keeping the last). Without this, deselecting an attribute
+ * type — or re-creating one after renaming a product — leaves orphan rows on
+ * each variation. Because each (variation, attributeType) pair is a distinct
+ * row, those orphans survive the save and the variant-name builder joins them
+ * all, surfacing historical/duplicate values like "Grey / M / M / Black"
+ * instead of "M / Black" (issue #599).
+ *
+ * When the product declares no attribute types (`selectedTypeIds` empty) the
+ * attributes are passed through untouched, so legacy products that carry
+ * attributes without tracked product-level types don't silently lose them.
+ */
+export function pruneVariationAttributes(
+  attributes:
+    | Array<{ attributeTypeId: string; attributeValueId: string }>
+    | undefined,
+  selectedTypeIds: string[],
+): Array<{ attributeTypeId: string; attributeValueId: string }> {
+  if (!attributes?.length) return [];
+  const allowed = new Set(selectedTypeIds);
+  const filtered =
+    allowed.size > 0
+      ? attributes.filter((a) => allowed.has(a.attributeTypeId))
+      : attributes;
+  // Collapse duplicate type entries, keeping the last occurrence.
+  const byType = new Map<
+    string,
+    { attributeTypeId: string; attributeValueId: string }
+  >();
+  for (const a of filtered) byType.set(a.attributeTypeId, a);
+  return [...byType.values()];
+}
+
 /** Variation shape with optional locationInventory from the list API */
 type VariationWithLocationInv = {
   stockQuantity?: number;
