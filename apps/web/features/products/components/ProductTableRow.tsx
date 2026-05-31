@@ -290,7 +290,7 @@ export function ProductDetailSheet({
                                   </span>
                                 )}
                               </TableCell>
-                              <TableCell className="font-medium">
+                              <TableCell className="min-w-[120px] whitespace-normal break-words font-medium">
                                 {getVariationAttributeDisplay(variation) || "—"}
                               </TableCell>
                               {!selectedLocationId && (
