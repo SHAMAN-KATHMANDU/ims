@@ -638,7 +638,7 @@ export function NewSaleForm({
     [locationId, memberPhone, memberName, contactId, itemsFields],
   );
   const previewSignature = JSON.stringify(previewRequest);
-  const debouncedPreviewSignature = useDebounce(previewSignature, 500);
+  const debouncedPreviewSignature = useDebounce(previewSignature, 1000);
 
   // Fetch backend preview total (includes discount + promo) so payment matches exactly
   useEffect(() => {
