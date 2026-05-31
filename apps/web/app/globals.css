@@ -488,6 +488,34 @@
     display: none !important;
   }
 
+  /*
+   * The receipt lives inside a Radix dialog whose content box centers
+   * itself with a `transform` and caps its height at `max-h-[90vh]`
+   * with `overflow: hidden`, wrapping the receipt in an additional
+   * `overflow-y-auto` scroll container. On screen that's correct, but
+   * for print the transform turns the dialog into the containing block
+   * for the absolutely-positioned `.receipt-print-area`, so the receipt
+   * resolves against the clipped 90vh box instead of the page — only
+   * the header fits and everything below it is truncated (issue #587).
+   * Neutralise the transform, height cap and overflow on both the
+   * dialog content and the scroll wrapper so `position: absolute;
+   * top: 0` resolves against the page and the receipt paginates in full.
+   */
+  [data-slot="dialog-content"],
+  .receipt-scroll-container {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
   .receipt-divider {
     border-color: #e5e7eb !important;
     margin: 12px 0 !important;
