@@ -127,13 +127,32 @@ const HIGH_VALUE_SALE_THRESHOLD = 5000;
  * audit purposes on create/edit. Manual discounts are unrestricted (no
  * percentage threshold or role gate — issue #576). For preview, opts may be
  * omitted.
+ *
+ * `opts.stockOffsets` credits stock already held by the sale being edited so
+ * the check is delta-based: an edit reverses the original sale's inventory
+ * before deducting the new quantities (see `createSaleRevision`), so the
+ * pre-flight check must validate against `currentStock + originalQuantity`
+ * rather than raw current stock. Without it, editing any line in a sale whose
+ * items sit near zero stock wrongly fails with "Insufficient stock" (issue
+ * #588). Keyed by `inventoryKey(variationId, subVariationId)`.
  */
+export function inventoryKey(
+  variationId: string,
+  subVariationId: string | null,
+): string {
+  return `${variationId}:${subVariationId ?? "base"}`;
+}
+
 export async function calculateSaleItems(
   items: SaleItemInput[],
   locationId: string,
   saleType: "GENERAL" | "MEMBER",
   tenantId: string,
-  opts?: { userId: string; userRole: string },
+  opts?: {
+    userId: string;
+    userRole: string;
+    stockOffsets?: Map<string, number>;
+  },
 ): Promise<CalculationResult> {
   const processedItems: ProcessedItem[] = [];
   let subtotal = 0;
@@ -197,11 +216,20 @@ export async function calculateSaleItems(
     );
 
     const availableStock = inventory?.quantity || 0;
-    if (availableStock < item.quantity) {
+    // Delta-based check on edit: credit the quantity this sale already holds
+    // for this line, since the edit reverses the original inventory before
+    // re-deducting (issue #588). Defaults to 0 for create/preview.
+    const stockOffset =
+      opts?.stockOffsets?.get(inventoryKey(item.variationId, subVariationId)) ??
+      0;
+    if (availableStock + stockOffset < item.quantity) {
       throw new SaleCalculationError(
         400,
         `Insufficient stock for ${variation.product.name} (${variation.product.imsCode}${subVariationId ? " / sub-variant" : ""})`,
-        { available: availableStock, requested: item.quantity },
+        {
+          available: availableStock + stockOffset,
+          requested: item.quantity,
+        },
       );
     }
 
@@ -1013,13 +1041,22 @@ export async function editSale(
     });
   }
 
+  // Credit stock already held by this sale so the edit validates the delta
+  // (currentStock + originalQuantity) instead of raw current stock — the
+  // revision reverses the original inventory before re-deducting (issue #588).
+  const stockOffsets = new Map<string, number>();
+  for (const item of sale.items) {
+    const key = inventoryKey(item.variationId, item.subVariationId ?? null);
+    stockOffsets.set(key, (stockOffsets.get(key) ?? 0) + item.quantity);
+  }
+
   const { processedItems, subtotal, totalDiscount, totalPromoDiscount, total } =
     await calculateSaleItems(
       dto.items,
       sale.locationId,
       sale.type as "GENERAL" | "MEMBER",
       sale.tenantId,
-      { userId, userRole: userRole ?? "user" },
+      { userId, userRole: userRole ?? "user", stockOffsets },
     );
 
   const promoCodesUsed = new Set<string>();
