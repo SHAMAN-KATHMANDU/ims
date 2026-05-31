@@ -195,7 +195,7 @@ export function SaleDetail({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 p-6 sm:max-w-[800px]">
+      <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 overflow-hidden overflow-y-hidden p-6 sm:max-w-[800px]">
         <DialogHeader className="flex shrink-0 flex-row flex-wrap items-start justify-between gap-2">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" aria-hidden="true" />
@@ -268,7 +268,7 @@ export function SaleDetail({
               <Skeleton className="h-4 w-40" />
             </div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="-mr-6 min-h-0 flex-1 overflow-y-auto pr-3">
               <div className="receipt-print-area receipt-print-wrapper space-y-4">
                 {/* receipt-header: store, title, receipt #, date */}
                 <div className="receipt-header break-inside-avoid">

@@ -340,6 +340,57 @@ export function TransferForm({
     form.setValue("items", newItems, { shouldValidate: true });
   };
 
+  const handleSetQuantity = (
+    variationId: string,
+    subVariationId: string | null | undefined,
+    rawValue: string,
+  ) => {
+    const currentItems = form.getValues("items") ?? [];
+    const idx = currentItems.findIndex(
+      (item) =>
+        item.variationId === variationId &&
+        (item.subVariationId ?? null) === (subVariationId ?? null),
+    );
+    if (idx < 0) return;
+    const item = currentItems[idx];
+    if (!item) return;
+    // Leave state untouched on an empty field — React's controlled-input
+    // restore re-displays the current quantity, so the input never jumps
+    // to 1 while the user is mid-edit. handleQuantityBlur is the safety net.
+    if (rawValue.trim() === "") return;
+    const parsed = Math.floor(Number(rawValue));
+    if (!Number.isFinite(parsed)) return;
+    const inv = addedItemsCacheRef.current.find(
+      (i) =>
+        i.variationId === variationId &&
+        (i.subVariationId ?? null) === (subVariationId ?? null),
+    );
+    const maxQty = inv?.quantity ?? 0;
+    let next = Math.max(1, parsed);
+    if (maxQty > 0 && next > maxQty) {
+      next = maxQty;
+      toast({
+        title: "Quantity exceeds available",
+        description: `Only ${maxQty} available at source.`,
+        variant: "destructive",
+      });
+    }
+    if (next === item.quantity) return;
+    const newItems = [...currentItems];
+    newItems[idx] = { ...item, quantity: next };
+    form.setValue("items", newItems, { shouldValidate: true });
+  };
+
+  /** Snap an empty/invalid field back to a valid quantity on blur. */
+  const handleQuantityBlur = (
+    variationId: string,
+    subVariationId: string | null | undefined,
+    rawValue: string,
+  ) => {
+    if (rawValue.trim() !== "" && Math.floor(Number(rawValue)) >= 1) return;
+    handleSetQuantity(variationId, subVariationId, "1");
+  };
+
   const handleRemoveItem = (
     variationId: string,
     subVariationId?: string | null,
@@ -799,9 +850,28 @@ export function TransferForm({
                             >
                               <Minus className="h-4 w-4" aria-hidden="true" />
                             </Button>
-                            <span className="tabular-nums w-8 text-center">
-                              {item.quantity}
-                            </span>
+                            <Input
+                              type="number"
+                              min={1}
+                              inputMode="numeric"
+                              value={item.quantity}
+                              onChange={(e) =>
+                                handleSetQuantity(
+                                  item.variationId,
+                                  item.subVariationId,
+                                  e.target.value,
+                                )
+                              }
+                              onBlur={(e) =>
+                                handleQuantityBlur(
+                                  item.variationId,
+                                  item.subVariationId,
+                                  e.target.value,
+                                )
+                              }
+                              aria-label="Quantity"
+                              className="h-8 w-14 text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
                             <Button
                               type="button"
                               variant="ghost"

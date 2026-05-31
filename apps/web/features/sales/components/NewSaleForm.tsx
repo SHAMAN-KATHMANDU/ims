@@ -814,6 +814,51 @@ export function NewSaleForm({
     }
   };
 
+  // Direct keyboard entry for item quantity. Clamps to [1, maxQuantity],
+  // flooring zero/negative/invalid entries to 1 and toasting when the entry
+  // exceeds available stock (same guard as the + button). Writes via setValue
+  // rather than useFieldArray.update so the row's field id is preserved — an
+  // update() would regenerate the id, remount the input, and drop focus after
+  // every keystroke. setValue still propagates to the field array, so line
+  // totals and the +/- buttons stay in sync.
+  const handleSetQuantity = (index: number, rawValue: string) => {
+    const currentItems = validationForm.getValues("items") ?? [];
+    const item = currentItems[index] as SaleItem | undefined;
+    if (!item) return;
+    // Leave state untouched on an empty field — React's controlled-input
+    // restore re-displays the current quantity, so the input never jumps to 1
+    // while the user is mid-edit. handleQuantityBlur is the safety net.
+    if (rawValue.trim() === "") return;
+    const parsed = Math.floor(Number(rawValue));
+    if (!Number.isFinite(parsed)) return;
+    let next = Math.max(1, parsed);
+    const exceedsStock = item.maxQuantity > 0 && next > item.maxQuantity;
+    if (exceedsStock) {
+      next = item.maxQuantity;
+    }
+    if (next !== item.quantity) {
+      const newItems = [...currentItems];
+      newItems[index] = {
+        ...item,
+        quantity: next,
+      } as (typeof newItems)[number];
+      validationForm.setValue("items", newItems, { shouldValidate: true });
+    }
+    if (exceedsStock) {
+      toast({
+        title: "Quantity exceeds available",
+        description: `Only ${item.maxQuantity} in stock.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Snap an empty/invalid field back to a valid quantity on blur.
+  const handleQuantityBlur = (index: number, rawValue: string) => {
+    if (rawValue.trim() !== "" && Math.floor(Number(rawValue)) >= 1) return;
+    handleSetQuantity(index, "1");
+  };
+
   // Remove item
   const handleRemoveItem = (index: number) => {
     removeItem(index);
@@ -1799,13 +1844,23 @@ export function NewSaleForm({
                                         aria-hidden="true"
                                       />
                                     </Button>
-                                    <span
-                                      className="w-10 text-center tabular-nums font-semibold text-foreground"
-                                      aria-live="polite"
-                                      aria-label={`Quantity: ${item.quantity}`}
-                                    >
-                                      {item.quantity}
-                                    </span>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      inputMode="numeric"
+                                      value={item.quantity}
+                                      onChange={(e) =>
+                                        handleSetQuantity(index, e.target.value)
+                                      }
+                                      onBlur={(e) =>
+                                        handleQuantityBlur(
+                                          index,
+                                          e.target.value,
+                                        )
+                                      }
+                                      aria-label={`Quantity of ${item.productName}`}
+                                      className="h-7 w-12 px-1 text-center tabular-nums font-semibold text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    />
                                     <Button
                                       type="button"
                                       variant="outline"

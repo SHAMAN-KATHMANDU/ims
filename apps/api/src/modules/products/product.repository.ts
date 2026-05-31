@@ -360,6 +360,19 @@ export class ProductRepository {
     });
   }
 
+  /**
+   * Remove variation-level (null sub-variation) inventory rows for a
+   * variation. Stock for a variation that has sub-variations is tracked per
+   * (sub-variation, location); a null-sub row is always spurious there and
+   * double-counts in the ProductVariation.stockQuantity aggregate. Used to
+   * self-heal phantom rows left by the per-location edit form.
+   */
+  deleteNullSubVariationInventory(variationId: string) {
+    return prisma.locationInventory.deleteMany({
+      where: { variationId, subVariationId: null },
+    });
+  }
+
   findAllLocationInventoryForVariation(variationId: string) {
     return prisma.locationInventory.findMany({
       where: { variationId },

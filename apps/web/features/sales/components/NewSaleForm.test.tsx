@@ -216,8 +216,11 @@ vi.mock("@/features/settings", () => ({
   useTenantPaymentMethods: vi.fn().mockReturnValue({ data: null }),
 }));
 
+const mockToast = vi.fn();
 vi.mock("@/hooks/useToast", () => ({
-  useToast: vi.fn().mockReturnValue({ toast: vi.fn() }),
+  useToast: vi
+    .fn()
+    .mockReturnValue({ toast: (...args: unknown[]) => mockToast(...args) }),
 }));
 
 // ── Service mocks ─────────────────────────────────────────────
@@ -920,7 +923,53 @@ describe("NewSaleForm", () => {
       fireEvent.click(increaseBtn);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/quantity: 2/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/^quantity of test shirt$/i)).toHaveValue(
+          2,
+        );
+      });
+    });
+
+    it("accepts a large quantity typed directly into the input", async () => {
+      await renderWithItem();
+
+      const qtyInput = screen.getByLabelText(/^quantity of test shirt$/i);
+      fireEvent.change(qtyInput, { target: { value: "7" } });
+
+      await waitFor(() => {
+        expect(qtyInput).toHaveValue(7);
+      });
+    });
+
+    it("clamps a typed quantity above available stock to the max", async () => {
+      await renderWithItem();
+
+      // MOCK_INVENTORY_ITEM has quantity (max) 10.
+      const qtyInput = screen.getByLabelText(/^quantity of test shirt$/i);
+
+      // Typing above available stock (10) clamps to the max and warns.
+      fireEvent.change(qtyInput, { target: { value: "200" } });
+
+      // The displayed-value reset of a shrinking number input is unreliable
+      // under jsdom; the destructive toast is the robust signal that the entry
+      // was clamped to the available stock (10) rather than accepted as 200.
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Quantity exceeds available",
+            variant: "destructive",
+          }),
+        );
+      });
+    });
+
+    it("floors a typed zero to 1", async () => {
+      await renderWithItem();
+
+      const qtyInput = screen.getByLabelText(/^quantity of test shirt$/i);
+      fireEvent.change(qtyInput, { target: { value: "0" } });
+
+      await waitFor(() => {
+        expect(qtyInput).toHaveValue(1);
       });
     });
 

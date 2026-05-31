@@ -123,4 +123,53 @@ describe("TransferForm", () => {
     const submitBtn = screen.getByRole("button", { name: /create transfer/i });
     expect(submitBtn).toBeDisabled();
   });
+
+  /** Select source location, search, and add the first inventory result. */
+  async function addFirstItem() {
+    const fromSelects = document.querySelectorAll<HTMLSelectElement>("select");
+    const fromSelect = Array.from(fromSelects).find((s) =>
+      s.querySelector('option[value="loc1"]'),
+    );
+    fireEvent.change(fromSelect!, { target: { value: "loc1" } });
+
+    const searchInput = screen.getByPlaceholderText(
+      /search by product name, product code, or category/i,
+    );
+    fireEvent.change(searchInput, { target: { value: "widget" } });
+
+    const addBtn = await screen.findByRole("button", {
+      name: /add widget to transfer/i,
+    });
+    fireEvent.click(addBtn);
+  }
+
+  it("lets the user type a quantity directly, clamping to source stock", async () => {
+    render(
+      <TransferForm
+        open={true}
+        onOpenChange={mockOnOpenChange}
+        locations={mockLocations}
+        onSubmit={mockOnSubmit}
+        getLocationInventory={mockGetLocationInventory}
+        inline={true}
+      />,
+    );
+
+    await addFirstItem();
+
+    const qtyInput = await screen.findByLabelText<HTMLInputElement>("Quantity");
+    expect(qtyInput.value).toBe("1");
+
+    // Direct keyboard input within stock updates the quantity.
+    fireEvent.change(qtyInput, { target: { value: "5" } });
+    expect(qtyInput.value).toBe("5");
+
+    // Typing above available stock (10) clamps back to the max.
+    fireEvent.change(qtyInput, { target: { value: "999" } });
+    expect(qtyInput.value).toBe("10");
+
+    // A zero/negative entry is floored to the minimum of 1.
+    fireEvent.change(qtyInput, { target: { value: "0" } });
+    expect(qtyInput.value).toBe("1");
+  });
 });

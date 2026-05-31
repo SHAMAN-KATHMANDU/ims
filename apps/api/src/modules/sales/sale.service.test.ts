@@ -569,30 +569,28 @@ describe("SaleService", () => {
       expect(result.total).toBe(170);
     });
 
-    it("manual discount above 20% throws 403 for non-admin when opts provided", async () => {
+    it("manual discount above 20% is allowed for non-admin (issue #576)", async () => {
       mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
       mockFindInventory.mockResolvedValue({ quantity: 10 });
       mockFindPromoByCodeWithProducts.mockResolvedValue(null);
 
-      await expect(
-        calculateSaleItems(
-          [
-            {
-              variationId: "v1",
-              quantity: 1,
-              manualDiscountPercent: 25,
-              discountReason: "test",
-            },
-          ],
-          "loc1",
-          "GENERAL",
-          "t1",
-          { userId: "u1", userRole: "user" },
-        ),
-      ).rejects.toMatchObject({
-        status: 403,
-        message: expect.stringContaining("20%"),
-      });
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 1,
+            manualDiscountPercent: 25,
+            discountReason: "clearance",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+        { userId: "u1", userRole: "user" },
+      );
+
+      expect(result.totalDiscount).toBe(25);
+      expect(result.totalProductDiscount).toBe(25);
     });
 
     it("manual discount above 20% allowed for admin when opts provided", async () => {
