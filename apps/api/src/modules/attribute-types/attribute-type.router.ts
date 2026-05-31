@@ -139,6 +139,39 @@ router.post(
 
 /**
  * @swagger
+ * /attribute-types/{typeId}/values/{valueId}/usage:
+ *   get:
+ *     summary: Get usage (variation/product counts) for an attribute value
+ *     tags: [AttributeTypes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: typeId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: valueId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Usage counts retrieved
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ *       404: { description: Value not found }
+ */
+router.get(
+  "/:typeId/values/:valueId/usage",
+  requirePermission(
+    "INVENTORY.ATTRIBUTE_TYPES.VIEW",
+    paramLocator("ATTRIBUTE_TYPE", "typeId"),
+  ),
+  asyncHandler(attributeTypeController.getValueUsage),
+);
+
+/**
+ * @swagger
  * /attribute-types/{typeId}/values/{valueId}:
  *   put:
  *     summary: Update an attribute value
@@ -197,12 +230,18 @@ router.put(
  *         name: valueId
  *         required: true
  *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: reassignTo
+ *         required: false
+ *         description: Value ID to move affected variations to. Required when the value is in use.
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Attribute value deleted
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  *       404: { description: Value not found }
+ *       409: { description: Value in use and no reassignment target supplied }
  */
 router.delete(
   "/:typeId/values/:valueId",

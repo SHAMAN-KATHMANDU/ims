@@ -278,7 +278,7 @@ class AttributeTypeController {
     }
   };
 
-  deleteValue = async (req: Request, res: Response) => {
+  getValueUsage = async (req: Request, res: Response) => {
     try {
       const typeId = parseId(req, "typeId");
       const valueId = parseId(req, "valueId");
@@ -288,13 +288,68 @@ class AttributeTypeController {
           .json({ message: "Attribute type ID and value ID are required" });
       }
       const tenantId = req.user!.tenantId;
-      await this.service.deleteValue(typeId, valueId, tenantId);
+      const usage = await this.service.getValueUsage(typeId, valueId, tenantId);
+      return res.status(200).json({
+        message: "Attribute value usage fetched successfully",
+        ...usage,
+      });
+    } catch (error: unknown) {
+      if ((error as AppError).statusCode === 404) {
+        return res.status(404).json({ message: (error as AppError).message });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get attribute value usage error",
+      );
+    }
+  };
+
+  deleteValue = async (req: Request, res: Response) => {
+    try {
+      const typeId = parseId(req, "typeId");
+      const valueId = parseId(req, "valueId");
+      if (!typeId || !valueId) {
+        return res
+          .status(400)
+          .json({ message: "Attribute type ID and value ID are required" });
+      }
+      const reassignRaw = req.query.reassignTo;
+      const reassignTo = Array.isArray(reassignRaw)
+        ? reassignRaw[0]
+        : reassignRaw;
+      const reassignToValueId =
+        typeof reassignTo === "string" && reassignTo.trim()
+          ? reassignTo.trim()
+          : undefined;
+      const tenantId = req.user!.tenantId;
+      await this.service.deleteValue(
+        typeId,
+        valueId,
+        tenantId,
+        reassignToValueId,
+      );
       return res.status(200).json({
         message: "Attribute value deleted successfully",
       });
     } catch (error: unknown) {
       if ((error as AppError).statusCode === 404) {
         return res.status(404).json({ message: (error as AppError).message });
+      }
+      if ((error as AppError).statusCode === 400) {
+        return res.status(400).json({ message: (error as AppError).message });
+      }
+      if ((error as AppError).statusCode === 409) {
+        const appErr = error as AppError & {
+          code?: string;
+          usageCount?: number;
+        };
+        return res.status(409).json({
+          message: appErr.message,
+          code: appErr.code,
+          usageCount: appErr.usageCount,
+        });
       }
       return sendControllerError(
         req,

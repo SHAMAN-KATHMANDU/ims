@@ -62,6 +62,13 @@ export interface UpdateAttributeValueData {
   displayOrder?: number;
 }
 
+export interface AttributeValueUsage {
+  /** Number of product variations currently assigned this value. */
+  variationCount: number;
+  /** Number of distinct products affected. */
+  productCount: number;
+}
+
 export interface AttributeTypeListParams {
   page?: number;
   limit?: number;
@@ -211,14 +218,38 @@ export async function updateAttributeValue(
   }
 }
 
+export async function getAttributeValueUsage(
+  typeId: string,
+  valueId: string,
+): Promise<AttributeValueUsage> {
+  if (!typeId?.trim() || !valueId?.trim())
+    throw new Error("Attribute type ID and value ID are required");
+  try {
+    const response = await api.get<{
+      message: string;
+      variationCount: number;
+      productCount: number;
+    }>(`/attribute-types/${typeId}/values/${valueId}/usage`);
+    return {
+      variationCount: response.data.variationCount ?? 0,
+      productCount: response.data.productCount ?? 0,
+    };
+  } catch (error) {
+    handleApiError(error, `fetch usage for attribute value "${valueId}"`);
+  }
+}
+
 export async function deleteAttributeValue(
   typeId: string,
   valueId: string,
+  reassignToValueId?: string,
 ): Promise<void> {
   if (!typeId?.trim() || !valueId?.trim())
     throw new Error("Attribute type ID and value ID are required");
   try {
-    await api.delete(`/attribute-types/${typeId}/values/${valueId}`);
+    await api.delete(`/attribute-types/${typeId}/values/${valueId}`, {
+      params: reassignToValueId ? { reassignTo: reassignToValueId } : undefined,
+    });
   } catch (error) {
     handleApiError(error, `delete attribute value "${valueId}"`);
   }
