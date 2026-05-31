@@ -52,7 +52,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  X,
+} from "lucide-react";
 
 export function AttributeTypesPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -336,9 +343,19 @@ export function AttributeTypesPage() {
                               <Badge
                                 key={v.id}
                                 variant="outline"
-                                className="font-normal text-xs"
+                                className="font-normal text-xs gap-1 pr-1"
                               >
                                 {v.value}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setDeleteValueTarget({ type, value: v })
+                                  }
+                                  aria-label={`Delete value ${v.value}`}
+                                  className="ml-0.5 rounded-sm text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                  <X className="h-3 w-3" aria-hidden="true" />
+                                </button>
                               </Badge>
                             ))}
                         </div>
@@ -445,9 +462,25 @@ export function AttributeTypesPage() {
                                     <Badge
                                       key={v.id}
                                       variant="outline"
-                                      className="font-normal text-xs"
+                                      className="font-normal text-xs gap-1 pr-1"
                                     >
                                       {v.value}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setDeleteValueTarget({
+                                            type,
+                                            value: v,
+                                          })
+                                        }
+                                        aria-label={`Delete value ${v.value}`}
+                                        className="ml-0.5 rounded-sm text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                      >
+                                        <X
+                                          className="h-3 w-3"
+                                          aria-hidden="true"
+                                        />
+                                      </button>
                                     </Badge>
                                   ))}
                               </div>
