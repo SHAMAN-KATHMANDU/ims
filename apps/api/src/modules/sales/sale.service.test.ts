@@ -254,6 +254,41 @@ describe("SaleService", () => {
       );
     });
 
+    it("credits stockOffsets so an edit validates the delta, not raw stock (#588)", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      // Only 1 left in the warehouse, but this sale already holds 3 of them.
+      mockFindInventory.mockResolvedValue({ quantity: 1 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const stockOffsets = new Map<string, number>([["v1:base", 3]]);
+
+      // Re-saving the same line at qty 3 must pass: 1 (current) + 3 (held) >= 3.
+      const result = await calculateSaleItems(
+        [{ variationId: "v1", quantity: 3 }],
+        "loc1",
+        "GENERAL",
+        "t1",
+        { userId: "u1", userRole: "user", stockOffsets },
+      );
+      expect(result.processedItems[0]).toMatchObject({ quantity: 3 });
+
+      // But raising beyond the delta (1 + 3 = 4) still fails.
+      await expect(
+        calculateSaleItems(
+          [{ variationId: "v1", quantity: 5 }],
+          "loc1",
+          "GENERAL",
+          "t1",
+          { userId: "u1", userRole: "user", stockOffsets },
+        ),
+      ).rejects.toMatchObject(
+        expect.objectContaining({
+          message: expect.stringContaining("Insufficient stock"),
+          status: 400,
+        }),
+      );
+    });
+
     it("returns correct totals when stock is sufficient", async () => {
       mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
       mockFindInventory.mockResolvedValue({ quantity: 10 });

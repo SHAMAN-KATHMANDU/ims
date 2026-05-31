@@ -168,11 +168,7 @@ export function ProductTable({
   );
 
   // ── Stable callbacks ─────────────────────────────────────────────────────
-  const getRowKey = useCallback(
-    (row: ProductTableRow) =>
-      row.variation ? row.variation.id : `${row.product.id}-no-var`,
-    [],
-  );
+  const getRowKey = useCallback((row: ProductTableRow) => row.product.id, []);
 
   const getRowId = useCallback((row: ProductTableRow) => row.product.id, []);
 
@@ -184,20 +180,15 @@ export function ProductTable({
     if (!open) setProductForDetail(null);
   }, []);
 
-  // ── Flattened rows ────────────────────────────────────────────────────────
-  const flattenedRows: ProductTableRow[] = useMemo(() => {
-    const rows: ProductTableRow[] = [];
-    for (const product of products) {
-      if (product.variations && product.variations.length > 0) {
-        for (const variation of product.variations) {
-          rows.push({ product, variation });
-        }
-      } else {
-        rows.push({ product, variation: null });
-      }
-    }
-    return rows;
-  }, [products]);
+  // ── One row per product ───────────────────────────────────────────────────
+  // Every column renders product-level data (code, name, stock, prices are all
+  // aggregated across variations via row.product). Emitting a row per variation
+  // therefore produced N identical duplicate rows for a product with N
+  // variations (#592). Variation-level detail lives in the ProductDetailSheet.
+  const flattenedRows: ProductTableRow[] = useMemo(
+    () => products.map((product) => ({ product, variation: null })),
+    [products],
+  );
 
   // ── Columns ───────────────────────────────────────────────────────────────
   // Heavy cell content (discount prices, stock) is delegated to

@@ -268,7 +268,7 @@ export function SaleDetail({
               <Skeleton className="h-4 w-40" />
             </div>
           ) : (
-            <div className="-mr-6 min-h-0 flex-1 overflow-y-auto pr-3">
+            <div className="receipt-scroll-container -mr-6 min-h-0 flex-1 overflow-y-auto pr-3">
               <div className="receipt-print-area receipt-print-wrapper space-y-4">
                 {/* receipt-header: store, title, receipt #, date */}
                 <div className="receipt-header break-inside-avoid">

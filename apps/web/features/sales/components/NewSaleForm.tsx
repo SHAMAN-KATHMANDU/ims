@@ -859,6 +859,23 @@ export function NewSaleForm({
     handleSetQuantity(index, "1");
   };
 
+  // Apply a manual-discount field patch via setValue rather than
+  // useFieldArray.update so the row's field id is preserved — update() would
+  // regenerate the id, remount the input, and drop focus after every keystroke
+  // (issue #583, same root cause as handleSetQuantity). setValue still
+  // propagates to the field array, so line totals stay in sync.
+  const patchDiscountFields = (index: number, patch: Partial<SaleItem>) => {
+    const currentItems = validationForm.getValues("items") ?? [];
+    const item = currentItems[index] as SaleItem | undefined;
+    if (!item) return;
+    const newItems = [...currentItems];
+    newItems[index] = {
+      ...item,
+      ...patch,
+    } as (typeof newItems)[number];
+    validationForm.setValue("items", newItems, { shouldValidate: true });
+  };
+
   // Remove item
   const handleRemoveItem = (index: number) => {
     removeItem(index);
@@ -1950,8 +1967,7 @@ export function NewSaleForm({
                                                     100,
                                                     Math.max(0, Number(v) || 0),
                                                   );
-                                            updateItem(index, {
-                                              ...item,
+                                            patchDiscountFields(index, {
                                               manualDiscountPercent: num,
                                               manualDiscountAmount:
                                                 num != null
@@ -1960,7 +1976,7 @@ export function NewSaleForm({
                                               discountReason: !num
                                                 ? undefined
                                                 : item.discountReason,
-                                            } as unknown as CreateSaleItemInput);
+                                            } as Partial<SaleItem>);
                                           }}
                                         />
                                         <span className="text-muted-foreground self-center">
@@ -1981,8 +1997,7 @@ export function NewSaleForm({
                                               v === ""
                                                 ? undefined
                                                 : Math.max(0, Number(v) || 0);
-                                            updateItem(index, {
-                                              ...item,
+                                            patchDiscountFields(index, {
                                               manualDiscountAmount: num,
                                               manualDiscountPercent:
                                                 num != null
@@ -1991,7 +2006,7 @@ export function NewSaleForm({
                                               discountReason: !num
                                                 ? undefined
                                                 : item.discountReason,
-                                            } as unknown as CreateSaleItemInput);
+                                            } as Partial<SaleItem>);
                                           }}
                                         />
                                         <Input
@@ -1999,11 +2014,10 @@ export function NewSaleForm({
                                           className="h-7 flex-1 min-w-[120px] text-xs"
                                           value={item.discountReason ?? ""}
                                           onChange={(e) => {
-                                            updateItem(index, {
-                                              ...item,
+                                            patchDiscountFields(index, {
                                               discountReason:
                                                 e.target.value || undefined,
-                                            } as unknown as CreateSaleItemInput);
+                                            } as Partial<SaleItem>);
                                           }}
                                         />
                                         {discountMode === "individual" &&
@@ -2029,13 +2043,12 @@ export function NewSaleForm({
                                             size="sm"
                                             className="h-7 text-xs text-muted-foreground"
                                             onClick={() => {
-                                              updateItem(index, {
-                                                ...item,
+                                              patchDiscountFields(index, {
                                                 manualDiscountPercent:
                                                   undefined,
                                                 manualDiscountAmount: undefined,
                                                 discountReason: undefined,
-                                              } as unknown as CreateSaleItemInput);
+                                              } as Partial<SaleItem>);
                                             }}
                                           >
                                             Clear

@@ -1226,8 +1226,15 @@ export function ProductPage() {
                   </FeatureGuard>
                 </EnvFeatureGuard>
                 <Can perm="INVENTORY.PRODUCTS.CREATE">
-                  {isMobile ? (
-                    atProductLimit ? (
+                  {/*
+                    On mobile the Add trigger is a Link to /products/new (which
+                    redirects back here with ?add=1); the edit pencil routes to
+                    /products/[id]/edit (redirects with ?edit=id). Both paths set
+                    productDialog=true, so the ProductForm dialog must still be
+                    mounted on mobile — just without its built-in trigger.
+                  */}
+                  {isMobile &&
+                    (atProductLimit ? (
                       <Button disabled className="gap-2">
                         <Plus className="h-4 w-4" aria-hidden="true" />
                         Add Product
@@ -1242,42 +1249,39 @@ export function ProductPage() {
                           Add Product
                         </Link>
                       </Button>
-                    )
-                  ) : (
-                    <ProductForm
-                      open={productDialog}
-                      onOpenChange={setProductDialog}
-                      form={productForm}
-                      editingProduct={editingProduct}
-                      categories={categories}
-                      variations={productVariations}
-                      discounts={productDiscounts}
-                      discountTypes={discountTypes}
-                      onDiscountsChange={setProductDiscounts}
-                      attributeTypes={attributeTypes}
-                      productAttributeTypeIds={productAttributeTypeIds}
-                      onProductAttributeTypeIdsChange={
-                        setProductAttributeTypeIds
-                      }
-                      defaultLocationId={defaultLocationIdForCreate}
-                      onDefaultLocationChange={setDefaultLocationIdForCreate}
-                      onReset={handleResetProduct}
-                      onAddVariation={addVariationToForm}
-                      onRemoveVariation={removeVariationFromForm}
-                      onUpdateVariation={updateVariationInForm}
-                      onUpdateSubVariants={updateSubVariantsInForm}
-                      onAddPhoto={addPhotoToVariation}
-                      onRemovePhoto={removePhotoFromVariation}
-                      onSetPrimaryPhoto={setPrimaryPhoto}
-                      onShowError={(title, message) =>
-                        setErrorDialog({ open: true, title, message })
-                      }
-                      validateProduct={validateProduct}
-                      addDisabled={atProductLimit}
-                      mrpBelowCpAccepted={mrpBelowCpAccepted}
-                      onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
-                    />
-                  )}
+                    ))}
+                  <ProductForm
+                    open={productDialog}
+                    onOpenChange={setProductDialog}
+                    renderTrigger={!isMobile}
+                    form={productForm}
+                    editingProduct={editingProduct}
+                    categories={categories}
+                    variations={productVariations}
+                    discounts={productDiscounts}
+                    discountTypes={discountTypes}
+                    onDiscountsChange={setProductDiscounts}
+                    attributeTypes={attributeTypes}
+                    productAttributeTypeIds={productAttributeTypeIds}
+                    onProductAttributeTypeIdsChange={setProductAttributeTypeIds}
+                    defaultLocationId={defaultLocationIdForCreate}
+                    onDefaultLocationChange={setDefaultLocationIdForCreate}
+                    onReset={handleResetProduct}
+                    onAddVariation={addVariationToForm}
+                    onRemoveVariation={removeVariationFromForm}
+                    onUpdateVariation={updateVariationInForm}
+                    onUpdateSubVariants={updateSubVariantsInForm}
+                    onAddPhoto={addPhotoToVariation}
+                    onRemovePhoto={removePhotoFromVariation}
+                    onSetPrimaryPhoto={setPrimaryPhoto}
+                    onShowError={(title, message) =>
+                      setErrorDialog({ open: true, title, message })
+                    }
+                    validateProduct={validateProduct}
+                    addDisabled={atProductLimit}
+                    mrpBelowCpAccepted={mrpBelowCpAccepted}
+                    onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
+                  />
                 </Can>
               </div>
             )}
