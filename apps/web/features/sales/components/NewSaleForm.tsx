@@ -664,7 +664,6 @@ export function NewSaleForm({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedPreviewSignature]);
 
   // Inventory is already filtered by API when we pass search; no client-side filtering needed
