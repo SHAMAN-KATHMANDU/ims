@@ -58,11 +58,20 @@ export function drawKeyValueRow(
     .font(options?.bold ? getFontBold() : getFontRegular())
     .fontSize(TYPE.body)
     .fillColor(COLORS.text);
-  doc.text(label, ctx.margin, doc.y, { continued: true });
-  doc.text(value, ctx.totX, doc.y, {
+  // Draw label and value as two independently-positioned text calls sharing
+  // the same baseline. Using `continued: true` on the label makes PDFKit treat
+  // the value as an inline continuation and ignore its x/y + right-align,
+  // which silently dropped the value from the rendered output (#586).
+  const rowY = doc.y;
+  doc.text(label, ctx.margin, rowY, { ...TEXT_OPTS });
+  doc.text(value, ctx.totX, rowY, {
     width: VALUE_COLUMN_WIDTH,
     align: "right",
     ...TEXT_OPTS,
   });
+  // Restore the cursor to the left margin. The value text call above leaves
+  // doc.x at the right-aligned value column, which would otherwise push the
+  // next un-positioned text (e.g. a section title) to the right.
+  doc.x = ctx.margin;
   doc.moveDown(SPACE.xxs);
 }
