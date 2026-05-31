@@ -90,4 +90,41 @@ describe("ProductTable", () => {
     expect(within(table).getByText("P-001")).toBeInTheDocument();
     expect(within(table).getByText("Widget")).toBeInTheDocument();
   });
+
+  it("renders one row per product even with multiple variations (#592)", () => {
+    const multiVariationProduct: Product = {
+      ...mockProducts[0]!,
+      id: "p2",
+      imsCode: "RING-001",
+      name: "Ring",
+      variations: [
+        { id: "rv1", productId: "p2", stockQuantity: 1 } as ProductVariation,
+        { id: "rv2", productId: "p2", stockQuantity: 2 } as ProductVariation,
+        { id: "rv3", productId: "p2", stockQuantity: 3 } as ProductVariation,
+        { id: "rv4", productId: "p2", stockQuantity: 4 } as ProductVariation,
+      ],
+    };
+
+    render(
+      <ProductTable
+        products={[multiVariationProduct]}
+        categories={mockCategories}
+        canSeeCostPrice={true}
+        canManageProducts={true}
+        onEdit={mockOnEdit}
+        onDelete={mockOnDelete}
+        pagination={mockPagination}
+        onPageChange={mockOnPageChange}
+        onPageSizeChange={mockOnPageSizeChange}
+        searchQuery=""
+        onSearchChange={mockOnSearchChange}
+        isLoading={false}
+      />,
+    );
+
+    const table = screen.getByRole("table", { hidden: true });
+    // The product code must appear exactly once despite 4 variations.
+    expect(within(table).getAllByText("RING-001")).toHaveLength(1);
+    expect(within(table).getByText("4 variation(s)")).toBeInTheDocument();
+  });
 });
