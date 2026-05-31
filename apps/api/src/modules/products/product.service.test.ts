@@ -671,4 +671,112 @@ describe("ProductService", () => {
       );
     });
   });
+
+  // Regression (issue #574): a variation that HAS sub-variations tracks stock
+  // per (sub-variation, location). The per-location edit form still posts a
+  // single variation-level stockQuantity/locationId (the display aggregate of
+  // one row). The old code wrote that into a subVariationId=null LocationInventory
+  // row — a phantom that the aggregate recompute then double-counted (e.g.
+  // 24 → 29). For sub-variation variations we must NOT write the null-sub row
+  // and must drop any phantom rows left by prior edits.
+  describe("update — sub-variation stock must not create a null-sub row", () => {
+    const baseCtx = { tenantId: "tenant-1", userId: "user-1" };
+
+    const mockFindVariationsWithDependents = vi.fn();
+    const mockUpdateProductVariation = vi.fn();
+    const mockUpdateProductRepo = vi.fn();
+    const mockFindAllLocInvForVariation = vi.fn();
+    const mockFindLocInv = vi.fn();
+    const mockSetLocInvQuantity = vi.fn();
+    const mockCreateLocInv = vi.fn();
+    const mockDeleteNullSubInv = vi.fn();
+
+    const wireRepo = (repo: ProductRepository) => {
+      Object.assign(repo, {
+        findProductForUpdate: vi.fn().mockResolvedValue({
+          id: "p1",
+          tenantId: "tenant-1",
+          name: "Bracelet 3 Gems",
+          imsCode: "B3G-1",
+          categoryId: "c1",
+        }),
+        findVariationsWithDependents: mockFindVariationsWithDependents,
+        updateProductVariation: mockUpdateProductVariation,
+        updateProduct: mockUpdateProductRepo,
+        findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
+        findLocationInventory: mockFindLocInv,
+        setLocationInventoryQuantity: mockSetLocInvQuantity,
+        createLocationInventory: mockCreateLocInv,
+        deleteNullSubVariationInventory: mockDeleteNullSubInv,
+      });
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      wireRepo(mockRepo);
+      // Variation already carries three sub-variations (Gem A/B/C).
+      mockFindVariationsWithDependents.mockResolvedValue([
+        {
+          id: "var-1",
+          stockQuantity: 24,
+          subVariations: [
+            { id: "s-a", name: "Gem A" },
+            { id: "s-b", name: "Gem B" },
+            { id: "s-c", name: "Gem C" },
+          ],
+          _count: { saleItems: 0, transferItems: 0 },
+        },
+      ]);
+      // Real per-sub rows total 24 (5+3 per gem across two locations).
+      mockFindAllLocInvForVariation.mockResolvedValue([
+        { quantity: 5 },
+        { quantity: 3 },
+        { quantity: 5 },
+        { quantity: 3 },
+        { quantity: 5 },
+        { quantity: 3 },
+      ]);
+      mockUpdateProductRepo.mockResolvedValue({
+        id: "p1",
+        name: "Bracelet 3 Gems",
+        imsCode: "B3G-1",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        dateModified: new Date("2026-01-01T00:00:00Z"),
+      });
+    });
+
+    it("never writes a null-sub LocationInventory row and self-heals phantom rows", async () => {
+      await productService.update(
+        "p1",
+        {
+          variations: [
+            {
+              id: "var-1",
+              // Display aggregate of one (gem, location) row; the form also
+              // posts a locationId. Both must be ignored for stock writes.
+              stockQuantity: 5,
+              locationId: "loc-1",
+              subVariants: ["Gem A", "Gem B", "Gem C"],
+            },
+          ],
+        } as Parameters<typeof productService.update>[1],
+        baseCtx,
+      );
+
+      // The phantom variation-level write must never happen.
+      expect(mockFindLocInv).not.toHaveBeenCalled();
+      expect(mockCreateLocInv).not.toHaveBeenCalled();
+      expect(mockSetLocInvQuantity).not.toHaveBeenCalled();
+      // Any pre-existing phantom null-sub row is cleaned up.
+      expect(mockDeleteNullSubInv).toHaveBeenCalledWith("var-1");
+      // Aggregate stays the true sum of per-sub rows (24), not 24 + 5.
+      expect(mockUpdateProductVariation).toHaveBeenCalledWith(
+        "var-1",
+        expect.objectContaining({ stockQuantity: 24 }),
+      );
+    });
+  });
 });

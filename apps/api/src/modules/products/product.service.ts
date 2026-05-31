@@ -800,8 +800,22 @@ export class ProductService {
                 : [];
               await this.repo.setVariationAttributes(existing.id, attrs);
             }
-            // Update LocationInventory if a specific location was provided
+            // A variation's stock lives in LocationInventory in one of two
+            // mutually exclusive shapes: variation-level (subVariationId null)
+            // when it has NO sub-variations, or per-sub-variation rows when it
+            // does. The edit form is per-location and always sends a single
+            // `locationId`/`stockQuantity` for the whole variation — for a
+            // sub-variation variation that value is just the display aggregate
+            // of one row, NOT an authoritative variation-level quantity.
+            // Writing it to a null-sub slot creates a phantom row that then
+            // double-counts in the recompute below (e.g. 24 → 29). Only do the
+            // variation-level write when the variation has no sub-variations.
+            const hasSubVariations =
+              (existing.subVariations?.length ?? 0) > 0 ||
+              incomingSubArr.length > 0;
+
             if (
+              !hasSubVariations &&
               payload.locationId &&
               payload.stockQuantity !== undefined &&
               payload.stockQuantity !== null
@@ -824,43 +838,31 @@ export class ProductService {
                   quantity: payload.stockQuantity,
                 });
               }
-              // Recalculate ProductVariation.stockQuantity as the sum of all LocationInventory rows
-              const allInv =
-                await this.repo.findAllLocationInventoryForVariation(
-                  existing.id,
-                );
-              const totalStock = allInv.reduce(
-                (sum, inv) => sum + inv.quantity,
-                0,
-              );
-              await this.repo.updateProductVariation(existing.id, {
-                stockQuantity: totalStock,
-                ...(newPhotos.length > 0
-                  ? { photos: { create: newPhotos } }
-                  : {}),
-              });
-            } else {
-              // No locationId in payload: never trust payload.stockQuantity to
-              // overwrite the denormalized aggregate. The form is per-location;
-              // accepting its raw stockQuantity here would silently set the
-              // cross-location cache to a single location's value, drifting
-              // ProductVariation.stockQuantity away from sum(LocationInventory)
-              // permanently. Always recompute from LocationInventory instead.
-              const allInv =
-                await this.repo.findAllLocationInventoryForVariation(
-                  existing.id,
-                );
-              const totalStock = allInv.reduce(
-                (sum, inv) => sum + inv.quantity,
-                0,
-              );
-              await this.repo.updateProductVariation(existing.id, {
-                stockQuantity: totalStock,
-                ...(newPhotos.length > 0
-                  ? { photos: { create: newPhotos } }
-                  : {}),
-              });
+            } else if (hasSubVariations) {
+              // Self-heal: a sub-variation variation must never carry a
+              // null-sub (variation-level) row. Drop any left behind by the
+              // old code path so the recompute reflects only real per-sub
+              // stock instead of staying permanently inflated.
+              await this.repo.deleteNullSubVariationInventory(existing.id);
             }
+
+            // Recompute ProductVariation.stockQuantity as the sum of all
+            // LocationInventory rows. The form is per-location, so never trust
+            // payload.stockQuantity to overwrite this cross-location aggregate;
+            // recomputing also self-heals any pre-existing drift on every edit.
+            const allInv = await this.repo.findAllLocationInventoryForVariation(
+              existing.id,
+            );
+            const totalStock = allInv.reduce(
+              (sum, inv) => sum + inv.quantity,
+              0,
+            );
+            await this.repo.updateProductVariation(existing.id, {
+              stockQuantity: totalStock,
+              ...(newPhotos.length > 0
+                ? { photos: { create: newPhotos } }
+                : {}),
+            });
           }
         } else if (!hasDependents) {
           await this.repo.deleteProductVariation(existing.id);
