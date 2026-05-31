@@ -10,8 +10,10 @@ import {
   useCreateAttributeValue,
   useUpdateAttributeValue,
   useDeleteAttributeValue,
+  useCheckAttributeValueUsage,
   type AttributeType,
   type AttributeValue,
+  type AttributeValueUsage,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/features/products";
@@ -50,9 +52,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  X,
+} from "lucide-react";
 
 export function AttributeTypesPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -67,6 +83,7 @@ export function AttributeTypesPage() {
   const createValueMutation = useCreateAttributeValue();
   const updateValueMutation = useUpdateAttributeValue();
   const deleteValueMutation = useDeleteAttributeValue();
+  const checkUsageMutation = useCheckAttributeValueUsage();
   const { toast } = useToast();
 
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
@@ -90,7 +107,25 @@ export function AttributeTypesPage() {
     type: AttributeType;
     value: AttributeValue;
   } | null>(null);
+  /** Set when deleting a value that is in use — requires reassignment first. */
+  const [reassignTarget, setReassignTarget] = useState<{
+    type: AttributeType;
+    value: AttributeValue;
+    usage: AttributeValueUsage;
+  } | null>(null);
+  const [reassignToId, setReassignToId] = useState<string>("");
+  const [reassignConfirmOpen, setReassignConfirmOpen] = useState(false);
+  /** Value id currently being checked for usage (disables its delete button). */
+  const [checkingValueId, setCheckingValueId] = useState<string | null>(null);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
+
+  const reassignSiblings = reassignTarget
+    ? (reassignTarget.type.values ?? []).filter(
+        (v) => v.id !== reassignTarget.value.id,
+      )
+    : [];
+  const reassignTargetLabel =
+    reassignSiblings.find((v) => v.id === reassignToId)?.value ?? "";
 
   const toggleExpanded = (id: string) => {
     setExpandedTypes((prev) => {
@@ -241,6 +276,45 @@ export function AttributeTypesPage() {
     }
   };
 
+  /**
+   * Entry point for deleting a value. Checks usage first: unused values go
+   * straight to a simple confirm; values in use open the reassign flow so the
+   * affected variations are never silently orphaned.
+   */
+  const requestDeleteValue = async (
+    type: AttributeType,
+    value: AttributeValue,
+  ) => {
+    setCheckingValueId(value.id);
+    try {
+      const usage = await checkUsageMutation.mutateAsync({
+        typeId: type.id,
+        valueId: value.id,
+      });
+      if (usage.variationCount === 0) {
+        setDeleteValueTarget({ type, value });
+      } else {
+        const firstOther = (type.values ?? []).find((v) => v.id !== value.id);
+        setReassignToId(firstOther?.id ?? "");
+        setReassignTarget({ type, value, usage });
+      }
+    } catch (e: unknown) {
+      const err = e as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      toast({
+        title:
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to check value usage",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingValueId(null);
+    }
+  };
+
   const confirmDeleteValue = async () => {
     if (!deleteValueTarget) return;
     try {
@@ -250,6 +324,33 @@ export function AttributeTypesPage() {
       });
       toast({ title: "Value deleted" });
       setDeleteValueTarget(null);
+    } catch (e: unknown) {
+      const err = e as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      toast({
+        title: err.response?.data?.message || err.message || "Failed to delete",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmReassignDelete = async () => {
+    if (!reassignTarget || !reassignToId) return;
+    try {
+      await deleteValueMutation.mutateAsync({
+        typeId: reassignTarget.type.id,
+        valueId: reassignTarget.value.id,
+        reassignToValueId: reassignToId,
+      });
+      toast({
+        title: "Value deleted",
+        description: `${reassignTarget.usage.variationCount} variation(s) reassigned to "${reassignTargetLabel}".`,
+      });
+      setReassignConfirmOpen(false);
+      setReassignTarget(null);
+      setReassignToId("");
     } catch (e: unknown) {
       const err = e as {
         response?: { data?: { message?: string } };
@@ -336,9 +437,18 @@ export function AttributeTypesPage() {
                               <Badge
                                 key={v.id}
                                 variant="outline"
-                                className="font-normal text-xs"
+                                className="font-normal text-xs gap-1 pr-1"
                               >
                                 {v.value}
+                                <button
+                                  type="button"
+                                  onClick={() => requestDeleteValue(type, v)}
+                                  disabled={checkingValueId === v.id}
+                                  aria-label={`Delete value ${v.value}`}
+                                  className="ml-0.5 rounded-sm text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                                >
+                                  <X className="h-3 w-3" aria-hidden="true" />
+                                </button>
                               </Badge>
                             ))}
                         </div>
@@ -445,9 +555,23 @@ export function AttributeTypesPage() {
                                     <Badge
                                       key={v.id}
                                       variant="outline"
-                                      className="font-normal text-xs"
+                                      className="font-normal text-xs gap-1 pr-1"
                                     >
                                       {v.value}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          requestDeleteValue(type, v)
+                                        }
+                                        disabled={checkingValueId === v.id}
+                                        aria-label={`Delete value ${v.value}`}
+                                        className="ml-0.5 rounded-sm text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                                      >
+                                        <X
+                                          className="h-3 w-3"
+                                          aria-hidden="true"
+                                        />
+                                      </button>
                                     </Badge>
                                   ))}
                               </div>
@@ -522,11 +646,9 @@ export function AttributeTypesPage() {
                                           size="icon"
                                           className="h-4 w-4 text-destructive"
                                           onClick={() =>
-                                            setDeleteValueTarget({
-                                              type,
-                                              value: v,
-                                            })
+                                            requestDeleteValue(type, v)
                                           }
+                                          disabled={checkingValueId === v.id}
                                           aria-label={`Delete value ${v.value}`}
                                         >
                                           <Trash2
@@ -762,6 +884,116 @@ export function AttributeTypesPage() {
               className="bg-destructive text-destructive-foreground"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reassign-before-delete dialog (value is in use) */}
+      <Dialog
+        open={!!reassignTarget && !reassignConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReassignTarget(null);
+            setReassignToId("");
+          }
+        }}
+      >
+        <DialogContent allowDismiss={false}>
+          <DialogHeader>
+            <DialogTitle>
+              Delete &ldquo;{reassignTarget?.value.value}&rdquo;?
+            </DialogTitle>
+          </DialogHeader>
+          {reassignTarget && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {reassignTarget.value.value}
+                </span>{" "}
+                is used by {reassignTarget.usage.variationCount} variation
+                {reassignTarget.usage.variationCount === 1 ? "" : "s"}
+                {reassignTarget.usage.productCount > 0 && (
+                  <>
+                    {" "}
+                    across {reassignTarget.usage.productCount} product
+                    {reassignTarget.usage.productCount === 1 ? "" : "s"}
+                  </>
+                )}
+                . Move those variations to another value before deleting.
+              </p>
+              {reassignSiblings.length === 0 ? (
+                <p className="text-sm text-destructive">
+                  This is the only value in {reassignTarget.type.name}. Add
+                  another value to reassign to, or delete the whole attribute
+                  type instead.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="reassign-target">
+                    Reassign variations to
+                  </Label>
+                  <Select value={reassignToId} onValueChange={setReassignToId}>
+                    <SelectTrigger id="reassign-target">
+                      <SelectValue placeholder="Select a value" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reassignSiblings.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.value}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReassignTarget(null);
+                setReassignToId("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!reassignToId}
+              onClick={() => setReassignConfirmOpen(true)}
+            >
+              Reassign &amp; delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reassign-before-delete: second confirmation */}
+      <AlertDialog
+        open={reassignConfirmOpen}
+        onOpenChange={(open) => !open && setReassignConfirmOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm reassign &amp; delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will move {reassignTarget?.usage.variationCount} variation(s)
+              from &ldquo;{reassignTarget?.value.value}&rdquo; to &ldquo;
+              {reassignTargetLabel}&rdquo;, then permanently delete &ldquo;
+              {reassignTarget?.value.value}&rdquo;. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setReassignConfirmOpen(false)}>
+              Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReassignDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Reassign &amp; delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

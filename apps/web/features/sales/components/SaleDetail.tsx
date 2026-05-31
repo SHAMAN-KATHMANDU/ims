@@ -196,7 +196,7 @@ export function SaleDetail({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 overflow-hidden overflow-y-hidden p-6 sm:max-w-[800px]">
-        <DialogHeader className="flex shrink-0 flex-row flex-wrap items-start justify-between gap-2">
+        <DialogHeader className="flex shrink-0 flex-row flex-wrap items-start justify-between gap-2 pr-10">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" aria-hidden="true" />
             Sale Details

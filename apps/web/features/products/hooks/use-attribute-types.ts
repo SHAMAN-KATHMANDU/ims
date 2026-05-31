@@ -11,8 +11,10 @@ import {
   createAttributeValue,
   updateAttributeValue,
   deleteAttributeValue,
+  getAttributeValueUsage,
   type AttributeType,
   type AttributeValue,
+  type AttributeValueUsage,
   type CreateAttributeTypeData,
   type UpdateAttributeTypeData,
   type CreateAttributeValueData,
@@ -23,6 +25,7 @@ import {
 export type {
   AttributeType,
   AttributeValue,
+  AttributeValueUsage,
   CreateAttributeTypeData,
   UpdateAttributeTypeData,
   CreateAttributeValueData,
@@ -143,13 +146,31 @@ export function useUpdateAttributeValue() {
 export function useDeleteAttributeValue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ typeId, valueId }: { typeId: string; valueId: string }) =>
-      deleteAttributeValue(typeId, valueId),
+    mutationFn: ({
+      typeId,
+      valueId,
+      reassignToValueId,
+    }: {
+      typeId: string;
+      valueId: string;
+      reassignToValueId?: string;
+    }) => deleteAttributeValue(typeId, valueId, reassignToValueId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: attributeTypeKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: attributeTypeKeys.detail(variables.typeId),
       });
     },
+  });
+}
+
+/**
+ * On-demand check of how many variations/products use a value. Used to decide
+ * whether deleting it requires a reassignment step.
+ */
+export function useCheckAttributeValueUsage() {
+  return useMutation({
+    mutationFn: ({ typeId, valueId }: { typeId: string; valueId: string }) =>
+      getAttributeValueUsage(typeId, valueId),
   });
 }

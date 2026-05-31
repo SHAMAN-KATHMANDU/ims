@@ -93,6 +93,18 @@ export function VariationsTab({
       onProductAttributeTypeIdsChange(
         productAttributeTypeIds.filter((id) => id !== typeId),
       );
+      // Deselecting a type must also drop its value from every variation.
+      // Otherwise the orphaned entry lingers in form state and gets persisted,
+      // leaking historical/duplicate values into the variant name (issue #599).
+      variations.forEach((v, idx) => {
+        if (v.attributes?.some((a) => a.attributeTypeId === typeId)) {
+          onUpdate(
+            idx,
+            "attributes",
+            v.attributes.filter((a) => a.attributeTypeId !== typeId),
+          );
+        }
+      });
     }
   };
 

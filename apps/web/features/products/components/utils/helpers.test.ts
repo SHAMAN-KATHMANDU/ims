@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProductVariationForm } from "../types";
 import {
+  pruneVariationAttributes,
   variationWithAddedPhoto,
   variationWithPrimaryPhoto,
   variationWithRemovedPhoto,
@@ -113,5 +114,44 @@ describe("variationWithPrimaryPhoto", () => {
     const before = JSON.stringify(existingVariation);
     variationWithPrimaryPhoto(existingVariation, 1);
     expect(JSON.stringify(existingVariation)).toBe(before);
+  });
+});
+
+// Regression guard for #599: re-creating/deselecting an attribute type after
+// renaming a product used to leave orphan attribute rows on each variation, so
+// the variant name leaked historical/duplicate values like "Grey / M / M / Black".
+describe("pruneVariationAttributes", () => {
+  it("drops attributes whose type is no longer selected", () => {
+    const attrs = [
+      { attributeTypeId: "color-old", attributeValueId: "grey" },
+      { attributeTypeId: "size", attributeValueId: "m" },
+      { attributeTypeId: "color", attributeValueId: "black" },
+    ];
+    const result = pruneVariationAttributes(attrs, ["size", "color"]);
+    expect(result).toEqual([
+      { attributeTypeId: "size", attributeValueId: "m" },
+      { attributeTypeId: "color", attributeValueId: "black" },
+    ]);
+  });
+
+  it("collapses duplicate entries for the same type, keeping the last", () => {
+    const attrs = [
+      { attributeTypeId: "size", attributeValueId: "s" },
+      { attributeTypeId: "size", attributeValueId: "m" },
+    ];
+    const result = pruneVariationAttributes(attrs, ["size"]);
+    expect(result).toEqual([
+      { attributeTypeId: "size", attributeValueId: "m" },
+    ]);
+  });
+
+  it("passes attributes through untouched when no types are selected", () => {
+    const attrs = [{ attributeTypeId: "size", attributeValueId: "m" }];
+    expect(pruneVariationAttributes(attrs, [])).toEqual(attrs);
+  });
+
+  it("returns an empty array for missing/empty attributes", () => {
+    expect(pruneVariationAttributes(undefined, ["size"])).toEqual([]);
+    expect(pruneVariationAttributes([], ["size"])).toEqual([]);
   });
 });

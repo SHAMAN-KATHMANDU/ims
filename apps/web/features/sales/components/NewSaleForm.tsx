@@ -597,15 +597,17 @@ export function NewSaleForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memberCheck?.isMember, itemsFields.length]);
 
-  // Fetch backend preview total (includes discount + promo) so payment matches exactly
-  useEffect(() => {
-    if (!locationId || itemsFields.length === 0) {
-      setPreviewResult(null);
-      return;
-    }
-    let cancelled = false;
-    setPreviewLoading(true);
-    previewSale({
+  // Build the backend-preview request from the current cart. `itemsFields`
+  // (useFieldArray) hands back a NEW array reference on every render, so this
+  // cannot live in the preview effect's dep array directly — it would fire on
+  // every render and, because the effect calls setPreviewLoading/setPreviewResult,
+  // each fire re-renders and re-fires in a perpetual loop. That continuous
+  // recompute is what rebuilds the manual-discount inputs mid-keystroke and
+  // drops focus (issue #597). Instead we derive a stable string signature and
+  // debounce it: identical cart content → identical string → no effect re-run,
+  // and the preview only fires once typing settles.
+  const previewRequest = useMemo(
+    () => ({
       locationId,
       memberPhone: memberPhone.trim() || undefined,
       memberName: memberName.trim() || undefined,
@@ -632,7 +634,24 @@ export function NewSaleForm({
             : undefined,
         discountReason: i.discountReason?.trim() || undefined,
       })),
-    })
+    }),
+    [locationId, memberPhone, memberName, contactId, itemsFields],
+  );
+  const previewSignature = JSON.stringify(previewRequest);
+  const debouncedPreviewSignature = useDebounce(previewSignature, 1000);
+
+  // Fetch backend preview total (includes discount + promo) so payment matches exactly
+  useEffect(() => {
+    const request = JSON.parse(
+      debouncedPreviewSignature,
+    ) as typeof previewRequest;
+    if (!request.locationId || request.items.length === 0) {
+      setPreviewResult(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    previewSale(request)
       .then((res) => {
         if (!cancelled) setPreviewResult(res);
       })
@@ -645,14 +664,7 @@ export function NewSaleForm({
     return () => {
       cancelled = true;
     };
-  }, [
-    locationId,
-    memberPhone,
-    memberName,
-    contactId,
-    itemsFields,
-    itemsFields.length,
-  ]);
+  }, [debouncedPreviewSignature]);
 
   // Inventory is already filtered by API when we pass search; no client-side filtering needed
   const filteredInventory = useMemo<LocationInventoryItem[]>(

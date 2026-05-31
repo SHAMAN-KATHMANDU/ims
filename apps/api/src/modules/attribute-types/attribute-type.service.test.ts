@@ -10,6 +10,11 @@ const mockFindMany = vi.fn();
 const mockFindManyPaginated = vi.fn();
 const mockFindFirst = vi.fn();
 const mockUpdate = vi.fn();
+const mockFindValueById = vi.fn();
+const mockCountValueUsage = vi.fn();
+const mockGetValueUsage = vi.fn();
+const mockDeleteValue = vi.fn();
+const mockReassignAndDeleteValue = vi.fn();
 
 const mockRepo = {
   findByCode: mockFindByCode,
@@ -19,6 +24,11 @@ const mockRepo = {
   findManyPaginated: mockFindManyPaginated,
   findFirst: mockFindFirst,
   update: mockUpdate,
+  findValueById: mockFindValueById,
+  countValueUsage: mockCountValueUsage,
+  getValueUsage: mockGetValueUsage,
+  deleteValue: mockDeleteValue,
+  reassignAndDeleteValue: mockReassignAndDeleteValue,
 } as unknown as AttributeTypeRepository;
 
 const attributeTypeService = new AttributeTypeService(mockRepo);
@@ -89,6 +99,104 @@ describe("AttributeTypeService", () => {
       await expect(
         attributeTypeService.getById("missing", "t1"),
       ).rejects.toMatchObject(createError("Attribute type not found", 404));
+    });
+  });
+
+  describe("deleteValue", () => {
+    const type = { id: "at1", name: "Color" };
+    const value = { id: "av1", value: "Red", attributeTypeId: "at1" };
+
+    it("deletes directly when the value is not in use", async () => {
+      mockFindFirst.mockResolvedValue(type);
+      mockFindValueById.mockResolvedValue(value);
+      mockCountValueUsage.mockResolvedValue(0);
+
+      await attributeTypeService.deleteValue("at1", "av1", "t1");
+
+      expect(mockDeleteValue).toHaveBeenCalledWith("av1");
+      expect(mockReassignAndDeleteValue).not.toHaveBeenCalled();
+    });
+
+    it("throws 409 VALUE_IN_USE when in use and no reassignment target given", async () => {
+      mockFindFirst.mockResolvedValue(type);
+      mockFindValueById.mockResolvedValue(value);
+      mockCountValueUsage.mockResolvedValue(3);
+
+      await expect(
+        attributeTypeService.deleteValue("at1", "av1", "t1"),
+      ).rejects.toMatchObject({ statusCode: 409, code: "VALUE_IN_USE" });
+
+      expect(mockDeleteValue).not.toHaveBeenCalled();
+      expect(mockReassignAndDeleteValue).not.toHaveBeenCalled();
+    });
+
+    it("reassigns then deletes when a valid target is supplied", async () => {
+      mockFindFirst.mockResolvedValue(type);
+      mockFindValueById
+        .mockResolvedValueOnce(value) // the value being deleted
+        .mockResolvedValueOnce({ id: "av2", value: "Blue" }); // reassign target
+      mockCountValueUsage.mockResolvedValue(3);
+
+      await attributeTypeService.deleteValue("at1", "av1", "t1", "av2");
+
+      expect(mockReassignAndDeleteValue).toHaveBeenCalledWith("av1", "av2");
+      expect(mockDeleteValue).not.toHaveBeenCalled();
+    });
+
+    it("throws 400 when reassigning a value to itself", async () => {
+      mockFindFirst.mockResolvedValue(type);
+      mockFindValueById.mockResolvedValue(value);
+      mockCountValueUsage.mockResolvedValue(3);
+
+      await expect(
+        attributeTypeService.deleteValue("at1", "av1", "t1", "av1"),
+      ).rejects.toMatchObject(
+        createError("Cannot reassign a value to itself", 400),
+      );
+
+      expect(mockReassignAndDeleteValue).not.toHaveBeenCalled();
+    });
+
+    it("throws 404 when the reassignment target does not exist", async () => {
+      mockFindFirst.mockResolvedValue(type);
+      mockFindValueById
+        .mockResolvedValueOnce(value)
+        .mockResolvedValueOnce(null); // target not found
+      mockCountValueUsage.mockResolvedValue(3);
+
+      await expect(
+        attributeTypeService.deleteValue("at1", "av1", "t1", "missing"),
+      ).rejects.toMatchObject({ statusCode: 404 });
+
+      expect(mockReassignAndDeleteValue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getValueUsage", () => {
+    it("returns usage counts for an existing value", async () => {
+      mockFindFirst.mockResolvedValue({ id: "at1", name: "Color" });
+      mockFindValueById.mockResolvedValue({ id: "av1", value: "Red" });
+      mockGetValueUsage.mockResolvedValue({
+        variationCount: 4,
+        productCount: 2,
+      });
+
+      const result = await attributeTypeService.getValueUsage(
+        "at1",
+        "av1",
+        "t1",
+      );
+
+      expect(result).toEqual({ variationCount: 4, productCount: 2 });
+    });
+
+    it("throws 404 when the value is not found", async () => {
+      mockFindFirst.mockResolvedValue({ id: "at1", name: "Color" });
+      mockFindValueById.mockResolvedValue(null);
+
+      await expect(
+        attributeTypeService.getValueUsage("at1", "missing", "t1"),
+      ).rejects.toMatchObject(createError("Attribute value not found", 404));
     });
   });
 });

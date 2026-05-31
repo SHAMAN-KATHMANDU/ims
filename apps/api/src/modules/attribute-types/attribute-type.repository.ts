@@ -179,6 +179,37 @@ export class AttributeTypeRepository {
   async deleteValue(valueId: string) {
     return prisma.attributeValue.delete({ where: { id: valueId } });
   }
+
+  /** How many product variations are currently assigned this value. */
+  async countValueUsage(valueId: string) {
+    return prisma.productVariationAttribute.count({
+      where: { attributeValueId: valueId },
+    });
+  }
+
+  /** Usage summary for a value: affected variation and distinct product counts. */
+  async getValueUsage(valueId: string) {
+    const rows = await prisma.productVariationAttribute.findMany({
+      where: { attributeValueId: valueId },
+      select: { variation: { select: { productId: true } } },
+    });
+    const productIds = new Set(rows.map((r) => r.variation.productId));
+    return { variationCount: rows.length, productCount: productIds.size };
+  }
+
+  /**
+   * Move every variation using `fromValueId` to `toValueId`, then delete the
+   * source value — atomically, so variations are never left orphaned.
+   */
+  async reassignAndDeleteValue(fromValueId: string, toValueId: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.productVariationAttribute.updateMany({
+        where: { attributeValueId: fromValueId },
+        data: { attributeValueId: toValueId },
+      });
+      await tx.attributeValue.delete({ where: { id: fromValueId } });
+    });
+  }
 }
 
 export default new AttributeTypeRepository();

@@ -191,7 +191,7 @@ export class AttributeTypeService {
     return this.repo.updateValue(valueId, updateData);
   }
 
-  async deleteValue(typeId: string, valueId: string, tenantId: string) {
+  async getValueUsage(typeId: string, valueId: string, tenantId: string) {
     const attributeType = await this.repo.findFirst(tenantId, typeId);
     if (!attributeType) {
       throw createError("Attribute type not found", 404);
@@ -202,7 +202,62 @@ export class AttributeTypeService {
       throw createError("Attribute value not found", 404);
     }
 
-    await this.repo.deleteValue(valueId);
+    return this.repo.getValueUsage(valueId);
+  }
+
+  /**
+   * Delete a value. If it is assigned to any product variation, deletion is
+   * blocked unless `reassignToValueId` is supplied — in which case the affected
+   * variations are moved to that value first (atomically), so a value in use is
+   * never silently orphaned.
+   */
+  async deleteValue(
+    typeId: string,
+    valueId: string,
+    tenantId: string,
+    reassignToValueId?: string,
+  ) {
+    const attributeType = await this.repo.findFirst(tenantId, typeId);
+    if (!attributeType) {
+      throw createError("Attribute type not found", 404);
+    }
+
+    const existingValue = await this.repo.findValueById(typeId, valueId);
+    if (!existingValue) {
+      throw createError("Attribute value not found", 404);
+    }
+
+    const usageCount = await this.repo.countValueUsage(valueId);
+
+    if (usageCount === 0) {
+      await this.repo.deleteValue(valueId);
+      return;
+    }
+
+    // Value is in use — reassignment is mandatory.
+    if (!reassignToValueId) {
+      const err = createError(
+        `This value is used by ${usageCount} product variation(s). Choose another value to reassign them to before deleting.`,
+        409,
+      );
+      (err as unknown as Record<string, unknown>).code = "VALUE_IN_USE";
+      (err as unknown as Record<string, unknown>).usageCount = usageCount;
+      throw err;
+    }
+
+    if (reassignToValueId === valueId) {
+      throw createError("Cannot reassign a value to itself", 400);
+    }
+
+    const target = await this.repo.findValueById(typeId, reassignToValueId);
+    if (!target) {
+      throw createError(
+        "Reassignment target value not found in this attribute type",
+        404,
+      );
+    }
+
+    await this.repo.reassignAndDeleteValue(valueId, reassignToValueId);
   }
 }
 
