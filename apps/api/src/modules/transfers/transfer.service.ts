@@ -428,21 +428,12 @@ export class TransferService {
     }
 
     for (const item of transfer.items) {
-      const destRow = await this.repo.findInventory(
-        transfer.toLocationId,
-        item.variationId,
-        item.subVariationId ?? null,
-      );
-      if (destRow) {
-        await this.repo.incrementInventory(destRow.id, item.quantity);
-      } else {
-        await this.repo.createInventory({
-          locationId: transfer.toLocationId,
-          variationId: item.variationId,
-          subVariationId: item.subVariationId ?? null,
-          quantity: item.quantity,
-        });
-      }
+      await this.repo.upsertIncrementInventory({
+        locationId: transfer.toLocationId,
+        variationId: item.variationId,
+        subVariationId: item.subVariationId ?? null,
+        quantity: item.quantity,
+      });
     }
 
     const updated = await this.repo.updateTransferStatus(id, {
@@ -507,21 +498,12 @@ export class TransferService {
       const transferWithItems = await this.repo.findTransferWithItems(id);
       if (transferWithItems) {
         for (const item of transferWithItems.items) {
-          const sourceRow = await this.repo.findInventory(
-            transfer.fromLocationId,
-            item.variationId,
-            item.subVariationId ?? null,
-          );
-          if (sourceRow) {
-            await this.repo.incrementInventory(sourceRow.id, item.quantity);
-          } else {
-            await this.repo.createInventory({
-              locationId: transfer.fromLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId ?? null,
-              quantity: item.quantity,
-            });
-          }
+          await this.repo.upsertIncrementInventory({
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? null,
+            quantity: item.quantity,
+          });
         }
       }
     }

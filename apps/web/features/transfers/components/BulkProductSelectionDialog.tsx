@@ -106,17 +106,23 @@ export function BulkProductSelectionDialog({
     })
       .then((response) => {
         const withStock = response.data.filter((inv) => inv.quantity > 0);
-        if (page === 1) {
-          setProducts(withStock);
-        } else {
-          setProducts((prev) => {
-            const existing = new Set(prev.map(getDedupeKey));
-            return [
-              ...prev,
-              ...withStock.filter((p) => !existing.has(getDedupeKey(p))),
-            ];
-          });
-        }
+        // De-dupe by variation + sub-variation. The same variation can have
+        // more than one location_inventory row (the unique constraint treats a
+        // NULL sub_variation_id as distinct), and those rows would otherwise
+        // render as identical-looking duplicates. Applies to page 1 too, not
+        // just when appending subsequent pages.
+        setProducts((prev) => {
+          const base = page === 1 ? [] : prev;
+          const seen = new Set(base.map(getDedupeKey));
+          const merged = [...base];
+          for (const item of withStock) {
+            const key = getDedupeKey(item);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push(item);
+          }
+          return merged;
+        });
         if (response.pagination) {
           setTotalItems(response.pagination.totalItems);
           setHasNextPage(response.pagination.hasNextPage);

@@ -619,8 +619,7 @@ describe("ProductService", () => {
     const mockUpdateProductRepo = vi.fn();
     const mockSetVariationAttributes = vi.fn();
     const mockFindAllLocInvForVariation = vi.fn();
-    const mockFindLocInv = vi.fn();
-    const mockSetLocInvQuantity = vi.fn();
+    const mockUpsertSetLocInv = vi.fn();
 
     const wireRepo = (repo: ProductRepository) => {
       Object.assign(repo, {
@@ -636,8 +635,7 @@ describe("ProductService", () => {
         updateProduct: mockUpdateProductRepo,
         setVariationAttributes: mockSetVariationAttributes,
         findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
-        findLocationInventory: mockFindLocInv,
-        setLocationInventoryQuantity: mockSetLocInvQuantity,
+        upsertSetLocationInventory: mockUpsertSetLocInv,
       });
     };
 
@@ -692,7 +690,6 @@ describe("ProductService", () => {
     });
 
     it("still honours the locationId path: write LocationInventory then recompute aggregate", async () => {
-      mockFindLocInv.mockResolvedValue({ id: "li-1" });
       mockFindAllLocInvForVariation.mockResolvedValue([
         { quantity: 9 },
         { quantity: 7 },
@@ -706,7 +703,13 @@ describe("ProductService", () => {
         baseCtx,
       );
 
-      expect(mockSetLocInvQuantity).toHaveBeenCalledWith("li-1", 9);
+      // Atomic upsert (set) replaces the old find + set/create pair.
+      expect(mockUpsertSetLocInv).toHaveBeenCalledWith({
+        locationId: "loc-1",
+        variationId: "var-1",
+        subVariationId: null,
+        quantity: 9,
+      });
       expect(mockUpdateProductVariation).toHaveBeenCalledWith(
         "var-1",
         expect.objectContaining({ stockQuantity: 16 }),
@@ -728,9 +731,8 @@ describe("ProductService", () => {
     const mockUpdateProductVariation = vi.fn();
     const mockUpdateProductRepo = vi.fn();
     const mockFindAllLocInvForVariation = vi.fn();
-    const mockFindLocInv = vi.fn();
-    const mockSetLocInvQuantity = vi.fn();
-    const mockCreateLocInv = vi.fn();
+    const mockUpsertSetLocInv = vi.fn();
+    const mockUpsertIncrementLocInv = vi.fn();
     const mockDeleteNullSubInv = vi.fn();
 
     const wireRepo = (repo: ProductRepository) => {
@@ -746,9 +748,8 @@ describe("ProductService", () => {
         updateProductVariation: mockUpdateProductVariation,
         updateProduct: mockUpdateProductRepo,
         findAllLocationInventoryForVariation: mockFindAllLocInvForVariation,
-        findLocationInventory: mockFindLocInv,
-        setLocationInventoryQuantity: mockSetLocInvQuantity,
-        createLocationInventory: mockCreateLocInv,
+        upsertSetLocationInventory: mockUpsertSetLocInv,
+        upsertIncrementLocationInventory: mockUpsertIncrementLocInv,
         deleteNullSubVariationInventory: mockDeleteNullSubInv,
       });
     };
@@ -809,9 +810,8 @@ describe("ProductService", () => {
       );
 
       // The phantom variation-level write must never happen.
-      expect(mockFindLocInv).not.toHaveBeenCalled();
-      expect(mockCreateLocInv).not.toHaveBeenCalled();
-      expect(mockSetLocInvQuantity).not.toHaveBeenCalled();
+      expect(mockUpsertSetLocInv).not.toHaveBeenCalled();
+      expect(mockUpsertIncrementLocInv).not.toHaveBeenCalled();
       // Any pre-existing phantom null-sub row is cleaned up.
       expect(mockDeleteNullSubInv).toHaveBeenCalledWith("var-1");
       // Aggregate stays the true sum of per-sub rows (24), not 24 + 5.

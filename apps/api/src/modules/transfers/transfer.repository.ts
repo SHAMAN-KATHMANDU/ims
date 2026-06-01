@@ -258,21 +258,29 @@ export class TransferRepository {
     });
   }
 
-  async incrementInventory(inventoryId: string, quantity: number) {
-    return prisma.locationInventory.update({
-      where: { id: inventoryId },
-      data: { quantity: { increment: quantity } },
-    });
-  }
-
-  async createInventory(data: {
+  /**
+   * Atomically add `quantity` to a location's inventory, creating the row if it
+   * doesn't exist. Replaces the non-atomic findInventory + create/increment
+   * pattern that could leave duplicate rows behind (the unique index now uses
+   * NULLS NOT DISTINCT so the conflict target works even when subVariationId
+   * is null).
+   */
+  async upsertIncrementInventory(data: {
     locationId: string;
     variationId: string;
     subVariationId: string | null;
     quantity: number;
   }) {
-    return prisma.locationInventory.create({
-      data,
+    return prisma.locationInventory.upsert({
+      where: {
+        locationId_variationId_subVariationId: {
+          locationId: data.locationId,
+          variationId: data.variationId,
+          subVariationId: data.subVariationId,
+        },
+      },
+      update: { quantity: { increment: data.quantity } },
+      create: data,
     });
   }
 
