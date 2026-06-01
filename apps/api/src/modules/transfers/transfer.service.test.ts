@@ -17,8 +17,7 @@ const mockFindTransferLogs = vi.fn();
 const mockCountTransfers = vi.fn();
 const mockFindManyTransfers = vi.fn();
 const mockDecrementInventory = vi.fn();
-const mockIncrementInventory = vi.fn();
-const mockCreateInventory = vi.fn();
+const mockUpsertIncrementInventory = vi.fn();
 
 const mockRepo: TransferRepository = {
   findLocationById: mockFindLocationById,
@@ -35,8 +34,7 @@ const mockRepo: TransferRepository = {
   countTransfers: mockCountTransfers,
   findManyTransfers: mockFindManyTransfers,
   decrementInventory: mockDecrementInventory,
-  incrementInventory: mockIncrementInventory,
-  createInventory: mockCreateInventory,
+  upsertIncrementInventory: mockUpsertIncrementInventory,
 } as unknown as TransferRepository;
 
 vi.mock("@/modules/audit/audit.repository", () => ({

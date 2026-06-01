@@ -393,19 +393,11 @@ export class ProductService {
 
         if (hasSubVariants) {
           for (const sub of subVariations) {
-            const existing = await this.repo.findLocationInventory(
-              warehouseLocation.id,
-              v.id,
-              sub.id,
-            );
-            if (!existing) {
-              await this.repo.createLocationInventory({
-                locationId: warehouseLocation.id,
-                variationId: v.id,
-                subVariationId: sub.id,
-                quantity: 0,
-              });
-            }
+            await this.repo.upsertSeedLocationInventory({
+              locationId: warehouseLocation.id,
+              variationId: v.id,
+              subVariationId: sub.id,
+            });
           }
         } else {
           const qty = Math.max(
@@ -413,21 +405,12 @@ export class ProductService {
             Number((v as { stockQuantity?: number }).stockQuantity) || 0,
           );
           if (qty === 0) continue;
-          const existing = await this.repo.findLocationInventory(
-            warehouseLocation.id,
-            v.id,
-            null,
-          );
-          if (existing) {
-            await this.repo.updateLocationInventoryQuantity(existing.id, qty);
-          } else {
-            await this.repo.createLocationInventory({
-              locationId: warehouseLocation.id,
-              variationId: v.id,
-              subVariationId: null,
-              quantity: qty,
-            });
-          }
+          await this.repo.upsertIncrementLocationInventory({
+            locationId: warehouseLocation.id,
+            variationId: v.id,
+            subVariationId: null,
+            quantity: qty,
+          });
         }
       }
     }
@@ -835,24 +818,12 @@ export class ProductService {
               payload.stockQuantity !== undefined &&
               payload.stockQuantity !== null
             ) {
-              const locInv = await this.repo.findLocationInventory(
-                payload.locationId,
-                existing.id,
-                null,
-              );
-              if (locInv) {
-                await this.repo.setLocationInventoryQuantity(
-                  locInv.id,
-                  payload.stockQuantity,
-                );
-              } else {
-                await this.repo.createLocationInventory({
-                  locationId: payload.locationId,
-                  variationId: existing.id,
-                  subVariationId: null,
-                  quantity: payload.stockQuantity,
-                });
-              }
+              await this.repo.upsertSetLocationInventory({
+                locationId: payload.locationId,
+                variationId: existing.id,
+                subVariationId: null,
+                quantity: payload.stockQuantity,
+              });
             } else if (hasSubVariations) {
               // Self-heal: a sub-variation variation must never carry a
               // null-sub (variation-level) row. Drop any left behind by the
@@ -959,37 +930,20 @@ export class ProductService {
             : [];
           if (subVariations.length > 0) {
             for (const sub of subVariations) {
-              const existing = await this.repo.findLocationInventory(
-                warehouseLocation.id,
-                newVariation.id,
-                sub.id,
-              );
-              if (!existing) {
-                await this.repo.createLocationInventory({
-                  locationId: warehouseLocation.id,
-                  variationId: newVariation.id,
-                  subVariationId: sub.id,
-                  quantity: 0,
-                });
-              }
+              await this.repo.upsertSeedLocationInventory({
+                locationId: warehouseLocation.id,
+                variationId: newVariation.id,
+                subVariationId: sub.id,
+              });
             }
           } else {
             const qty = Math.max(0, Number(variation.stockQuantity) || 0);
-            const existing = await this.repo.findLocationInventory(
-              warehouseLocation.id,
-              newVariation.id,
-              null,
-            );
-            if (existing) {
-              await this.repo.updateLocationInventoryQuantity(existing.id, qty);
-            } else {
-              await this.repo.createLocationInventory({
-                locationId: warehouseLocation.id,
-                variationId: newVariation.id,
-                subVariationId: null,
-                quantity: qty,
-              });
-            }
+            await this.repo.upsertIncrementLocationInventory({
+              locationId: warehouseLocation.id,
+              variationId: newVariation.id,
+              subVariationId: null,
+              quantity: qty,
+            });
           }
         }
       }

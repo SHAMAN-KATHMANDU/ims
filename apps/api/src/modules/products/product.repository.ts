@@ -323,40 +323,66 @@ export class ProductRepository {
   }
 
   // LocationInventory
-  findLocationInventory(
-    locationId: string,
-    variationId: string,
-    subVariationId: string | null,
-  ) {
-    return prisma.locationInventory.findFirst({
-      where: {
-        locationId,
-        variationId,
-        subVariationId,
-      },
-    });
-  }
-
-  createLocationInventory(data: {
+  /**
+   * Atomic inventory upserts. They replace the previous non-atomic
+   * find + create/update pattern that could leave duplicate rows behind. The
+   * unique index now uses NULLS NOT DISTINCT, so the (location, variation,
+   * sub-variation) conflict target works even when subVariationId is null.
+   */
+  upsertSetLocationInventory(data: {
     locationId: string;
     variationId: string;
     subVariationId: string | null;
     quantity: number;
   }) {
-    return prisma.locationInventory.create({ data });
-  }
-
-  updateLocationInventoryQuantity(id: string, quantityIncrement: number) {
-    return prisma.locationInventory.update({
-      where: { id },
-      data: { quantity: { increment: quantityIncrement } },
+    return prisma.locationInventory.upsert({
+      where: {
+        locationId_variationId_subVariationId: {
+          locationId: data.locationId,
+          variationId: data.variationId,
+          subVariationId: data.subVariationId,
+        },
+      },
+      update: { quantity: data.quantity },
+      create: data,
     });
   }
 
-  setLocationInventoryQuantity(id: string, quantity: number) {
-    return prisma.locationInventory.update({
-      where: { id },
-      data: { quantity },
+  upsertIncrementLocationInventory(data: {
+    locationId: string;
+    variationId: string;
+    subVariationId: string | null;
+    quantity: number;
+  }) {
+    return prisma.locationInventory.upsert({
+      where: {
+        locationId_variationId_subVariationId: {
+          locationId: data.locationId,
+          variationId: data.variationId,
+          subVariationId: data.subVariationId,
+        },
+      },
+      update: { quantity: { increment: data.quantity } },
+      create: data,
+    });
+  }
+
+  /** Seed an inventory row at quantity 0 only if one doesn't already exist. */
+  upsertSeedLocationInventory(data: {
+    locationId: string;
+    variationId: string;
+    subVariationId: string | null;
+  }) {
+    return prisma.locationInventory.upsert({
+      where: {
+        locationId_variationId_subVariationId: {
+          locationId: data.locationId,
+          variationId: data.variationId,
+          subVariationId: data.subVariationId,
+        },
+      },
+      update: {},
+      create: { ...data, quantity: 0 },
     });
   }
 

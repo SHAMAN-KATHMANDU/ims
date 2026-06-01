@@ -379,24 +379,12 @@ export async function processProductBulkRows(
           }
           const qty = variationRow.quantity ?? 0;
           if (qty > 0) {
-            const existingInv = await productRepository.findLocationInventory(
-              variationRow.locationId,
-              variation.id,
-              null,
-            );
-            if (existingInv) {
-              await productRepository.setLocationInventoryQuantity(
-                existingInv.id,
-                qty,
-              );
-            } else {
-              await productRepository.createLocationInventory({
-                locationId: variationRow.locationId,
-                variationId: variation.id,
-                subVariationId: null,
-                quantity: qty,
-              });
-            }
+            await productRepository.upsertSetLocationInventory({
+              locationId: variationRow.locationId,
+              variationId: variation.id,
+              subVariationId: null,
+              quantity: qty,
+            });
             inventoryUpserted++;
           }
         }
@@ -533,24 +521,12 @@ export async function processProductBulkRows(
         if (!variation || !variationRow) continue;
         const qty = variationRow.quantity ?? 0;
         if (qty === 0) continue;
-        const existingInv = await productRepository.findLocationInventory(
-          variationRow.locationId,
-          variation.id,
-          null,
-        );
-        if (existingInv) {
-          await productRepository.setLocationInventoryQuantity(
-            existingInv.id,
-            qty,
-          );
-        } else {
-          await productRepository.createLocationInventory({
-            locationId: variationRow.locationId,
-            variationId: variation.id,
-            subVariationId: null,
-            quantity: qty,
-          });
-        }
+        await productRepository.upsertSetLocationInventory({
+          locationId: variationRow.locationId,
+          variationId: variation.id,
+          subVariationId: null,
+          quantity: qty,
+        });
       }
 
       created.push({

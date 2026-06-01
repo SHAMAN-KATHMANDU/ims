@@ -1446,6 +1446,11 @@ model LocationInventory {
   variation    ProductVariation     @relation(fields: [variationId], references: [id], onDelete: Cascade)
   subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Cascade)
 
+  // NOTE: the underlying unique index is recreated with NULLS NOT DISTINCT in
+  // migration 20260601120000 so duplicate rows can't exist when subVariationId
+  // is NULL. Prisma 5.22 can't express NULLS NOT DISTINCT here, but it also
+  // doesn't treat it as drift (migrate diff reports no change), so the raw
+  // migration is the source of truth for that clause.
   @@unique([locationId, variationId, subVariationId])
   @@map("location_inventory")
 }
