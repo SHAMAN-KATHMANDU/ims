@@ -26,7 +26,10 @@ import {
 } from "@/components/ui/dialog";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useContactTags, useCreateContactTag } from "../../hooks/use-contacts";
-import { useCrmSources } from "../../hooks/use-crm-settings";
+import {
+  useCrmSources,
+  useCrmJourneyTypes,
+} from "../../hooks/use-crm-settings";
 import { useToast } from "@/hooks/useToast";
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@repo/shared";
@@ -68,6 +71,7 @@ const schema = z
     companyId: z.string().optional(),
     tagIds: z.array(z.string()).optional(),
     source: z.string().optional(),
+    journeyType: z.string().optional(),
     gender: genderEnum.optional().nullable(),
   })
   .merge(ContactProfileFieldsSchema.omit({ gender: true }));
@@ -95,6 +99,9 @@ export function ContactForm({
   const { data: sourcesData } = useCrmSources(undefined, {
     enabled: pipelinesEnabled,
   });
+  const { data: journeyTypesData } = useCrmJourneyTypes(undefined, {
+    enabled: pipelinesEnabled,
+  });
   const companies = companiesData?.companies ?? [];
   const [optimisticTags, setOptimisticTags] = useState<
     Array<{ id: string; name: string }>
@@ -113,6 +120,7 @@ export function ContactForm({
   ];
   const tags = displayTags;
   const sources = sourcesData?.sources ?? [];
+  const journeyTypes = journeyTypesData?.journeyTypes ?? [];
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
 
@@ -132,6 +140,7 @@ export function ContactForm({
       companyId: defaultValues?.companyId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
       source: defaultValues?.source ?? "",
+      journeyType: defaultValues?.journeyType ?? "",
     },
   });
 
@@ -153,6 +162,7 @@ export function ContactForm({
       companyId: defaultValues.companyId ?? "",
       tagIds: defaultValues.tagIds ?? [],
       source: defaultValues.source ?? "",
+      journeyType: defaultValues.journeyType ?? "",
     });
   }, [defaultValues, form]);
 
@@ -207,6 +217,9 @@ export function ContactForm({
             companyId: values.companyId || undefined,
             tagIds: values.tagIds,
             source: pipelinesEnabled ? values.source || undefined : undefined,
+            journeyType: pipelinesEnabled
+              ? values.journeyType || undefined
+              : undefined,
           });
         } catch (error) {
           form.setError("root", {
@@ -349,6 +362,31 @@ export function ContactForm({
               {sources.map((s) => (
                 <SelectItem key={s.id} value={s.name}>
                   {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {pipelinesEnabled && (
+        <div>
+          <Label htmlFor="contact-journey-type-select">Journey Type</Label>
+          <Select
+            value={form.watch("journeyType") || "__none__"}
+            onValueChange={(v) =>
+              form.setValue("journeyType", v === "__none__" ? undefined : v)
+            }
+          >
+            <SelectTrigger id="contact-journey-type-select" className="mt-1">
+              <SelectValue placeholder="Select journey type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">
+                None (auto from active deal)
+              </SelectItem>
+              {journeyTypes.map((jt) => (
+                <SelectItem key={jt.id} value={jt.name}>
+                  {jt.name}
                 </SelectItem>
               ))}
             </SelectContent>

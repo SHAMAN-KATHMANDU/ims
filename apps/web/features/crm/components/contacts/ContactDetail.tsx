@@ -320,7 +320,10 @@ export function ContactDetail({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const activeJourneyType = getActiveJourneyType(contact.deals);
+  const activeJourneyType = getActiveJourneyType(
+    contact.deals,
+    contact.journeyType,
+  );
   const fullName = [contact.firstName, contact.lastName]
     .filter(Boolean)
     .join(" ");
