@@ -9,6 +9,9 @@ import {
   updateCrmSource,
   deleteCrmSource,
   getCrmJourneyTypes,
+  createCrmJourneyType,
+  updateCrmJourneyType,
+  deleteCrmJourneyType,
   type GetCrmSourcesParams,
   type GetCrmJourneyTypesParams,
 } from "../services/crm-settings.service";
@@ -111,5 +114,69 @@ export function useCrmJourneyTypes(
     queryKey: crmSettingsKeys.journeyTypes(params),
     queryFn: () => getCrmJourneyTypes(params),
     enabled: pipelinesEnabled && (options?.enabled ?? true),
+  });
+}
+
+export function useCreateCrmJourneyType() {
+  const qc = useQueryClient();
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
+  return useMutation({
+    mutationKey: [...crmSettingsKeys.all, "journey-types", "create"],
+    mutationFn: (name: string) => createCrmJourneyType(name),
+    onMutate: async () => {
+      if (!pipelinesEnabled) {
+        throw new Error("CRM pipeline settings are disabled");
+      }
+    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "journey-types"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
+  });
+}
+
+export function useUpdateCrmJourneyType() {
+  const qc = useQueryClient();
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
+  return useMutation({
+    mutationKey: [...crmSettingsKeys.all, "journey-types", "update"],
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateCrmJourneyType(id, name),
+    onMutate: async () => {
+      if (!pipelinesEnabled) {
+        throw new Error("CRM pipeline settings are disabled");
+      }
+    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "journey-types"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
+  });
+}
+
+export function useDeleteCrmJourneyType() {
+  const qc = useQueryClient();
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
+  return useMutation({
+    mutationKey: [...crmSettingsKeys.all, "journey-types", "delete"],
+    mutationFn: (id: string) => deleteCrmJourneyType(id),
+    onMutate: async () => {
+      if (!pipelinesEnabled) {
+        throw new Error("CRM pipeline settings are disabled");
+      }
+    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "journey-types"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
   });
 }
