@@ -78,7 +78,14 @@ export class InventoryRepository {
       sortOrder = "asc",
     } = params;
 
-    const variationWhere: Prisma.ProductVariationWhereInput = {};
+    const variationWhere: Prisma.ProductVariationWhereInput = {
+      // Always exclude inventory for soft-deleted products. A product that was
+      // deleted and recreated (same ims_code) would otherwise surface both
+      // copies' variations here — the cause of duplicate-looking rows in the
+      // transfer "Add Multiple Products" picker. Matches the deletedAt: null
+      // convention used across the product queries.
+      product: { deletedAt: null },
+    };
 
     if (search) {
       variationWhere.OR = [
@@ -103,9 +110,7 @@ export class InventoryRepository {
     const where: Prisma.LocationInventoryWhereInput = {
       locationId,
       quantity: { gt: 0 },
-      ...(Object.keys(variationWhere).length > 0
-        ? { variation: variationWhere }
-        : {}),
+      variation: variationWhere,
     };
 
     const skip = (page - 1) * limit;
