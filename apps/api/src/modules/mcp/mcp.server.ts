@@ -46,6 +46,12 @@ import { registerDealsUpdateMcpTools } from "@/modules/deals/mcp-tools-update";
 import { registerTasksUpdateMcpTools } from "@/modules/tasks/mcp-tools-update";
 import { registerLeadsUpdateMcpTools } from "@/modules/leads/mcp-tools-update";
 import { registerActivitiesReadMcpTools } from "@/modules/activities/mcp-tools-read";
+import { registerCompaniesUpdateMcpTools } from "@/modules/companies/mcp-tools-update";
+import { registerMembersUpdateMcpTools } from "@/modules/members/mcp-tools-update";
+import { registerVendorsUpdateMcpTools } from "@/modules/vendors/mcp-tools-update";
+import { registerLocationsUpdateMcpTools } from "@/modules/locations/mcp-tools-update";
+import { registerCategoriesUpdateMcpTools } from "@/modules/categories/mcp-tools-update";
+import { registerPipelinesReadMcpTools } from "@/modules/pipelines/mcp-tools-read";
 
 export interface McpAuthContext {
   tenantId: string;
@@ -121,6 +127,12 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerTasksUpdateMcpTools(server, authCtx);
   registerLeadsUpdateMcpTools(server, authCtx);
   registerActivitiesReadMcpTools(server, authCtx);
+  registerCompaniesUpdateMcpTools(server, authCtx);
+  registerMembersUpdateMcpTools(server, authCtx);
+  registerVendorsUpdateMcpTools(server, authCtx);
+  registerLocationsUpdateMcpTools(server, authCtx);
+  registerCategoriesUpdateMcpTools(server, authCtx);
+  registerPipelinesReadMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 
