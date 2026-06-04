@@ -42,6 +42,7 @@ import { registerMediaCreateMcpTools } from "@/modules/media/mcp-tools-create";
 // Update / read / lookup tools (CRU additions).
 import { registerCrmSettingsMcpTools } from "@/modules/crm-settings/mcp-tools";
 import { registerContactsUpdateMcpTools } from "@/modules/contacts/mcp-tools-update";
+import { registerDealsUpdateMcpTools } from "@/modules/deals/mcp-tools-update";
 
 export interface McpAuthContext {
   tenantId: string;
@@ -113,6 +114,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   // Update / read / lookup tools (CRU additions).
   registerCrmSettingsMcpTools(server, authCtx);
   registerContactsUpdateMcpTools(server, authCtx);
+  registerDealsUpdateMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 

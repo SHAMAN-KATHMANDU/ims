@@ -5,6 +5,10 @@ import { runWithIncreasedWorkflowNestingDepth } from "@/modules/workflows/workfl
 import pipelineTransitionService from "@/modules/pipeline-transitions/pipeline-transition.service";
 import { logger } from "@/config/logger";
 import automationService from "@/modules/automation/automation.service";
+import {
+  assertEntityExists,
+  resolvePipelineStage,
+} from "@/shared/validation/reference-validator";
 import dealRepository from "./deal.repository";
 import {
   createSaleWithItemsAndDeductInventory,
@@ -43,6 +47,55 @@ function generateSaleCode(): string {
 }
 
 export class DealService {
+  /**
+   * Validate FK references for a create/update so the website, REST API, and
+   * MCP all reject invalid references identically. Only checks fields present
+   * on `data` (supports partial update). Pipeline + stage are validated
+   * separately (findDefaultPipeline / resolvePipelineStage).
+   */
+  private async validateReferences(
+    tenantId: string,
+    data: {
+      contactId?: string | null;
+      memberId?: string | null;
+      companyId?: string | null;
+      assignedToId?: string | null;
+    },
+  ): Promise<void> {
+    if (data.contactId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "contact",
+        id: data.contactId,
+        fieldName: "contactId",
+      });
+    }
+    if (data.memberId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "member",
+        id: data.memberId,
+        fieldName: "memberId",
+      });
+    }
+    if (data.companyId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "company",
+        id: data.companyId,
+        fieldName: "companyId",
+      });
+    }
+    if (data.assignedToId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "user",
+        id: data.assignedToId,
+        fieldName: "assignedToId",
+      });
+    }
+  }
+
   private async syncContactJourneyTypeToPipeline(
     tenantId: string,
     contactId: string | null | undefined,
@@ -60,6 +113,8 @@ export class DealService {
   }
 
   async create(tenantId: string, data: CreateDealDto, userId: string) {
+    await this.validateReferences(tenantId, data);
+
     const pipeline = await dealRepository.findDefaultPipeline(
       tenantId,
       data.pipelineId,
@@ -76,7 +131,15 @@ export class DealService {
       Array.isArray(stages) && stages.length > 0
         ? stages[0].name
         : "Qualification";
-    const stage = data.stage || firstStage;
+    // Validate a caller-supplied stage against the pipeline (rejects unknown
+    // stages with the list of valid ones); default to the first stage.
+    const stage = data.stage
+      ? await resolvePipelineStage({
+          tenantId,
+          pipelineId: pipeline.id,
+          stageName: data.stage,
+        })
+      : firstStage;
 
     const deal = await dealRepository.create(
       tenantId,
@@ -157,9 +220,21 @@ export class DealService {
   ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
+    await this.validateReferences(tenantId, data);
 
     const { editReason, ...updates } = data;
     const patch: UpdateDealDto = { ...updates };
+
+    // Validate a caller-supplied stage against the target pipeline up-front so
+    // unknown stages are rejected with the valid options (the cross-pipeline
+    // branch below re-resolves harmlessly on the now-canonical name).
+    if (patch.stage) {
+      patch.stage = await resolvePipelineStage({
+        tenantId,
+        pipelineId: patch.pipelineId ?? existing.pipelineId,
+        stageName: patch.stage,
+      });
+    }
 
     if (
       (patch.status === "WON" || patch.status === "LOST") &&

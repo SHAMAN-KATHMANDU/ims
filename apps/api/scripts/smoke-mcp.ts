@@ -79,6 +79,8 @@ async function main() {
     "list_crm_journey_types",
     "create_crm_journey_type",
     "update_crm_journey_type",
+    "get_deal",
+    "update_deal",
   ];
   const expectedPrompts = [
     "daily_sales_analysis",
