@@ -9,6 +9,12 @@ const mockDeleteSource = vi.fn();
 const mockFindAllSources = vi.fn();
 const mockCountSources = vi.fn();
 const mockFindDerivedJourneyTypes = vi.fn();
+const mockFindAllJourneyTypes = vi.fn();
+const mockFindJourneyTypeByName = vi.fn();
+const mockFindJourneyTypeById = vi.fn();
+const mockCreateJourneyType = vi.fn();
+const mockUpdateJourneyType = vi.fn();
+const mockDeleteJourneyType = vi.fn();
 
 vi.mock("./crm-settings.repository", () => ({
   default: {
@@ -19,8 +25,15 @@ vi.mock("./crm-settings.repository", () => ({
     deleteSource: (...args: unknown[]) => mockDeleteSource(...args),
     findAllSources: (...args: unknown[]) => mockFindAllSources(...args),
     countSources: (...args: unknown[]) => mockCountSources(...args),
-    findJourneyTypeById: vi.fn(),
-    updateJourneyType: vi.fn(),
+    findAllJourneyTypes: (...args: unknown[]) =>
+      mockFindAllJourneyTypes(...args),
+    findJourneyTypeByName: (...args: unknown[]) =>
+      mockFindJourneyTypeByName(...args),
+    findJourneyTypeById: (...args: unknown[]) =>
+      mockFindJourneyTypeById(...args),
+    createJourneyType: (...args: unknown[]) => mockCreateJourneyType(...args),
+    updateJourneyType: (...args: unknown[]) => mockUpdateJourneyType(...args),
+    deleteJourneyType: (...args: unknown[]) => mockDeleteJourneyType(...args),
   },
 }));
 
@@ -41,6 +54,7 @@ describe("CrmSettingsService", () => {
     mockFindAllSources.mockResolvedValue([]);
     mockCountSources.mockResolvedValue(0);
     mockFindDerivedJourneyTypes.mockResolvedValue([]);
+    mockFindAllJourneyTypes.mockResolvedValue([]);
   });
 
   describe("getAllSources", () => {
@@ -63,64 +77,85 @@ describe("CrmSettingsService", () => {
   });
 
   describe("getAllJourneyTypes", () => {
-    it("returns journey types derived from active deal context", async () => {
+    it("merges user-managed journey types with pipeline-derived labels", async () => {
+      mockFindAllJourneyTypes.mockResolvedValue([
+        { id: "jt1", name: "VIP Onboarding", createdAt: "2026-03-01" },
+      ]);
       mockFindDerivedJourneyTypes.mockResolvedValue([
         { id: "p1:Lead", name: "New Sales(Lead)", createdAt: "2026-04-01" },
-        {
-          id: "p2:Follow-up Due",
-          name: "Remarketing(Follow-up Due)",
-          createdAt: "2026-04-01",
-        },
       ]);
 
       const result = await crmSettingsService.getAllJourneyTypes("t1");
 
+      expect(mockFindAllJourneyTypes).toHaveBeenCalledWith("t1");
       expect(mockFindDerivedJourneyTypes).toHaveBeenCalledWith("t1", undefined);
-      expect(result).toEqual({
-        journeyTypes: [
-          { id: "p1:Lead", name: "New Sales(Lead)", createdAt: "2026-04-01" },
-          {
-            id: "p2:Follow-up Due",
-            name: "Remarketing(Follow-up Due)",
-            createdAt: "2026-04-01",
-          },
-        ],
-      });
+      // Sorted by name: "New Sales(Lead)" < "VIP Onboarding"
+      expect(result.journeyTypes.map((j) => j.name)).toEqual([
+        "New Sales(Lead)",
+        "VIP Onboarding",
+      ]);
+    });
+
+    it("prefers the stored entry over a derived one with the same name", async () => {
+      mockFindAllJourneyTypes.mockResolvedValue([
+        { id: "jt1", name: "New Sales(Lead)", createdAt: "2026-03-01" },
+      ]);
+      mockFindDerivedJourneyTypes.mockResolvedValue([
+        { id: "p1:Lead", name: "New Sales(Lead)", createdAt: "2026-04-01" },
+      ]);
+
+      const result = await crmSettingsService.getAllJourneyTypes("t1");
+
+      expect(result.journeyTypes).toEqual([
+        { id: "jt1", name: "New Sales(Lead)", createdAt: "2026-03-01" },
+      ]);
     });
   });
 
-  describe("journey type mutations", () => {
-    it("rejects manual create attempts", async () => {
-      await expect(
-        crmSettingsService.createJourneyType("t1", { name: "Manual" }),
-      ).rejects.toMatchObject(
-        createError(
-          "Journey types are derived from the contact's active deal pipeline and stage and cannot be edited manually.",
-          403,
-        ),
-      );
+  describe("journey type mutations (now editable)", () => {
+    it("creates a journey type when the name is available", async () => {
+      mockFindJourneyTypeByName.mockResolvedValue(null);
+      mockCreateJourneyType.mockResolvedValue({
+        id: "jt1",
+        name: "VIP",
+        createdAt: "2026-04-01",
+      });
+
+      const result = await crmSettingsService.createJourneyType("t1", {
+        name: "VIP",
+      });
+
+      expect(result.name).toBe("VIP");
+      expect(mockCreateJourneyType).toHaveBeenCalledWith("t1", { name: "VIP" });
     });
 
-    it("rejects manual update attempts", async () => {
+    it("throws 409 when the journey type name already exists", async () => {
+      mockFindJourneyTypeByName.mockResolvedValue({ id: "jt0", name: "VIP" });
+
       await expect(
-        crmSettingsService.updateJourneyType("t1", "jt1", { name: "Manual" }),
+        crmSettingsService.createJourneyType("t1", { name: "VIP" }),
       ).rejects.toMatchObject(
-        createError(
-          "Journey types are derived from the contact's active deal pipeline and stage and cannot be edited manually.",
-          403,
-        ),
+        createError("A journey type with this name already exists", 409),
       );
+      expect(mockCreateJourneyType).not.toHaveBeenCalled();
     });
 
-    it("rejects manual delete attempts", async () => {
+    it("throws 404 when updating a missing journey type", async () => {
+      mockFindJourneyTypeById.mockResolvedValue(null);
+
       await expect(
-        crmSettingsService.deleteJourneyType("t1", "jt1"),
-      ).rejects.toMatchObject(
-        createError(
-          "Journey types are derived from the contact's active deal pipeline and stage and cannot be edited manually.",
-          403,
-        ),
-      );
+        crmSettingsService.updateJourneyType("t1", "missing", { name: "X" }),
+      ).rejects.toMatchObject(createError("Journey type not found", 404));
+      expect(mockUpdateJourneyType).not.toHaveBeenCalled();
+    });
+
+    it("throws 404 when deleting a missing journey type", async () => {
+      mockFindJourneyTypeById.mockResolvedValue(null);
+
+      await expect(
+        crmSettingsService.deleteJourneyType("t1", "missing"),
+      ).rejects.toMatchObject(createError("Journey type not found", 404));
+      expect(mockDeleteJourneyType).not.toHaveBeenCalled();
     });
   });
 

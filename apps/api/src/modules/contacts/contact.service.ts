@@ -7,7 +7,12 @@ import { normalizePhoneOptional } from "@/utils/phone";
 import { createError } from "@/middlewares/errorHandler";
 import { createPaginationResult } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import {
+  assertEntityExists,
+  resolveNamedLookup,
+} from "@/shared/validation/reference-validator";
 import contactRepository from "./contact.repository";
+import crmSettingsRepository from "../crm-settings/crm-settings.repository";
 import type {
   CreateContactDto,
   UpdateContactDto,
@@ -33,7 +38,17 @@ function deriveJourneyTypeFromDeals(
   return `${pipelineName}(${stageName})`;
 }
 
-function withDerivedJourneyType<
+/**
+ * Resolve the journey type a client should see.
+ *
+ * Journey type is now an editable lookup, but pipelines still produce derived
+ * "Pipeline(Stage)" labels. Precedence: a stored value WINS when it is a valid
+ * CrmJourneyType for the tenant (it was validated on write, so `validNames`
+ * confirms it), otherwise fall back to the value derived from active deals.
+ * Stale stored values that aren't real journey types (e.g. legacy pipeline
+ * names) are ignored so they don't surface as bogus journey types.
+ */
+function withResolvedJourneyType<
   T extends {
     deals?: Array<{
       stage?: string | null;
@@ -42,7 +57,11 @@ function withDerivedJourneyType<
     }>;
     journeyType?: string | null;
   },
->(contact: T): T {
+>(contact: T, validNames: Set<string>): T {
+  const stored = contact.journeyType?.trim();
+  if (stored && validNames.has(stored.toLowerCase())) {
+    return { ...contact, journeyType: stored };
+  }
   return {
     ...contact,
     journeyType: deriveJourneyTypeFromDeals(contact.deals),
@@ -50,7 +69,71 @@ function withDerivedJourneyType<
 }
 
 export class ContactService {
+  /** Names of valid journey types for the tenant (lower-cased) for read precedence. */
+  private async getValidJourneyTypeNames(
+    tenantId: string,
+  ): Promise<Set<string>> {
+    const rows = await crmSettingsRepository.findAllJourneyTypes(tenantId);
+    return new Set(rows.map((r) => r.name.toLowerCase()));
+  }
+
+  /**
+   * Validate and normalize reference fields before a create/update so the
+   * website, REST API, and MCP all reject invalid references identically.
+   * - FK ids (companyId, memberId, tagIds) must exist for the tenant.
+   * - Named lookups (source, journeyType) must match an existing CrmSource /
+   *   CrmJourneyType; the canonical (correctly-cased) name is written back.
+   *   A missing lookup throws a ReferenceError carrying the valid options.
+   * Only fields actually present on `data` are checked (supports partial update).
+   */
+  private async validateReferences(
+    tenantId: string,
+    data: Partial<CreateContactDto>,
+  ): Promise<void> {
+    if (data.companyId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "company",
+        id: data.companyId,
+        fieldName: "companyId",
+      });
+    }
+    if (data.memberId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "member",
+        id: data.memberId,
+        fieldName: "memberId",
+      });
+    }
+    if (Array.isArray(data.tagIds) && data.tagIds.length > 0) {
+      await assertEntityExists({
+        tenantId,
+        kind: "contact_tag",
+        id: data.tagIds,
+        fieldName: "tagIds",
+      });
+    }
+    if (data.source) {
+      const resolved = await resolveNamedLookup({
+        tenantId,
+        kind: "crm_source",
+        value: data.source,
+      });
+      data.source = resolved.name;
+    }
+    if (data.journeyType) {
+      const resolved = await resolveNamedLookup({
+        tenantId,
+        kind: "crm_journey_type",
+        value: data.journeyType,
+      });
+      data.journeyType = resolved.name;
+    }
+  }
+
   async create(tenantId: string, data: CreateContactDto, userId: string) {
+    await this.validateReferences(tenantId, data);
     let phoneNormalized: string | null = null;
     if (data.phone && String(data.phone).trim()) {
       try {
@@ -102,22 +185,29 @@ export class ContactService {
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
-    const result = await contactRepository.findAll(tenantId, query);
+    const [result, validNames] = await Promise.all([
+      contactRepository.findAll(tenantId, query),
+      this.getValidJourneyTypeNames(tenantId),
+    ]);
     return {
       ...result,
-      data: result.data.map((contact) => withDerivedJourneyType(contact)),
+      data: result.data.map((contact) =>
+        withResolvedJourneyType(contact, validNames),
+      ),
     };
   }
 
   async getById(tenantId: string, id: string) {
     const contact = await contactRepository.findById(tenantId, id);
     if (!contact) throw createError("Contact not found", 404);
-    return withDerivedJourneyType(contact);
+    const validNames = await this.getValidJourneyTypeNames(tenantId);
+    return withResolvedJourneyType(contact, validNames);
   }
 
   async update(tenantId: string, id: string, data: UpdateContactDto) {
     const existing = await contactRepository.findById(tenantId, id);
     if (!existing) throw createError("Contact not found", 404);
+    await this.validateReferences(tenantId, data);
 
     let phoneNormalized: string | null | undefined = undefined;
     if (data.phone !== undefined) {

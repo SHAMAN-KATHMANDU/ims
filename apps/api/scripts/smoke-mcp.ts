@@ -69,6 +69,16 @@ async function main() {
     "crm_staff_inactive",
     "crm_staff_conversion",
     "report_render",
+    // CRU additions: contact read/update + CRM lookup list/create/update.
+    "get_contact",
+    "update_contact",
+    "list_contact_tags",
+    "list_crm_sources",
+    "create_crm_source",
+    "update_crm_source",
+    "list_crm_journey_types",
+    "create_crm_journey_type",
+    "update_crm_journey_type",
   ];
   const expectedPrompts = [
     "daily_sales_analysis",
