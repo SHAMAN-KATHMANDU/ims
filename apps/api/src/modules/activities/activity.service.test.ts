@@ -27,6 +27,9 @@ vi.mock("./activity.repository", () => ({
   },
 }));
 
+vi.mock("@/shared/validation/reference-validator", () => ({
+  assertEntityExists: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
 }));

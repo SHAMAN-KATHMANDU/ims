@@ -43,6 +43,9 @@ import { registerMediaCreateMcpTools } from "@/modules/media/mcp-tools-create";
 import { registerCrmSettingsMcpTools } from "@/modules/crm-settings/mcp-tools";
 import { registerContactsUpdateMcpTools } from "@/modules/contacts/mcp-tools-update";
 import { registerDealsUpdateMcpTools } from "@/modules/deals/mcp-tools-update";
+import { registerTasksUpdateMcpTools } from "@/modules/tasks/mcp-tools-update";
+import { registerLeadsUpdateMcpTools } from "@/modules/leads/mcp-tools-update";
+import { registerActivitiesReadMcpTools } from "@/modules/activities/mcp-tools-read";
 
 export interface McpAuthContext {
   tenantId: string;
@@ -115,6 +118,9 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerCrmSettingsMcpTools(server, authCtx);
   registerContactsUpdateMcpTools(server, authCtx);
   registerDealsUpdateMcpTools(server, authCtx);
+  registerTasksUpdateMcpTools(server, authCtx);
+  registerLeadsUpdateMcpTools(server, authCtx);
+  registerActivitiesReadMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 

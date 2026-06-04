@@ -81,6 +81,14 @@ async function main() {
     "update_crm_journey_type",
     "get_deal",
     "update_deal",
+    "list_tasks",
+    "get_task",
+    "update_task",
+    "list_leads",
+    "get_lead",
+    "update_lead",
+    "get_activity",
+    "list_activities",
   ];
   const expectedPrompts = [
     "daily_sales_analysis",

@@ -3,11 +3,37 @@ import { logger } from "@/config/logger";
 import automationService from "@/modules/automation/automation.service";
 import { createPaginationResult } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { assertEntityExists } from "@/shared/validation/reference-validator";
 import activityRepository from "./activity.repository";
 import type { CreateActivityDto } from "./activity.schema";
 
 export class ActivityService {
   async create(tenantId: string, userId: string, data: CreateActivityDto) {
+    if (data.contactId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "contact",
+        id: data.contactId,
+        fieldName: "contactId",
+      });
+    }
+    if (data.memberId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "member",
+        id: data.memberId,
+        fieldName: "memberId",
+      });
+    }
+    if (data.dealId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "deal",
+        id: data.dealId,
+        fieldName: "dealId",
+      });
+    }
+
     const activityAt = data.activityAt ? new Date(data.activityAt) : new Date();
 
     const activity = await activityRepository.create({
