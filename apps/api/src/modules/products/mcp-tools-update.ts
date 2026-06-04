@@ -14,6 +14,7 @@ import {
   mcpJsonResponse,
 } from "@/modules/mcp/mcp.rbac";
 import productService from "@/modules/products/product.service";
+import { listNamedLookup } from "@/shared/validation/reference-validator";
 import {
   UpdateProductSchema,
   type UpdateProductDto,
@@ -41,6 +42,47 @@ export function registerProductsUpdateMcpTools(
     if (!product || product.tenantId !== authCtx.tenantId) return null;
     return product;
   }
+
+  registerTool(
+    "list_discount_types",
+    {
+      title: "List discount types",
+      description:
+        "[LOOKUP-READ] List the tenant's discount types. Use to find a valid discount type before assigning one to a product.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        await assertMcpPermission(authCtx, "INVENTORY.PRODUCTS.VIEW");
+        const options = await listNamedLookup(
+          authCtx.tenantId,
+          "discount_type",
+        );
+        return mcpJsonResponse(options);
+      } catch (err) {
+        return mcpErrorResponse(err, "list_discount_types failed");
+      }
+    },
+  );
+
+  registerTool(
+    "list_product_tags",
+    {
+      title: "List product tags",
+      description:
+        "[LOOKUP-READ] List the tenant's product tags. Use to find valid tag ids before tagging a product.",
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        await assertMcpPermission(authCtx, "INVENTORY.PRODUCTS.VIEW");
+        const options = await listNamedLookup(authCtx.tenantId, "product_tag");
+        return mcpJsonResponse(options);
+      } catch (err) {
+        return mcpErrorResponse(err, "list_product_tags failed");
+      }
+    },
+  );
 
   registerTool(
     "get_product",

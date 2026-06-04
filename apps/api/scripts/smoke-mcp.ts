@@ -128,6 +128,8 @@ async function main() {
     "update_automation_definition",
     "list_media_assets",
     "update_media_asset",
+    "list_discount_types",
+    "list_product_tags",
   ];
   const expectedPrompts = [
     "daily_sales_analysis",
