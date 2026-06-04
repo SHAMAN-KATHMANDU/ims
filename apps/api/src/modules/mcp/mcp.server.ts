@@ -55,6 +55,10 @@ import { registerPipelinesReadMcpTools } from "@/modules/pipelines/mcp-tools-rea
 import { registerProductsUpdateMcpTools } from "@/modules/products/mcp-tools-update";
 import { registerPromosUpdateMcpTools } from "@/modules/promos/mcp-tools-update";
 import { registerBundlesUpdateMcpTools } from "@/modules/bundles/mcp-tools-update";
+import { registerBlogUpdateMcpTools } from "@/modules/blog/mcp-tools-update";
+import { registerPagesUpdateMcpTools } from "@/modules/pages/mcp-tools-update";
+import { registerAutomationUpdateMcpTools } from "@/modules/automation/mcp-tools-update";
+import { registerMediaUpdateMcpTools } from "@/modules/media/mcp-tools-update";
 
 export interface McpAuthContext {
   tenantId: string;
@@ -139,6 +143,10 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerProductsUpdateMcpTools(server, authCtx);
   registerPromosUpdateMcpTools(server, authCtx);
   registerBundlesUpdateMcpTools(server, authCtx);
+  registerBlogUpdateMcpTools(server, authCtx);
+  registerPagesUpdateMcpTools(server, authCtx);
+  registerAutomationUpdateMcpTools(server, authCtx);
+  registerMediaUpdateMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 
