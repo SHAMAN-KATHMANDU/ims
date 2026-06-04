@@ -106,6 +106,14 @@ async function main() {
     "update_category",
     "list_pipelines",
     "get_pipeline",
+    "get_product",
+    "update_product",
+    "list_promos",
+    "get_promo",
+    "update_promo",
+    "list_bundles",
+    "get_bundle",
+    "update_bundle",
   ];
   const expectedPrompts = [
     "daily_sales_analysis",
