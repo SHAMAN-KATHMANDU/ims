@@ -9,8 +9,6 @@ import type {
 } from "./crm-settings.schema";
 
 const SALES_SOURCE_NAME = "Sales";
-const JOURNEY_TYPE_MANAGED_BY_PIPELINES_ERROR =
-  "Journey types are derived from the contact's active deal pipeline and stage and cannot be edited manually.";
 
 export class CrmSettingsService {
   private async ensureDefaultSalesSource(tenantId: string): Promise<void> {
@@ -85,6 +83,13 @@ export class CrmSettingsService {
 
   // ── Journey Types ─────────────────────────────────────────────────────────
 
+  /**
+   * Journey types are now a first-class editable lookup (CrmJourneyType table),
+   * but pipelines still auto-produce "Pipeline(Stage)" labels for the contacts
+   * filter. We MERGE the two — user-managed entries (with real ids) plus the
+   * pipeline-derived labels — deduped by name (case-insensitive), so both the
+   * settings UI and the contacts filter keep working.
+   */
   async getAllJourneyTypes(
     tenantId: string,
     query?: { page?: number; limit?: number; search?: string },
@@ -92,12 +97,46 @@ export class CrmSettingsService {
     const page = query?.page;
     const limit = query?.limit;
     const search = query?.search;
-    const contactRepository = (await import("../contacts/contact.repository"))
-      .default;
-    const journeyTypes = await contactRepository.findDerivedJourneyTypes(
+
+    const [stored, contactRepository] = await Promise.all([
+      crmSettingsRepository.findAllJourneyTypes(tenantId),
+      import("../contacts/contact.repository").then((m) => m.default),
+    ]);
+    const derived = await contactRepository.findDerivedJourneyTypes(
       tenantId,
       search,
     );
+
+    const normalizedSearch = search?.trim().toLowerCase();
+    const byName = new Map<
+      string,
+      { id: string; name: string; createdAt: string }
+    >();
+    for (const jt of stored) {
+      if (
+        normalizedSearch &&
+        !jt.name.toLowerCase().includes(normalizedSearch)
+      ) {
+        continue;
+      }
+      byName.set(jt.name.toLowerCase(), {
+        id: jt.id,
+        name: jt.name,
+        createdAt:
+          jt.createdAt instanceof Date
+            ? jt.createdAt.toISOString()
+            : jt.createdAt,
+      });
+    }
+    for (const jt of derived) {
+      if (!byName.has(jt.name.toLowerCase())) {
+        byName.set(jt.name.toLowerCase(), jt);
+      }
+    }
+    const journeyTypes = Array.from(byName.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
     const usePagination =
       page != null && limit != null && page > 0 && limit > 0;
     if (!usePagination) {
@@ -113,9 +152,13 @@ export class CrmSettingsService {
   }
 
   async createJourneyType(tenantId: string, data: CreateCrmJourneyTypeDto) {
-    void tenantId;
-    void data;
-    throw createError(JOURNEY_TYPE_MANAGED_BY_PIPELINES_ERROR, 403);
+    const existing = await crmSettingsRepository.findJourneyTypeByName(
+      tenantId,
+      data.name.trim(),
+    );
+    if (existing)
+      throw createError("A journey type with this name already exists", 409);
+    return crmSettingsRepository.createJourneyType(tenantId, data);
   }
 
   async updateJourneyType(
@@ -123,16 +166,28 @@ export class CrmSettingsService {
     id: string,
     data: UpdateCrmJourneyTypeDto,
   ) {
-    void tenantId;
-    void id;
-    void data;
-    throw createError(JOURNEY_TYPE_MANAGED_BY_PIPELINES_ERROR, 403);
+    const existing = await crmSettingsRepository.findJourneyTypeById(
+      tenantId,
+      id,
+    );
+    if (!existing) throw createError("Journey type not found", 404);
+    const nameConflict = await crmSettingsRepository.findJourneyTypeByName(
+      tenantId,
+      data.name.trim(),
+    );
+    if (nameConflict && nameConflict.id !== id) {
+      throw createError("A journey type with this name already exists", 409);
+    }
+    return crmSettingsRepository.updateJourneyType(id, data);
   }
 
   async deleteJourneyType(tenantId: string, id: string) {
-    void tenantId;
-    void id;
-    throw createError(JOURNEY_TYPE_MANAGED_BY_PIPELINES_ERROR, 403);
+    const existing = await crmSettingsRepository.findJourneyTypeById(
+      tenantId,
+      id,
+    );
+    if (!existing) throw createError("Journey type not found", 404);
+    await crmSettingsRepository.deleteJourneyType(id);
   }
 
   async syncJourneyTypeToPipelineRename(

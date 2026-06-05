@@ -2,11 +2,60 @@ import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { logger } from "@/config/logger";
 import automationService from "@/modules/automation/automation.service";
+import { assertEntityExists } from "@/shared/validation/reference-validator";
 import taskRepository from "./task.repository";
 import type { CreateTaskDto, UpdateTaskDto } from "./task.schema";
 
 export class TaskService {
+  /** Validate FK references (only fields present on `data`) for create/update. */
+  private async validateReferences(
+    tenantId: string,
+    data: Partial<CreateTaskDto>,
+  ): Promise<void> {
+    if (data.contactId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "contact",
+        id: data.contactId,
+        fieldName: "contactId",
+      });
+    }
+    if (data.memberId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "member",
+        id: data.memberId,
+        fieldName: "memberId",
+      });
+    }
+    if (data.dealId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "deal",
+        id: data.dealId,
+        fieldName: "dealId",
+      });
+    }
+    if (data.companyId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "company",
+        id: data.companyId,
+        fieldName: "companyId",
+      });
+    }
+    if (data.assignedToId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "user",
+        id: data.assignedToId,
+        fieldName: "assignedToId",
+      });
+    }
+  }
+
   async create(tenantId: string, data: CreateTaskDto, userId: string) {
+    await this.validateReferences(tenantId, data);
     const task = await taskRepository.create(tenantId, data, userId);
 
     if (task.dueDate && task.assignedToId) {
@@ -66,6 +115,7 @@ export class TaskService {
   async update(tenantId: string, id: string, data: UpdateTaskDto) {
     const existing = await taskRepository.findById(tenantId, id);
     if (!existing) throw createError("Task not found", 404);
+    await this.validateReferences(tenantId, data);
     return taskRepository.update(id, data, existing);
   }
 

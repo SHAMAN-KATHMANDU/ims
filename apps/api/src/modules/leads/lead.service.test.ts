@@ -42,6 +42,12 @@ vi.mock("./lead.repository", () => ({
   },
 }));
 
+vi.mock("@/shared/validation/reference-validator", () => ({
+  assertEntityExists: vi.fn().mockResolvedValue(undefined),
+  resolveNamedLookup: (args: { value: string }) =>
+    Promise.resolve({ id: args.value, name: args.value }),
+}));
+
 vi.mock("@/config/logger", () => ({
   logger: {
     error: vi.fn(),

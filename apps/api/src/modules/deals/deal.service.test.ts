@@ -7,6 +7,12 @@ const mockFindById = vi.fn();
 const mockCreateDealRevision = vi.fn();
 const mockExecuteWorkflowRules = vi.fn().mockResolvedValue(undefined);
 
+vi.mock("@/shared/validation/reference-validator", () => ({
+  assertEntityExists: vi.fn().mockResolvedValue(undefined),
+  resolvePipelineStage: (args: { stageName: string }) =>
+    Promise.resolve(args.stageName),
+}));
+
 vi.mock("@/modules/workflows/workflow.engine", () => ({
   executeWorkflowRules: (...args: unknown[]) =>
     mockExecuteWorkflowRules(...args),

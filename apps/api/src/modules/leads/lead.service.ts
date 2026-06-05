@@ -3,6 +3,10 @@ import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { logger } from "@/config/logger";
 import automationService from "@/modules/automation/automation.service";
 import { normalizePhoneOptional } from "@/utils/phone";
+import {
+  assertEntityExists,
+  resolveNamedLookup,
+} from "@/shared/validation/reference-validator";
 import leadRepository from "./lead.repository";
 import type {
   CreateLeadDto,
@@ -12,7 +16,35 @@ import type {
 } from "./lead.schema";
 
 export class LeadService {
+  /**
+   * Validate + normalize references for create/update: assignedToId (a user)
+   * must exist; source must be a valid CrmSource (canonical name written back,
+   * rejected with options otherwise). Mutates `data.source` in place.
+   */
+  private async validateReferences(
+    tenantId: string,
+    data: { assignedToId?: string | null; source?: string | null },
+  ): Promise<void> {
+    if (data.assignedToId) {
+      await assertEntityExists({
+        tenantId,
+        kind: "user",
+        id: data.assignedToId,
+        fieldName: "assignedToId",
+      });
+    }
+    if (data.source) {
+      const resolved = await resolveNamedLookup({
+        tenantId,
+        kind: "crm_source",
+        value: data.source,
+      });
+      data.source = resolved.name;
+    }
+  }
+
   async create(tenantId: string, userId: string, data: CreateLeadDto) {
+    await this.validateReferences(tenantId, data);
     const assigneeId = data.assignedToId ?? userId;
 
     let phoneNormalized: string | null = null;
@@ -85,6 +117,7 @@ export class LeadService {
   async update(tenantId: string, id: string, data: UpdateLeadDto) {
     const existing = await leadRepository.findById(tenantId, id);
     if (!existing) throw createError("Lead not found", 404);
+    await this.validateReferences(tenantId, data);
 
     let phoneNormalized: string | null | undefined = undefined;
     if (data.phone !== undefined) {
@@ -282,6 +315,12 @@ export class LeadService {
   ) {
     const existing = await leadRepository.findById(tenantId, id);
     if (!existing) throw createError("Lead not found", 404);
+    await assertEntityExists({
+      tenantId,
+      kind: "user",
+      id: data.assignedToId,
+      fieldName: "assignedToId",
+    });
 
     const lead = await leadRepository.update(id, {
       assignedToId: data.assignedToId,

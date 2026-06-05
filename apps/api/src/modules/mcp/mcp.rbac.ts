@@ -22,18 +22,30 @@ export async function assertMcpPermission(
 }
 
 export function mcpErrorResponse(err: unknown, fallbackMessage: string) {
-  const e = err as { statusCode?: number; message?: string };
+  const e = err as {
+    statusCode?: number;
+    message?: string;
+    code?: string;
+    referenceKind?: string;
+    availableOptions?: Array<{ id: string; name: string }>;
+  };
+  // Reference-validation failures carry the list of valid options so the AI can
+  // surface them to the user, then create the missing lookup (after confirming)
+  // and retry — see shared/validation/reference-validator.ts.
+  const body: Record<string, unknown> = {
+    error: e?.message ?? fallbackMessage,
+    statusCode: e?.statusCode ?? 500,
+  };
+  if (e?.code) body.code = e.code;
+  if (e?.referenceKind) body.referenceKind = e.referenceKind;
+  if (Array.isArray(e?.availableOptions)) {
+    body.availableOptions = e.availableOptions.map((o) => o.name);
+    body.hint =
+      "Pick one of availableOptions, or confirm with the user and call the matching create_* tool to add the value, then retry.";
+  }
   return {
     isError: true as const,
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify({
-          error: e?.message ?? fallbackMessage,
-          statusCode: e?.statusCode ?? 500,
-        }),
-      },
-    ],
+    content: [{ type: "text" as const, text: JSON.stringify(body) }],
   };
 }
 

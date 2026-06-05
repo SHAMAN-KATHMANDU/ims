@@ -33,6 +33,12 @@ vi.mock("./contact.repository", () => ({
   },
 }));
 
+vi.mock("../crm-settings/crm-settings.repository", () => ({
+  default: {
+    findAllJourneyTypes: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 vi.mock("@/utils/phone", () => ({
   normalizePhoneOptional: (phone: string) => {
     if (phone === "invalid") throw new Error("Invalid phone");

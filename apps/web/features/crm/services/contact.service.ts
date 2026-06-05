@@ -141,6 +141,7 @@ export interface CreateContactData {
   memberId?: string;
   tagIds?: string[];
   source?: string;
+  journeyType?: string;
 }
 
 export interface UpdateContactData {
@@ -154,6 +155,7 @@ export interface UpdateContactData {
   memberId?: string;
   tagIds?: string[];
   source?: string;
+  journeyType?: string;
 }
 
 export async function getContacts(

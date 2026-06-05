@@ -59,6 +59,7 @@ import {
   GitBranch,
   Tag,
   Tags,
+  Route,
   GripVertical,
   Search,
 } from "lucide-react";
@@ -79,6 +80,10 @@ import {
   useCreateCrmSource,
   useUpdateCrmSource,
   useDeleteCrmSource,
+  useCrmJourneyTypes,
+  useCreateCrmJourneyType,
+  useUpdateCrmJourneyType,
+  useDeleteCrmJourneyType,
 } from "../../hooks/use-crm-settings";
 import {
   useContactTags,
@@ -89,7 +94,10 @@ import {
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import type { PipelineStage } from "../../services/pipeline.service";
-import type { CrmSource } from "../../services/crm-settings.service";
+import type {
+  CrmSource,
+  CrmJourneyType,
+} from "../../services/crm-settings.service";
 
 export default function CrmSettingsPage() {
   const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
@@ -117,6 +125,12 @@ export default function CrmSettingsPage() {
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
+            <TabsTrigger value="journey-types" className="gap-2 shrink-0">
+              <Route className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Journey </span>Types
+            </TabsTrigger>
+          )}
+          {pipelinesTabEnabled && (
             <TabsTrigger value="tags" className="gap-2 shrink-0">
               <Tags className="h-4 w-4" aria-hidden="true" />
               Tags
@@ -132,6 +146,11 @@ export default function CrmSettingsPage() {
         {pipelinesTabEnabled && (
           <TabsContent value="sources">
             <SourceSettings />
+          </TabsContent>
+        )}
+        {pipelinesTabEnabled && (
+          <TabsContent value="journey-types">
+            <JourneyTypeSettings />
           </TabsContent>
         )}
         <TabsContent value="tags">
@@ -1288,6 +1307,76 @@ function SourceSettings() {
           onPageSizeChange={(size) => {
             setSourcePageSize(size);
             setSourcePage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Journey Type Settings ───────────────────────────────────────────────────
+
+function JourneyTypeSettings() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
+  const [jtPage, setJtPage] = useState(DEFAULT_PAGE);
+  const [jtPageSize, setJtPageSize] = useState(DEFAULT_SOURCE_PAGE_SIZE);
+  const [jtSearch, setJtSearch] = useState("");
+  const debouncedJtSearch = useDebounce(jtSearch, 300);
+  const { data, isLoading } = useCrmJourneyTypes(
+    {
+      page: jtPage,
+      limit: jtPageSize,
+      search: debouncedJtSearch || undefined,
+    },
+    { enabled: pipelinesTabEnabled },
+  );
+  const createMutation = useCreateCrmJourneyType();
+  const updateMutation = useUpdateCrmJourneyType();
+  const deleteMutation = useDeleteCrmJourneyType();
+
+  const journeyTypes: CrmJourneyType[] = data?.journeyTypes ?? [];
+  const jtPagination = data?.pagination;
+
+  return (
+    <>
+      <ListSettings
+        title="Journey Types"
+        description="Stages a contact moves through. Pipeline-derived types appear automatically; add your own to set a contact's journey type directly."
+        emptyIcon={<Route className="h-8 w-8" aria-hidden="true" />}
+        emptyText="No journey types yet. Add one to get started."
+        placeholder="e.g. Prospect, Onboarding, Active, Churned"
+        createMode="dialog"
+        createDialogTitle="Add Journey Type"
+        items={journeyTypes}
+        isLoading={isLoading}
+        isCreating={createMutation.isPending}
+        isUpdating={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onAdd={(name) => createMutation.mutate(name)}
+        onUpdate={(id, name) => updateMutation.mutate({ id, name })}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        searchValue={jtSearch}
+        onSearchChange={(v) => {
+          setJtSearch(v);
+          setJtPage(DEFAULT_PAGE);
+        }}
+        searchPlaceholder="Search journey types..."
+      />
+      {jtPagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: jtPagination.currentPage,
+            totalPages: jtPagination.totalPages,
+            totalItems: jtPagination.totalItems,
+            itemsPerPage: jtPagination.itemsPerPage,
+            hasNextPage: jtPagination.hasNextPage,
+            hasPrevPage: jtPagination.hasPrevPage,
+          }}
+          onPageChange={setJtPage}
+          onPageSizeChange={(size) => {
+            setJtPageSize(size);
+            setJtPage(DEFAULT_PAGE);
           }}
           isLoading={isLoading}
         />

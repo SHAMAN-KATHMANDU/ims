@@ -15,6 +15,7 @@ import {
   revalidateTenantTags,
   bundleTags,
 } from "@/shared/cache/revalidateTags";
+import { assertEntityExists } from "@/shared/validation/reference-validator";
 
 const ALLOWED_SORT_FIELDS = ["name", "slug", "createdAt", "updatedAt"] as const;
 
@@ -26,6 +27,13 @@ export class BundleService {
     if (existing) {
       throw createError("Bundle with this slug already exists", 409);
     }
+
+    await assertEntityExists({
+      tenantId,
+      kind: "product",
+      id: data.productIds,
+      fieldName: "productIds",
+    });
 
     const repoData: CreateBundleRepoData = {
       tenantId,
@@ -90,6 +98,15 @@ export class BundleService {
       if (duplicate && duplicate.id !== id) {
         throw createError("Bundle with this slug already exists", 409);
       }
+    }
+
+    if (data.productIds !== undefined) {
+      await assertEntityExists({
+        tenantId,
+        kind: "product",
+        id: data.productIds,
+        fieldName: "productIds",
+      });
     }
 
     const updateData: UpdateBundleRepoData = {};

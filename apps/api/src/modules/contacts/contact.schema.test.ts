@@ -24,13 +24,12 @@ describe("CreateContactSchema", () => {
     expect(result.email).toBe("john@example.com");
   });
 
-  it("rejects journeyType as a writable input", () => {
-    expect(() =>
-      CreateContactSchema.parse({
-        firstName: "John",
-        journeyType: "New Sales",
-      }),
-    ).toThrow();
+  it("accepts journeyType as a writable input (now an editable lookup)", () => {
+    const result = CreateContactSchema.parse({
+      firstName: "John",
+      journeyType: "New Sales",
+    });
+    expect(result.journeyType).toBe("New Sales");
   });
 
   it("accepts optional profile fields", () => {

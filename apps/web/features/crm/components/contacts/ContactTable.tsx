@@ -90,7 +90,10 @@ export function ContactTable({
           id: "dealStage",
           header: "Deal Stage",
           cell: (c) => {
-            const activeJourneyType = getActiveJourneyType(c.deals);
+            const activeJourneyType = getActiveJourneyType(
+              c.deals,
+              c.journeyType,
+            );
             return activeJourneyType ? (
               <Badge variant="outline" className="text-xs">
                 {activeJourneyType}
@@ -137,7 +140,7 @@ export function ContactTable({
           ) : undefined,
       }}
       renderMobileCard={(c) => {
-        const activeJourneyType = getActiveJourneyType(c.deals);
+        const activeJourneyType = getActiveJourneyType(c.deals, c.journeyType);
         const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
         return (
           <div className="rounded-lg border bg-card p-3 space-y-2">

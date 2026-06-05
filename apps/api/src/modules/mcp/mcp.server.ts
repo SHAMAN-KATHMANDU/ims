@@ -39,6 +39,27 @@ import { registerBlogCreateMcpTools } from "@/modules/blog/mcp-tools-create";
 import { registerPagesCreateMcpTools } from "@/modules/pages/mcp-tools-create";
 import { registerMediaCreateMcpTools } from "@/modules/media/mcp-tools-create";
 
+// Update / read / lookup tools (CRU additions).
+import { registerCrmSettingsMcpTools } from "@/modules/crm-settings/mcp-tools";
+import { registerContactsUpdateMcpTools } from "@/modules/contacts/mcp-tools-update";
+import { registerDealsUpdateMcpTools } from "@/modules/deals/mcp-tools-update";
+import { registerTasksUpdateMcpTools } from "@/modules/tasks/mcp-tools-update";
+import { registerLeadsUpdateMcpTools } from "@/modules/leads/mcp-tools-update";
+import { registerActivitiesReadMcpTools } from "@/modules/activities/mcp-tools-read";
+import { registerCompaniesUpdateMcpTools } from "@/modules/companies/mcp-tools-update";
+import { registerMembersUpdateMcpTools } from "@/modules/members/mcp-tools-update";
+import { registerVendorsUpdateMcpTools } from "@/modules/vendors/mcp-tools-update";
+import { registerLocationsUpdateMcpTools } from "@/modules/locations/mcp-tools-update";
+import { registerCategoriesUpdateMcpTools } from "@/modules/categories/mcp-tools-update";
+import { registerPipelinesReadMcpTools } from "@/modules/pipelines/mcp-tools-read";
+import { registerProductsUpdateMcpTools } from "@/modules/products/mcp-tools-update";
+import { registerPromosUpdateMcpTools } from "@/modules/promos/mcp-tools-update";
+import { registerBundlesUpdateMcpTools } from "@/modules/bundles/mcp-tools-update";
+import { registerBlogUpdateMcpTools } from "@/modules/blog/mcp-tools-update";
+import { registerPagesUpdateMcpTools } from "@/modules/pages/mcp-tools-update";
+import { registerAutomationUpdateMcpTools } from "@/modules/automation/mcp-tools-update";
+import { registerMediaUpdateMcpTools } from "@/modules/media/mcp-tools-update";
+
 export interface McpAuthContext {
   tenantId: string;
   tenantSlug: string;
@@ -46,11 +67,36 @@ export interface McpAuthContext {
   userRole?: string;
 }
 
+/**
+ * Global behavioral guidance surfaced to the model (MCP `instructions`).
+ * Enforces the check → confirm → create protocol for references, since the
+ * tools themselves are stateless and cannot prompt the user mid-call.
+ */
+const MCP_INSTRUCTIONS = `IMS reference-validation protocol — follow this whenever you create or update records.
+
+NAMED LOOKUPS (contact source, journey type, tags, category, vendor, location, discount type):
+1. Call the matching list_* tool first (e.g. list_crm_sources, list_crm_journey_types) to see the valid values.
+2. If the user's value already exists, use it. If it does NOT exist, ASK the user to confirm before creating it — never invent a value.
+3. Only after the user confirms, call the matching create_* tool (e.g. create_crm_source), then retry the create/update.
+4. If a create/update is rejected with an error containing "availableOptions", show those options to the user and pick one or confirm creating a new one — do not retry the same unknown value.
+
+FOREIGN-KEY IDS (companyId, memberId, contactId, dealId, pipelineId, assignedToId, categoryId, vendorId, …):
+- Resolve the id with the matching list_*/get_* tool before using it. Unknown or soft-deleted ids are rejected.
+
+DEAL STAGES: a deal's stage must be one of its pipeline's stages — list_pipelines to see them.
+
+JOURNEY TYPE is an editable lookup: a contact's stored journeyType wins when it is a valid journey type; otherwise it is derived from the contact's active deal pipeline and stage. Validate it like any other named lookup.
+
+UPDATING: always fetch the record (get_*/list_*) before update_* so you send correct ids and change only intended fields.`;
+
 export function createMcpServer(authCtx: McpAuthContext): McpServer {
-  const server = new McpServer({
-    name: "ims-mcp",
-    version: getVersion(),
-  });
+  const server = new McpServer(
+    {
+      name: "ims-mcp",
+      version: getVersion(),
+    },
+    { instructions: MCP_INSTRUCTIONS },
+  );
 
   // Read / analytics tools.
   registerProductsMcpTools(server, authCtx);
@@ -80,6 +126,27 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerBlogCreateMcpTools(server, authCtx);
   registerPagesCreateMcpTools(server, authCtx);
   registerMediaCreateMcpTools(server, authCtx);
+
+  // Update / read / lookup tools (CRU additions).
+  registerCrmSettingsMcpTools(server, authCtx);
+  registerContactsUpdateMcpTools(server, authCtx);
+  registerDealsUpdateMcpTools(server, authCtx);
+  registerTasksUpdateMcpTools(server, authCtx);
+  registerLeadsUpdateMcpTools(server, authCtx);
+  registerActivitiesReadMcpTools(server, authCtx);
+  registerCompaniesUpdateMcpTools(server, authCtx);
+  registerMembersUpdateMcpTools(server, authCtx);
+  registerVendorsUpdateMcpTools(server, authCtx);
+  registerLocationsUpdateMcpTools(server, authCtx);
+  registerCategoriesUpdateMcpTools(server, authCtx);
+  registerPipelinesReadMcpTools(server, authCtx);
+  registerProductsUpdateMcpTools(server, authCtx);
+  registerPromosUpdateMcpTools(server, authCtx);
+  registerBundlesUpdateMcpTools(server, authCtx);
+  registerBlogUpdateMcpTools(server, authCtx);
+  registerPagesUpdateMcpTools(server, authCtx);
+  registerAutomationUpdateMcpTools(server, authCtx);
+  registerMediaUpdateMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 
