@@ -67,8 +67,11 @@ describe("InventoryRepository", () => {
   });
 
   describe("findInventoryByUniqueKey", () => {
-    it("calls prisma.locationInventory.findUnique with composite key", async () => {
-      mockFindUnique.mockResolvedValue({
+    it("calls prisma.locationInventory.findFirst with a plain equality where", async () => {
+      // findFirst (not findUnique): Prisma 5.22 throws on a null component in
+      // the compound-unique where, so a null sub_variation_id is matched via a
+      // plain equality filter instead.
+      mockFindFirst.mockResolvedValue({
         id: "inv1",
         quantity: 10,
         locationId: "loc1",
@@ -78,13 +81,11 @@ describe("InventoryRepository", () => {
 
       await inventoryRepository.findInventoryByUniqueKey("loc1", "v1", null);
 
-      expect(mockFindUnique).toHaveBeenCalledWith({
+      expect(mockFindFirst).toHaveBeenCalledWith({
         where: {
-          locationId_variationId_subVariationId: {
-            locationId: "loc1",
-            variationId: "v1",
-            subVariationId: null,
-          },
+          locationId: "loc1",
+          variationId: "v1",
+          subVariationId: null,
         },
       });
     });
