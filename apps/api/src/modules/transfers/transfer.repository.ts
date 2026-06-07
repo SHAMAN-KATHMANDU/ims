@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import prisma from "@/config/prisma";
 
@@ -261,9 +262,15 @@ export class TransferRepository {
   /**
    * Atomically add `quantity` to a location's inventory, creating the row if it
    * doesn't exist. Replaces the non-atomic findInventory + create/increment
-   * pattern that could leave duplicate rows behind (the unique index now uses
-   * NULLS NOT DISTINCT so the conflict target works even when subVariationId
-   * is null).
+   * pattern that could leave duplicate rows behind.
+   *
+   * Uses raw `INSERT ... ON CONFLICT` rather than prisma.locationInventory
+   * .upsert(): Prisma 5.22 types the compound-unique `where` as non-null and
+   * throws "Argument `subVariationId` must not be null" for a variation without
+   * sub-variations. The conflict target is the (location_id, variation_id,
+   * sub_variation_id) index, created NULLS NOT DISTINCT in migration
+   * 20260601120000 so it matches a NULL sub_variation_id. inventory_id and
+   * updated_at have no DB default; created_at rides CURRENT_TIMESTAMP.
    */
   async upsertIncrementInventory(data: {
     locationId: string;
@@ -271,17 +278,14 @@ export class TransferRepository {
     subVariationId: string | null;
     quantity: number;
   }) {
-    return prisma.locationInventory.upsert({
-      where: {
-        locationId_variationId_subVariationId: {
-          locationId: data.locationId,
-          variationId: data.variationId,
-          subVariationId: data.subVariationId,
-        },
-      },
-      update: { quantity: { increment: data.quantity } },
-      create: data,
-    });
+    return prisma.$executeRaw`
+      INSERT INTO "location_inventory"
+        ("inventory_id", "location_id", "variation_id", "sub_variation_id", "quantity", "updated_at")
+      VALUES
+        (${randomUUID()}, ${data.locationId}, ${data.variationId}, ${data.subVariationId}, ${data.quantity}, now())
+      ON CONFLICT ("location_id", "variation_id", "sub_variation_id")
+      DO UPDATE SET "quantity" = "location_inventory"."quantity" + EXCLUDED."quantity", "updated_at" = now()
+    `;
   }
 
   async findTransferLogs(transferId: string) {

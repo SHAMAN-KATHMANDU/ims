@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import prisma from "@/config/prisma";
 import type { Prisma } from "@prisma/client";
 
@@ -211,13 +212,15 @@ export class InventoryRepository {
     variationId: string,
     subVariationId: string | null,
   ) {
-    return prisma.locationInventory.findUnique({
+    // findFirst, not findUnique: Prisma 5.22 rejects a null component in the
+    // compound-unique `where` (throws "subVariationId must not be null"), but
+    // a plain equality filter matches a NULL sub_variation_id fine. The
+    // (location, variation, sub-variation) tuple is still unique in the DB.
+    return prisma.locationInventory.findFirst({
       where: {
-        locationId_variationId_subVariationId: {
-          locationId,
-          variationId,
-          subVariationId,
-        },
+        locationId,
+        variationId,
+        subVariationId,
       },
     });
   }
@@ -251,21 +254,25 @@ export class InventoryRepository {
     subVariationId: string | null,
     quantity: number,
   ) {
-    return prisma.locationInventory.upsert({
-      where: {
-        locationId_variationId_subVariationId: {
-          locationId,
-          variationId,
-          subVariationId,
-        },
-      },
-      update: { quantity },
-      create: {
-        locationId,
-        variationId,
-        subVariationId,
-        quantity,
-      },
+    // Raw INSERT ... ON CONFLICT rather than prisma.locationInventory.upsert():
+    // Prisma 5.22 rejects a null component in the compound-unique `where`
+    // ("subVariationId must not be null") for a variation without
+    // sub-variations. The conflict target is the (location_id, variation_id,
+    // sub_variation_id) index, created NULLS NOT DISTINCT in migration
+    // 20260601120000 so it matches a NULL sub_variation_id. inventory_id and
+    // updated_at have no DB default; created_at rides CURRENT_TIMESTAMP. The
+    // write is atomic; we re-read with findFirst to return the Prisma row the
+    // caller expects ($executeRaw only yields an affected-row count).
+    await prisma.$executeRaw`
+      INSERT INTO "location_inventory"
+        ("inventory_id", "location_id", "variation_id", "sub_variation_id", "quantity", "updated_at")
+      VALUES
+        (${randomUUID()}, ${locationId}, ${variationId}, ${subVariationId}, ${quantity}, now())
+      ON CONFLICT ("location_id", "variation_id", "sub_variation_id")
+      DO UPDATE SET "quantity" = EXCLUDED."quantity", "updated_at" = now()
+    `;
+    return prisma.locationInventory.findFirstOrThrow({
+      where: { locationId, variationId, subVariationId },
     });
   }
 

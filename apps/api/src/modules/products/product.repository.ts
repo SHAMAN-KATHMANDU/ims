@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import prisma from "@/config/prisma";
 import {
   getPaginationParams,
@@ -324,10 +325,18 @@ export class ProductRepository {
 
   // LocationInventory
   /**
-   * Atomic inventory upserts. They replace the previous non-atomic
-   * find + create/update pattern that could leave duplicate rows behind. The
-   * unique index now uses NULLS NOT DISTINCT, so the (location, variation,
-   * sub-variation) conflict target works even when subVariationId is null.
+   * Atomic inventory upserts via raw `INSERT ... ON CONFLICT`. The conflict
+   * target is the (location_id, variation_id, sub_variation_id) unique index,
+   * which is created with NULLS NOT DISTINCT in migration 20260601120000 so it
+   * matches even when sub_variation_id IS NULL.
+   *
+   * These deliberately do NOT use prisma.locationInventory.upsert(): Prisma
+   * 5.22 types the compound-unique `where` field as non-null and throws
+   * "Argument `subVariationId` must not be null" at runtime, which broke every
+   * inventory write for a variation without sub-variations. Raw SQL bypasses
+   * that client-side check. inventory_id and updated_at have no DB default
+   * (Prisma supplies them client-side), so we set them explicitly; created_at
+   * rides its CURRENT_TIMESTAMP default.
    */
   upsertSetLocationInventory(data: {
     locationId: string;
@@ -335,17 +344,14 @@ export class ProductRepository {
     subVariationId: string | null;
     quantity: number;
   }) {
-    return prisma.locationInventory.upsert({
-      where: {
-        locationId_variationId_subVariationId: {
-          locationId: data.locationId,
-          variationId: data.variationId,
-          subVariationId: data.subVariationId,
-        },
-      },
-      update: { quantity: data.quantity },
-      create: data,
-    });
+    return prisma.$executeRaw`
+      INSERT INTO "location_inventory"
+        ("inventory_id", "location_id", "variation_id", "sub_variation_id", "quantity", "updated_at")
+      VALUES
+        (${randomUUID()}, ${data.locationId}, ${data.variationId}, ${data.subVariationId}, ${data.quantity}, now())
+      ON CONFLICT ("location_id", "variation_id", "sub_variation_id")
+      DO UPDATE SET "quantity" = EXCLUDED."quantity", "updated_at" = now()
+    `;
   }
 
   upsertIncrementLocationInventory(data: {
@@ -354,17 +360,14 @@ export class ProductRepository {
     subVariationId: string | null;
     quantity: number;
   }) {
-    return prisma.locationInventory.upsert({
-      where: {
-        locationId_variationId_subVariationId: {
-          locationId: data.locationId,
-          variationId: data.variationId,
-          subVariationId: data.subVariationId,
-        },
-      },
-      update: { quantity: { increment: data.quantity } },
-      create: data,
-    });
+    return prisma.$executeRaw`
+      INSERT INTO "location_inventory"
+        ("inventory_id", "location_id", "variation_id", "sub_variation_id", "quantity", "updated_at")
+      VALUES
+        (${randomUUID()}, ${data.locationId}, ${data.variationId}, ${data.subVariationId}, ${data.quantity}, now())
+      ON CONFLICT ("location_id", "variation_id", "sub_variation_id")
+      DO UPDATE SET "quantity" = "location_inventory"."quantity" + EXCLUDED."quantity", "updated_at" = now()
+    `;
   }
 
   /** Seed an inventory row at quantity 0 only if one doesn't already exist. */
@@ -373,17 +376,14 @@ export class ProductRepository {
     variationId: string;
     subVariationId: string | null;
   }) {
-    return prisma.locationInventory.upsert({
-      where: {
-        locationId_variationId_subVariationId: {
-          locationId: data.locationId,
-          variationId: data.variationId,
-          subVariationId: data.subVariationId,
-        },
-      },
-      update: {},
-      create: { ...data, quantity: 0 },
-    });
+    return prisma.$executeRaw`
+      INSERT INTO "location_inventory"
+        ("inventory_id", "location_id", "variation_id", "sub_variation_id", "updated_at")
+      VALUES
+        (${randomUUID()}, ${data.locationId}, ${data.variationId}, ${data.subVariationId}, now())
+      ON CONFLICT ("location_id", "variation_id", "sub_variation_id")
+      DO NOTHING
+    `;
   }
 
   /**
