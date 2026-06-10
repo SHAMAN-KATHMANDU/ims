@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useEditorStore } from "../store/editor-store";
-import { selectBlocks, selectSelectedId } from "../store/selectors";
+import { selectSelectedBlock } from "../store/selectors";
 import { PageTab } from "./PageTab";
 import { BlockTab } from "./BlockTab";
 import { SeoTab } from "./SeoTab";
@@ -29,9 +29,10 @@ export function InspectorPanel({
   scope,
 }: InspectorPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>("page");
-  const blocks = useEditorStore(selectBlocks);
-  const selectedId = useEditorStore(selectSelectedId);
-  const selectedBlock = blocks.find((b) => b.id === selectedId);
+  // Tree-walking selector: the selected block may be nested inside a
+  // container, so a root-level `blocks.find` would miss it and the
+  // Block tab would wrongly show "no block selected".
+  const selectedBlock = useEditorStore(selectSelectedBlock);
 
   return (
     <aside
@@ -76,7 +77,9 @@ export function InspectorPanel({
         {activeTab === "page" && (
           <PageTab _workspace={workspace} pageId={pageId} _scope={scope} />
         )}
-        {activeTab === "block" && <BlockTab block={selectedBlock} />}
+        {activeTab === "block" && (
+          <BlockTab block={selectedBlock ?? undefined} />
+        )}
         {activeTab === "seo" && (
           <SeoTab _workspace={workspace} pageId={pageId} scope={scope} />
         )}

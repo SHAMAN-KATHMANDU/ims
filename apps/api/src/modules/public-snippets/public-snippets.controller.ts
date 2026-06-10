@@ -6,6 +6,7 @@
 
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import sitesRepo from "@/modules/sites/sites.repository";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
 
@@ -28,6 +29,13 @@ class PublicSnippetsController {
   getById = async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);
+      // Same gate the other public-* modules apply: 404 unless the tenant's
+      // site is enabled AND published, so snippet probes can't reveal the
+      // existence of unpublished sites.
+      const config = await sitesRepo.findConfig(tenantId);
+      if (!config || !config.websiteEnabled || !config.isPublished) {
+        return res.status(404).json({ message: "Snippet not found" });
+      }
       const id = getParam(req, "id");
       const snippet = await prisma.siteSnippet.findFirst({
         where: { id, tenantId },

@@ -36,7 +36,10 @@ export function themeTokensToCssVars(
   const radius =
     typeof tokens.shape.radius === "number"
       ? `${tokens.shape.radius}px`
-      : RADIUS_MAP[tokens.shape.radius];
+      : // Fall back for unknown keyword values (stale/legacy payloads) so we
+        // never emit `--radius: undefined` and break every consumer of the var.
+        ((RADIUS_MAP as Record<string, string>)[tokens.shape.radius] ??
+        RADIUS_MAP.soft);
 
   return {
     // Colors

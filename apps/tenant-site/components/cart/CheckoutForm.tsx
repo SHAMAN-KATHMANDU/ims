@@ -146,6 +146,9 @@ export function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Guard against double-submit (Enter + click, or two rapid clicks before
+    // the disabled state re-renders) creating duplicate orders.
+    if (submitting) return;
     setError(null);
 
     if (!name.trim()) {

@@ -15,12 +15,14 @@ import { EnvFeature } from "@repo/shared";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { resolveTenantFromHostname } from "@/middlewares/hostnameResolver";
+import { publicOrderRateLimit } from "@/middlewares/publicStorefrontRateLimit";
 import controller from "./public-orders.controller";
 
 const router = Router();
 
 router.use(enforceEnvFeature(EnvFeature.TENANT_WEBSITES));
 router.use(resolveTenantFromHostname());
+router.use(publicOrderRateLimit);
 
 /**
  * @swagger

@@ -98,17 +98,18 @@ class FormsRepository {
     limit: number = 20,
     offset: number = 0,
   ) {
-    const form = await this.getById(tenantId, formId);
+    // Throws 404 when the form doesn't belong to this tenant.
+    await this.getById(tenantId, formId);
 
     const submissions = await prisma.formSubmission.findMany({
-      where: { formId },
+      where: { formId, tenantId },
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: offset,
     });
 
     const total = await prisma.formSubmission.count({
-      where: { formId },
+      where: { formId, tenantId },
     });
 
     return { submissions, total };
