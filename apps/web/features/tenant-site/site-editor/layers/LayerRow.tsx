@@ -8,6 +8,7 @@ import {
   selectSetSelected,
   selectRemoveBlock,
   selectMoveBlockToPath,
+  selectSelectedId,
 } from "../store/selectors";
 import { findPath } from "../tree/blockTree";
 import { getBlockLabel, getBlockIcon } from "./blockLabels";
@@ -26,6 +27,7 @@ export function LayerRow({ block, index, isSelected, depth }: LayerRowProps) {
   const setSelected = useEditorStore(selectSetSelected);
   const removeBlock = useEditorStore(selectRemoveBlock);
   const moveBlockToPath = useEditorStore(selectMoveBlockToPath);
+  const selectedId = useEditorStore(selectSelectedId);
   const selectBlocks = (s: any) => s.present.blocks; // eslint-disable-line @typescript-eslint/no-explicit-any
   const blocks = useEditorStore(selectBlocks);
 
@@ -81,78 +83,92 @@ export function LayerRow({ block, index, isSelected, depth }: LayerRowProps) {
   const paddingLeft = `${depth * 16 + 8}px`;
 
   return (
-    <div
-      draggable
-      onClick={handleSelect}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          handleSelect();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      className={`
+    <>
+      <div
+        draggable
+        onClick={handleSelect}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleSelect();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        className={`
         flex items-center gap-2 px-2 py-1.5 mx-1 rounded cursor-grab relative
         ${
           isSelected ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--bg-sunken)]"
         }
         ${dragOverPosition ? "border-t-2 border-b-2 border-blue-500" : ""}
       `}
-      style={{
-        paddingLeft,
-        color: isSelected ? "var(--accent)" : "var(--ink-2)",
-        backgroundColor: isSelected ? "var(--accent-soft)" : "transparent",
-        borderTopColor:
-          dragOverPosition === "above" ? "rgb(59 130 246)" : "transparent",
-        borderBottomColor:
-          dragOverPosition === "below" ? "rgb(59 130 246)" : "transparent",
-      }}
-    >
-      <GripVertical
-        size={11}
-        className="flex-shrink-0"
-        style={{ color: "var(--ink-5)" }}
-      />
-
-      <div
-        className="w-3 h-3 rounded flex-shrink-0"
         style={{
-          backgroundColor: "var(--bg-sunken)",
-          color: isSelected ? "var(--accent)" : "var(--ink-4)",
+          paddingLeft,
+          color: isSelected ? "var(--accent)" : "var(--ink-2)",
+          backgroundColor: isSelected ? "var(--accent-soft)" : "transparent",
+          borderTopColor:
+            dragOverPosition === "above" ? "rgb(59 130 246)" : "transparent",
+          borderBottomColor:
+            dragOverPosition === "below" ? "rgb(59 130 246)" : "transparent",
         }}
-        title={block.kind}
       >
-        {/* Icon placeholder */}
-        <span className="text-xs" style={{ visibility: "hidden" }}>
-          {getBlockIcon(block.kind)}
+        <GripVertical
+          size={11}
+          className="flex-shrink-0"
+          style={{ color: "var(--ink-5)" }}
+        />
+
+        <div
+          className="w-3 h-3 rounded flex-shrink-0"
+          style={{
+            backgroundColor: "var(--bg-sunken)",
+            color: isSelected ? "var(--accent)" : "var(--ink-4)",
+          }}
+          title={block.kind}
+        >
+          {/* Icon placeholder */}
+          <span className="text-xs" style={{ visibility: "hidden" }}>
+            {getBlockIcon(block.kind)}
+          </span>
+        </div>
+
+        <span className="flex-1 text-xs truncate font-medium">
+          {getBlockLabel(block)}
         </span>
+
+        <span
+          className="text-xs font-mono flex-shrink-0"
+          style={{ color: "var(--ink-5)" }}
+        >
+          {index + 1}
+        </span>
+
+        <button
+          onClick={handleDelete}
+          className="w-4 h-4 rounded opacity-0 flex items-center justify-center hover:text-[var(--danger)]"
+          style={{
+            color: "var(--ink-4)",
+          }}
+          title="Delete block"
+        >
+          <Trash2 size={10} />
+        </button>
       </div>
-
-      <span className="flex-1 text-xs truncate font-medium">
-        {getBlockLabel(block)}
-      </span>
-
-      <span
-        className="text-xs font-mono flex-shrink-0"
-        style={{ color: "var(--ink-5)" }}
-      >
-        {index + 1}
-      </span>
-
-      <button
-        onClick={handleDelete}
-        className="w-4 h-4 rounded opacity-0 flex items-center justify-center hover:text-[var(--danger)]"
-        style={{
-          color: "var(--ink-4)",
-        }}
-        title="Delete block"
-      >
-        <Trash2 size={10} />
-      </button>
-    </div>
+      {/* Children, indented one level. Without this the layers panel only
+        listed root blocks, leaving nested blocks unreachable (the canvas
+        wraps roots only, so layers is the selection path for children). */}
+      {block.children?.map((child, childIdx) => (
+        <LayerRow
+          key={child.id}
+          block={child}
+          index={childIdx}
+          isSelected={selectedId === child.id}
+          depth={depth + 1}
+        />
+      ))}
+    </>
   );
 }

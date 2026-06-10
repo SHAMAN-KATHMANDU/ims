@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { BlockNode } from "@repo/shared";
 import {
   blockRegistry,
@@ -14,26 +15,84 @@ interface BlockViewProps {
   dataContext: BlockDataContext;
 }
 
-export function BlockView({ block, dataContext }: BlockViewProps) {
+/**
+ * Inline-editable text block (heading / rich-text).
+ *
+ * The contentEditable DOM is the source of truth WHILE FOCUSED: we push
+ * edits into the store but render from a `frozen` copy of the props that
+ * only re-syncs when the element is not focused. Rendering the live store
+ * text would make React rewrite the text node on every keystroke, which
+ * resets the caret to position 0 — typing "Hello" produced "olleH".
+ */
+function EditableTextBlock({
+  block,
+  dataContext,
+  textProp,
+}: BlockViewProps & { textProp: "text" | "source" }) {
   const { updateBlockProps } = useEditorStore();
   const setSlashMenuAnchor = useEditorStore(selectSetSlashMenuAnchor);
+  const ref = useRef<HTMLDivElement>(null);
+  const [frozen, setFrozen] = useState(block.props);
 
-  const handleSlashMenuTrigger = (e: React.FormEvent<HTMLDivElement>) => {
-    const text = e.currentTarget.innerText;
+  // Sync external changes (undo, inspector edits) into the rendered copy —
+  // but never while the user is typing in this block.
+  useEffect(() => {
+    const el = ref.current;
+    const focused =
+      el !== null &&
+      (el === document.activeElement || el.contains(document.activeElement));
+    if (!focused) setFrozen(block.props);
+  }, [block.props]);
+
+  const entry = blockRegistry[block.kind];
+  if (!entry) return null;
+  const Component = entry.component;
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    let text = e.currentTarget.innerText;
     if (text.startsWith("/")) {
+      // Open the slash menu anchored at the caret, and strip the "/" both
+      // from the DOM and from what we persist.
       const selection = document.getSelection();
       if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
         setSlashMenuAnchor({
           blockId: block.id,
           position: { x: rect.left, y: rect.top },
         });
-        e.currentTarget.innerText = text.slice(1);
       }
+      text = text.slice(1);
+      e.currentTarget.innerText = text;
     }
+    updateBlockProps(
+      block.id,
+      (textProp === "text" ? { text } : { source: text }) as Partial<
+        BlockNode["props"]
+      >,
+    );
   };
 
+  const frozenNode = { ...block, props: frozen };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const frozenProps = frozen as any;
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+    >
+      <Component
+        node={frozenNode}
+        props={frozenProps}
+        dataContext={dataContext}
+      />
+    </div>
+  );
+}
+
+export function BlockView({ block, dataContext }: BlockViewProps) {
   // Check if this kind has a registered renderer
   const entry = blockRegistry[block.kind];
 
@@ -64,50 +123,26 @@ export function BlockView({ block, dataContext }: BlockViewProps) {
       <BlockRenderer nodes={block.children} dataContext={dataContext} />
     ) : null;
 
-  // Special handling for contentEditable blocks: heading and rich-text
+  // Special handling for contentEditable blocks: heading and rich-text.
+  // The rich-text schema's strict() object only accepts `source` (markdown);
+  // writing `text` used to throw "Unrecognized key(s)" on autosave.
   if (block.kind === "heading") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const props = block.props as any;
-
     return (
-      <div
-        contentEditable
-        suppressContentEditableWarning
-        onInput={(e) => {
-          const innerText = e.currentTarget.innerText;
-          handleSlashMenuTrigger(e);
-          updateBlockProps(block.id, {
-            text: innerText,
-          });
-        }}
-      >
-        <Component node={block} props={props} dataContext={dataContext} />
-      </div>
+      <EditableTextBlock
+        block={block}
+        dataContext={dataContext}
+        textProp="text"
+      />
     );
   }
 
   if (block.kind === "rich-text") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const props = block.props as any;
-
     return (
-      <div
-        contentEditable
-        suppressContentEditableWarning
-        onInput={(e) => {
-          const innerText = e.currentTarget.innerText;
-          handleSlashMenuTrigger(e);
-          // The rich-text schema's strict() object only accepts `source`
-          // (markdown). Writing `text` here used to throw the "Unrecognized
-          // key(s) in object: 'text'" toast on autosave the moment any
-          // user typed into a rich-text block.
-          updateBlockProps(block.id, {
-            source: innerText,
-          });
-        }}
-      >
-        <Component node={block} props={props} dataContext={dataContext} />
-      </div>
+      <EditableTextBlock
+        block={block}
+        dataContext={dataContext}
+        textProp="source"
+      />
     );
   }
 

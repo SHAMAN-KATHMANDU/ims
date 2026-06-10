@@ -147,9 +147,19 @@ function makeDefaultRow(children: BlockNode[]): BlockNode {
 const EMPTY_SNAPSHOT: EditorSnapshot = { blocks: [] };
 const HISTORY_LIMIT = 50;
 
+const PROPS_COALESCE_MS = 1000;
+
 function createEditorStoreInner() {
+  // Tracks the last updateBlockProps commit so rapid edits to the SAME
+  // block (typing in a contentEditable, dragging a slider) collapse into
+  // one history entry instead of one snapshot per keystroke — otherwise
+  // undo steps back a character at a time and the 50-entry history holds
+  // less than one sentence of typing.
+  let lastPropsCommit: { id: string; at: number } | null = null;
+
   return create<EditorState>()((set, get) => {
     function commit(next: EditorSnapshot) {
+      lastPropsCommit = null;
       const { past, present } = get();
       const nextPast: EditorSnapshot[] = [
         ...past,
@@ -177,14 +187,16 @@ function createEditorStoreInner() {
       lastSaveTime: null,
       slashMenuAnchor: null,
 
-      load: (blocks) =>
+      load: (blocks) => {
+        lastPropsCommit = null;
         set({
           past: [],
           present: { blocks: cloneTree(blocks) },
           future: [],
           selectedId: null,
           dirty: false,
-        }),
+        });
+      },
 
       markClean: () => set({ dirty: false }),
 
@@ -342,7 +354,7 @@ function createEditorStoreInner() {
       },
 
       updateBlockProps: (id, props) => {
-        const { present } = get();
+        const { present, future } = get();
         const blocks = mapBlocks(present.blocks, id, (b) => ({
           ...b,
           props: {
@@ -350,7 +362,21 @@ function createEditorStoreInner() {
             ...props,
           } as unknown as BlockNode["props"],
         }));
-        commit({ blocks });
+        const now = Date.now();
+        const coalesce =
+          lastPropsCommit !== null &&
+          lastPropsCommit.id === id &&
+          now - lastPropsCommit.at < PROPS_COALESCE_MS &&
+          future.length === 0;
+        if (coalesce) {
+          // Same block, within the window: replace the present snapshot
+          // without pushing history — the entry pushed by the first edit
+          // of the burst already holds the pre-burst state.
+          set({ present: { blocks: cloneTree(blocks) }, dirty: true });
+        } else {
+          commit({ blocks });
+        }
+        lastPropsCommit = { id, at: now };
       },
 
       updateBlockVisibility: (id, visibility) => {
@@ -372,6 +398,7 @@ function createEditorStoreInner() {
       },
 
       undo: () => {
+        lastPropsCommit = null;
         const { past, present, future } = get();
         if (past.length === 0) return;
         const previous = past[past.length - 1]!;
@@ -385,6 +412,7 @@ function createEditorStoreInner() {
       },
 
       redo: () => {
+        lastPropsCommit = null;
         const { past, present, future } = get();
         if (future.length === 0) return;
         const next = future[0]!;

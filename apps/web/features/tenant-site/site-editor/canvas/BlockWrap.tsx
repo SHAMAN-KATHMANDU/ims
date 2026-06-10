@@ -25,6 +25,7 @@ import { resolveDropZone } from "../dnd/dropZones";
 import { DropIndicator } from "./DropIndicator";
 import type { DropZone } from "../dnd/dropZones";
 import { BlockView } from "./BlockView";
+import { CanvasBlockBoundary } from "./CanvasBlockBoundary";
 
 interface BlockWrapProps {
   block: BlockNode;
@@ -237,7 +238,9 @@ export function BlockWrap({
       </div>
 
       {/* Block content */}
-      <BlockView block={block} dataContext={dataContext} />
+      <CanvasBlockBoundary blockKind={block.kind}>
+        <BlockView block={block} dataContext={dataContext} />
+      </CanvasBlockBoundary>
 
       {/* Right toolbar when selected */}
       {isSelected && (

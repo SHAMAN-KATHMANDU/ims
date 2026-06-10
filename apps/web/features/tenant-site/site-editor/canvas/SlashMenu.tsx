@@ -23,6 +23,11 @@ export const SlashMenu = React.forwardRef<HTMLDivElement, SlashMenuProps>(
     const [selectedIndex, setSelectedIndex] = useState(0);
     const insertSiblingOf = useEditorStore(selectInsertSiblingOf);
 
+    // Keep the highlighted row valid as the filter narrows the list.
+    useEffect(() => {
+      setSelectedIndex(0);
+    }, [query]);
+
     const scopedCatalog = useMemo(() => listForScope(scope), [scope]);
 
     const filtered: readonly CatalogEntry[] = useMemo(
@@ -68,7 +73,8 @@ export const SlashMenu = React.forwardRef<HTMLDivElement, SlashMenuProps>(
           );
         } else if (e.key === "Enter") {
           e.preventDefault();
-          handleSelect(filtered[selectedIndex] as CatalogEntry);
+          const entry = filtered[selectedIndex];
+          if (entry) handleSelect(entry);
         } else if (e.key.length === 1) {
           setQuery((prev) => prev + e.key);
         } else if (e.key === "Backspace") {
@@ -101,7 +107,7 @@ export const SlashMenu = React.forwardRef<HTMLDivElement, SlashMenuProps>(
         <div className="divide-y">
           {filtered.map((entry, idx) => (
             <button
-              key={entry.kind}
+              key={entry.id ?? entry.kind}
               onClick={() => handleSelect(entry)}
               className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
                 idx === selectedIndex ? "bg-blue-100" : ""
