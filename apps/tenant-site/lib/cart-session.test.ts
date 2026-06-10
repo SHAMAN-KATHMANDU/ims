@@ -145,9 +145,12 @@ describe("cart-session helpers", () => {
   });
 
   describe("loadOrCreateSessionKey — localStorage errors", () => {
+    // Spy on the mock object itself: `Storage.prototype` only exists in
+    // browser-like environments (and, incidentally, very new Node), so a
+    // prototype spy passes locally but breaks on CI's Node runtime.
     it("returns a generated key when localStorage.getItem throws", () => {
       const getItemSpy = vi
-        .spyOn(Storage.prototype, "getItem")
+        .spyOn(mockLocalStorage, "getItem")
         .mockImplementation(() => {
           throw new Error("Storage unavailable");
         });
@@ -159,12 +162,9 @@ describe("cart-session helpers", () => {
     });
 
     it("returns a generated key when localStorage throws on setItem", () => {
-      // First call succeeds, subsequent calls throw
-      let callCount = 0;
       const setItemSpy = vi
-        .spyOn(Storage.prototype, "setItem")
+        .spyOn(mockLocalStorage, "setItem")
         .mockImplementation(() => {
-          callCount++;
           throw new Error("Storage full");
         });
 
