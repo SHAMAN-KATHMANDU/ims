@@ -10,6 +10,7 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { parseHostHeader } from "./lib/host";
 
 const CACHE_TTL_MS = 60_000;
 const REDIRECT_CACHE_TTL_MS = 60_000;
@@ -202,14 +203,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const hostHeader = req.headers.get("host") ?? "";
-  // Strip the port without mangling bracketed IPv6 hosts: "[::1]:3000" must
-  // yield "[::1]" (a bare split(":") would return "["), while "host:3000"
-  // still yields "host".
-  const host = (
-    hostHeader.startsWith("[")
-      ? (hostHeader.match(/^(\[[^\]]*\])/)?.[1] ?? "")
-      : (hostHeader.split(":")[0] ?? "")
-  ).toLowerCase();
+  const host = parseHostHeader(hostHeader);
 
   if (!host) {
     return new NextResponse("Missing Host header", { status: 400 });

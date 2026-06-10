@@ -26,46 +26,10 @@ import {
   type CartState,
 } from "@/lib/cart";
 import { postCartPing } from "@/lib/api";
-
-/**
- * localStorage key for the browser's stable cart session id, scoped by
- * tenant like the cart itself — on shared-origin setups (dev, previews) an
- * unscoped key would attribute one tenant's abandoned cart to another's
- * session.
- */
-const LEGACY_SESSION_KEY_STORAGE = "tenant-site:cart-session";
-const sessionKeyStorage = (tenantId: string): string =>
-  `${LEGACY_SESSION_KEY_STORAGE}:${tenantId}`;
+import { loadOrCreateSessionKey } from "@/lib/cart-session";
 
 /** Delay between the last cart mutation and the ping we send. */
 const PING_DEBOUNCE_MS = 2000;
-
-function generateSessionKey(): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function loadOrCreateSessionKey(tenantId: string): string {
-  try {
-    const key = sessionKeyStorage(tenantId);
-    const existing = window.localStorage.getItem(key);
-    if (existing && existing.length >= 8) return existing;
-    // Migrate a pre-scoping key so returning shoppers keep their
-    // abandoned-cart session instead of forking a new row.
-    const legacy = window.localStorage.getItem(LEGACY_SESSION_KEY_STORAGE);
-    const fresh = legacy && legacy.length >= 8 ? legacy : generateSessionKey();
-    window.localStorage.setItem(key, fresh);
-    window.localStorage.removeItem(LEGACY_SESSION_KEY_STORAGE);
-    return fresh;
-  } catch {
-    return generateSessionKey();
-  }
-}
 
 /**
  * CartProvider — the only piece of client state in the tenant-site.

@@ -52,15 +52,18 @@ function EditableTextBlock({
     let text = e.currentTarget.innerText;
     if (text.startsWith("/")) {
       // Open the slash menu anchored at the caret, and strip the "/" both
-      // from the DOM and from what we persist.
+      // from the DOM and from what we persist. When no selection range is
+      // available (programmatic input, some mobile IMEs), anchor at the
+      // block itself rather than silently not opening.
       const selection = document.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const rect = selection.getRangeAt(0).getBoundingClientRect();
-        setSlashMenuAnchor({
-          blockId: block.id,
-          position: { x: rect.left, y: rect.top },
-        });
-      }
+      const rect =
+        selection && selection.rangeCount > 0
+          ? selection.getRangeAt(0).getBoundingClientRect()
+          : e.currentTarget.getBoundingClientRect();
+      setSlashMenuAnchor({
+        blockId: block.id,
+        position: { x: rect.left, y: rect.top },
+      });
       text = text.slice(1);
       e.currentTarget.innerText = text;
     }

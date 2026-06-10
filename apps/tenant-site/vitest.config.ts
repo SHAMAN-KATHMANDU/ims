@@ -7,6 +7,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "."),
     },
   },
+  // Components are written for Next's automatic JSX runtime (no React
+  // import); match it so component tests can render them.
+  esbuild: {
+    jsx: "automatic",
+  },
   test: {
     environment: "node",
     include: ["**/*.test.ts", "**/*.test.tsx"],
