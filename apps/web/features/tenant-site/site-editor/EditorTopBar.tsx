@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ChevronLeft,
   Redo2,
@@ -10,9 +11,23 @@ import {
   Share2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { SiteLayoutScope } from "@repo/shared";
+import type { BlockNode, SiteLayoutScope } from "@repo/shared";
 import { useEditorStore } from "./store/editor-store";
+import {
+  selectBlocks,
+  selectCanRedo,
+  selectCanUndo,
+  selectDevice,
+  selectDirty,
+  selectLastSaveTime,
+  selectRedo,
+  selectSetDevice,
+  selectUndo,
+} from "./store/selectors";
 import { usePreviewUrl } from "./hooks/usePreviewUrl";
+import { useSiteLayoutQuery } from "./hooks/useSiteLayoutQuery";
+import { usePageQuery } from "../hooks/use-pages";
+import { PublishModal } from "./shell/PublishModal";
 
 interface EditorTopBarProps {
   workspace: string;
@@ -20,9 +35,34 @@ interface EditorTopBarProps {
   scope: SiteLayoutScope;
 }
 
+const DEVICES = ["desktop", "tablet", "mobile"] as const;
+
 export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
   const router = useRouter();
-  const { undo, redo } = useEditorStore();
+  const undo = useEditorStore(selectUndo);
+  const redo = useEditorStore(selectRedo);
+  const canUndo = useEditorStore(selectCanUndo);
+  const canRedo = useEditorStore(selectCanRedo);
+  const device = useEditorStore(selectDevice);
+  const setDevice = useEditorStore(selectSetDevice);
+  const dirty = useEditorStore(selectDirty);
+  const lastSaveTime = useEditorStore(selectLastSaveTime);
+  const draftBlocks = useEditorStore(selectBlocks);
+
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  // Same query key the page itself uses, so this is served from cache.
+  // The published tree feeds the publish modal's draft-vs-live diff.
+  const layoutPageId = scope === "page" ? pageId : null;
+  const { data: layout } = useSiteLayoutQuery(scope, layoutPageId);
+
+  // Humanize the title: the route param is a TenantPage UUID — show the
+  // page's real title (or the chrome scope name) instead of the raw id.
+  const { data: pageRecord } = usePageQuery(layoutPageId ?? "");
+  const displayTitle =
+    scope === "page"
+      ? (pageRecord?.title ?? "…")
+      : scope.charAt(0).toUpperCase() + scope.slice(1);
 
   // Mint a token-gated preview URL bound to this scope + page so the Preview
   // button can open the live tenant-site renderer in a new tab. The hook
@@ -35,6 +75,12 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
   const handleBack = () => {
     router.push(`/${workspace}/site/pages`);
   };
+
+  const saveStatus = dirty
+    ? "saving…"
+    : lastSaveTime
+      ? `saved ${formatRelative(lastSaveTime)}`
+      : "no changes yet";
 
   return (
     <div
@@ -56,9 +102,11 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
       />
 
       <div>
-        <div className="text-sm font-medium text-[var(--ink)]">{pageId}</div>
+        <div className="text-sm font-medium text-[var(--ink)]">
+          {displayTitle}
+        </div>
         <div className="text-xs text-[var(--ink-4)] font-mono">
-          {scope} · saved just now · v1
+          {scope} · {saveStatus}
         </div>
       </div>
 
@@ -73,17 +121,19 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
           border: "1px solid var(--line)",
         }}
       >
-        {["desktop", "tablet", "mobile"].map((device) => (
+        {DEVICES.map((d) => (
           <button
-            key={device}
+            key={d}
+            onClick={() => setDevice(d)}
             className="w-7 h-6 rounded flex items-center justify-center text-xs"
-            title={device}
+            title={d}
             style={{
-              backgroundColor: "transparent",
-              color: "var(--ink-4)",
+              backgroundColor: device === d ? "var(--bg)" : "transparent",
+              color: device === d ? "var(--ink)" : "var(--ink-4)",
+              boxShadow: device === d ? "var(--shadow-sm)" : "none",
             }}
           >
-            {device.charAt(0).toUpperCase()}
+            {d.charAt(0).toUpperCase()}
           </button>
         ))}
       </div>
@@ -96,14 +146,16 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
       {/* Undo/Redo/History */}
       <button
         onClick={undo}
-        className="w-7 h-7 rounded flex items-center justify-center text-[var(--ink-3)] hover:bg-[var(--bg-sunken)]"
+        disabled={!canUndo}
+        className="w-7 h-7 rounded flex items-center justify-center text-[var(--ink-3)] hover:bg-[var(--bg-sunken)] disabled:opacity-40 disabled:cursor-not-allowed"
         title="Undo"
       >
         <Undo2 size={14} />
       </button>
       <button
         onClick={redo}
-        className="w-7 h-7 rounded flex items-center justify-center text-[var(--ink-3)] hover:bg-[var(--bg-sunken)]"
+        disabled={!canRedo}
+        className="w-7 h-7 rounded flex items-center justify-center text-[var(--ink-3)] hover:bg-[var(--bg-sunken)] disabled:opacity-40 disabled:cursor-not-allowed"
         title="Redo"
       >
         <Redo2 size={14} />
@@ -122,7 +174,9 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
 
       {/* AI / Preview / Publish */}
       <button
-        className="px-2.5 h-7 rounded text-xs font-medium flex items-center gap-1.5 text-[var(--ink-3)]"
+        disabled
+        title="AI features coming soon"
+        className="px-2.5 h-7 rounded text-xs font-medium flex items-center gap-1.5 text-[var(--ink-3)] disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
           border: "1px solid transparent",
         }}
@@ -149,6 +203,7 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
       </button>
 
       <button
+        onClick={() => setPublishOpen(true)}
         className="px-2.5 h-7 rounded text-xs font-medium flex items-center gap-1.5"
         style={{
           backgroundColor: "var(--accent)",
@@ -159,6 +214,23 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
         <Share2 size={12} />
         Publish
       </button>
+
+      <PublishModal
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        scope={scope}
+        pageId={layoutPageId}
+        draftBlocks={draftBlocks}
+        publishedBlocks={(layout?.blocks as BlockNode[] | null) ?? null}
+      />
     </div>
   );
+}
+
+function formatRelative(ts: number): string {
+  const diffS = Math.floor((Date.now() - ts) / 1000);
+  if (diffS < 60) return "just now";
+  const diffM = Math.floor(diffS / 60);
+  if (diffM < 60) return `${diffM}m ago`;
+  return "today";
 }

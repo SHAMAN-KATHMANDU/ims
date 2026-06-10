@@ -3,8 +3,7 @@
 import { GROUPED_CATALOG } from "../catalog/grouped-catalog";
 import { useEditorStore } from "../store/editor-store";
 import { selectBlocks, selectAddBlock } from "../store/selectors";
-import type { BlockNode, BlockKind } from "@repo/shared";
-import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
+import type { BlockNode, CatalogEntry } from "@repo/shared";
 
 export function BlocksAddPanel() {
   const blocks = useEditorStore(selectBlocks);
@@ -12,18 +11,26 @@ export function BlocksAddPanel() {
 
   const handleDragStart = (
     e: React.DragEvent<HTMLDivElement>,
-    kind: BlockKind,
+    entry: CatalogEntry,
   ) => {
-    e.dataTransfer.setData("application/x-block-kind", kind);
+    e.dataTransfer.setData("application/x-block-kind", entry.kind);
+    // Preset variants (e.g. "New Arrivals" vs base "Product grid") share a
+    // kind but differ in default props — carry the catalog id so the drop
+    // handler can resolve the exact entry the user dragged.
+    e.dataTransfer.setData(
+      "application/x-block-catalog-id",
+      entry.id ?? entry.kind,
+    );
     e.dataTransfer.effectAllowed = "copy";
   };
 
-  const handleClick = (kind: BlockKind) => {
-    const entry = BLOCK_CATALOG_ENTRIES.find((e) => e.kind === kind);
-    if (!entry) return;
+  // Use the clicked entry directly — looking it up again by kind would
+  // always resolve preset variants to the FIRST entry of that kind, so
+  // "Hot Deals" / "New Arrivals" tiles inserted the base grid instead.
+  const handleClick = (entry: CatalogEntry) => {
     const newBlock: BlockNode = {
       id: `block-${crypto.randomUUID().slice(0, 8)}`,
-      kind,
+      kind: entry.kind,
       props: entry.createDefaultProps(),
     };
     addBlock(newBlock, blocks.length);
@@ -42,13 +49,13 @@ export function BlocksAddPanel() {
           <div className="grid grid-cols-2 gap-2">
             {group.entries.map((entry) => (
               <div
-                key={entry.kind}
+                key={entry.id ?? entry.kind}
                 draggable
-                onDragStart={(e) => handleDragStart(e, entry.kind)}
-                onClick={() => handleClick(entry.kind)}
+                onDragStart={(e) => handleDragStart(e, entry)}
+                onClick={() => handleClick(entry)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    handleClick(entry.kind);
+                    handleClick(entry);
                   }
                 }}
                 role="button"

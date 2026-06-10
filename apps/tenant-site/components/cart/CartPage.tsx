@@ -133,7 +133,10 @@ export function CartPage() {
         >
           {cart.items.map((item) => (
             <li
-              key={item.productId}
+              // One cart line per (product, variation, sub-variation): keying
+              // by productId alone collides when two variations of the same
+              // product are in the cart and React reuses the wrong row.
+              key={`${item.productId}:${item.variationId ?? ""}:${item.subVariationId ?? ""}`}
               style={{
                 display: "grid",
                 gridTemplateColumns: "72px minmax(0, 1fr) auto",

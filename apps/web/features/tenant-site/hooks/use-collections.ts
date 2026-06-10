@@ -108,6 +108,8 @@ export function useSetCollectionProducts() {
       collectionsService.setProducts(id, productIds),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: collectionKeys.detail(id) });
+      // The list view shows per-collection product counts — refresh it too.
+      qc.invalidateQueries({ queryKey: collectionKeys.list() });
       toast({ title: "Products updated" });
     },
     onError: (error: Error) => {

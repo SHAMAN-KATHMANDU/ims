@@ -10,6 +10,7 @@
  */
 
 import { NextResponse, type NextRequest } from "next/server";
+import { parseHostHeader } from "./lib/host";
 
 const CACHE_TTL_MS = 60_000;
 const REDIRECT_CACHE_TTL_MS = 60_000;
@@ -202,7 +203,7 @@ export async function middleware(req: NextRequest) {
   }
 
   const hostHeader = req.headers.get("host") ?? "";
-  const host = (hostHeader.split(":")[0] ?? "").toLowerCase();
+  const host = parseHostHeader(hostHeader);
 
   if (!host) {
     return new NextResponse("Missing Host header", { status: 400 });

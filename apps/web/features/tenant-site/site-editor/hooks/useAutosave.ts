@@ -35,6 +35,27 @@ export function useAutosave(
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inFlightRef = useRef(false);
+  const saveDraftRef = useRef(saveDraft);
+  saveDraftRef.current = saveDraft;
+
+  // Flush on unmount: navigating away inside the 2s debounce window would
+  // otherwise silently drop the last edit (the per-change effect's cleanup
+  // clears the timer without saving).
+  useEffect(() => {
+    return () => {
+      const state = useEditorStore.getState();
+      if (!state.dirty || inFlightRef.current) return;
+      saveDraftRef
+        .current(state.present.blocks)
+        .then(() => {
+          useEditorStore.getState().markClean();
+          useEditorStore.getState().setLastSaveTime(Date.now());
+        })
+        .catch(() => {
+          // Mutation hook already toasts; nothing else we can do post-unmount.
+        });
+    };
+  }, []);
 
   useEffect(() => {
     if (!dirty) {
@@ -61,6 +82,7 @@ export function useAutosave(
         // here clears the bit we just persisted, leaving the new edits
         // dirty for the next debounce cycle.
         useEditorStore.getState().markClean();
+        useEditorStore.getState().setLastSaveTime(Date.now());
       } catch {
         // Mutation hook already toasted the failure; leave dirty=true
         // so the next user edit retries the save naturally.

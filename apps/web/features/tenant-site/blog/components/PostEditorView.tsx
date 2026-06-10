@@ -72,14 +72,59 @@ export function PostEditorView({ postId }: { postId: string }) {
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadedRef = useRef(false);
 
-  // Load existing post
+  // Load existing post ONCE. Field saves invalidate the detail query, so
+  // re-syncing on every refetch would clobber whatever the user typed while
+  // the save round-trip was in flight.
   useEffect(() => {
-    if (existingPost && !isNew) {
+    if (existingPost && !isNew && !loadedRef.current) {
+      loadedRef.current = true;
       setPost(existingPost);
       setShowSchedule(!!existingPost.scheduledPublishAt);
     }
   }, [existingPost, isNew]);
+
+  // Debounced field autosave. Per-keystroke `updatePost.mutate` calls used to
+  // fire one PATCH (plus a toast and a refetch) per character; instead we
+  // merge dirty fields into one pending payload and flush it after a pause.
+  const pendingFieldsRef = useRef<Partial<BlogPost>>({});
+  const fieldSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const updatePostRef = useRef(updatePost);
+  updatePostRef.current = updatePost;
+  const postIdRef = useRef<string | undefined>(undefined);
+  postIdRef.current = post.id;
+
+  const flushFieldSaves = () => {
+    const payload = pendingFieldsRef.current;
+    const id = postIdRef.current;
+    pendingFieldsRef.current = {};
+    if (!id || Object.keys(payload).length === 0) return;
+    updatePostRef.current.mutate(
+      { id, payload },
+      { onSuccess: () => setLastSaveTime(new Date()) },
+    );
+  };
+
+  const queueFieldSave = (payload: Partial<BlogPost>) => {
+    if (!postIdRef.current) return;
+    pendingFieldsRef.current = { ...pendingFieldsRef.current, ...payload };
+    if (fieldSaveTimerRef.current) clearTimeout(fieldSaveTimerRef.current);
+    fieldSaveTimerRef.current = setTimeout(flushFieldSaves, 800);
+  };
+
+  // Flush any pending field edits when the editor unmounts.
+  useEffect(() => {
+    return () => {
+      if (fieldSaveTimerRef.current) clearTimeout(fieldSaveTimerRef.current);
+      const payload = pendingFieldsRef.current;
+      const id = postIdRef.current;
+      pendingFieldsRef.current = {};
+      if (id && Object.keys(payload).length > 0) {
+        updatePostRef.current.mutate({ id, payload });
+      }
+    };
+  }, []);
 
   const debouncedBodyMarkdown = useDebounce(post.bodyMarkdown ?? "", 2000);
 
@@ -251,12 +296,7 @@ export function PostEditorView({ postId }: { postId: string }) {
               value={post.title || ""}
               onChange={(e) => {
                 updateField("title", e.target.value);
-                if (post.id) {
-                  updatePost.mutate({
-                    id: post.id,
-                    payload: { title: e.target.value },
-                  });
-                }
+                queueFieldSave({ title: e.target.value });
               }}
               className="serif m-0 w-full text-5xl font-semibold bg-transparent outline-none border-0 leading-tight mb-4 placeholder:text-[var(--ink-3)]"
               placeholder="Why we cook over almond wood"
@@ -268,12 +308,7 @@ export function PostEditorView({ postId }: { postId: string }) {
               value={post.excerpt || ""}
               onChange={(e) => {
                 updateField("excerpt", e.target.value);
-                if (post.id) {
-                  updatePost.mutate({
-                    id: post.id,
-                    payload: { excerpt: e.target.value },
-                  });
-                }
+                queueFieldSave({ excerpt: e.target.value });
               }}
               className="serif w-full text-lg italic bg-transparent outline-none border-0 leading-relaxed text-[var(--ink-3)] mb-6 placeholder:text-[var(--ink-4)] resize-none"
               placeholder="It started, like a lot of things in this kitchen, with a question…"
@@ -350,12 +385,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                   value={post.slug || ""}
                   onChange={(e) => {
                     updateField("slug", e.target.value);
-                    if (post.id) {
-                      updatePost.mutate({
-                        id: post.id,
-                        payload: { slug: e.target.value },
-                      });
-                    }
+                    queueFieldSave({ slug: e.target.value });
                   }}
                   className="font-mono text-xs mt-1"
                 />
@@ -369,12 +399,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                   onValueChange={(raw) => {
                     const v = raw === "__none__" ? null : raw;
                     updateField("categoryId", v);
-                    if (post.id) {
-                      updatePost.mutate({
-                        id: post.id,
-                        payload: { categoryId: v },
-                      });
-                    }
+                    queueFieldSave({ categoryId: v });
                   }}
                 >
                   <SelectTrigger id="category" className="mt-1 text-xs">
@@ -402,12 +427,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                         const newTags =
                           post.tags?.filter((t) => t !== tag) || [];
                         updateField("tags", newTags);
-                        if (post.id) {
-                          updatePost.mutate({
-                            id: post.id,
-                            payload: { tags: newTags },
-                          });
-                        }
+                        queueFieldSave({ tags: newTags });
                       }}
                     >
                       #{tag} ×
@@ -453,12 +473,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                         "scheduledPublishAt",
                         dateValue as string | null,
                       );
-                      if (post.id) {
-                        updatePost.mutate({
-                          id: post.id,
-                          payload: { scheduledPublishAt: dateValue },
-                        });
-                      }
+                      queueFieldSave({ scheduledPublishAt: dateValue });
                     }}
                     className="text-xs mt-1"
                   />
@@ -486,12 +501,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                     value={post.seoTitle || ""}
                     onChange={(e) => {
                       updateField("seoTitle", e.target.value);
-                      if (post.id) {
-                        updatePost.mutate({
-                          id: post.id,
-                          payload: { seoTitle: e.target.value },
-                        });
-                      }
+                      queueFieldSave({ seoTitle: e.target.value });
                     }}
                     className="text-xs"
                     placeholder="SEO title for search engines"
@@ -506,12 +516,7 @@ export function PostEditorView({ postId }: { postId: string }) {
                     value={post.seoDescription || ""}
                     onChange={(e) => {
                       updateField("seoDescription", e.target.value);
-                      if (post.id) {
-                        updatePost.mutate({
-                          id: post.id,
-                          payload: { seoDescription: e.target.value },
-                        });
-                      }
+                      queueFieldSave({ seoDescription: e.target.value });
                     }}
                     className="w-full text-xs p-2 rounded border border-[var(--line)] bg-[var(--bg-sunken)] outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
                     rows={2}

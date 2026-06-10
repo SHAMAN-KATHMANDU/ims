@@ -314,6 +314,9 @@ importers:
       "@tailwindcss/postcss":
         specifier: ^4.1.18
         version: 4.1.18
+      "@testing-library/react":
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       "@types/node":
         specifier: ^22.9.0
         version: 22.15.3
@@ -1128,13 +1131,6 @@ packages:
       }
     engines: { node: ">=6.0.0" }
     hasBin: true
-
-  "@babel/runtime@7.28.4":
-    resolution:
-      {
-        integrity: sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==,
-      }
-    engines: { node: ">=6.9.0" }
 
   "@babel/runtime@7.28.6":
     resolution:
@@ -16372,8 +16368,6 @@ snapshots:
     dependencies:
       "@babel/types": 7.29.0
 
-  "@babel/runtime@7.28.4": {}
-
   "@babel/runtime@7.28.6": {}
 
   "@babel/template@7.28.6":
@@ -18786,7 +18780,7 @@ snapshots:
 
   "@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)":
     dependencies:
-      "@babel/runtime": 7.28.4
+      "@babel/runtime": 7.28.6
       "@testing-library/dom": 10.4.1
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
@@ -24430,7 +24424,7 @@ snapshots:
 
   react-transition-group@4.4.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
-      "@babel/runtime": 7.28.4
+      "@babel/runtime": 7.28.6
       dom-helpers: 5.2.1
       loose-envify: 1.4.0
       prop-types: 15.8.1

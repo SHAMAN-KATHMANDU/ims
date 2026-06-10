@@ -29,7 +29,10 @@ interface CartPingPayload {
 }
 
 function computeSubtotal(items: PingCartItem[]): number {
-  return items.reduce((sum, i) => sum + i.lineTotal, 0);
+  // Recompute from unitPrice × quantity instead of trusting the client's
+  // lineTotal — a forged lineTotal would otherwise inflate the cart value
+  // shown to the tenant and skew remarketing automations.
+  return items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 }
 
 function normalizeContactField(
@@ -55,7 +58,12 @@ async function recordCartPing(
 
   const subtotal = computeSubtotal(payload.items);
   const now = new Date();
-  const itemsJson = payload.items as unknown as Prisma.InputJsonValue;
+  // Persist server-derived line totals; the client's lineTotal is unverified.
+  const normalizedItems = payload.items.map((i) => ({
+    ...i,
+    lineTotal: i.unitPrice * i.quantity,
+  }));
+  const itemsJson = normalizedItems as unknown as Prisma.InputJsonValue;
 
   await basePrisma.abandonedCart.upsert({
     where: {

@@ -100,6 +100,8 @@ export function useSetCollectionCmsProducts() {
       collectionsCmsService.setProducts(id, productIds),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: collectionsCmsKeys.detail(id) });
+      // The list view shows per-collection product counts — refresh it too.
+      qc.invalidateQueries({ queryKey: collectionsCmsKeys.list() });
       toast({ title: "Products updated" });
     },
     onError: (error: Error) => {

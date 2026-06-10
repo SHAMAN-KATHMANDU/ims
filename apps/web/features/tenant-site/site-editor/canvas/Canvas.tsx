@@ -7,10 +7,13 @@ import {
   selectBlocks,
   selectSelectedId,
   selectDevice,
+  selectSlashMenuAnchor,
+  selectSetSlashMenuAnchor,
 } from "../store/selectors";
 import { useDomains } from "../../hooks/use-domains";
 import { BlockWrap } from "./BlockWrap";
-import type { BlockNode, BlockKind } from "@repo/shared";
+import { SlashMenu } from "./SlashMenu";
+import type { BlockNode, BlockKind, SiteLayoutScope } from "@repo/shared";
 import { BLOCK_CATALOG_ENTRIES } from "@repo/shared";
 
 interface CanvasProps {
@@ -18,10 +21,12 @@ interface CanvasProps {
   dataContext: BlockDataContext;
 }
 
-export function Canvas({ scope: _unused_scope, dataContext }: CanvasProps) {
+export function Canvas({ scope, dataContext }: CanvasProps) {
   const blocks = useEditorStore(selectBlocks);
   const selectedId = useEditorStore(selectSelectedId);
   const device = useEditorStore(selectDevice);
+  const slashMenuAnchor = useEditorStore(selectSlashMenuAnchor);
+  const setSlashMenuAnchor = useEditorStore(selectSetSlashMenuAnchor);
   const { addBlock } = useEditorStore();
   const { data: domains } = useDomains();
 
@@ -157,6 +162,28 @@ export function Canvas({ scope: _unused_scope, dataContext }: CanvasProps) {
           </span>
         </button>
       </div>
+
+      {/* Slash menu — BlockView sets the anchor when "/" is typed in a text
+          block; until now nothing rendered it, so the advertised shortcut
+          silently ate the keystroke. Positioned at the caret's viewport
+          coords; inserts after the anchor block. */}
+      {slashMenuAnchor && (
+        <div
+          style={{
+            position: "fixed",
+            left: slashMenuAnchor.position.x,
+            top: slashMenuAnchor.position.y + 20,
+            zIndex: 1001,
+          }}
+        >
+          <SlashMenu
+            isOpen
+            onClose={() => setSlashMenuAnchor(null)}
+            anchorId={slashMenuAnchor.blockId}
+            scope={scope as SiteLayoutScope}
+          />
+        </div>
+      )}
     </div>
   );
 }

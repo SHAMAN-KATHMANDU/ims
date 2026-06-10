@@ -365,6 +365,42 @@ describe("useEditorStore", () => {
       const state = useEditorStore.getState();
       expect(state.dirty).toBe(true);
     });
+
+    it("coalesces rapid edits to the same block into one history entry", () => {
+      const store = useEditorStore.getState();
+      store.load([section("h1")]);
+      store.updateBlockProps("h1", { a: 1 } as never);
+      store.updateBlockProps("h1", { a: 12 } as never);
+      store.updateBlockProps("h1", { a: 123 } as never);
+
+      const state = useEditorStore.getState();
+      // One entry for the burst (the pre-burst snapshot), not one per edit.
+      expect(state.past).toHaveLength(1);
+
+      state.undo();
+      const after = useEditorStore.getState();
+      expect(after.present.blocks[0]?.props).toEqual({});
+    });
+
+    it("does not coalesce edits to different blocks", () => {
+      const store = useEditorStore.getState();
+      store.load([section("h1"), section("h2")]);
+      store.updateBlockProps("h1", { a: 1 } as never);
+      store.updateBlockProps("h2", { a: 1 } as never);
+
+      expect(useEditorStore.getState().past).toHaveLength(2);
+    });
+
+    it("does not coalesce across other mutations", () => {
+      const store = useEditorStore.getState();
+      store.load([section("h1")]);
+      store.updateBlockProps("h1", { a: 1 } as never);
+      store.addBlock(section("h2"));
+      store.updateBlockProps("h1", { a: 2 } as never);
+
+      // props burst (1) + addBlock (1) + post-mutation props edit (1)
+      expect(useEditorStore.getState().past).toHaveLength(3);
+    });
   });
 
   describe("updateBlockVisibility", () => {

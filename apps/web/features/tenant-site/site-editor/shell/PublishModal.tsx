@@ -20,7 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Minus, Pencil, Globe } from "lucide-react";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
-import { usePublishLayout } from "../hooks/useSiteLayoutMutations";
+import {
+  usePublishLayout,
+  useSaveLayoutDraft,
+} from "../hooks/useSiteLayoutMutations";
 
 interface PublishModalProps {
   open: boolean;
@@ -92,6 +95,7 @@ export function PublishModal({
   onPublished,
 }: PublishModalProps) {
   const publish = usePublishLayout(scope, pageId);
+  const saveDraft = useSaveLayoutDraft(scope, pageId);
 
   const diff = useMemo(
     () => diffBlocks(draftBlocks, publishedBlocks),
@@ -101,7 +105,17 @@ export function PublishModal({
   const isClean = diff.added === 0 && diff.removed === 0 && diff.modified === 0;
 
   const handlePublish = async (): Promise<void> => {
-    await publish.mutateAsync();
+    try {
+      // The publish endpoint promotes the SERVER's saved draft. Persist the
+      // editor's current tree first so a publish inside the autosave debounce
+      // window can't promote a stale draft (what the diff shows is what ships).
+      await saveDraft.mutateAsync(draftBlocks);
+      await publish.mutateAsync();
+    } catch {
+      // The mutation hooks already toast failures; keep the modal open
+      // so the user can retry.
+      return;
+    }
     onPublished?.();
     onClose();
   };
@@ -143,12 +157,17 @@ export function PublishModal({
           <Button
             variant="outline"
             onClick={onClose}
-            disabled={publish.isPending}
+            disabled={publish.isPending || saveDraft.isPending}
           >
             Cancel
           </Button>
-          <Button onClick={handlePublish} disabled={publish.isPending}>
-            {publish.isPending ? "Publishing…" : "Publish now"}
+          <Button
+            onClick={handlePublish}
+            disabled={publish.isPending || saveDraft.isPending}
+          >
+            {publish.isPending || saveDraft.isPending
+              ? "Publishing…"
+              : "Publish now"}
           </Button>
         </DialogFooter>
       </DialogContent>

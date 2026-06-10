@@ -26,34 +26,10 @@ import {
   type CartState,
 } from "@/lib/cart";
 import { postCartPing } from "@/lib/api";
-
-/** localStorage key for the browser's stable cart session id. */
-const SESSION_KEY_STORAGE = "tenant-site:cart-session";
+import { loadOrCreateSessionKey } from "@/lib/cart-session";
 
 /** Delay between the last cart mutation and the ping we send. */
 const PING_DEBOUNCE_MS = 2000;
-
-function generateSessionKey(): string {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
-  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function loadOrCreateSessionKey(): string {
-  try {
-    const existing = window.localStorage.getItem(SESSION_KEY_STORAGE);
-    if (existing && existing.length >= 8) return existing;
-    const fresh = generateSessionKey();
-    window.localStorage.setItem(SESSION_KEY_STORAGE, fresh);
-    return fresh;
-  } catch {
-    return generateSessionKey();
-  }
-}
 
 /**
  * CartProvider — the only piece of client state in the tenant-site.
@@ -125,7 +101,7 @@ export function CartProvider({
     } catch {
       setCart(EMPTY_CART);
     }
-    sessionKeyRef.current = loadOrCreateSessionKey();
+    sessionKeyRef.current = loadOrCreateSessionKey(tenantId);
     setHydrated(true);
   }, [tenantId, host]);
 

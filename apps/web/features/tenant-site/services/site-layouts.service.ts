@@ -106,14 +106,28 @@ export async function deleteSiteLayout(
 export async function getSiteLayoutPreviewUrl(
   scope: SiteLayoutScope,
   pageId?: string,
-): Promise<string> {
+): Promise<string | null> {
   try {
     const suffix = pageId ? `?pageId=${encodeURIComponent(pageId)}` : "";
+    // This minting call runs on every CMS screen (sidebar/topbar preview
+    // buttons) and 503s whenever no preview target exists (no verified
+    // domain and TENANT_SITE_PUBLIC_URL unset — the default in dev). That's
+    // an expected state, not an incident: skip the global error toast and
+    // surface it as "no preview available" so the buttons simply disable.
     const response = await api.get<{ url: string }>(
       `/site-layouts/${encodeURIComponent(scope)}/preview-url${suffix}`,
+      { skipGlobalErrorToast: true },
     );
     return response.data.url;
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "response" in error &&
+      (error as { response?: { status?: number } }).response?.status === 503
+    ) {
+      return null;
+    }
     handleApiError(error, "mint site layout preview URL");
   }
 }

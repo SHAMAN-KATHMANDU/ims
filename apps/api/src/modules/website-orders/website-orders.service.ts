@@ -566,6 +566,14 @@ export class WebsiteOrdersService {
       throw createError("Invalid cart totals", 400);
     }
 
+    // Normalize per-line totals in the stored snapshot too — the client's
+    // lineTotal field is unverified, and downstream consumers (reports,
+    // automations) read this JSON as-is.
+    const normalizedItems = input.items.map((i) => ({
+      ...i,
+      lineTotal: i.unitPrice * i.quantity,
+    }));
+
     // Up to 3 attempts to generate a unique orderCode in case of a race
     // (concurrent checkouts can see the same count before either commits).
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -577,7 +585,7 @@ export class WebsiteOrdersService {
           customerPhone: input.customerPhone,
           customerEmail: input.customerEmail ?? null,
           customerNote: input.customerNote ?? null,
-          items: input.items as unknown as Prisma.InputJsonValue,
+          items: normalizedItems as unknown as Prisma.InputJsonValue,
           subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
           sourceIp: input.sourceIp ?? null,
           sourceUserAgent: input.sourceUserAgent ?? null,

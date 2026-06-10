@@ -585,6 +585,59 @@ describe("WebsiteOrdersService", () => {
       expect(data.orderCode).toBe(`WO-${new Date().getFullYear()}-0006`);
       expect(data.subtotal.toString()).toBe("2500");
     });
+
+    it("persists items with lineTotal recomputed as unitPrice*quantity even when client sends bogus lineTotal", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      (
+        mockRepo.maxOrderSeqThisYear as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(0);
+      (mockRepo.createOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+        order(),
+      );
+
+      await service.createGuestOrder("t1", {
+        customerName: "Ada",
+        customerPhone: "+977",
+        items: [
+          {
+            productId: "p1",
+            productName: "Lamp",
+            unitPrice: 1000,
+            quantity: 2,
+            lineTotal: 999999, // Bogus value from client
+          },
+          {
+            productId: "p2",
+            productName: "Bowl",
+            unitPrice: 500,
+            quantity: 1,
+            lineTotal: 888888, // Another bogus value from client
+          },
+        ],
+      });
+
+      const [, data] = (mockRepo.createOrder as ReturnType<typeof vi.fn>).mock
+        .calls[0];
+      // items should have been normalized so lineTotal = unitPrice * quantity
+      expect(data.items).toEqual([
+        {
+          productId: "p1",
+          productName: "Lamp",
+          unitPrice: 1000,
+          quantity: 2,
+          lineTotal: 2000, // Recomputed: 1000 * 2
+        },
+        {
+          productId: "p2",
+          productName: "Bowl",
+          unitPrice: 500,
+          quantity: 1,
+          lineTotal: 500, // Recomputed: 500 * 1
+        },
+      ]);
+    });
   });
 
   // ── RBAC Phase 2 permission enforcement ────────────────────────────────
