@@ -212,7 +212,9 @@ describe("site-layouts.service", () => {
 
       const result = await getSiteLayoutPreviewUrl("home");
 
-      expect(mockGet).toHaveBeenCalledWith("/site-layouts/home/preview-url");
+      expect(mockGet).toHaveBeenCalledWith("/site-layouts/home/preview-url", {
+        skipGlobalErrorToast: true,
+      });
       expect(result).toBe("https://preview.example.com/home");
     });
 
@@ -225,7 +227,17 @@ describe("site-layouts.service", () => {
 
       expect(mockGet).toHaveBeenCalledWith(
         "/site-layouts/page/preview-url?pageId=p1",
+        { skipGlobalErrorToast: true },
       );
+    });
+
+    it("returns null when no preview target exists (503)", async () => {
+      mockGet.mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 503, data: { message: "No preview target" } },
+      });
+
+      await expect(getSiteLayoutPreviewUrl("home")).resolves.toBeNull();
     });
 
     it("propagates errors via handleApiError", async () => {

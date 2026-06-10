@@ -26,6 +26,7 @@ import {
 } from "./store/selectors";
 import { usePreviewUrl } from "./hooks/usePreviewUrl";
 import { useSiteLayoutQuery } from "./hooks/useSiteLayoutQuery";
+import { usePageQuery } from "../hooks/use-pages";
 import { PublishModal } from "./shell/PublishModal";
 
 interface EditorTopBarProps {
@@ -54,6 +55,14 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
   // The published tree feeds the publish modal's draft-vs-live diff.
   const layoutPageId = scope === "page" ? pageId : null;
   const { data: layout } = useSiteLayoutQuery(scope, layoutPageId);
+
+  // Humanize the title: the route param is a TenantPage UUID — show the
+  // page's real title (or the chrome scope name) instead of the raw id.
+  const { data: pageRecord } = usePageQuery(layoutPageId ?? "");
+  const displayTitle =
+    scope === "page"
+      ? (pageRecord?.title ?? "…")
+      : scope.charAt(0).toUpperCase() + scope.slice(1);
 
   // Mint a token-gated preview URL bound to this scope + page so the Preview
   // button can open the live tenant-site renderer in a new tab. The hook
@@ -93,7 +102,9 @@ export function EditorTopBar({ workspace, pageId, scope }: EditorTopBarProps) {
       />
 
       <div>
-        <div className="text-sm font-medium text-[var(--ink)]">{pageId}</div>
+        <div className="text-sm font-medium text-[var(--ink)]">
+          {displayTitle}
+        </div>
         <div className="text-xs text-[var(--ink-4)] font-mono">
           {scope} · {saveStatus}
         </div>

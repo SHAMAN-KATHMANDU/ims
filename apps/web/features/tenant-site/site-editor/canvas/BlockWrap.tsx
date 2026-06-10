@@ -137,10 +137,16 @@ export function BlockWrap({
       }
       // left/right: skip for existing blocks to keep semantics simple
     } else if (paletteKind) {
-      // Inserting a new block from palette
-      const entry = BLOCK_CATALOG_ENTRIES.find(
-        (ent) => ent.kind === paletteKind,
+      // Inserting a new block from palette. Resolve by catalog id first —
+      // preset variants share a kind, and matching kind alone would always
+      // insert the base variant's defaults.
+      const catalogId = e.dataTransfer.getData(
+        "application/x-block-catalog-id",
       );
+      const entry =
+        BLOCK_CATALOG_ENTRIES.find(
+          (ent) => catalogId && (ent.id ?? ent.kind) === catalogId,
+        ) ?? BLOCK_CATALOG_ENTRIES.find((ent) => ent.kind === paletteKind);
       if (!entry) return;
       const newBlock: BlockNode = {
         id: `block-${crypto.randomUUID().slice(0, 8)}`,
