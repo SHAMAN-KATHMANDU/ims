@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "@/config/prisma";
 import {
   getPaginationParams,
@@ -154,75 +155,100 @@ export class LeadRepository {
     });
   }
 
-  async findMemberByPhone(tenantId: string, phone: string) {
-    return prisma.member.findFirst({
+  async findMemberByPhone(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    phone: string,
+  ) {
+    return tx.member.findFirst({
       where: { tenantId, phone, deletedAt: null },
       select: { id: true },
     });
   }
 
-  async createMember(data: {
-    tenantId: string;
-    phone: string;
-    name: string | null;
-    email: string | null;
-  }) {
-    return prisma.member.create({
+  async createMember(
+    tx: Prisma.TransactionClient,
+    data: {
+      tenantId: string;
+      phone: string;
+      name: string | null;
+      email: string | null;
+    },
+  ) {
+    return tx.member.create({
       data,
       select: { id: true },
     });
   }
 
-  async findContactById(tenantId: string, contactId: string) {
-    return prisma.contact.findFirst({
+  async findContactById(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    contactId: string,
+  ) {
+    return tx.contact.findFirst({
       where: { id: contactId, tenantId, deletedAt: null },
     });
   }
 
-  async findCompanyByName(tenantId: string, name: string) {
-    return prisma.company.findFirst({
+  async findCompanyByName(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    name: string,
+  ) {
+    return tx.company.findFirst({
       where: { tenantId, name },
       select: { id: true },
     });
   }
 
-  async createCompany(tenantId: string, name: string) {
-    return prisma.company.create({
+  async createCompany(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    name: string,
+  ) {
+    return tx.company.create({
       data: { tenantId, name },
       select: { id: true },
     });
   }
 
-  async createContact(data: {
-    tenantId: string;
-    firstName: string;
-    lastName: string | null;
-    email: string | null;
-    phone: string | null;
-    companyId: string | null;
-    memberId: string | null;
-    ownedById: string;
-    createdById: string;
-  }) {
-    return prisma.contact.create({ data });
+  async createContact(
+    tx: Prisma.TransactionClient,
+    data: {
+      tenantId: string;
+      firstName: string;
+      lastName: string | null;
+      email: string | null;
+      phone: string | null;
+      companyId: string | null;
+      memberId: string | null;
+      ownedById: string;
+      createdById: string;
+    },
+  ) {
+    return tx.contact.create({ data });
   }
 
-  async createDeal(data: {
-    tenantId: string;
-    name: string;
-    value: number;
-    stage: string;
-    probability: number;
-    status: "OPEN";
-    contactId: string;
-    memberId?: string;
-    companyId: string | null;
-    pipelineId: string;
-    assignedToId: string;
-    createdById: string;
-    leadId: string;
-  }) {
-    return prisma.deal.create({
+  async createDeal(
+    tx: Prisma.TransactionClient,
+    data: {
+      tenantId: string;
+      name: string;
+      value: number;
+      stage: string;
+      probability: number;
+      status: "OPEN";
+      contactId: string;
+      memberId?: string;
+      companyId: string | null;
+      pipelineId: string;
+      assignedToId: string;
+      createdById: string;
+      leadId: string;
+    },
+  ) {
+    return tx.deal.create({
       data,
       include: {
         contact: true,
@@ -234,8 +260,8 @@ export class LeadRepository {
     });
   }
 
-  async markLeadConverted(id: string) {
-    return prisma.lead.update({
+  async markLeadConverted(tx: Prisma.TransactionClient, id: string) {
+    return tx.lead.update({
       where: { id },
       data: { status: "CONVERTED", convertedAt: new Date() },
     });

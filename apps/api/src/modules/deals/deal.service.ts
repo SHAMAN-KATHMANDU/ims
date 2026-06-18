@@ -388,6 +388,7 @@ export class DealService {
     }
 
     if (patch.status === "WON") {
+      await this.publishDealClosedEvent(existing, deal);
       await executeWorkflowRules({
         trigger: "DEAL_WON",
         deal: toDealContext(deal),
@@ -414,6 +415,7 @@ export class DealService {
           }),
         );
     } else if (patch.status === "LOST") {
+      await this.publishDealClosedEvent(existing, deal);
       await executeWorkflowRules({
         trigger: "DEAL_LOST",
         deal: toDealContext(deal),
@@ -828,7 +830,7 @@ export class DealService {
       Awaited<ReturnType<typeof dealRepository.createDealRevision>>
     >,
   ): Promise<void> {
-    if (deal.status === existing.status || !existing.assignedToId) return;
+    if (deal.status === existing.status) return;
 
     const trigger =
       deal.status === "WON"
@@ -837,6 +839,13 @@ export class DealService {
           ? "DEAL_LOST"
           : null;
     if (!trigger) return;
+
+    // New automation engine: emit the closure event on the status transition,
+    // independent of whether the deal has an assignee (legacy workflow rules
+    // below still require one).
+    await this.publishDealClosedEvent(existing, deal);
+
+    if (!existing.assignedToId) return;
 
     await executeWorkflowRules({
       trigger,
@@ -864,6 +873,48 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+  }
+
+  /**
+   * Emit the `crm.deal.won` / `crm.deal.lost` domain event when a deal's status
+   * transitions to a terminal state. Fire-and-forget — automation failures must
+   * never block the deal write. Guards on an actual status change so re-saving a
+   * deal that is already won/lost does not re-fire.
+   */
+  private async publishDealClosedEvent(
+    existing: NonNullable<Awaited<ReturnType<typeof dealRepository.findById>>>,
+    deal: NonNullable<
+      Awaited<ReturnType<typeof dealRepository.createDealRevision>>
+    >,
+  ): Promise<void> {
+    if (deal.status === existing.status) return;
+    if (deal.status !== "WON" && deal.status !== "LOST") return;
+
+    const eventName = deal.status === "WON" ? "crm.deal.won" : "crm.deal.lost";
+    const slug = deal.status === "WON" ? "won" : "lost";
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName,
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: existing.assignedToId,
+        dedupeKey: `crm-deal-${slug}:${deal.id}:${deal.revisionNo}`,
+        payload: {
+          dealId: deal.id,
+          stage: deal.stage,
+          previousStage: existing.stage,
+          pipelineId: deal.pipelineId,
+          status: deal.status,
+          value: Number(deal.value),
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+        },
+      })
+      .catch(() => {});
   }
 
   async addLineItem(

@@ -65,6 +65,14 @@ export const AUTOMATION_TRIGGER_EVENT_CATALOG: Record<
     label: "Deal stage changed",
     description: "When a deal moves from one stage to another.",
   },
+  "crm.deal.won": {
+    label: "Deal won",
+    description: "When a deal is marked won (status moves to WON).",
+  },
+  "crm.deal.lost": {
+    label: "Deal lost",
+    description: "When a deal is marked lost (status moves to LOST).",
+  },
   "crm.contact.created": {
     label: "Contact created",
     description: "When a new CRM contact is saved.",

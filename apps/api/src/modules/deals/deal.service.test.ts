@@ -6,6 +6,8 @@ const mockCreate = vi.fn();
 const mockFindById = vi.fn();
 const mockCreateDealRevision = vi.fn();
 const mockExecuteWorkflowRules = vi.fn().mockResolvedValue(undefined);
+const mockGetPipelineClosingStageNames = vi.fn().mockResolvedValue(null);
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/shared/validation/reference-validator", () => ({
   assertEntityExists: vi.fn().mockResolvedValue(undefined),
@@ -29,13 +31,20 @@ vi.mock("@/modules/contacts/contact.repository", () => ({
   },
 }));
 
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
+}));
+
 vi.mock("./deal.repository", () => ({
   default: {
     findDefaultPipeline: (...args: unknown[]) =>
       mockFindDefaultPipeline(...args),
     create: (...args: unknown[]) => mockCreate(...args),
     findById: (...args: unknown[]) => mockFindById(...args),
-    getPipelineClosingStageNames: vi.fn().mockResolvedValue(null),
+    getPipelineClosingStageNames: (...args: unknown[]) =>
+      mockGetPipelineClosingStageNames(...args),
     findAll: vi.fn(),
     findKanban: vi.fn(),
     createDealRevision: (...args: unknown[]) => mockCreateDealRevision(...args),
@@ -171,6 +180,65 @@ describe("DealService", () => {
         }),
         "u1",
         null,
+      );
+    });
+  });
+
+  describe("deal closure events", () => {
+    it("publishes crm.deal.won when status transitions to WON", async () => {
+      mockFindById.mockResolvedValue({ ...baseDealRow, status: "OPEN" });
+      mockCreateDealRevision.mockResolvedValue({
+        ...baseDealRow,
+        status: "WON",
+        value: 1500,
+        revisionNo: 2,
+      });
+
+      await dealService.update("t1", "d1", { status: "WON" }, "u1");
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: "crm.deal.won",
+          entityType: "DEAL",
+          entityId: "d1",
+          scopeType: "CRM_PIPELINE",
+          payload: expect.objectContaining({ status: "WON", value: 1500 }),
+        }),
+      );
+    });
+
+    it("publishes crm.deal.lost when status transitions to LOST", async () => {
+      mockFindById.mockResolvedValue({ ...baseDealRow, status: "OPEN" });
+      mockCreateDealRevision.mockResolvedValue({
+        ...baseDealRow,
+        status: "LOST",
+        value: 0,
+        revisionNo: 2,
+      });
+
+      await dealService.update("t1", "d1", { status: "LOST" }, "u1");
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: "crm.deal.lost",
+          payload: expect.objectContaining({ status: "LOST" }),
+        }),
+      );
+    });
+
+    it("does not re-publish when the deal is already WON", async () => {
+      mockFindById.mockResolvedValue({ ...baseDealRow, status: "WON" });
+      mockCreateDealRevision.mockResolvedValue({
+        ...baseDealRow,
+        status: "WON",
+        value: 1500,
+        revisionNo: 3,
+      });
+
+      await dealService.update("t1", "d1", { status: "WON" }, "u1");
+
+      expect(mockPublishDomainEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ eventName: "crm.deal.won" }),
       );
     });
   });

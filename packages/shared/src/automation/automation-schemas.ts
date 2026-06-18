@@ -19,6 +19,8 @@ const CRM_DEAL_EVENT_NAMES = [
 const CRM_EVENT_NAMES = [
   "crm.deal.created",
   "crm.deal.stage_changed",
+  "crm.deal.won",
+  "crm.deal.lost",
   "crm.contact.created",
   "crm.contact.updated",
   "crm.company.created",

@@ -38,6 +38,45 @@ describe("CrmService", () => {
         dealsClosingThisMonth: 3,
         tasksDueToday: 2,
         recentActivities: [{ id: "a1" }],
+        // Returned out of canonical order to prove the service re-sorts by type.
+        frameworkPipelines: [
+          {
+            id: "pipe-rm",
+            name: "Remarketing",
+            type: "REMARKETING",
+            stages: [{ id: "r1", name: "Re-engage" }],
+          },
+          {
+            id: "pipe-ns",
+            name: "New Sales",
+            type: "NEW_SALES",
+            stages: [
+              { id: "s1", name: "Lead" },
+              { id: "s2", name: "Qualified" },
+              { id: "s3", name: "Proposal" },
+            ],
+          },
+        ],
+        dealsByStage: [
+          {
+            pipelineId: "pipe-ns",
+            stage: "Lead",
+            _count: 4,
+            _sum: { value: 12000 },
+          },
+          {
+            pipelineId: "pipe-ns",
+            stage: "Qualified",
+            _count: 2,
+            _sum: { value: 8000 },
+          },
+          {
+            pipelineId: "pipe-rm",
+            stage: "Re-engage",
+            _count: 1,
+            _sum: { value: 500 },
+          },
+        ],
       });
 
       const result = await crmService.getDashboard(tenantId);
@@ -50,6 +89,22 @@ describe("CrmService", () => {
       expect(result.tasksDueToday).toBe(2);
       expect(result.monthlyRevenueChart).toHaveLength(12);
       expect(result.activitySummary).toEqual([{ id: "a1" }]);
+      // One funnel per framework pipeline, ordered NEW_SALES then REMARKETING.
+      expect(result.pipelineFunnels).toHaveLength(2);
+      expect(result.pipelineFunnels[0]).toMatchObject({
+        pipelineId: "pipe-ns",
+        pipelineType: "NEW_SALES",
+        stages: [
+          { stageId: "s1", stage: "Lead", count: 4, value: 12000 },
+          { stageId: "s2", stage: "Qualified", count: 2, value: 8000 },
+          { stageId: "s3", stage: "Proposal", count: 0, value: 0 },
+        ],
+      });
+      expect(result.pipelineFunnels[1]).toMatchObject({
+        pipelineId: "pipe-rm",
+        pipelineType: "REMARKETING",
+        stages: [{ stageId: "r1", stage: "Re-engage", count: 1, value: 500 }],
+      });
     });
 
     it("handles zero leads", async () => {
@@ -81,7 +136,12 @@ describe("CrmService", () => {
         salesPerUser: [
           { assignedToId: "u1", _count: 5, _sum: { value: 25000 } },
         ],
-        userMap: { u1: "Alice" },
+        staffActivity: [
+          { createdById: "u1", type: "CALL", _count: 7 },
+          { createdById: "u1", type: "EMAIL", _count: 3 },
+          { createdById: "u2", type: "MEETING", _count: 4 },
+        ],
+        userMap: { u1: "Alice", u2: "Bob" },
         leadsBySource: [{ source: "Web", _count: 20 }],
       });
 
@@ -92,12 +152,27 @@ describe("CrmService", () => {
       expect(result.dealsLost).toBe(2);
       expect(result.totalRevenue).toBe(15000);
       expect(result.conversionRate).toBeCloseTo(83.33);
-      expect(result.salesPerUser).toHaveLength(1);
-      expect(result.salesPerUser[0]).toMatchObject({
+      // salesPerUser keeps its original deal-owner-only shape (no activity fields).
+      expect(result.salesPerUser).toEqual([
+        { userId: "u1", username: "Alice", dealCount: 5, totalValue: 25000 },
+      ]);
+      // staffPerformance is the union of deal owners (u1) and activity creators (u2).
+      expect(result.staffPerformance).toHaveLength(2);
+      expect(result.staffPerformance[0]).toMatchObject({
         userId: "u1",
         username: "Alice",
         dealCount: 5,
         totalValue: 25000,
+        calls: 7,
+        emails: 3,
+        meetings: 0,
+      });
+      expect(result.staffPerformance[1]).toMatchObject({
+        userId: "u2",
+        username: "Bob",
+        dealCount: 0,
+        totalValue: 0,
+        meetings: 4,
       });
       expect(result.leadsBySource).toEqual([{ source: "Web", count: 20 }]);
     });

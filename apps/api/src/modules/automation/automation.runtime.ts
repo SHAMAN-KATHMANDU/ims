@@ -121,6 +121,8 @@ const ACTION_ALLOWED_EVENTS = {
   "crm.activity.create": [
     "crm.deal.created",
     "crm.deal.stage_changed",
+    "crm.deal.won",
+    "crm.deal.lost",
     "crm.contact.created",
     "crm.contact.updated",
     "crm.company.created",
