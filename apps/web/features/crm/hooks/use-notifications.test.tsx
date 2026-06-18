@@ -166,7 +166,7 @@ describe("useNotifications", () => {
 
     await waitFor(() => {
       expect(result.current.data?.notifications).toHaveLength(1);
-      expect(result.current.data?.notifications[0].type).toBe(
+      expect(result.current.data?.notifications[0]!.type).toBe(
         "DEAL_STAGE_CHANGE",
       );
     });

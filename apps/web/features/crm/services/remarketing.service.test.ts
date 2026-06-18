@@ -143,10 +143,10 @@ describe("remarketing.service", () => {
     const result = await getSequencesByContact("contact1");
 
     expect(result).toHaveLength(4);
-    expect(result[0].status).toBe("PENDING");
-    expect(result[1].status).toBe("EXECUTED");
-    expect(result[2].status).toBe("SKIPPED");
-    expect(result[3].status).toBe("PAUSED");
+    expect(result[0]!.status).toBe("PENDING");
+    expect(result[1]!.status).toBe("EXECUTED");
+    expect(result[2]!.status).toBe("SKIPPED");
+    expect(result[3]!.status).toBe("PAUSED");
   });
 
   it("builds correct URL with special characters in contact id", async () => {
@@ -205,7 +205,7 @@ describe("remarketing.service", () => {
     const result = await getSequencesByContact("contact1");
 
     expect(result).toHaveLength(1);
-    expect(result[0].dealId).toBeNull();
+    expect(result[0]!.dealId).toBeNull();
   });
 
   it("handles sequences with null message field", async () => {
@@ -228,7 +228,7 @@ describe("remarketing.service", () => {
     const result = await getSequencesByContact("contact1");
 
     expect(result).toHaveLength(1);
-    expect(result[0].message).toBeNull();
+    expect(result[0]!.message).toBeNull();
   });
 
   it("handles sequences with executed timestamp", async () => {
@@ -250,6 +250,6 @@ describe("remarketing.service", () => {
 
     const result = await getSequencesByContact("contact1");
 
-    expect(result[0].executedAt).toBe("2026-06-20T10:15:00Z");
+    expect(result[0]!.executedAt).toBe("2026-06-20T10:15:00Z");
   });
 });

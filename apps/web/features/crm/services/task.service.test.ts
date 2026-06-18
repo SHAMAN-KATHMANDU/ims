@@ -46,7 +46,14 @@ describe("task.service", () => {
               updatedAt: "2025-01-01T00:00:00Z",
             },
           ],
-          pagination: { total: 1, page: 1, limit: 10 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -54,15 +61,22 @@ describe("task.service", () => {
 
       expect(mockGet).toHaveBeenCalledWith("/tasks", { params: {} });
       expect(result.data).toHaveLength(1);
-      expect(result.data[0].id).toBe("t1");
-      expect(result.pagination.total).toBe(1);
+      expect(result.data[0]!.id).toBe("t1");
+      expect(result.pagination.totalItems).toBe(1);
     });
 
     it("passes all optional pagination and filter params correctly", async () => {
       mockGet.mockResolvedValue({
         data: {
           data: [],
-          pagination: { total: 0, page: 2, limit: 5 },
+          pagination: {
+            currentPage: 2,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: 5,
+            hasNextPage: false,
+            hasPrevPage: true,
+          },
         },
       });
 
@@ -89,14 +103,21 @@ describe("task.service", () => {
       mockGet.mockResolvedValue({
         data: {
           data: [],
-          pagination: { total: 0, page: 1, limit: 10 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
       const result = await getTasks();
 
       expect(result.data).toEqual([]);
-      expect(result.pagination.total).toBe(0);
+      expect(result.pagination.totalItems).toBe(0);
     });
 
     it("returns paginated response with metadata", async () => {
@@ -122,14 +143,21 @@ describe("task.service", () => {
               updatedAt: "2025-01-02T00:00:00Z",
             },
           ],
-          pagination: { total: 42, page: 1, limit: 10 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 5,
+            totalItems: 42,
+            itemsPerPage: 10,
+            hasNextPage: true,
+            hasPrevPage: false,
+          },
         },
       });
 
       const result = await getTasks({ page: 1, limit: 10 });
 
       expect(result.data).toHaveLength(2);
-      expect(result.pagination.total).toBe(42);
+      expect(result.pagination.totalItems).toBe(42);
     });
   });
 
@@ -618,7 +646,14 @@ describe("task.service", () => {
               updatedAt: "2025-01-01T00:00:00Z",
             },
           ],
-          pagination: { total: 100, page: 1, limit: 10 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 10,
+            totalItems: 100,
+            itemsPerPage: 10,
+            hasNextPage: true,
+            hasPrevPage: false,
+          },
         },
       });
 

@@ -43,7 +43,14 @@ describe("notification.service", () => {
     ];
     const mockResponse: NotificationsResponse = {
       notifications: mockNotifications,
-      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -65,14 +72,21 @@ describe("notification.service", () => {
     });
     expect(result).toEqual(mockResponse);
     expect(result.notifications).toHaveLength(1);
-    expect(result.notifications[0].type).toBe("TASK_DUE");
+    expect(result.notifications[0]!.type).toBe("TASK_DUE");
   });
 
   // Test 2: getNotifications with no parameters (defaults)
   it("gets notifications without optional params (defaults)", async () => {
     const mockResponse: NotificationsResponse = {
       notifications: [],
-      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -102,7 +116,14 @@ describe("notification.service", () => {
     ];
     const mockResponse: NotificationsResponse = {
       notifications: mockNotifications,
-      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 5,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -118,15 +139,22 @@ describe("notification.service", () => {
         type: "DEAL_STAGE_CHANGE",
       },
     });
-    expect(result.notifications[0].readAt).toBe("2024-01-02T10:00:00Z");
-    expect(result.notifications[0].type).toBe("DEAL_STAGE_CHANGE");
+    expect(result.notifications[0]!.readAt).toBe("2024-01-02T10:00:00Z");
+    expect(result.notifications[0]!.type).toBe("DEAL_STAGE_CHANGE");
   });
 
   // Test 4: getNotifications returns empty array with valid pagination
   it("gets empty notifications array with valid pagination metadata", async () => {
     const mockResponse: NotificationsResponse = {
       notifications: [],
-      pagination: { page: 2, limit: 10, total: 0, totalPages: 0 },
+      pagination: {
+        currentPage: 2,
+        itemsPerPage: 10,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: true,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -134,8 +162,8 @@ describe("notification.service", () => {
     const result = await getNotifications({ page: 2, limit: 10 });
 
     expect(result.notifications).toEqual([]);
-    expect(result.pagination.page).toBe(2);
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.currentPage).toBe(2);
+    expect(result.pagination.totalItems).toBe(0);
   });
 
   // Test 5: getUnreadCount returns count
@@ -210,7 +238,14 @@ describe("notification.service", () => {
     ];
     const mockResponse: NotificationsResponse = {
       notifications: mockNotifications,
-      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -220,7 +255,7 @@ describe("notification.service", () => {
     expect(mockGet).toHaveBeenCalledWith("/notifications", {
       params: { type: "LEAD_ASSIGNMENT" },
     });
-    expect(result.notifications[0].type).toBe("LEAD_ASSIGNMENT");
+    expect(result.notifications[0]!.type).toBe("LEAD_ASSIGNMENT");
   });
 
   // Test 12: Error handling when getNotifications rejects
@@ -280,7 +315,14 @@ describe("notification.service", () => {
     ];
     const mockResponse: NotificationsResponse = {
       notifications: mockNotifications,
-      pagination: { page: 1, limit: 10, total: 3, totalPages: 1 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 10,
+        totalItems: 3,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -288,16 +330,23 @@ describe("notification.service", () => {
     const result = await getNotifications();
 
     expect(result.notifications).toHaveLength(3);
-    expect(result.notifications[0].type).toBe("TASK_DUE");
-    expect(result.notifications[1].type).toBe("DEAL_STAGE_CHANGE");
-    expect(result.notifications[2].type).toBe("LEAD_ASSIGNMENT");
+    expect(result.notifications[0]!.type).toBe("TASK_DUE");
+    expect(result.notifications[1]!.type).toBe("DEAL_STAGE_CHANGE");
+    expect(result.notifications[2]!.type).toBe("LEAD_ASSIGNMENT");
   });
 
   // Test 15: Pagination with high page number
   it("handles pagination with high page numbers", async () => {
     const mockResponse: NotificationsResponse = {
       notifications: [],
-      pagination: { page: 100, limit: 10, total: 1000, totalPages: 100 },
+      pagination: {
+        currentPage: 100,
+        itemsPerPage: 10,
+        totalItems: 1000,
+        totalPages: 100,
+        hasNextPage: false,
+        hasPrevPage: true,
+      },
     };
 
     mockGet.mockResolvedValue({ data: mockResponse });
@@ -307,7 +356,7 @@ describe("notification.service", () => {
     expect(mockGet).toHaveBeenCalledWith("/notifications", {
       params: { page: 100, limit: 10 },
     });
-    expect(result.pagination.page).toBe(100);
+    expect(result.pagination.currentPage).toBe(100);
     expect(result.pagination.totalPages).toBe(100);
   });
 });

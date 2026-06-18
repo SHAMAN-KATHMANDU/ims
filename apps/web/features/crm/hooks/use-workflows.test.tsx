@@ -302,7 +302,7 @@ describe("useCreateWorkflow", () => {
     await act(async () => {
       try {
         await result.current.mutateAsync(payload);
-      } catch (e) {
+      } catch {
         // Expected error
       }
     });
@@ -492,7 +492,7 @@ describe("useUpdateWorkflow", () => {
           id: "wf1",
           data: { name: "Updated" },
         });
-      } catch (e) {
+      } catch {
         // Expected error
       }
     });
@@ -559,7 +559,7 @@ describe("useDeleteWorkflow", () => {
     await act(async () => {
       try {
         await result.current.mutateAsync("wf1");
-      } catch (e) {
+      } catch {
         // Expected error
       }
     });

@@ -7,7 +7,6 @@ import {
   deleteCompany,
   listCompaniesForSelect,
   type Company,
-  type CompanyListParams,
   type CreateCompanyData,
   type UpdateCompanyData,
 } from "./company.service";
@@ -44,7 +43,14 @@ describe("company.service", () => {
             updatedAt: "2024-01-02",
           },
         ],
-        pagination: { page: 1, limit: 10, total: 1 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 1,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     };
     mockGet.mockResolvedValue(mockResponse);
@@ -68,7 +74,7 @@ describe("company.service", () => {
     });
     expect(result).toEqual(mockResponse.data);
     expect(result.data).toHaveLength(1);
-    expect(result.pagination.page).toBe(1);
+    expect(result.pagination.currentPage).toBe(1);
   });
 
   // ===== EDGE CASE 2: getCompanies with NO params (default empty object) =====
@@ -76,7 +82,14 @@ describe("company.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -84,7 +97,7 @@ describe("company.service", () => {
 
     expect(mockGet).toHaveBeenCalledWith("/companies", { params: {} });
     expect(result.data).toEqual([]);
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.totalItems).toBe(0);
   });
 
   // ===== EDGE CASE 3: getCompanies with zero results (empty array) =====
@@ -92,7 +105,14 @@ describe("company.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -100,7 +120,7 @@ describe("company.service", () => {
 
     expect(result.data).toEqual([]);
     expect(result.pagination).toBeDefined();
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.totalItems).toBe(0);
   });
 
   // ===== EDGE CASE 4: getCompanyById with special characters in ID =====
@@ -301,7 +321,14 @@ describe("company.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -339,7 +366,14 @@ describe("company.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 

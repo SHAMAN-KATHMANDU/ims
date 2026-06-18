@@ -44,7 +44,14 @@ describe("lead.service", () => {
             updatedAt: "2025-01-01T00:00:00Z",
           },
         ],
-        pagination: { page: 2, limit: 25, total: 100, pages: 4 },
+        pagination: {
+          currentPage: 2,
+          itemsPerPage: 25,
+          totalItems: 100,
+          totalPages: 4,
+          hasNextPage: true,
+          hasPrevPage: true,
+        },
       },
     });
 
@@ -72,8 +79,8 @@ describe("lead.service", () => {
       },
     });
     expect(result.data).toHaveLength(1);
-    expect(result.pagination.page).toBe(2);
-    expect(result.pagination.limit).toBe(25);
+    expect(result.pagination.currentPage).toBe(2);
+    expect(result.pagination.itemsPerPage).toBe(25);
   });
 
   // Edge case 2: getLeads with no params (default empty object)
@@ -81,7 +88,14 @@ describe("lead.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0, pages: 0 },
+        pagination: {
+          currentPage: 1,
+          itemsPerPage: 10,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -89,7 +103,7 @@ describe("lead.service", () => {
 
     expect(mockGet).toHaveBeenCalledWith("/leads", { params: {} });
     expect(result.data).toEqual([]);
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.totalItems).toBe(0);
   });
 
   // Edge case 3: getLeadById with special characters in ID
@@ -264,7 +278,7 @@ describe("lead.service", () => {
     });
     expect(result.lead.status).toBe("CONVERTED");
     expect(result.lead.convertedAt).toBe("2025-01-15T16:00:00Z");
-    expect(result.deal.value).toBe(50000);
+    expect((result.deal as unknown as { value: number }).value).toBe(50000);
   });
 
   // Edge case 9: convertLead with no conversion data (empty object fallback)
@@ -382,10 +396,12 @@ describe("lead.service", () => {
           },
         ],
         pagination: {
-          page: 3,
-          limit: 20,
-          total: 250,
-          pages: 13,
+          currentPage: 3,
+          itemsPerPage: 20,
+          totalItems: 250,
+          totalPages: 13,
+          hasNextPage: true,
+          hasPrevPage: true,
         },
       },
     });
@@ -393,8 +409,8 @@ describe("lead.service", () => {
     const result = await getLeads({ page: 3, limit: 20 });
 
     expect(result.data).toHaveLength(2);
-    expect(result.pagination.page).toBe(3);
-    expect(result.pagination.total).toBe(250);
-    expect(result.pagination.pages).toBe(13);
+    expect(result.pagination.currentPage).toBe(3);
+    expect(result.pagination.totalItems).toBe(250);
+    expect(result.pagination.totalPages).toBe(13);
   });
 });

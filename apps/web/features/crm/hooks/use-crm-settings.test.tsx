@@ -82,7 +82,7 @@ describe("useCrmSources query", () => {
     mockUseEnvFeatureFlag.mockReturnValue(true);
     const params = { page: 2, limit: 50, search: "acme" };
 
-    const { result } = renderHook(() => useCrmSources(params), { wrapper });
+    renderHook(() => useCrmSources(params), { wrapper });
 
     await waitFor(() => expect(mockGetCrmSources).toHaveBeenCalled());
     expect(mockGetCrmSources).toHaveBeenCalledWith(params);
@@ -154,7 +154,7 @@ describe("useCrmJourneyTypes query", () => {
     mockUseEnvFeatureFlag.mockReturnValue(true);
     const params = { page: 1, limit: 25, search: "leads" };
 
-    const { result } = renderHook(() => useCrmJourneyTypes(params), {
+    renderHook(() => useCrmJourneyTypes(params), {
       wrapper,
     });
 
@@ -242,7 +242,7 @@ describe("useCreateCrmSource mutation", () => {
     });
 
     expect(mockCreateCrmSource).toHaveBeenCalledWith("Direct Source Name");
-    expect(mockCreateCrmSource.mock.calls[0][0]).not.toHaveProperty("name");
+    expect(mockCreateCrmSource.mock.calls[0]![0]).not.toHaveProperty("name");
   });
 });
 

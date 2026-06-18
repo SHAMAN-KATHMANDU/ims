@@ -80,7 +80,14 @@ describe("useDealsPaginated", () => {
     mockUseEnvFeatureFlag.mockReturnValue(true);
     mockGetDeals.mockResolvedValue({
       data: [],
-      pagination: { page: 1, limit: 20, totalItems: 0, totalPages: 0 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     });
   });
 
@@ -140,7 +147,14 @@ describe("useDealsPaginated", () => {
     };
     mockGetDeals.mockResolvedValue({
       data: [{ id: "d1", name: "Deal 1", value: 50000 }],
-      pagination: { page: 2, limit: 50, totalItems: 1, totalPages: 1 },
+      pagination: {
+        currentPage: 2,
+        itemsPerPage: 50,
+        totalItems: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: true,
+      },
     });
 
     const { result } = renderHook(() => useDealsPaginated(params), {
@@ -157,7 +171,14 @@ describe("useDealsPaginated", () => {
   it("should use default values for pagination when partial params provided", async () => {
     mockGetDeals.mockResolvedValue({
       data: [],
-      pagination: { page: 1, limit: 20, totalItems: 0, totalPages: 0 },
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     });
 
     renderHook(() => useDealsPaginated({ search: "search term" }), {
@@ -168,7 +189,7 @@ describe("useDealsPaginated", () => {
       expect(mockGetDeals).toHaveBeenCalled();
     });
 
-    const callArgs = mockGetDeals.mock.calls[0][0];
+    const callArgs = mockGetDeals.mock.calls[0]![0]!;
     expect(callArgs.search).toBe("search term");
     expect(callArgs.page).toBeUndefined();
     expect(callArgs.limit).toBeUndefined();

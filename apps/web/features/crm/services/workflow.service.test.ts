@@ -44,9 +44,20 @@ describe("workflow.service", () => {
       mockGet.mockResolvedValue({
         data: {
           workflows: [
-            { id: "wf1", name: "Test Workflow", rules: [] } as Workflow,
+            {
+              id: "wf1",
+              name: "Test Workflow",
+              rules: [],
+            } as unknown as Workflow,
           ],
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            itemsPerPage: 10,
+            totalItems: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -68,7 +79,7 @@ describe("workflow.service", () => {
         },
       });
       expect(result.workflows).toHaveLength(1);
-      expect(result.pagination?.page).toBe(1);
+      expect(result.pagination?.currentPage).toBe(1);
     });
 
     it("gets workflows without params (default case)", async () => {
@@ -141,7 +152,9 @@ describe("workflow.service", () => {
 
     it("builds URL correctly with special characters in id", async () => {
       mockGet.mockResolvedValue({
-        data: { workflow: { id: "wf-uuid-123-abc", rules: [] } as Workflow },
+        data: {
+          workflow: { id: "wf-uuid-123-abc", rules: [] } as unknown as Workflow,
+        },
       });
 
       await getWorkflowById("wf-uuid-123-abc");
@@ -184,9 +197,9 @@ describe("workflow.service", () => {
         rules: [
           {
             id: "r1",
-            trigger: "deal_created",
+            trigger: "DEAL_CREATED",
             triggerStageId: null,
-            action: "send_email",
+            action: "SEND_NOTIFICATION",
             actionConfig: {},
             ruleOrder: 1,
           },
@@ -212,11 +225,11 @@ describe("workflow.service", () => {
           templateKey: "sales-won-follow-up",
           name: "Sales Won Follow-up",
           description: "Auto-send follow-up",
-          category: "engagement" as any,
-          difficulty: "easy" as any,
+          category: "DEFAULT",
+          difficulty: "BEGINNER",
           recommended: true,
-          supportedObjects: ["Deal"],
-          pipelineType: "sales",
+          supportedObjects: ["DEAL"],
+          pipelineType: "NEW_SALES",
           version: 1,
           isInstalled: false,
           isOutdated: false,
@@ -228,7 +241,7 @@ describe("workflow.service", () => {
           isActive: false,
           installedCount: 0,
           installState: "AVAILABLE",
-          availablePipelines: [{ id: "p1", name: "Sales", type: "sales" }],
+          availablePipelines: [{ id: "p1", name: "Sales", type: "NEW_SALES" }],
           rulesPreview: [],
         },
       ];
@@ -241,7 +254,7 @@ describe("workflow.service", () => {
 
       expect(mockGet).toHaveBeenCalledWith("/workflows/templates");
       expect(result.templates).toHaveLength(1);
-      expect(result.templates[0].templateKey).toBe("sales-won-follow-up");
+      expect(result.templates[0]!.templateKey).toBe("sales-won-follow-up");
     });
 
     it("handles empty templates list", async () => {
@@ -278,8 +291,8 @@ describe("workflow.service", () => {
           id: "run1",
           workflowId: "wf1",
           ruleId: "r1",
-          trigger: "deal_created",
-          action: "send_email",
+          trigger: "DEAL_CREATED",
+          action: "SEND_NOTIFICATION",
           status: "SUCCEEDED",
           entityType: "Deal",
           entityId: "d1",
@@ -299,7 +312,7 @@ describe("workflow.service", () => {
         params: { limit: 5 },
       });
       expect(result.runs).toHaveLength(1);
-      expect(result.runs[0].status).toBe("SUCCEEDED");
+      expect(result.runs[0]!.status).toBe("SUCCEEDED");
     });
 
     it("gets workflow runs without params", async () => {
@@ -321,8 +334,8 @@ describe("workflow.service", () => {
           id: "run1",
           workflowId: "wf1",
           ruleId: "r1",
-          trigger: "deal_created",
-          action: "send_email",
+          trigger: "DEAL_CREATED",
+          action: "SEND_NOTIFICATION",
           status: "SUCCEEDED",
           entityType: "Deal",
           entityId: "d1",
@@ -334,8 +347,8 @@ describe("workflow.service", () => {
           id: "run2",
           workflowId: "wf1",
           ruleId: "r1",
-          trigger: "deal_created",
-          action: "send_email",
+          trigger: "DEAL_CREATED",
+          action: "SEND_NOTIFICATION",
           status: "FAILED",
           entityType: "Deal",
           entityId: "d2",
@@ -353,9 +366,9 @@ describe("workflow.service", () => {
       const result = await getWorkflowRuns("wf1", { limit: 10 });
 
       expect(result.runs).toHaveLength(2);
-      expect(result.runs[0].status).toBe("SUCCEEDED");
-      expect(result.runs[1].status).toBe("FAILED");
-      expect(result.runs[1].errorMessage).toBe("Email service down");
+      expect(result.runs[0]!.status).toBe("SUCCEEDED");
+      expect(result.runs[1]!.status).toBe("FAILED");
+      expect(result.runs[1]!.errorMessage).toBe("Email service down");
     });
 
     it("calls handleApiError on failure", async () => {
@@ -712,7 +725,7 @@ describe("workflow.service", () => {
         id: "run1",
         workflowId: "wf1",
         ruleId: null,
-        trigger: "deal_created",
+        trigger: "DEAL_CREATED",
         action: null,
         status: "SKIPPED",
         entityType: "Deal",
@@ -729,9 +742,9 @@ describe("workflow.service", () => {
 
       const result = await getWorkflowRuns("wf1");
 
-      expect(result.runs[0].ruleId).toBeNull();
-      expect(result.runs[0].action).toBeNull();
-      expect(result.runs[0].errorMessage).toBeNull();
+      expect(result.runs[0]!.ruleId).toBeNull();
+      expect(result.runs[0]!.action).toBeNull();
+      expect(result.runs[0]!.errorMessage).toBeNull();
     });
 
     it("getWorkflows preserves pagination metadata", async () => {
@@ -748,14 +761,21 @@ describe("workflow.service", () => {
               rules: [],
             } as Workflow,
           ],
-          pagination: { page: 2, limit: 20, total: 45, totalPages: 3 },
+          pagination: {
+            currentPage: 2,
+            itemsPerPage: 20,
+            totalItems: 45,
+            totalPages: 3,
+            hasNextPage: true,
+            hasPrevPage: true,
+          },
         },
       });
 
       const result = await getWorkflows({ page: 2, limit: 20 });
 
-      expect(result.pagination?.page).toBe(2);
-      expect(result.pagination?.total).toBe(45);
+      expect(result.pagination?.currentPage).toBe(2);
+      expect(result.pagination?.totalItems).toBe(45);
       expect(result.pagination?.totalPages).toBe(3);
     });
 

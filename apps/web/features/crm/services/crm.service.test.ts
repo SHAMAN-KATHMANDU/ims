@@ -261,10 +261,10 @@ describe("crm.service", () => {
     mockGet.mockResolvedValue({ data: { data: mockData } });
     const result = await getCrmDashboard();
 
-    expect(result.data.activitySummary[0].contact).toBeNull();
-    expect(result.data.activitySummary[0].deal).toBeNull();
-    expect(result.data.activitySummary[0].subject).toBeNull();
-    expect(result.data.pipelineFunnels[0].stages[0].stageId).toBeNull();
+    expect(result.data.activitySummary[0]!.contact).toBeNull();
+    expect(result.data.activitySummary[0]!.deal).toBeNull();
+    expect(result.data.activitySummary[0]!.subject).toBeNull();
+    expect(result.data.pipelineFunnels[0]!.stages[0]!.stageId).toBeNull();
   });
 
   // Test 8: getCrmReports with zero values

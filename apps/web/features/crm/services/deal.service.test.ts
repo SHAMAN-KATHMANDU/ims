@@ -50,7 +50,14 @@ describe("deal.service", () => {
             updatedAt: "2026-01-01",
           },
         ],
-        pagination: { page: 1, limit: 10, total: 1 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 1,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -82,7 +89,7 @@ describe("deal.service", () => {
       },
     });
     expect(result.data).toHaveLength(1);
-    expect(result.pagination.page).toBe(1);
+    expect(result.pagination.currentPage).toBe(1);
   });
 
   // Test 2: getDeals with empty params (no filters) - edge case for default behavior
@@ -90,7 +97,14 @@ describe("deal.service", () => {
     mockGet.mockResolvedValue({
       data: {
         data: [],
-        pagination: { page: 1, limit: 10, total: 0 },
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
       },
     });
 
@@ -98,7 +112,7 @@ describe("deal.service", () => {
 
     expect(mockGet).toHaveBeenCalledWith("/deals", { params: {} });
     expect(result.data).toEqual([]);
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.totalItems).toBe(0);
   });
 
   // Test 3: getDealsKanban with pipelineId - edge case: conditional param
@@ -147,7 +161,7 @@ describe("deal.service", () => {
       params: { pipelineId: "pipe1" },
     });
     expect(result.stages).toHaveLength(2);
-    expect(result.stages[1].deals[0].name).toBe("Big Deal");
+    expect(result.stages[1]!.deals[0]!.name).toBe("Big Deal");
   });
 
   // Test 4: getDealsKanban without pipelineId - edge case: undefined param omitted
@@ -580,10 +594,12 @@ describe("deal.service", () => {
       data: {
         data: [],
         pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
+          currentPage: 1,
           totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
         },
       },
     });
@@ -591,7 +607,7 @@ describe("deal.service", () => {
     const result = await getDeals({ search: "nonexistent-deal" });
 
     expect(result.data).toEqual([]);
-    expect(result.pagination.total).toBe(0);
+    expect(result.pagination.totalItems).toBe(0);
     expect(result.pagination.totalPages).toBe(0);
   });
 });

@@ -40,7 +40,10 @@ describe("pipeline-transition.service", () => {
 
   // Edge case 5: Unknown pipeline type returns null
   it("returns null for unknown pipeline types", () => {
-    const result = getTransitionInfo("UNKNOWN_PIPELINE" as any, "WON");
+    const result = getTransitionInfo(
+      "UNKNOWN_PIPELINE" as unknown as Parameters<typeof getTransitionInfo>[0],
+      "WON",
+    );
     expect(result).toBeNull();
   });
 

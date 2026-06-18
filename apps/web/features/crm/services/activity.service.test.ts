@@ -40,7 +40,14 @@ describe("activity.service", () => {
       mockGet.mockResolvedValue({
         data: {
           activities: [mockActivity],
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -53,13 +60,23 @@ describe("activity.service", () => {
         params: { page: 1, limit: 10 },
       });
       expect(result.activities).toHaveLength(1);
-      expect(result.activities[0].id).toBe("a1");
-      expect(result.pagination?.total).toBe(1);
+      expect(result.activities[0]!.id).toBe("a1");
+      expect(result.pagination?.totalItems).toBe(1);
     });
 
     it("handles contact ID with special characters in URL", async () => {
       mockGet.mockResolvedValue({
-        data: { activities: [], pagination: { page: 1, limit: 10, total: 0 } },
+        data: {
+          activities: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        },
       });
 
       await getActivitiesByContact("contact-with-dash_and_underscore");
@@ -82,7 +99,14 @@ describe("activity.service", () => {
               createdAt: "2025-01-01T09:00:00Z",
             },
           ],
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -95,13 +119,23 @@ describe("activity.service", () => {
 
     it("returns empty activities array when no results match", async () => {
       mockGet.mockResolvedValue({
-        data: { activities: [], pagination: { page: 1, limit: 10, total: 0 } },
+        data: {
+          activities: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        },
       });
 
       const result = await getActivitiesByContact("c-nonexistent");
 
       expect(result.activities).toEqual([]);
-      expect(result.pagination?.total).toBe(0);
+      expect(result.pagination?.totalItems).toBe(0);
     });
 
     it("omits optional params when not provided", async () => {
@@ -141,7 +175,14 @@ describe("activity.service", () => {
       mockGet.mockResolvedValue({
         data: {
           activities: [mockActivity],
-          pagination: { page: 1, limit: 20, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -150,8 +191,8 @@ describe("activity.service", () => {
       expect(mockGet).toHaveBeenCalledWith("/activities/deal/d1", {
         params: { page: 1, limit: 20 },
       });
-      expect(result.activities[0].type).toBe("MEETING");
-      expect(result.activities[0].dealId).toBe("d1");
+      expect(result.activities[0]!.type).toBe("MEETING");
+      expect(result.activities[0]!.dealId).toBe("d1");
     });
 
     it("includes nested deal data in activity response", async () => {
@@ -173,7 +214,7 @@ describe("activity.service", () => {
 
       const result = await getActivitiesByDeal("d1");
 
-      expect(result.activities[0].deal?.name).toBe("Big Deal");
+      expect(result.activities[0]!.deal?.name).toBe("Big Deal");
     });
 
     it("handles multiple activities for the same deal", async () => {
@@ -207,7 +248,14 @@ describe("activity.service", () => {
       mockGet.mockResolvedValue({
         data: {
           activities,
-          pagination: { page: 1, limit: 10, total: 3 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 3,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -443,7 +491,14 @@ describe("activity.service", () => {
               createdAt: "2025-01-02T10:00:00Z",
             },
           ],
-          pagination: { page: 1, limit: 10, total: 2 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 2,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -451,7 +506,7 @@ describe("activity.service", () => {
 
       expect(result).toHaveProperty("activities");
       expect(result.activities).toHaveLength(2);
-      expect(result.pagination?.total).toBe(2);
+      expect(result.pagination?.totalItems).toBe(2);
     });
   });
 });

@@ -45,7 +45,14 @@ describe("crm-settings.service", () => {
       mockGet.mockResolvedValue({
         data: {
           sources: mockSources,
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -59,7 +66,14 @@ describe("crm-settings.service", () => {
         params: { page: 1, limit: 10, search: "Salesforce" },
       });
       expect(result.sources).toEqual(mockSources);
-      expect(result.pagination).toEqual({ page: 1, limit: 10, total: 1 });
+      expect(result.pagination).toEqual({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 1,
+        itemsPerPage: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
     });
 
     it("gets sources without optional params (undefined)", async () => {
@@ -240,7 +254,14 @@ describe("crm-settings.service", () => {
       mockGet.mockResolvedValue({
         data: {
           journeyTypes: mockJourneyTypes,
-          pagination: { page: 1, limit: 20, total: 2 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 2,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -283,7 +304,14 @@ describe("crm-settings.service", () => {
       mockGet.mockResolvedValue({
         data: {
           journeyTypes: mockJourneyTypes,
-          pagination: { page: 2, limit: 10, total: 15 },
+          pagination: {
+            currentPage: 2,
+            totalPages: 2,
+            totalItems: 15,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: true,
+          },
         },
       });
 
@@ -293,7 +321,7 @@ describe("crm-settings.service", () => {
         params: { page: 2, limit: 10 },
       });
       expect(result.journeyTypes).toHaveLength(1);
-      expect(result.pagination?.page).toEqual(2);
+      expect(result.pagination?.currentPage).toEqual(2);
     });
 
     it("rejects when network error occurs on getCrmJourneyTypes", async () => {
@@ -481,7 +509,14 @@ describe("crm-settings.service", () => {
       mockGet.mockResolvedValue({
         data: {
           sources: [{ id: "src1", name: "Test", createdAt: "" }],
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -489,7 +524,7 @@ describe("crm-settings.service", () => {
 
       expect(result).toHaveProperty("sources");
       expect(result).toHaveProperty("pagination");
-      expect(result.pagination?.page).toEqual(1);
+      expect(result.pagination?.currentPage).toEqual(1);
     });
   });
 });

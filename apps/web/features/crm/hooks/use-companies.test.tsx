@@ -70,7 +70,7 @@ describe("useCompaniesPaginated", () => {
 
     expect(mockGetCompanies).toHaveBeenCalled();
     expect(result.current.data?.data).toHaveLength(1);
-    expect(result.current.data?.data[0].name).toBe("Acme Corp");
+    expect(result.current.data?.data[0]!.name).toBe("Acme Corp");
   });
 
   it("does not fetch when SALES_PIPELINE feature is disabled", async () => {
@@ -130,7 +130,7 @@ describe("useCompaniesPaginated", () => {
       pagination: { page: 1, limit: 10, totalItems: 1, totalPages: 1 },
     });
 
-    const { result, rerender } = renderHook(
+    const { result } = renderHook(
       ({ params }) => useCompaniesPaginated(params),
       { wrapper, initialProps: { params: { page: 1, limit: 10 } } },
     );
@@ -138,7 +138,7 @@ describe("useCompaniesPaginated", () => {
     await waitFor(() => expect(result.current.data).toBeDefined());
 
     expect(result.current.data?.data).toHaveLength(1);
-    expect(result.current.data?.data[0].name).toBe("Company 1");
+    expect(result.current.data?.data[0]!.name).toBe("Company 1");
   });
 });
 
@@ -211,7 +211,7 @@ describe("useCompaniesForSelect", () => {
 
     expect(mockListCompaniesForSelect).toHaveBeenCalled();
     expect(result.current.data?.companies).toHaveLength(2);
-    expect(result.current.data?.companies[0].name).toBe("Company 1");
+    expect(result.current.data?.companies[0]!.name).toBe("Company 1");
   });
 
   it("does not fetch when feature is disabled", async () => {

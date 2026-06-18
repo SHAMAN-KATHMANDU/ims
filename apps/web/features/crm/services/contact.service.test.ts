@@ -61,7 +61,14 @@ describe("contact.service", () => {
       mockGet.mockResolvedValue({
         data: {
           data: mockContacts,
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -71,14 +78,21 @@ describe("contact.service", () => {
         params: { page: 1, limit: 10 },
       });
       expect(result.data).toEqual(mockContacts);
-      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.currentPage).toBe(1);
     });
 
     it("fetches contacts with search and filter params", async () => {
       mockGet.mockResolvedValue({
         data: {
           data: [],
-          pagination: { page: 1, limit: 20, total: 0 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -111,7 +125,14 @@ describe("contact.service", () => {
       mockGet.mockResolvedValue({
         data: {
           data: [],
-          pagination: { page: 1, limit: 20, total: 0 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -124,14 +145,21 @@ describe("contact.service", () => {
       mockGet.mockResolvedValue({
         data: {
           data: [],
-          pagination: { page: 1, limit: 20, total: 0 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
       const result = await getContacts({ limit: 20 });
 
       expect(result.data).toEqual([]);
-      expect(result.pagination.total).toBe(0);
+      expect(result.pagination.totalItems).toBe(0);
     });
   });
 
@@ -373,7 +401,14 @@ describe("contact.service", () => {
             { id: "tag1", name: "VIP", createdAt: "2024-01-01" },
             { id: "tag2", name: "Prospect", createdAt: "2024-01-01" },
           ],
-          pagination: { page: 1, limit: 10, total: 2 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 2,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -383,15 +418,22 @@ describe("contact.service", () => {
         params: { page: 1, limit: 10 },
       });
       expect(result.tags).toHaveLength(2);
-      expect(result.tags[0].name).toBe("VIP");
-      expect(result.pagination?.total).toBe(2);
+      expect(result.tags[0]!.name).toBe("VIP");
+      expect(result.pagination?.totalItems).toBe(2);
     });
 
     it("fetches contact tags with search", async () => {
       mockGet.mockResolvedValue({
         data: {
           tags: [{ id: "tag1", name: "VIP" }],
-          pagination: { page: 1, limit: 10, total: 1 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 1,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
@@ -702,7 +744,7 @@ describe("contact.service", () => {
       const result = await importContactsCsv(file);
 
       expect(mockPost).toHaveBeenCalled();
-      const [url, body] = mockPost.mock.calls[0];
+      const [url, body] = mockPost.mock.calls[0]!;
       expect(url).toBe("/contacts/import");
       expect(body).toBeInstanceOf(FormData);
 

@@ -53,14 +53,21 @@ describe("pipeline.service", () => {
 
       expect(mockGet).toHaveBeenCalledWith("/pipelines", { params: undefined });
       expect(result.pipelines).toHaveLength(1);
-      expect(result.pipelines[0].id).toBe("p1");
+      expect(result.pipelines[0]!.id).toBe("p1");
     });
 
     it("gets pipelines with pagination and search params", async () => {
       mockGet.mockResolvedValue({
         data: {
           pipelines: [],
-          pagination: { page: 2, limit: 20, total: 50 },
+          pagination: {
+            currentPage: 2,
+            totalPages: 3,
+            totalItems: 50,
+            itemsPerPage: 20,
+            hasNextPage: true,
+            hasPrevPage: true,
+          },
         },
       });
 
@@ -85,14 +92,21 @@ describe("pipeline.service", () => {
       mockGet.mockResolvedValue({
         data: {
           pipelines: [],
-          pagination: { page: 1, limit: 10, total: 0 },
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalItems: 0,
+            itemsPerPage: 10,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
         },
       });
 
       const result = await getPipelines();
 
       expect(result.pagination).toBeDefined();
-      expect(result.pagination?.page).toBe(1);
+      expect(result.pagination?.currentPage).toBe(1);
     });
 
     it("handles rejects on network error", async () => {
@@ -194,7 +208,7 @@ describe("pipeline.service", () => {
 
       expect(mockGet).toHaveBeenCalledWith("/pipelines/templates");
       expect(result.templates).toHaveLength(1);
-      expect(result.templates[0].type).toBe("NEW_SALES");
+      expect(result.templates[0]!.type).toBe("NEW_SALES");
     });
 
     it("returns empty templates array when none exist", async () => {
@@ -279,7 +293,11 @@ describe("pipeline.service", () => {
         new Error("Name is required for creating a pipeline"),
       );
 
-      await expect(createPipeline({ name: "" } as any)).rejects.toThrow();
+      await expect(
+        createPipeline({ name: "" } as unknown as Parameters<
+          typeof createPipeline
+        >[0]),
+      ).rejects.toThrow();
     });
   });
 
@@ -511,7 +529,7 @@ describe("pipeline.service", () => {
 
         const result = await createPipeline({
           name: `${type} Pipeline`,
-          type: type as any,
+          type: type as unknown as Parameters<typeof createPipeline>[0]["type"],
         });
 
         expect(result.pipeline.type).toBe(type);
