@@ -12,9 +12,20 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ReportsLineChart, ReportsBarChart } from "@/components/reports-charts";
+import { StaffActivityChart } from "./StaffActivityChart";
 import { useToast } from "@/hooks/useToast";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { KpiCard } from "../shared";
+import { Users, Bot } from "lucide-react";
 
 export function CrmReportsPage() {
   const [year, setYear] = useState(new Date().getFullYear());
@@ -167,6 +178,100 @@ export function CrmReportsPage() {
           ) : (
             <p className="text-muted-foreground text-sm">No data</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            <div className="flex-1">
+              <CardTitle>Staff activity · this month</CardTitle>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <Bot className="h-3 w-3" />
+            <span>via crm_staff_activity</span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <StaffActivityChart data={d.staffPerformance || []} />
+
+          {d.staffPerformance?.length ? (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Rep</TableHead>
+                    <TableHead className="text-right">Calls</TableHead>
+                    <TableHead className="text-right">Emails</TableHead>
+                    <TableHead className="text-right">Meetings</TableHead>
+                    <TableHead className="text-right">Deals won</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {d.staffPerformance.map((staff) => {
+                    const initials = staff.username
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase();
+
+                    return (
+                      <TableRow key={staff.userId}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                              {initials}
+                            </div>
+                            <span className="text-sm">{staff.username}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {staff.calls}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {staff.emails}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {staff.meetings}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {staff.dealCount}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {formatCurrency(staff.totalValue)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">No staff data</p>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <KpiCard
+              label="Total deals won"
+              value={
+                d.staffPerformance?.reduce((sum, s) => sum + s.dealCount, 0) ||
+                0
+              }
+            />
+            <KpiCard
+              label="Activities logged"
+              value={
+                d.staffPerformance?.reduce(
+                  (sum, s) => sum + s.calls + s.emails + s.meetings,
+                  0,
+                ) || 0
+              }
+            />
+            <KpiCard label="Avg. deal cycle" value="—" />
+          </div>
         </CardContent>
       </Card>
     </div>

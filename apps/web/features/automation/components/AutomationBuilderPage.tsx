@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { LayoutTemplate, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { HelpTopicSheet } from "@/components/help-topic-sheet";
 import {
   AlertDialog,
@@ -493,18 +494,20 @@ export function AutomationBuilderPage() {
                     <div
                       key={template.id}
                       data-testid={`automation-template-${template.id}`}
-                      className="rounded-lg border bg-card p-4 shadow-sm"
+                      className="rounded-lg border bg-card/50 p-4 shadow-sm space-y-3"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-medium">{template.name}</h3>
-                        <Badge variant="secondary">
+                        <h3 className="font-medium text-sm">{template.name}</h3>
+                        <Badge variant="secondary" className="text-xs">
                           {
                             AUTOMATION_TEMPLATE_CATEGORY_LABELS[
                               template.category
                             ]
                           }
                         </Badge>
-                        <Badge variant="outline">{template.difficulty}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {template.difficulty}
+                        </Badge>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {template.description}
@@ -659,11 +662,11 @@ export function AutomationBuilderPage() {
             {data?.automations.map((automation) => (
               <div
                 key={automation.id}
-                className={`rounded-lg border p-4 shadow-sm ${
-                  selectedIds.has(automation.id)
-                    ? "border-primary/50 bg-primary/5"
-                    : ""
-                }`}
+                className={cn(
+                  "rounded-lg border p-4 shadow-sm bg-card/50",
+                  selectedIds.has(automation.id) &&
+                    "border-primary/50 bg-primary/5",
+                )}
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
@@ -684,32 +687,50 @@ export function AutomationBuilderPage() {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="font-medium">{automation.name}</h2>
+                          <h2 className="font-medium text-sm">
+                            {automation.name}
+                          </h2>
+                          <Badge
+                            className={cn(
+                              "text-xs",
+                              automation.scopeType === "GLOBAL"
+                                ? "bg-secondary text-muted-foreground"
+                                : automation.scopeType === "CRM_PIPELINE"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-info/10 text-info",
+                            )}
+                          >
+                            {automation.scopeType === "GLOBAL"
+                              ? "Global"
+                              : automation.scopeType === "CRM_PIPELINE"
+                                ? "Pipeline"
+                                : automation.scopeType}
+                          </Badge>
                           {conflictingIds.has(automation.id) && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                              <AlertTriangle className="h-3 w-3" aria-hidden />
+                            <Badge className="text-xs bg-amber-50 text-amber-700">
+                              <AlertTriangle
+                                className="h-3 w-3 mr-1"
+                                aria-hidden
+                              />
                               Conflict
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {automation.scopeType} · {automation.status} ·{" "}
-                          {automation.executionMode}
-                        </p>
-                        {automation.suppressLegacyWorkflows ? (
-                          <p className="text-xs text-amber-600">
+                        {automation.suppressLegacyWorkflows && (
+                          <Badge variant="outline" className="text-xs">
                             Suppresses matching legacy CRM workflows
-                          </p>
-                        ) : null}
-                        <p className="text-sm text-muted-foreground">
-                          {automation.triggers.length} trigger(s) ·{" "}
+                          </Badge>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {automation.triggers.length} trigger
+                          {automation.triggers.length !== 1 ? "s" : ""} ·{" "}
                           {automation.steps.length > 0
-                            ? `${automation.steps.length} step(s)`
+                            ? `${automation.steps.length} step${automation.steps.length !== 1 ? "s" : ""}`
                             : automation.flowGraph
                               ? "Graph body"
-                              : "0 steps"}
+                              : "No steps"}
                         </p>
                       </div>
                       <div className="flex gap-2 shrink-0">
@@ -783,12 +804,12 @@ export function AutomationBuilderPage() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {automation.triggers.map((trigger) => (
-                        <span
+                        <Badge
                           key={trigger.id}
-                          className="rounded-full bg-muted px-2 py-1 text-xs"
+                          className="text-xs bg-info/10 text-info font-mono"
                         >
                           {trigger.eventName}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                     {testPanelId === automation.id && (

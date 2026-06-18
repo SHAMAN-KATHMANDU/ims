@@ -10,6 +10,8 @@ export interface Deal {
   value: number;
   stage: string;
   status: DealStatus;
+  /** Win probability 0-100, derived from the stage on the backend. */
+  probability?: number;
   expectedCloseDate?: string | null;
   closedAt?: string | null;
   lostReason?: string | null;

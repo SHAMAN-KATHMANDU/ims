@@ -27,6 +27,7 @@ import {
   useUpdatePipeline,
 } from "../../hooks/use-pipelines";
 import { dealKeys } from "../../hooks/use-deals";
+import { resolveStageColor } from "../../utils/stage-color";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
@@ -90,7 +91,12 @@ import {
   Trash2,
   ArrowRight,
   MoreVertical,
+  Kanban,
+  List,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Deal } from "../../services/deal.service";
 import type {
@@ -101,6 +107,7 @@ import type {
 import { getTransitionInfo } from "../../services/pipeline-transition.service";
 
 type DrawerMode = "view" | "new" | "edit" | null;
+type ViewMode = "board" | "list";
 
 export function DealsKanbanPage() {
   const params = useParams();
@@ -114,6 +121,7 @@ export function DealsKanbanPage() {
   const { toast } = useToast();
 
   const [pipelineId, setPipelineId] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("board");
   const [addPipelineOpen, setAddPipelineOpen] = useState(false);
   const [editPipelineOpen, setEditPipelineOpen] = useState(false);
   const [editStagesOpen, setEditStagesOpen] = useState(false);
@@ -303,51 +311,47 @@ export function DealsKanbanPage() {
           </p>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex w-full items-center gap-1 sm:w-auto">
-              <Select value={pipelineId} onValueChange={setPipelineId}>
-                <SelectTrigger className="min-w-0 flex-1 sm:w-[200px] sm:flex-none">
-                  <SelectValue placeholder="Select pipeline" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pipelines.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                      {p.type && p.type !== "GENERAL"
-                        ? ` (${p.type.replace("_", " ")})`
-                        : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {currentPipeline && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="shrink-0"
-                      aria-label="Pipeline options"
-                    >
-                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem onClick={() => setEditPipelineOpen(true)}>
-                      <Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
-                      Edit pipeline
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setEditStagesOpen(true)}>
-                      <ListOrdered
-                        className="h-4 w-4 mr-2"
-                        aria-hidden="true"
-                      />
-                      Edit stages
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+            {/* Pipeline segmented control */}
+            {pipelines.length > 0 && (
+              <SegmentedControl
+                value={pipelineId}
+                onChange={setPipelineId}
+                options={pipelines.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                }))}
+                size="sm"
+              />
+            )}
+
+            {/* Edit pipeline / stages dropdown */}
+            {currentPipeline && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label="Pipeline options"
+                  >
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setEditPipelineOpen(true)}>
+                    <Pencil className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Edit pipeline
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEditStagesOpen(true)}>
+                    <ListOrdered className="h-4 w-4 mr-2" aria-hidden="true" />
+                    Edit stages
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* New pipeline button */}
             <AddPipelineDialog
               open={addPipelineOpen}
               onOpenChange={setAddPipelineOpen}
@@ -365,10 +369,37 @@ export function DealsKanbanPage() {
                 </Button>
               }
             />
-            <Button onClick={openNew}>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {/* Board/List view toggle */}
+            <div className="flex items-center gap-1 border rounded-md p-1">
+              <Button
+                variant={viewMode === "board" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setViewMode("board")}
+                aria-label="Board view"
+              >
+                <Kanban className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setViewMode("list")}
+                aria-label="List view"
+              >
+                <List className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+
+            {/* New deal button */}
+            <Button onClick={openNew} size="sm">
               <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               New Deal
             </Button>
+
             {currentPipeline && (
               <>
                 <EditPipelineDialog
@@ -502,33 +533,65 @@ export function DealsKanbanPage() {
           )}
         </div>
 
-        {/* ── Desktop kanban ───────────────────────────────────────────── */}
-        <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
-          <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
-            {stages.map((col) => (
-              <DroppableStageColumn
-                key={col.stage}
-                stage={col.stage}
-                count={col.deals.length}
-                pipelineType={currentPipeline?.type}
-              >
-                {col.deals.map((deal) => (
-                  <DraggableDealCard
-                    key={deal.id}
-                    deal={deal}
-                    basePath={basePath}
-                    stages={stages.map((s) => s.stage)}
-                    onStageChange={handleStageChange}
-                    onDelete={(id) => deleteDealMutation.mutate(id)}
-                    isDeleting={deleteDealMutation.isPending}
-                    onView={openView}
-                    onEdit={openEdit}
-                  />
-                ))}
-              </DroppableStageColumn>
-            ))}
+        {/* ── Desktop views ────────────────────────────────────────────── */}
+        {viewMode === "board" ? (
+          <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
+            <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+              {stages.map((col) => {
+                const stageSum = col.deals.reduce(
+                  (sum, d) => sum + Number(d.value),
+                  0,
+                );
+                const pStageIdx =
+                  currentPipeline?.stages?.findIndex(
+                    (s) => s.name === col.stage,
+                  ) ?? -1;
+                const stageColor = resolveStageColor(
+                  currentPipeline?.stages?.find((s) => s.name === col.stage)
+                    ?.color,
+                  pStageIdx >= 0 ? pStageIdx : 0,
+                );
+                return (
+                  <DroppableStageColumn
+                    key={col.stage}
+                    stage={col.stage}
+                    count={col.deals.length}
+                    pipelineType={currentPipeline?.type}
+                    stageColor={stageColor}
+                    stageSum={stageSum}
+                  >
+                    {col.deals.map((deal) => (
+                      <DraggableDealCard
+                        key={deal.id}
+                        deal={deal}
+                        basePath={basePath}
+                        stages={stages.map((s) => s.stage)}
+                        onStageChange={handleStageChange}
+                        onDelete={(id) => deleteDealMutation.mutate(id)}
+                        isDeleting={deleteDealMutation.isPending}
+                        onView={openView}
+                        onEdit={openEdit}
+                      />
+                    ))}
+                  </DroppableStageColumn>
+                );
+              })}
+            </div>
+          </DndContext>
+        ) : (
+          /* List view */
+          <div className="hidden sm:block">
+            <DealsListView
+              stages={stages}
+              currentPipeline={currentPipeline}
+              basePath={basePath}
+              onView={openView}
+              onEdit={openEdit}
+              onDelete={(id) => deleteDealMutation.mutate(id)}
+              isDeleting={deleteDealMutation.isPending}
+            />
           </div>
-        </DndContext>
+        )}
 
         <ResponsiveDrawer
           open={drawerMode !== null}
@@ -663,15 +726,154 @@ export function DealsKanbanPage() {
   );
 }
 
+function DealsListView({
+  stages,
+  currentPipeline,
+  basePath,
+  onView,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  stages: Array<{ stage: string; deals: Deal[] }>;
+  currentPipeline?: Pipeline;
+  basePath: string;
+  onView?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
+}) {
+  const allDeals = stages.flatMap((s) => s.deals);
+
+  if (allDeals.length === 0) {
+    return (
+      <div className="rounded-md border py-8 text-center text-muted-foreground">
+        No deals yet. Create one to get started.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-secondary/40">
+            <th className="text-left px-3 py-2.5 font-semibold text-foreground">
+              Deal
+            </th>
+            <th className="text-left px-3 py-2.5 font-semibold text-foreground">
+              Stage
+            </th>
+            <th className="text-right px-3 py-2.5 font-semibold text-foreground font-mono">
+              Value
+            </th>
+            <th className="text-center px-3 py-2.5 font-semibold text-foreground">
+              Status
+            </th>
+            <th className="w-10" aria-hidden="true" />
+          </tr>
+        </thead>
+        <tbody>
+          {allDeals.map((deal) => {
+            const pStageIdx =
+              currentPipeline?.stages?.findIndex(
+                (s) => s.name === deal.stage,
+              ) ?? -1;
+            const stageColor = resolveStageColor(
+              currentPipeline?.stages?.find((s) => s.name === deal.stage)
+                ?.color,
+              pStageIdx >= 0 ? pStageIdx : 0,
+            );
+            const statusVariant: "success" | "destructive" | "info" =
+              deal.status === "WON"
+                ? "success"
+                : deal.status === "LOST"
+                  ? "destructive"
+                  : "info";
+
+            return (
+              <tr
+                key={deal.id}
+                className="border-b last:border-0 hover:bg-muted/40"
+              >
+                <td className="px-3 py-2">
+                  {onView ? (
+                    <button
+                      className="text-primary hover:underline font-medium"
+                      onClick={() => onView(deal.id)}
+                    >
+                      {deal.name}
+                    </button>
+                  ) : (
+                    <Link href={`${basePath}/crm/deals/${deal.id}`}>
+                      <span className="text-primary hover:underline font-medium">
+                        {deal.name}
+                      </span>
+                    </Link>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {stageColor && (
+                      <div
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: stageColor }}
+                      />
+                    )}
+                    <span>{deal.stage}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-semibold text-primary">
+                  {formatCurrency(Number(deal.value))}
+                </td>
+                <td className="px-3 py-2 text-center">
+                  <Badge variant={statusVariant}>{deal.status}</Badge>
+                </td>
+                <td className="px-3 py-2 flex items-center justify-end gap-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => onEdit(deal.id)}
+                      aria-label="Edit deal"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => onDelete?.(deal.id)}
+                    disabled={isDeleting}
+                    aria-label="Delete deal"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function DroppableStageColumn({
   stage,
   count,
   pipelineType,
+  stageColor,
+  stageSum,
   children,
 }: {
   stage: string;
   count: number;
   pipelineType?: PipelineType;
+  stageColor?: string;
+  stageSum?: number;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: stage });
@@ -691,12 +893,28 @@ function DroppableStageColumn({
         isOver ? "bg-muted ring-2 ring-primary/50" : "bg-muted/50"
       }`}
     >
-      <h3 className="font-semibold mb-3 flex items-center justify-between">
-        {stage}
-        <span className="text-sm font-normal text-muted-foreground">
-          {count}
-        </span>
-      </h3>
+      {/* Column header: colored dot + name + count chip + sum */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {stageColor && (
+            <div
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: stageColor }}
+              aria-hidden="true"
+            />
+          )}
+          <h3 className="font-semibold truncate">{stage}</h3>
+          <span className="text-xs font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-full shrink-0">
+            {count}
+          </span>
+        </div>
+        {stageSum !== undefined && (
+          <span className="text-sm font-semibold text-primary shrink-0">
+            {formatCurrency(stageSum)}
+          </span>
+        )}
+      </div>
+
       {transitionInfo && (
         <div className="mb-2 flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 px-2 py-1.5 text-xs text-blue-700 dark:text-blue-300">
           <ArrowRight className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -786,6 +1004,17 @@ function DealCard({
     ? `${deal.contact.firstName} ${deal.contact.lastName || ""}`.trim()
     : deal.company?.name || "—";
 
+  const getInitials = (contact: Deal["contact"]) => {
+    if (!contact) return "?";
+    return `${contact.firstName[0]}${contact.lastName?.[0] || ""}`.toUpperCase();
+  };
+
+  const getStatusDotColor = (status: string) => {
+    if (status === "WON") return "bg-success";
+    if (status === "LOST") return "bg-destructive";
+    return "bg-info";
+  };
+
   const handleConfirmDelete = useCallback(() => {
     onDelete?.(deal.id);
     setDeleteOpen(false);
@@ -793,21 +1022,32 @@ function DealCard({
 
   return (
     <>
-      <Card className="cursor-grab active:cursor-grabbing hover:bg-muted/50 transition-colors">
-        <CardHeader className="p-3 pb-1 flex flex-row items-start gap-2">
+      <Card className="cursor-grab active:cursor-grabbing hover:bg-muted/50 transition-colors relative">
+        {/* Status dot (top-right) */}
+        <div
+          className={cn(
+            "absolute right-3 top-3 h-2 w-2 rounded-full",
+            getStatusDotColor(deal.status),
+          )}
+        />
+
+        <CardHeader className="p-3 pb-2 flex flex-row items-start gap-2">
+          {/* Drag handle */}
           {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- DnD drag handle; keyboard reorder handled by parent SortableContext */}
           <div
             {...dragHandleProps}
             className="touch-none shrink-0 mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
             onClick={(e) => e.preventDefault()}
           >
-            <GripVertical className="h-4 w-4" aria-hidden="true" />
+            <GripVertical className="h-3.5 w-3.5" aria-hidden="true" />
           </div>
+
+          {/* Title */}
           <div className="min-w-0 flex-1">
             {onView ? (
               <button
                 type="button"
-                className="font-medium hover:underline text-left"
+                className="font-semibold hover:underline text-left text-sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   onView(deal.id);
@@ -820,56 +1060,34 @@ function DealCard({
                 href={`${basePath}/crm/deals/${deal.id}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <span className="font-medium hover:underline">{deal.name}</span>
+                <span className="font-semibold hover:underline text-sm">
+                  {deal.name}
+                </span>
               </Link>
-            )}
-            <p className="text-sm text-muted-foreground">{contactName}</p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {onEdit && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onEdit(deal.id);
-                }}
-                aria-label="Edit deal"
-              >
-                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDeleteOpen(true);
-                }}
-                disabled={isDeleting}
-                aria-label="Delete deal"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-              </Button>
             )}
           </div>
         </CardHeader>
+
         <CardContent className="p-3 pt-0 space-y-2">
-          <p className="text-lg font-semibold">
+          {/* Big value */}
+          <p className="text-lg font-bold text-primary">
             {formatCurrency(Number(deal.value))}
           </p>
-          {deal.expectedCloseDate && (
-            <p className="text-xs text-muted-foreground">
-              Close: {new Date(deal.expectedCloseDate).toLocaleDateString()}
-            </p>
-          )}
+
+          {/* Contact row with avatar + name + probability placeholder */}
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-secondary-foreground shrink-0">
+              {deal.contact ? getInitials(deal.contact) : "?"}
+            </div>
+            <span className="text-xs text-muted-foreground flex-1 truncate">
+              {contactName}
+            </span>
+            <span className="text-xs font-mono text-muted-foreground shrink-0">
+              {deal.probability ?? 0}%
+            </span>
+          </div>
+
+          {/* Stage selector */}
           <Select
             value={deal.stage}
             onValueChange={(v) => onStageChange(deal.id, v)}
@@ -885,6 +1103,43 @@ function DealCard({
               ))}
             </SelectContent>
           </Select>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 pt-1">
+            {onEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEdit(deal.id);
+                }}
+                aria-label="Edit deal"
+              >
+                <Pencil className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDeleteOpen(true);
+                }}
+                disabled={isDeleting}
+                aria-label="Delete deal"
+              >
+                <Trash2 className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

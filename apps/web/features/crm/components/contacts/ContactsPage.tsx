@@ -40,6 +40,8 @@ import {
   Download,
   SlidersHorizontal,
   X,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   DataTablePagination,
@@ -50,6 +52,7 @@ import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { ContactTable } from "./ContactTable";
+import { ContactCardGrid } from "./ContactCardGrid";
 import { ContactDetail } from "./ContactDetail";
 import { ContactForm } from "./ContactForm";
 import { ContactImportDialog } from "./ContactImportDialog";
@@ -102,6 +105,7 @@ export function ContactsPage() {
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const { data, isLoading, isFetching } = useContactsPaginated({
     page,
@@ -380,6 +384,33 @@ export function ContactsPage() {
           </Button>
         </div>
 
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+              className="gap-2"
+            >
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Grid</span>
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              aria-label="Table view"
+              className="gap-2"
+            >
+              <List className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Table</span>
+            </Button>
+          </div>
+        </div>
+
         {(activeFilterCount > 0 || debouncedSearch.trim()) && (
           <div className="flex flex-wrap items-center gap-2">
             {debouncedSearch.trim() ? (
@@ -563,25 +594,33 @@ export function ContactsPage() {
           </div>
         </ResponsiveDrawer>
 
-        <ContactTable
-          contacts={contacts}
-          isLoading={isLoading}
-          isFetching={isFetching}
-          basePath={basePath}
-          dealsEnabled={dealsEnabled}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={(nextSortBy, nextSortOrder) => {
-            setSortBy(nextSortBy);
-            setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
-            setPage(DEFAULT_PAGE);
-          }}
-          onView={openView}
-          onEdit={openEdit}
-          onDelete={(id) => openDeleteDialog(id)}
-          emptyVariant={contactEmptyVariant}
-          onClearFilters={clearContactFilters}
-        />
+        {viewMode === "grid" ? (
+          <ContactCardGrid
+            contacts={contacts}
+            isLoading={isLoading}
+            onOpen={openView}
+          />
+        ) : (
+          <ContactTable
+            contacts={contacts}
+            isLoading={isLoading}
+            isFetching={isFetching}
+            basePath={basePath}
+            dealsEnabled={dealsEnabled}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={(nextSortBy, nextSortOrder) => {
+              setSortBy(nextSortBy);
+              setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
+              setPage(DEFAULT_PAGE);
+            }}
+            onView={openView}
+            onEdit={openEdit}
+            onDelete={(id) => openDeleteDialog(id)}
+            emptyVariant={contactEmptyVariant}
+            onClearFilters={clearContactFilters}
+          />
+        )}
 
         {pagination && (
           <DataTablePagination

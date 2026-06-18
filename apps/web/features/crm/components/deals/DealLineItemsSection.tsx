@@ -223,21 +223,32 @@ export function DealLineItemsSection({
           </div>
 
           {/* Desktop: table */}
-          <div className="hidden overflow-x-auto rounded-md border md:block">
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-2 font-medium">Product</th>
-                  <th className="text-right p-2 font-medium">Qty</th>
-                  <th className="text-right p-2 font-medium">Unit Price</th>
-                  <th className="text-right p-2 font-medium">Total</th>
+                <tr className="border-b bg-secondary/40">
+                  <th className="text-left px-3 py-2.5 font-semibold text-foreground">
+                    Product
+                  </th>
+                  <th className="text-right px-3 py-2.5 font-semibold text-foreground font-mono">
+                    Qty
+                  </th>
+                  <th className="text-right px-3 py-2.5 font-semibold text-foreground font-mono">
+                    Unit Price
+                  </th>
+                  <th className="text-right px-3 py-2.5 font-semibold text-foreground font-mono">
+                    Total
+                  </th>
                   <th className="w-10" aria-hidden="true" />
                 </tr>
               </thead>
               <tbody>
                 {lineItems.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="p-2">
+                  <tr
+                    key={item.id}
+                    className="border-b last:border-0 hover:bg-muted/40"
+                  >
+                    <td className="px-3 py-2">
                       {item.product?.name ?? "—"}
                       {item.product?.imsCode && (
                         <span className="text-muted-foreground ml-1 text-xs">
@@ -245,14 +256,16 @@ export function DealLineItemsSection({
                         </span>
                       )}
                     </td>
-                    <td className="p-2 text-right">{item.quantity}</td>
-                    <td className="p-2 text-right">
+                    <td className="px-3 py-2 text-right font-mono">
+                      {item.quantity}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono">
                       {formatCurrency(Number(item.unitPrice))}
                     </td>
-                    <td className="p-2 text-right">
+                    <td className="px-3 py-2 text-right font-mono font-semibold">
                       {formatCurrency(Number(item.unitPrice) * item.quantity)}
                     </td>
-                    <td className="p-2">
+                    <td className="px-3 py-2">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -266,6 +279,25 @@ export function DealLineItemsSection({
                     </td>
                   </tr>
                 ))}
+                {/* Total row */}
+                <tr className="bg-secondary/20 border-t-2">
+                  <td
+                    colSpan={3}
+                    className="px-3 py-2.5 text-right font-semibold"
+                  >
+                    Total
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono font-bold text-primary">
+                    {formatCurrency(
+                      lineItems.reduce(
+                        (sum, item) =>
+                          sum + Number(item.unitPrice) * item.quantity,
+                        0,
+                      ),
+                    )}
+                  </td>
+                  <td />
+                </tr>
               </tbody>
             </table>
           </div>

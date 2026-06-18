@@ -12,7 +12,6 @@ import {
   useLead,
   useUpdateLead,
   useDeleteLead,
-  useConvertLead,
 } from "../../hooks/use-leads";
 import { useCrmSources } from "../../hooks/use-crm-settings";
 import { useEnvFeatureFlag } from "@/features/flags";
@@ -29,14 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Search,
-  Plus,
-  Mail,
-  Phone as PhoneIcon,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { Search, Plus, Mail, SlidersHorizontal, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -57,12 +49,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -77,6 +63,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import { ConvertLeadDrawer } from "./ConvertLeadDrawer";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS: LeadStatus[] = [
   "NEW",
@@ -88,14 +77,31 @@ const STATUS_OPTIONS: LeadStatus[] = [
 
 const statusVariant: Record<
   LeadStatus,
-  "default" | "secondary" | "outline" | "destructive"
+  | "default"
+  | "secondary"
+  | "outline"
+  | "destructive"
+  | "info"
+  | "warning"
+  | "success"
 > = {
-  NEW: "secondary",
-  CONTACTED: "outline",
-  QUALIFIED: "default",
+  NEW: "info",
+  CONTACTED: "secondary",
+  QUALIFIED: "warning",
   LOST: "destructive",
-  CONVERTED: "secondary",
+  CONVERTED: "success",
 };
+
+function initials(name: string): string {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?"
+  );
+}
 
 export function LeadsPage() {
   const params = useParams();
@@ -114,8 +120,7 @@ export function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
+  const [convertLead, setConvertLead] = useState<Lead | null>(null);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -138,7 +143,6 @@ export function LeadsPage() {
   const { data: leadData } = useLead(selectedId || "");
   const _updateMutation = useUpdateLead();
   const deleteMutation = useDeleteLead();
-  const convertMutation = useConvertLead();
 
   const leads = data?.data ?? [];
 
@@ -211,21 +215,7 @@ export function LeadsPage() {
   };
 
   const handleConvert = (lead: Lead) => {
-    setConvertLeadId(lead.id);
-    setConvertDialogOpen(true);
-  };
-
-  const confirmConvert = async () => {
-    if (!convertLeadId) return;
-    try {
-      await convertMutation.mutateAsync({ id: convertLeadId });
-      toast({ title: "Lead converted to Contact and Deal" });
-      setConvertDialogOpen(false);
-      setConvertLeadId(null);
-      setSelectedId(null);
-    } catch {
-      toast({ title: "Convert failed", variant: "destructive" });
-    }
+    setConvertLead(lead);
   };
 
   const listDimmed = isFetching && !isLoading;
@@ -492,14 +482,38 @@ export function LeadsPage() {
             </div>
           ) : (
             leads.map((lead) => (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 key={lead.id}
-                className="w-full text-left rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
+                className={cn(
+                  "w-full text-left rounded-lg border bg-card p-4 space-y-3 cursor-pointer transition-colors hover:bg-secondary",
+                  listDimmed && "pointer-events-none",
+                )}
                 onClick={() => openView(lead.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openView(lead.id);
+                  }
+                }}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-semibold">{lead.name}</span>
+                <div className="flex items-start gap-3 justify-between">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                        {initials(lead.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">{lead.name}</div>
+                      {lead.companyName && (
+                        <div className="text-xs text-muted-foreground">
+                          {lead.companyName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <Badge
                     variant={statusVariant[lead.status]}
                     className="text-xs shrink-0"
@@ -514,30 +528,34 @@ export function LeadsPage() {
                       {lead.email}
                     </span>
                   )}
-                  {lead.phone && (
-                    <span className="flex items-center gap-1">
-                      <PhoneIcon className="h-3 w-3" aria-hidden="true" />
-                      {lead.phone}
-                    </span>
-                  )}
                   {lead.source && <span>{lead.source}</span>}
                   {lead.assignedTo && <span>{lead.assignedTo.username}</span>}
                 </div>
                 {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- stopPropagation wrapper inside a button; keyboard handled by parent */}
                 <div
-                  className="flex gap-1 pt-1"
+                  className="flex gap-2 pt-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Can perm="CRM.LEADS.CONVERT">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs flex-1"
-                      disabled={lead.status === "CONVERTED"}
-                      onClick={() => handleConvert(lead)}
-                    >
-                      Convert
-                    </Button>
+                    {lead.status === "CONVERTED" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        disabled
+                      >
+                        Converted
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs flex-1"
+                        onClick={() => handleConvert(lead)}
+                      >
+                        Convert
+                      </Button>
+                    )}
                   </Can>
                   <Button
                     variant="outline"
@@ -556,7 +574,7 @@ export function LeadsPage() {
                     Delete
                   </Button>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -634,21 +652,40 @@ export function LeadsPage() {
                 </TableRow>
               ) : (
                 leads.map((lead) => (
-                  <TableRow key={lead.id}>
+                  <TableRow
+                    key={lead.id}
+                    className="hover:bg-secondary transition-colors"
+                  >
                     <TableCell>
                       <Button
                         variant="link"
-                        className="h-auto p-0 font-medium"
+                        className="h-auto p-0 flex items-center gap-2"
                         onClick={() => setSelectedId(lead.id)}
                       >
-                        {lead.name}
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                            {initials(lead.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="text-left">
+                          <div className="font-medium">{lead.name}</div>
+                          {lead.companyName && (
+                            <div className="text-xs text-muted-foreground">
+                              {lead.companyName}
+                            </div>
+                          )}
+                        </div>
                       </Button>
                     </TableCell>
                     <TableCell>{lead.email || "—"}</TableCell>
-                    <TableCell>{lead.status}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[lead.status]}>
+                        {lead.status}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{lead.source || "—"}</TableCell>
                     <TableCell>{lead.assignedTo?.username ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -657,19 +694,24 @@ export function LeadsPage() {
                         View
                       </Button>
                       <Can perm="CRM.LEADS.CONVERT">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={lead.status === "CONVERTED"}
-                          onClick={() => handleConvert(lead)}
-                        >
-                          Convert
-                        </Button>
+                        {lead.status === "CONVERTED" ? (
+                          <Button variant="ghost" size="sm" disabled>
+                            Converted
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleConvert(lead)}
+                          >
+                            Convert
+                          </Button>
+                        )}
                       </Can>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive"
+                        className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteLeadId(lead.id)}
                       >
                         Delete
@@ -728,12 +770,13 @@ export function LeadsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Can perm="CRM.LEADS.CONVERT">
-                    <Button
-                      disabled={leadData.lead.status === "CONVERTED"}
-                      onClick={() => handleConvert(leadData.lead)}
-                    >
-                      Convert to Contact + Deal
-                    </Button>
+                    {leadData.lead.status === "CONVERTED" ? (
+                      <Button disabled>Converted</Button>
+                    ) : (
+                      <Button onClick={() => handleConvert(leadData.lead)}>
+                        Convert to Contact + Deal
+                      </Button>
+                    )}
                   </Can>
                   <Link href={`${basePath}/crm/leads/${selectedId}/edit`}>
                     <Button variant="outline">Edit</Button>
@@ -744,30 +787,11 @@ export function LeadsPage() {
           </SheetContent>
         </Sheet>
 
-        <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Convert Lead</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              This will create a new Contact and Deal from this lead. Continue?
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setConvertDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmConvert}
-                disabled={convertMutation.isPending}
-              >
-                {convertMutation.isPending ? "Converting..." : "Convert"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ConvertLeadDrawer
+          lead={convertLead}
+          open={!!convertLead}
+          onOpenChange={(o) => !o && setConvertLead(null)}
+        />
 
         <AlertDialog
           open={!!deleteLeadId}
