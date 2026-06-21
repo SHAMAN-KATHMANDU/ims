@@ -433,6 +433,11 @@ export function TasksPage() {
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0 rounded-md border border-input flex-shrink-0"
+                      disabled={
+                        task.completed ||
+                        (completeMutation.isPending &&
+                          completeMutation.variables === task.id)
+                      }
                       onClick={() => {
                         completeMutation.mutate(task.id, {
                           onSuccess: () => toast({ title: "Task completed" }),
@@ -652,6 +657,11 @@ export function TasksPage() {
                         variant="ghost"
                         size="sm"
                         className="h-5 w-5 p-0 rounded-sm border border-input hover:bg-primary"
+                        disabled={
+                          task.completed ||
+                          (completeMutation.isPending &&
+                            completeMutation.variables === task.id)
+                        }
                         onClick={() => {
                           completeMutation.mutate(task.id, {
                             onSuccess: () => toast({ title: "Task completed" }),

@@ -61,6 +61,8 @@ export function ContactCardGrid({
             tabIndex={0}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
+                // Space would otherwise scroll the page; match native button behavior.
+                e.preventDefault();
                 onOpen(contact.id);
               }
             }}
