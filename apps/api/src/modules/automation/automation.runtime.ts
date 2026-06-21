@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import {
-  AUTOMATION_TRIGGER_EVENT_VALUES,
+  AUTOMATION_ACTION_ALLOWED_EVENTS,
+  RECORD_UPDATE_FIELD_ALLOWLIST,
   AutomationFlowGraphPayloadSchema,
   EnvFeature,
   isEnvFeatureEnabled,
@@ -105,59 +106,9 @@ const automationFeatureEnabled = isEnvFeatureEnabled(
   parseFeatureFlagsEnv(env.featureFlags),
 );
 
-const ACTION_ALLOWED_EVENTS = {
-  "workitem.create": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "notification.send": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "transfer.create_draft": [
-    "inventory.stock.adjusted",
-    "inventory.stock.set",
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-  ],
-  "record.update_field": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.contact.update": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.company.update": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.deal.move_stage": ["crm.deal.created", "crm.deal.stage_changed"],
-  "crm.activity.create": [
-    "crm.deal.created",
-    "crm.deal.stage_changed",
-    "crm.deal.won",
-    "crm.deal.lost",
-    "crm.contact.created",
-    "crm.contact.updated",
-    "crm.company.created",
-    "crm.company.updated",
-    "crm.activity.created",
-    "crm.lead.created",
-    "crm.lead.assigned",
-    "crm.lead.converted",
-  ],
-  "crm.contact.add_tag": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.contact.add_note": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.deal.create": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
-} as const satisfies Record<string, readonly string[]>;
-
-const RECORD_UPDATE_FIELD_ALLOWLIST = {
-  DEAL: ["status", "stage", "assignedToId", "expectedCloseDate"],
-  CONTACT: ["source", "email", "phone", "ownerId", "status"],
-  COMPANY: ["name", "website", "address", "phone"],
-  MEMBER: ["name", "email", "notes", "memberStatus"],
-  PRODUCT: [
-    "name",
-    "description",
-    "subCategory",
-    "vendorId",
-    "costPrice",
-    "mrp",
-  ],
-  CATEGORY: ["name", "description"],
-  VENDOR: ["name", "contact", "address", "phone"],
-  LOCATION: ["name", "address", "isActive", "isDefaultWarehouse"],
-  SALE: ["notes"],
-  TRANSFER: ["notes"],
-  WORK_ITEM: ["status", "priority", "assignedToId", "dueDate"],
-} as const satisfies Record<string, readonly string[]>;
+// The action→event allowlist and record-update field allowlist are the single
+// source of truth in @repo/shared (consumed by both the schema validation layer
+// and this runtime); imported here rather than re-declared to avoid drift.
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -200,7 +151,11 @@ function isActionAllowedForEvent(
   actionType: string,
   eventName: string,
 ): boolean {
-  return ACTION_ALLOWED_EVENTS[actionType]?.includes(eventName) ?? false;
+  return (
+    (AUTOMATION_ACTION_ALLOWED_EVENTS as Record<string, readonly string[]>)[
+      actionType
+    ]?.includes(eventName) ?? false
+  );
 }
 
 function getRetryDelayMs(attempt: number): number {
