@@ -344,6 +344,11 @@ function PipelineSettings() {
     },
     { enabled: pipelinesTabEnabled },
   );
+  // Unpaginated fetch used ONLY to count framework pipeline types — the seed
+  // button visibility must reflect every pipeline, not just the current page.
+  const { data: allPipelinesData } = usePipelines(undefined, {
+    enabled: pipelinesTabEnabled,
+  });
   const { data: templatesPayload } = usePipelineTemplates({
     enabled: pipelinesTabEnabled,
   });
@@ -378,11 +383,11 @@ function PipelineSettings() {
   const frameworkTypeCount = useMemo(
     () =>
       new Set(
-        pipelines
+        (allPipelinesData?.pipelines ?? [])
           .filter((p) => p.type && p.type !== "GENERAL")
           .map((p) => p.type),
       ).size,
-    [pipelines],
+    [allPipelinesData?.pipelines],
   );
   const sortedPipelines = useMemo(() => {
     const direction = pipelineSortOrder === "desc" ? -1 : 1;
