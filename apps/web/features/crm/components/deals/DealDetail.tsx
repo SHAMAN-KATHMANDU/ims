@@ -137,7 +137,7 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-primary">
+            <p className="text-3xl font-extrabold tracking-tight">
               {formatCurrency(Number(deal.value))}
             </p>
             <p className="text-sm text-muted-foreground mt-0.5">

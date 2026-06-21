@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { Can, PermissionGate } from "@/features/permissions";
 import {
   useLeadsPaginated,
@@ -28,7 +27,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Mail, SlidersHorizontal, X } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Mail,
+  SlidersHorizontal,
+  X,
+  Zap,
+  Check,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -109,7 +116,6 @@ export function LeadsPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isDesktop = useIsDesktop();
   const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
 
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -198,20 +204,13 @@ export function LeadsPage() {
     });
   };
 
+  // Clicking a lead navigates to its detail page (no view sheet/drawer).
   const openView = (id: string) => {
-    if (isDesktop) {
-      setSelectedId(id);
-    } else {
-      router.push(`${basePath}/crm/leads/${id}`);
-    }
+    router.push(`${basePath}/crm/leads/${id}`);
   };
 
   const openEdit = (id: string) => {
-    if (isDesktop) {
-      router.push(`${basePath}/crm/leads/${id}/edit`);
-    } else {
-      router.push(`${basePath}/crm/leads/${id}/edit`);
-    }
+    router.push(`${basePath}/crm/leads/${id}/edit`);
   };
 
   const handleConvert = (lead: Lead) => {
@@ -583,19 +582,19 @@ export function LeadsPage() {
         <div
           className={
             listDimmed
-              ? "hidden sm:block overflow-x-auto rounded-md border opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
-              : "hidden sm:block overflow-x-auto rounded-md border transition-opacity duration-[var(--duration-normal,200ms)]"
+              ? "hidden sm:block overflow-x-auto rounded-xl border bg-card shadow-sm opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+              : "hidden sm:block overflow-x-auto rounded-xl border bg-card shadow-sm transition-opacity duration-[var(--duration-normal,200ms)]"
           }
         >
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Lead</TableHead>
+                <TableHead>Company</TableHead>
                 <TableHead>Source</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -657,65 +656,72 @@ export function LeadsPage() {
                     className="hover:bg-secondary transition-colors"
                   >
                     <TableCell>
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 flex items-center gap-2"
-                        onClick={() => setSelectedId(lead.id)}
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 text-left"
+                        onClick={() => openView(lead.id)}
                       >
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-9 w-9">
                           <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                             {initials(lead.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="text-left">
-                          <div className="font-medium">{lead.name}</div>
-                          {lead.companyName && (
-                            <div className="text-xs text-muted-foreground">
-                              {lead.companyName}
+                        <div className="min-w-0">
+                          <div className="text-[13.5px] font-semibold">
+                            {lead.name}
+                          </div>
+                          {lead.email && (
+                            <div className="text-[11.5px] text-muted-foreground">
+                              {lead.email}
                             </div>
                           )}
                         </div>
-                      </Button>
+                      </button>
                     </TableCell>
-                    <TableCell>{lead.email || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {lead.companyName || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {lead.source || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {lead.assignedTo?.username ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[lead.status]}>
                         {lead.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{lead.source || "—"}</TableCell>
-                    <TableCell>{lead.assignedTo?.username ?? "—"}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedId(lead.id)}
-                      >
-                        View
-                      </Button>
-                      <Can perm="CRM.LEADS.CONVERT">
-                        {lead.status === "CONVERTED" ? (
-                          <Button variant="ghost" size="sm" disabled>
-                            Converted
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleConvert(lead)}
-                          >
-                            Convert
-                          </Button>
-                        )}
-                      </Can>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteLeadId(lead.id)}
-                      >
-                        Delete
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Can perm="CRM.LEADS.CONVERT">
+                          {lead.status === "CONVERTED" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled
+                              className="text-muted-foreground"
+                            >
+                              <Check className="h-4 w-4" /> Converted
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => handleConvert(lead)}
+                            >
+                              <Zap className="h-4 w-4" /> Convert
+                            </Button>
+                          )}
+                        </Can>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteLeadId(lead.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

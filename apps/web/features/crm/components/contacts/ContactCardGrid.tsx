@@ -53,7 +53,7 @@ export function ContactCardGrid({
           <Card
             key={contact.id}
             className={cn(
-              "cursor-pointer hover:shadow-md transition-shadow p-4 space-y-3",
+              "flex cursor-pointer items-center gap-3.5 p-4 transition-shadow hover:border-border hover:shadow-md",
               "bg-card border",
             )}
             onClick={() => onOpen(contact.id)}
@@ -67,43 +67,38 @@ export function ContactCardGrid({
               }
             }}
           >
-            {/* Avatar + name */}
-            <div className="flex items-start gap-3">
-              <Avatar className="h-12 w-12 shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-[14.5px] font-semibold truncate">
-                  {fullName}
-                </h3>
-                {contact.company && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {contact.company.name}
-                  </p>
+            <Avatar className="h-12 w-12 shrink-0">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="min-w-0 flex-1">
+              <div className="text-[14.5px] font-semibold truncate">
+                {fullName}
+              </div>
+              {contact.company && (
+                <div className="text-[12.5px] text-muted-foreground truncate">
+                  {contact.company.name}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <TierBadge purchaseCount={contact.purchaseCount} />
+                {contact.journeyType && (
+                  <Badge variant="secondary" className="text-xs">
+                    {contact.journeyType}
+                  </Badge>
                 )}
               </div>
             </div>
 
-            {/* Badges row */}
-            <div className="flex flex-wrap gap-1.5">
-              <TierBadge purchaseCount={contact.purchaseCount} />
-              {contact.journeyType && (
-                <Badge variant="secondary" className="text-xs">
-                  {contact.journeyType}
-                </Badge>
-              )}
-            </div>
-
-            {/* Purchase count */}
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <span className="font-mono text-lg font-semibold text-primary">
+            <div className="shrink-0 text-right">
+              <div className="font-mono text-lg font-semibold">
                 {contact.purchaseCount}
-              </span>
-              <span className="text-xs text-muted-foreground">
+              </div>
+              <div className="text-[11px] text-muted-foreground">
                 purchase{contact.purchaseCount !== 1 ? "s" : ""}
-              </span>
+              </div>
             </div>
           </Card>
         );

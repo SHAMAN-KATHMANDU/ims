@@ -344,6 +344,11 @@ function PipelineSettings() {
     },
     { enabled: pipelinesTabEnabled },
   );
+  // Unpaginated fetch used ONLY to count framework pipeline types — the seed
+  // button visibility must reflect every pipeline, not just the current page.
+  const { data: allPipelinesData } = usePipelines(undefined, {
+    enabled: pipelinesTabEnabled,
+  });
   const { data: templatesPayload } = usePipelineTemplates({
     enabled: pipelinesTabEnabled,
   });
@@ -372,6 +377,18 @@ function PipelineSettings() {
   const pipelines = useMemo(() => data?.pipelines ?? [], [data?.pipelines]);
   const pipelinePagination = data?.pagination;
   const catalogTemplates = templatesPayload?.templates ?? [];
+  // Distinct framework pipeline types present (NEW_SALES / REMARKETING /
+  // REPURCHASE). The seed action is additive — keep it available until all three
+  // exist so missing framework pipelines can be added without overwriting any.
+  const frameworkTypeCount = useMemo(
+    () =>
+      new Set(
+        (allPipelinesData?.pipelines ?? [])
+          .filter((p) => p.type && p.type !== "GENERAL")
+          .map((p) => p.type),
+      ).size,
+    [allPipelinesData?.pipelines],
+  );
   const sortedPipelines = useMemo(() => {
     const direction = pipelineSortOrder === "desc" ? -1 : 1;
     return [...pipelines].sort((a, b) => {
@@ -499,7 +516,7 @@ function PipelineSettings() {
           </CardDescription>
         </div>
         <div className="flex gap-2">
-          {!pipelines.some((p) => p.type && p.type !== "GENERAL") && (
+          {frameworkTypeCount < 3 && (
             <Button
               size="sm"
               variant="outline"
@@ -508,7 +525,9 @@ function PipelineSettings() {
             >
               {seedMutation.isPending
                 ? "Setting up..."
-                : "Setup Pipeline Framework"}
+                : frameworkTypeCount === 0
+                  ? "Setup Pipeline Framework"
+                  : "Add framework pipelines"}
             </Button>
           )}
           <Button
