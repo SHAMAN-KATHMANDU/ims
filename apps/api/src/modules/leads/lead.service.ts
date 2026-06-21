@@ -1,6 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { logger } from "@/config/logger";
+import { basePrisma } from "@/config/prisma";
 import automationService from "@/modules/automation/automation.service";
 import { normalizePhoneOptional } from "@/utils/phone";
 import {
@@ -207,73 +208,90 @@ export class LeadService {
         ? stages[0].name
         : "Qualification";
 
-    let memberId: string | null = null;
-    if (lead.phone && lead.phone.trim()) {
-      let member = await leadRepository.findMemberByPhone(
-        tenantId,
-        lead.phone.trim(),
-      );
-      if (!member) {
-        member = await leadRepository.createMember({
-          tenantId,
-          phone: lead.phone.trim(),
-          name: lead.name?.trim() || null,
-          email: lead.email?.trim() || null,
-        });
-      }
-      memberId = member.id;
-    }
-
-    let contact;
-    if (data.contactId) {
-      contact = await leadRepository.findContactById(tenantId, data.contactId);
-      if (!contact) throw createError("Contact not found", 404);
-    } else {
-      let companyId: string | null = null;
-      if (lead.companyName) {
-        let company = await leadRepository.findCompanyByName(
-          tenantId,
-          lead.companyName,
-        );
-        if (!company) {
-          company = await leadRepository.createCompany(
+    // The fan-out (member + company + contact + deal + lead status flip) must be
+    // all-or-nothing: a failure partway through previously left an orphaned
+    // member/contact with the lead still marked NEW. Wrap it in one transaction.
+    const { contact, deal, memberId } = await basePrisma.$transaction(
+      async (tx) => {
+        let memberId: string | null = null;
+        if (lead.phone && lead.phone.trim()) {
+          let member = await leadRepository.findMemberByPhone(
+            tx,
             tenantId,
-            lead.companyName,
+            lead.phone.trim(),
           );
+          if (!member) {
+            member = await leadRepository.createMember(tx, {
+              tenantId,
+              phone: lead.phone.trim(),
+              name: lead.name?.trim() || null,
+              email: lead.email?.trim() || null,
+            });
+          }
+          memberId = member.id;
         }
-        companyId = company.id;
-      }
 
-      contact = await leadRepository.createContact({
-        tenantId,
-        firstName: lead.name.split(" ")[0] || lead.name,
-        lastName: lead.name.split(" ").slice(1).join(" ") || null,
-        email: lead.email,
-        phone: lead.phone,
-        companyId,
-        memberId,
-        ownedById: lead.assignedToId,
-        createdById: userId,
-      });
-    }
+        let contact;
+        if (data.contactId) {
+          contact = await leadRepository.findContactById(
+            tx,
+            tenantId,
+            data.contactId,
+          );
+          if (!contact) throw createError("Contact not found", 404);
+        } else {
+          let companyId: string | null = null;
+          if (lead.companyName) {
+            let company = await leadRepository.findCompanyByName(
+              tx,
+              tenantId,
+              lead.companyName,
+            );
+            if (!company) {
+              company = await leadRepository.createCompany(
+                tx,
+                tenantId,
+                lead.companyName,
+              );
+            }
+            companyId = company.id;
+          }
 
-    const deal = await leadRepository.createDeal({
-      tenantId,
-      name: data.dealName || `${lead.name} - Deal`,
-      value: data.dealValue ?? 0,
-      stage: firstStage,
-      probability: 10,
-      status: "OPEN",
-      contactId: contact.id,
-      memberId: memberId ?? undefined,
-      companyId: contact.companyId,
-      pipelineId: pipeline.id,
-      assignedToId: lead.assignedToId,
-      createdById: userId,
-      leadId: lead.id,
-    });
+          contact = await leadRepository.createContact(tx, {
+            tenantId,
+            firstName: lead.name.split(" ")[0] || lead.name,
+            lastName: lead.name.split(" ").slice(1).join(" ") || null,
+            email: lead.email,
+            phone: lead.phone,
+            companyId,
+            memberId,
+            ownedById: lead.assignedToId,
+            createdById: userId,
+          });
+        }
 
-    await leadRepository.markLeadConverted(id);
+        const deal = await leadRepository.createDeal(tx, {
+          tenantId,
+          name: data.dealName || `${lead.name} - Deal`,
+          value: data.dealValue ?? 0,
+          stage: firstStage,
+          probability: 10,
+          status: "OPEN",
+          contactId: contact.id,
+          memberId: memberId ?? undefined,
+          companyId: contact.companyId,
+          pipelineId: pipeline.id,
+          assignedToId: lead.assignedToId,
+          createdById: userId,
+          leadId: lead.id,
+        });
+
+        await leadRepository.markLeadConverted(tx, id);
+
+        return { contact, deal, memberId };
+      },
+    );
+
     const updatedLead = await leadRepository.findLeadByIdWithDeal(id);
 
     await automationService

@@ -43,6 +43,8 @@ export type AutomationRunStatusValue =
 export const AUTOMATION_TRIGGER_EVENT_VALUES = [
   "crm.deal.created",
   "crm.deal.stage_changed",
+  "crm.deal.won",
+  "crm.deal.lost",
   "crm.contact.created",
   "crm.contact.updated",
   "crm.company.created",

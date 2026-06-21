@@ -8,6 +8,7 @@ import type { SortOrder } from "@/components/ui/table";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { Can } from "@/features/permissions";
 import { getActiveJourneyType } from "../../utils/journey-type";
+import { TierBadge } from "../shared";
 
 type ContactEmptyVariant = "empty" | "no-results";
 
@@ -71,6 +72,11 @@ export function ContactTable({
       header: "Company",
       sortKey: "companyId",
       cell: (c) => c.company?.name || "—",
+    },
+    {
+      id: "tier",
+      header: "Tier",
+      cell: (c) => <TierBadge purchaseCount={c.purchaseCount} />,
     },
     {
       id: "tags",

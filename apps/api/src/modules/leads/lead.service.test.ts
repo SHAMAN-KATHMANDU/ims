@@ -42,6 +42,17 @@ vi.mock("./lead.repository", () => ({
   },
 }));
 
+vi.mock("@/config/prisma", () => ({
+  // Run the interactive transaction callback inline with a dummy client; the
+  // repository is fully mocked, so the tx argument is never dereferenced.
+  basePrisma: {
+    $transaction: (fn: (tx: unknown) => unknown) => fn({}),
+  },
+  default: {
+    $transaction: (fn: (tx: unknown) => unknown) => fn({}),
+  },
+}));
+
 vi.mock("@/shared/validation/reference-validator", () => ({
   assertEntityExists: vi.fn().mockResolvedValue(undefined),
   resolveNamedLookup: (args: { value: string }) =>
@@ -195,6 +206,39 @@ describe("LeadService", () => {
           entityId: "l1",
           actorUserId: "u1",
         }),
+      );
+    });
+
+    it("rolls back and does not mark converted or publish when the deal write fails", async () => {
+      mockFindById.mockResolvedValue({
+        id: "l1",
+        name: "Jane Doe",
+        phone: "+1234567890",
+        email: "jane@example.com",
+        companyName: "Acme",
+        status: "NEW",
+        assignedToId: "u2",
+      });
+      mockFindDefaultPipeline.mockResolvedValue({
+        id: "pipe-1",
+        stages: [{ id: "stage-1", name: "Qualification" }],
+      });
+      mockFindMemberByPhone.mockResolvedValue({ id: "member-1" });
+      mockFindCompanyByName.mockResolvedValue({ id: "company-1" });
+      mockCreateContact.mockResolvedValue({
+        id: "contact-1",
+        companyId: "company-1",
+      });
+      mockCreateDeal.mockRejectedValue(new Error("deal insert failed"));
+
+      await expect(leadService.convert("t1", "u1", "l1", {})).rejects.toThrow(
+        "deal insert failed",
+      );
+
+      // Lead stays NEW and no conversion event escapes the failed transaction.
+      expect(mockMarkLeadConverted).not.toHaveBeenCalled();
+      expect(mockPublishDomainEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ eventName: "crm.lead.converted" }),
       );
     });
   });

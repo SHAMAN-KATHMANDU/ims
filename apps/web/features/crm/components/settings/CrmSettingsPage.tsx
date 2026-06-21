@@ -62,7 +62,10 @@ import {
   Route,
   GripVertical,
   Search,
+  Trophy,
+  Ban,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DEFAULT_PAGE } from "@/lib/apiTypes";
@@ -104,34 +107,46 @@ export default function CrmSettingsPage() {
   const defaultTab = pipelinesTabEnabled ? "pipelines" : "tags";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="CRM Settings"
         description="Configure pipelines and CRM contact metadata."
       />
 
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-8 h-auto bg-transparent p-0">
           {pipelinesTabEnabled && (
-            <TabsTrigger value="pipelines" className="gap-2 shrink-0">
+            <TabsTrigger
+              value="pipelines"
+              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
+            >
               <GitBranch className="h-4 w-4" aria-hidden="true" />
               Pipelines
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
-            <TabsTrigger value="sources" className="gap-2 shrink-0">
+            <TabsTrigger
+              value="sources"
+              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
+            >
               <Tag className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Contact </span>Sources
+              Sources
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
-            <TabsTrigger value="journey-types" className="gap-2 shrink-0">
+            <TabsTrigger
+              value="journey-types"
+              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
+            >
               <Route className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Journey </span>Types
+              <span>Journey Types</span>
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
-            <TabsTrigger value="tags" className="gap-2 shrink-0">
+            <TabsTrigger
+              value="tags"
+              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
+            >
               <Tags className="h-4 w-4" aria-hidden="true" />
               Tags
             </TabsTrigger>
@@ -264,7 +279,10 @@ function SortableStageItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 rounded-md border bg-card ${isDragging ? "opacity-50 shadow-md" : ""}`}
+      className={cn(
+        "flex items-center gap-2 p-3 rounded-lg border bg-secondary/40",
+        isDragging && "opacity-50 shadow-md border-primary/50",
+      )}
     >
       <button
         type="button"
@@ -471,10 +489,10 @@ function PipelineSettings() {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between">
+    <Card className="border-0 bg-card shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between pb-6">
         <div>
-          <CardTitle>Deal Pipelines</CardTitle>
+          <CardTitle className="text-xl">Deal Pipelines</CardTitle>
           <CardDescription>
             Manage deal pipelines and their stages. The default pipeline is used
             when creating new deals.
@@ -553,7 +571,7 @@ function PipelineSettings() {
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-base">{t.name}</CardTitle>
                         {t.suggestAsDefault && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge className="text-[10px] bg-primary/10 text-primary">
                             Suggested default
                           </Badge>
                         )}
@@ -587,9 +605,12 @@ function PipelineSettings() {
         ) : (
           <>
             {/* ── Mobile card list ─────────────────────────────────────────── */}
-            <div className="md:hidden space-y-2">
+            <div className="md:hidden space-y-3">
               {sortedPipelines.map((p) => (
-                <div key={p.id} className="rounded-md border p-3 space-y-2">
+                <div
+                  key={p.id}
+                  className="rounded-lg border bg-card/50 p-4 space-y-3 shadow-sm"
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -611,19 +632,29 @@ function PipelineSettings() {
                       <span className="font-medium">Stages:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {p.stages.map((s) => (
-                          <Badge
-                            key={s.id}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {s.name}
-                          </Badge>
+                          <div key={s.id} className="flex items-center gap-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {s.name}
+                            </Badge>
+                            {s.name === p.closedWonStageName && (
+                              <Trophy
+                                className="h-3 w-3 text-success"
+                                aria-hidden="true"
+                              />
+                            )}
+                            {s.name === p.closedLostStageName && (
+                              <Ban
+                                className="h-3 w-3 text-destructive"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
                     {p.isDefault && (
                       <div>
-                        <Badge variant="default" className="text-xs">
+                        <Badge className="text-xs bg-primary/10 text-primary">
                           Default
                         </Badge>
                       </div>
@@ -716,19 +747,29 @@ function PipelineSettings() {
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {p.stages.map((s) => (
-                            <Badge
-                              key={s.id}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {s.name}
-                            </Badge>
+                            <div key={s.id} className="flex items-center gap-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {s.name}
+                              </Badge>
+                              {s.name === p.closedWonStageName && (
+                                <Trophy
+                                  className="h-3 w-3 text-success"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {s.name === p.closedLostStageName && (
+                                <Ban
+                                  className="h-3 w-3 text-destructive"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </div>
                           ))}
                         </div>
                       </TableCell>
                       <TableCell>
                         {p.isDefault && (
-                          <Badge variant="default" className="text-xs">
+                          <Badge className="text-xs bg-primary/10 text-primary">
                             Default
                           </Badge>
                         )}
@@ -1058,12 +1099,12 @@ function ListSettings({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
+    <Card className="border-0 bg-card shadow-sm">
+      <CardHeader className="pb-6">
+        <CardTitle className="text-xl">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {onSearchChange != null && searchPlaceholder != null && (
           <div className="relative max-w-sm">
             <Search

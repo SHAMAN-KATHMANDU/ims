@@ -5,6 +5,8 @@ const mockCount = vi.fn();
 const mockFindMany = vi.fn();
 const mockGroupBy = vi.fn();
 const mockActivityFindMany = vi.fn();
+const mockActivityGroupBy = vi.fn();
+const mockPipelineFindMany = vi.fn();
 
 vi.mock("@/config/prisma", () => ({
   default: {
@@ -16,7 +18,11 @@ vi.mock("@/config/prisma", () => ({
     },
     task: { count: vi.fn().mockResolvedValue(0) },
     lead: { groupBy: vi.fn().mockResolvedValue([]) },
-    activity: { findMany: (...a: unknown[]) => mockActivityFindMany(...a) },
+    activity: {
+      findMany: (...a: unknown[]) => mockActivityFindMany(...a),
+      groupBy: (...a: unknown[]) => mockActivityGroupBy(...a),
+    },
+    pipeline: { findMany: (...a: unknown[]) => mockPipelineFindMany(...a) },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
@@ -32,6 +38,8 @@ describe("CrmRepository", () => {
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
     mockActivityFindMany.mockResolvedValue([]);
+    mockActivityGroupBy.mockResolvedValue([]);
+    mockPipelineFindMany.mockResolvedValue([]);
   });
 
   describe("getDashboardData", () => {

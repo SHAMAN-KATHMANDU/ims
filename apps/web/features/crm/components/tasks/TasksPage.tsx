@@ -22,16 +22,7 @@ import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Plus,
-  Check,
-  Pencil,
-  Trash2,
-  Calendar,
-  User as UserIcon,
-  AlertCircle,
-} from "lucide-react";
+import { Search, Plus, Check, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   SortableTableHead,
@@ -79,6 +70,33 @@ import { Feature } from "@repo/shared";
 
 type TaskFilterTab = "all" | "incomplete" | "complete";
 type DrawerMode = "new" | "edit" | null;
+
+function getPriorityVariant(priority?: string) {
+  switch (priority) {
+    case "HIGH":
+      return "destructive";
+    case "MEDIUM":
+      return "warning";
+    case "LOW":
+    default:
+      return "outline";
+  }
+}
+
+function isOverdue(dueDate: string | null | undefined, completed: boolean) {
+  if (!dueDate || completed) return false;
+  return new Date(dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+}
+
+function getInitials(username?: string) {
+  if (!username) return "?";
+  return username
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export function TasksPage() {
   const params = useParams();
@@ -403,7 +421,7 @@ export function TasksPage() {
             tasks.map((task) => (
               <div
                 key={task.id}
-                className="rounded-lg border bg-card p-3 space-y-2"
+                className="rounded-lg border bg-card hover:bg-secondary/50 p-3 space-y-2 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -411,35 +429,43 @@ export function TasksPage() {
                       checked={isSelected(task.id)}
                       onCheckedChange={() => toggleTask(task.id)}
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 rounded-md border border-input flex-shrink-0"
+                      disabled={
+                        task.completed ||
+                        (completeMutation.isPending &&
+                          completeMutation.variables === task.id)
+                      }
+                      onClick={() => {
+                        completeMutation.mutate(task.id, {
+                          onSuccess: () => toast({ title: "Task completed" }),
+                        });
+                      }}
+                    >
+                      {task.completed && (
+                        <Check
+                          className="h-3 w-3 text-primary"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </Button>
                     <span
-                      className={`text-sm font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}
+                      className={`text-sm font-medium truncate ${
+                        task.completed
+                          ? "line-through text-muted-foreground"
+                          : ""
+                      }`}
                     >
                       {task.title}
                     </span>
                   </div>
-                  <Badge
-                    variant={task.completed ? "secondary" : "outline"}
-                    className="text-xs shrink-0"
-                  >
-                    {task.completed ? "Done" : "Todo"}
-                  </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  {task.dueDate && (
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" aria-hidden="true" />
-                      {new Date(task.dueDate).toLocaleDateString()}
-                    </span>
-                  )}
-                  {task.assignedTo && (
-                    <span className="flex items-center gap-1">
-                      <UserIcon className="h-3 w-3" aria-hidden="true" />
-                      {task.assignedTo.username}
-                    </span>
-                  )}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground ml-7">
                   {!task.contact && (
-                    <span className="flex items-center gap-1 text-amber-600">
+                    <span className="flex items-center gap-1 text-warning">
                       <AlertCircle className="h-3 w-3" aria-hidden="true" />
                       Orphaned
                     </span>
@@ -460,6 +486,29 @@ export function TasksPage() {
                   )}
                 </div>
 
+                <div className="flex flex-wrap gap-2 items-center pt-2 ml-7">
+                  {task.priority && (
+                    <Badge
+                      variant={getPriorityVariant(task.priority)}
+                      className="text-xs"
+                    >
+                      {task.priority}
+                    </Badge>
+                  )}
+                  {task.dueDate && (
+                    <Badge
+                      variant={
+                        isOverdue(task.dueDate, task.completed)
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="text-[11px] px-2"
+                    >
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </Badge>
+                  )}
+                </div>
+
                 <div className="flex gap-1 pt-1">
                   <Button
                     variant="outline"
@@ -470,21 +519,6 @@ export function TasksPage() {
                     <Pencil className="h-3 w-3 mr-1" aria-hidden="true" />
                     Edit
                   </Button>
-                  {!task.completed && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs flex-1"
-                      onClick={() => {
-                        completeMutation.mutate(task.id, {
-                          onSuccess: () => toast({ title: "Task completed" }),
-                        });
-                      }}
-                    >
-                      <Check className="h-3 w-3 mr-1" aria-hidden="true" />
-                      Done
-                    </Button>
-                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -519,6 +553,7 @@ export function TasksPage() {
                     }}
                   />
                 </TableHead>
+                <TableHead className="w-10" />
                 <SortableTableHead
                   sortKey="title"
                   currentSortBy={sortBy}
@@ -531,6 +566,8 @@ export function TasksPage() {
                 >
                   Title
                 </SortableTableHead>
+                <TableHead>Contact / Deal</TableHead>
+                <TableHead className="w-24">Priority</TableHead>
                 <SortableTableHead
                   sortKey="dueDate"
                   currentSortBy={sortBy}
@@ -540,13 +577,11 @@ export function TasksPage() {
                     setSortOrder(nextSortOrder);
                     setPage(DEFAULT_PAGE);
                   }}
+                  className="w-20"
                 >
-                  Due Date
+                  Due
                 </SortableTableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Contact</TableHead>
-                {dealsEnabled && <TableHead>Deal</TableHead>}
-                <TableHead>Status</TableHead>
+                <TableHead className="w-12">Assignee</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -558,24 +593,22 @@ export function TasksPage() {
                       <Skeleton className="h-4 w-4" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-5 w-5" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-48" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-5 w-16" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-20" />
                     </TableCell>
-                    {dealsEnabled && (
-                      <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                    )}
                     <TableCell>
-                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-6 w-6 rounded-full mx-auto" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-8 w-16 ml-auto" />
@@ -584,10 +617,7 @@ export function TasksPage() {
                 ))
               ) : tasks.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={dealsEnabled ? 8 : 7}
-                    className="text-center py-8 px-4"
-                  >
+                  <TableCell colSpan={8} className="text-center py-8 px-4">
                     {tasksEmptyNoResults ? (
                       <div className="space-y-3">
                         <p className="text-muted-foreground text-sm">
@@ -615,55 +645,118 @@ export function TasksPage() {
                 </TableRow>
               ) : (
                 tasks.map((task) => (
-                  <TableRow key={task.id}>
+                  <TableRow key={task.id} className="hover:bg-secondary/50">
                     <TableCell>
                       <Checkbox
                         checked={isSelected(task.id)}
                         onCheckedChange={() => toggleTask(task.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{task.title}</TableCell>
-                    <TableCell>
-                      {task.dueDate
-                        ? new Date(task.dueDate).toLocaleDateString()
-                        : "—"}
+                    <TableCell className="p-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 rounded-sm border border-input hover:bg-primary"
+                        disabled={
+                          task.completed ||
+                          (completeMutation.isPending &&
+                            completeMutation.variables === task.id)
+                        }
+                        onClick={() => {
+                          completeMutation.mutate(task.id, {
+                            onSuccess: () => toast({ title: "Task completed" }),
+                          });
+                        }}
+                      >
+                        {task.completed && (
+                          <Check
+                            className="h-3 w-3 text-primary"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </Button>
                     </TableCell>
-                    <TableCell>{task.assignedTo?.username ?? "—"}</TableCell>
                     <TableCell>
+                      <span
+                        className={`font-medium ${
+                          task.completed
+                            ? "line-through text-muted-foreground"
+                            : ""
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">
                       {!task.contact ? (
-                        <span className="flex items-center gap-1 text-amber-600">
+                        <span className="flex items-center gap-1 text-warning">
                           <AlertCircle className="h-3 w-3" aria-hidden="true" />
                           Orphaned
                         </span>
                       ) : (
-                        <Link
-                          href={`${basePath}/crm/contacts/${task.contact.id}`}
-                        >
-                          <span className="text-primary hover:underline">
-                            {task.contact.firstName}{" "}
-                            {task.contact.lastName || ""}
-                          </span>
-                        </Link>
-                      )}
-                    </TableCell>
-                    {dealsEnabled && (
-                      <TableCell>
-                        {task.deal ? (
-                          <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                        <div className="space-y-1">
+                          <Link
+                            href={`${basePath}/crm/contacts/${task.contact.id}`}
+                          >
                             <span className="text-primary hover:underline">
-                              {task.deal.name}
+                              {task.contact.firstName}{" "}
+                              {task.contact.lastName || ""}
                             </span>
                           </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    )}
+                          {dealsEnabled && task.deal && (
+                            <div>
+                              <Link
+                                href={`${basePath}/crm/deals/${task.deal.id}`}
+                              >
+                                <span className="text-primary hover:underline text-xs">
+                                  {task.deal.name}
+                                </span>
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      {task.completed ? (
-                        <span className="text-muted-foreground">Done</span>
+                      {task.priority && (
+                        <Badge
+                          variant={getPriorityVariant(task.priority)}
+                          className="text-xs"
+                        >
+                          {task.priority}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {task.dueDate ? (
+                        <Badge
+                          variant={
+                            isOverdue(task.dueDate, task.completed)
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className={`text-[11px] px-2 ${
+                            isOverdue(task.dueDate, task.completed)
+                              ? "text-destructive"
+                              : ""
+                          }`}
+                        >
+                          {new Date(task.dueDate).toLocaleDateString()}
+                        </Badge>
                       ) : (
-                        "Todo"
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {task.assignedTo ? (
+                        <div
+                          className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium mx-auto"
+                          title={task.assignedTo.username}
+                        >
+                          {getInitials(task.assignedTo.username)}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -676,31 +769,13 @@ export function TasksPage() {
                           <Pencil className="h-4 w-4 mr-1" aria-hidden="true" />
                           Edit
                         </Button>
-                        {!task.completed && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              completeMutation.mutate(task.id, {
-                                onSuccess: () =>
-                                  toast({ title: "Task completed" }),
-                              });
-                            }}
-                          >
-                            <Check
-                              className="h-4 w-4 mr-1"
-                              aria-hidden="true"
-                            />
-                            Complete
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={() => setDeleteTaskId(task.id)}
                         >
-                          Delete
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </TableCell>
@@ -749,6 +824,8 @@ export function TasksPage() {
                 contactId: selectedTaskData.task.contactId ?? undefined,
                 dealId: selectedTaskData.task.dealId ?? undefined,
                 assignedToId: selectedTaskData.task.assignedToId ?? undefined,
+                priority: selectedTaskData.task.priority,
+                status: selectedTaskData.task.status,
               }}
               onSubmit={handleUpdateTask}
               onCancel={closeDrawer}

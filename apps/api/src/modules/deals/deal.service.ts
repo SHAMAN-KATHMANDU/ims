@@ -387,7 +387,15 @@ export class DealService {
         );
     }
 
+    // Emit the stage-changed domain event for in-place stage/pipeline edits made
+    // through this endpoint, mirroring the drag-move paths so automations keyed on
+    // `crm.deal.stage_changed` fire regardless of which endpoint moved the deal.
+    if ((stageChanged || pipelineChanged) && existing.assignedToId) {
+      await this.publishStageChangedEvent(existing, deal);
+    }
+
     if (patch.status === "WON") {
+      await this.publishDealClosedEvent(existing, deal);
       await executeWorkflowRules({
         trigger: "DEAL_WON",
         deal: toDealContext(deal),
@@ -414,6 +422,7 @@ export class DealService {
           }),
         );
     } else if (patch.status === "LOST") {
+      await this.publishDealClosedEvent(existing, deal);
       await executeWorkflowRules({
         trigger: "DEAL_LOST",
         deal: toDealContext(deal),
@@ -704,28 +713,7 @@ export class DealService {
         }),
       );
     await this.runTerminalStatusEffects(existing, deal);
-    await automationService
-      .publishDomainEvent({
-        tenantId: deal.tenantId,
-        eventName: "crm.deal.stage_changed",
-        scopeType: "CRM_PIPELINE",
-        scopeId: deal.pipelineId,
-        entityType: "DEAL",
-        entityId: deal.id,
-        actorUserId: existing.assignedToId,
-        dedupeKey: `crm-deal-stage:${deal.id}:${existing.stage}:${deal.stage}:${deal.revisionNo}`,
-        payload: {
-          dealId: deal.id,
-          previousStage: existing.stage,
-          stage: deal.stage,
-          previousPipelineId: existing.pipelineId,
-          pipelineId: deal.pipelineId,
-          status: deal.status,
-          contactId: deal.contactId,
-          memberId: deal.memberId,
-        },
-      })
-      .catch(() => {});
+    await this.publishStageChangedEvent(existing, deal);
   }
 
   /** After cross-pipeline move; STAGE_EXIT for source already ran before revision. */
@@ -780,28 +768,7 @@ export class DealService {
         }),
       );
     await this.runTerminalStatusEffects(existing, deal);
-    await automationService
-      .publishDomainEvent({
-        tenantId: deal.tenantId,
-        eventName: "crm.deal.stage_changed",
-        scopeType: "CRM_PIPELINE",
-        scopeId: deal.pipelineId,
-        entityType: "DEAL",
-        entityId: deal.id,
-        actorUserId: existing.assignedToId,
-        dedupeKey: `crm-deal-stage:${deal.id}:${existing.pipelineId}:${existing.stage}:${deal.pipelineId}:${deal.stage}:${deal.revisionNo}`,
-        payload: {
-          dealId: deal.id,
-          previousStage: existing.stage,
-          stage: deal.stage,
-          previousPipelineId: existing.pipelineId,
-          pipelineId: deal.pipelineId,
-          status: deal.status,
-          contactId: deal.contactId,
-          memberId: deal.memberId,
-        },
-      })
-      .catch(() => {});
+    await this.publishStageChangedEvent(existing, deal);
   }
 
   private async getStageStatusPatch(
@@ -828,7 +795,7 @@ export class DealService {
       Awaited<ReturnType<typeof dealRepository.createDealRevision>>
     >,
   ): Promise<void> {
-    if (deal.status === existing.status || !existing.assignedToId) return;
+    if (deal.status === existing.status) return;
 
     const trigger =
       deal.status === "WON"
@@ -837,6 +804,13 @@ export class DealService {
           ? "DEAL_LOST"
           : null;
     if (!trigger) return;
+
+    // New automation engine: emit the closure event on the status transition,
+    // independent of whether the deal has an assignee (legacy workflow rules
+    // below still require one).
+    await this.publishDealClosedEvent(existing, deal);
+
+    if (!existing.assignedToId) return;
 
     await executeWorkflowRules({
       trigger,
@@ -864,6 +838,85 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+  }
+
+  /**
+   * Emit the `crm.deal.won` / `crm.deal.lost` domain event when a deal's status
+   * transitions to a terminal state. Fire-and-forget — automation failures must
+   * never block the deal write. Guards on an actual status change so re-saving a
+   * deal that is already won/lost does not re-fire.
+   */
+  private async publishDealClosedEvent(
+    existing: NonNullable<Awaited<ReturnType<typeof dealRepository.findById>>>,
+    deal: NonNullable<
+      Awaited<ReturnType<typeof dealRepository.createDealRevision>>
+    >,
+  ): Promise<void> {
+    if (deal.status === existing.status) return;
+    if (deal.status !== "WON" && deal.status !== "LOST") return;
+
+    const eventName = deal.status === "WON" ? "crm.deal.won" : "crm.deal.lost";
+    const slug = deal.status === "WON" ? "won" : "lost";
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName,
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: existing.assignedToId,
+        dedupeKey: `crm-deal-${slug}:${deal.id}:${deal.revisionNo}`,
+        payload: {
+          dealId: deal.id,
+          stage: deal.stage,
+          previousStage: existing.stage,
+          pipelineId: deal.pipelineId,
+          status: deal.status,
+          value: Number(deal.value),
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+        },
+      })
+      .catch(() => {});
+  }
+
+  /**
+   * Emit `crm.deal.stage_changed` for a stage and/or pipeline transition. Shared
+   * by the drag-move paths and the general `update()` path so a stage edit fires
+   * the event regardless of which endpoint made the change. Fire-and-forget; the
+   * dedupeKey (keyed on the revision + both pipeline/stage endpoints) collapses
+   * any accidental double-publish.
+   */
+  private async publishStageChangedEvent(
+    existing: NonNullable<Awaited<ReturnType<typeof dealRepository.findById>>>,
+    deal: NonNullable<
+      Awaited<ReturnType<typeof dealRepository.createDealRevision>>
+    >,
+  ): Promise<void> {
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName: "crm.deal.stage_changed",
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: existing.assignedToId,
+        dedupeKey: `crm-deal-stage:${deal.id}:${existing.pipelineId}:${existing.stage}:${deal.pipelineId}:${deal.stage}:${deal.revisionNo}`,
+        payload: {
+          dealId: deal.id,
+          previousStage: existing.stage,
+          stage: deal.stage,
+          previousPipelineId: existing.pipelineId,
+          pipelineId: deal.pipelineId,
+          status: deal.status,
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+        },
+      })
+      .catch(() => {});
   }
 
   async addLineItem(

@@ -9,6 +9,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,6 +21,12 @@ import {
 } from "@/components/ui/select";
 import { LogActivityForm } from "../LogActivityForm";
 import { DealLineItemsSection } from "./DealLineItemsSection";
+import {
+  StageStrip,
+  RevisionChain,
+  type RevisionEntry,
+} from "../../components/shared";
+import { resolveStageColor } from "../../utils/stage-color";
 import type { Deal } from "../../services/deal.service";
 import { Check } from "lucide-react";
 
@@ -90,73 +97,101 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
     updateStageMutation.mutate({ id: dealId, stage });
   };
 
+  const statusBadgeVariant = (status: string) => {
+    if (status === "WON") return "success" as const;
+    if (status === "LOST") return "destructive" as const;
+    return "info" as const;
+  };
+
+  const pipelineStages =
+    deal.pipeline?.stages.map((s, i) => ({
+      id: s.id,
+      name: s.name,
+      color: resolveStageColor(s.color, i),
+    })) ?? [];
+
+  const revisions: RevisionEntry[] = deal.revisionNo
+    ? [
+        {
+          no: deal.revisionNo,
+          change: deal.editReason || "Current revision",
+          at: deal.editedAt
+            ? new Date(deal.editedAt).toLocaleString()
+            : undefined,
+          by: deal.editedBy?.username,
+        },
+      ]
+    : [];
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{deal.name}</h1>
-          <p className="text-2xl font-semibold mt-1">
-            {formatCurrency(Number(deal.value))}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {deal.isLatest !== false &&
-            (onEdit ? (
-              <Button onClick={onEdit}>Edit</Button>
-            ) : (
-              <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
-                <Button>Edit</Button>
-              </Link>
-            ))}
-          <Link href={`${basePath}/crm/deals`}>
-            <Button variant="outline">Back to Deals</Button>
-          </Link>
-        </div>
-      </div>
-
-      {deal.revisionNo != null && deal.revisionNo > 1 && (
-        <div className="rounded-md bg-muted p-3 text-sm space-y-1">
-          <p className="font-medium">Revision #{deal.revisionNo}</p>
-          {deal.editedAt && (
-            <p className="text-muted-foreground">
-              Last edited: {new Date(deal.editedAt).toLocaleString()}
-              {deal.editedBy && ` by ${deal.editedBy.username}`}
+      {/* Header: title + status badge + meta row + value */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-[22px] font-bold">{deal.name}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant={statusBadgeVariant(deal.status)}>
+                {deal.status}
+              </Badge>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-bold text-primary">
+              {formatCurrency(Number(deal.value))}
             </p>
-          )}
-          {deal.editReason && (
-            <p className="text-muted-foreground">Reason: {deal.editReason}</p>
-          )}
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {deal.stage} · {deal.probability ?? 0}% probability
+            </p>
+          </div>
         </div>
-      )}
 
-      <div className="space-y-2 text-sm">
-        <p>Stage: {deal.stage}</p>
-        <p>Status: {deal.status}</p>
-        {deal.expectedCloseDate && (
-          <p>
-            Expected close:{" "}
-            {new Date(deal.expectedCloseDate).toLocaleDateString()}
-          </p>
-        )}
-        {deal.contact && (
-          <p>
-            Contact:{" "}
+        {/* Meta row: contact, company, revision, lead link */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {deal.contact && (
             <Link href={`${basePath}/crm/contacts/${deal.contact.id}`}>
               <span className="text-primary hover:underline">
                 {deal.contact.firstName} {deal.contact.lastName || ""}
               </span>
             </Link>
-          </p>
-        )}
-        {deal.company && <p>Company: {deal.company.name}</p>}
-        {deal.assignedTo && <p>Assigned to: {deal.assignedTo.username}</p>}
+          )}
+          {deal.company && <span>{deal.company.name}</span>}
+          {deal.revisionNo != null && <span>rev. {deal.revisionNo}</span>}
+          {deal.leadId && (
+            <Link href={`${basePath}/crm/leads/${deal.leadId}`}>
+              <span className="text-primary hover:underline">from lead</span>
+            </Link>
+          )}
+        </div>
       </div>
 
+      {/* Stage strip */}
+      {pipelineStages.length > 0 && (
+        <StageStrip stages={pipelineStages} currentStage={deal.stage} />
+      )}
+
+      {/* Revision chain */}
+      {revisions.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            REVISION HISTORY
+          </p>
+          <div className="rounded-lg border bg-card p-4">
+            <RevisionChain revisions={revisions} />
+            <p className="text-xs text-muted-foreground mt-3">
+              Edits never mutate a row — each change creates a new immutable
+              revision.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Stage change control */}
       {stages.length > 1 && (
-        <div>
-          <label className="text-sm font-medium">Change stage</label>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Move to stage</label>
           <Select value={deal.stage} onValueChange={handleStageChange}>
-            <SelectTrigger className="mt-1 w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -167,6 +202,22 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+
+      {/* Edit button */}
+      {deal.isLatest !== false && (
+        <div className="flex gap-2">
+          {onEdit ? (
+            <Button onClick={onEdit}>Edit</Button>
+          ) : (
+            <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
+              <Button>Edit</Button>
+            </Link>
+          )}
+          <Link href={`${basePath}/crm/deals`}>
+            <Button variant="outline">Back to Deals</Button>
+          </Link>
         </div>
       )}
 

@@ -48,6 +48,7 @@ import {
   Trash2,
   Zap,
   Search,
+  ArrowRight,
 } from "lucide-react";
 import {
   useWorkflows,
@@ -282,10 +283,12 @@ export default function WorkflowEditorPage() {
 
       <WorkflowOnboarding />
 
-      <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <Card className="border-0 bg-card shadow-sm">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between pb-6">
           <div className="space-y-1.5">
-            <CardTitle>Ready-made Workflow Templates</CardTitle>
+            <CardTitle className="text-xl">
+              Ready-made Workflow Templates
+            </CardTitle>
             <CardDescription>
               Browse descriptions and install packs onto a pipeline. For a
               numbered setup guide, open{" "}
@@ -423,13 +426,15 @@ export default function WorkflowEditorPage() {
                   return (
                     <div
                       key={template.templateKey}
-                      className="space-y-3 rounded-lg border p-4"
+                      className="space-y-3 rounded-lg border bg-card/50 p-4 shadow-sm"
                     >
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-medium">{template.name}</h3>
+                          <h3 className="font-medium text-sm">
+                            {template.name}
+                          </h3>
                           {template.recommended && (
-                            <Badge variant="default" className="text-xs">
+                            <Badge className="text-xs bg-primary/10 text-primary">
                               Recommended
                             </Badge>
                           )}
@@ -509,10 +514,10 @@ export default function WorkflowEditorPage() {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between">
+      <Card className="border-0 bg-card shadow-sm">
+        <CardHeader className="flex flex-row items-start justify-between pb-6">
           <div>
-            <CardTitle>Workflows</CardTitle>
+            <CardTitle className="text-xl">Workflows</CardTitle>
             <CardDescription>
               Trigger tasks, notifications, or other actions when deal events
               occur.
@@ -616,9 +621,12 @@ export default function WorkflowEditorPage() {
           ) : (
             <>
               {/* ── Mobile card list ─────────────────────────────────────────── */}
-              <div className="md:hidden space-y-2">
+              <div className="md:hidden space-y-3">
                 {sortedWorkflows.map((w) => (
-                  <div key={w.id} className="rounded-md border p-3 space-y-2">
+                  <div
+                    key={w.id}
+                    className="rounded-lg border bg-card/50 p-4 space-y-3 shadow-sm"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium break-words">{w.name}</p>
@@ -657,21 +665,29 @@ export default function WorkflowEditorPage() {
                         )}
                       </div>
                       {w.rules.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="space-y-2">
                           {w.rules.slice(0, 2).map((r) => (
-                            <Badge
+                            <div
                               key={r.id}
-                              variant="secondary"
-                              className="text-xs"
+                              className="flex items-center gap-2 flex-wrap"
                             >
-                              {getWorkflowTriggerLabel(r.trigger)} →{" "}
-                              {getWorkflowActionLabel(r.action)}
-                            </Badge>
+                              <Badge className="text-xs bg-info/10 text-info">
+                                {getWorkflowTriggerLabel(r.trigger)}
+                              </Badge>
+                              <ArrowRight
+                                className="h-3 w-3 text-muted-foreground"
+                                aria-hidden="true"
+                              />
+                              <Badge className="text-xs bg-primary/10 text-primary">
+                                {getWorkflowActionLabel(r.action)}
+                              </Badge>
+                            </div>
                           ))}
                           {w.rules.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{w.rules.length - 2} more
-                            </Badge>
+                            <p className="text-xs text-muted-foreground">
+                              +{w.rules.length - 2} more rule
+                              {w.rules.length - 2 !== 1 ? "s" : ""}
+                            </p>
                           )}
                         </div>
                       )}
@@ -780,16 +796,23 @@ export default function WorkflowEditorPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
+                          <div className="space-y-1.5">
                             {w.rules.map((r) => (
-                              <Badge
+                              <div
                                 key={r.id}
-                                variant="secondary"
-                                className="text-xs"
+                                className="flex items-center gap-2"
                               >
-                                {getWorkflowTriggerLabel(r.trigger)} →{" "}
-                                {getWorkflowActionLabel(r.action)}
-                              </Badge>
+                                <Badge className="text-xs bg-info/10 text-info">
+                                  {getWorkflowTriggerLabel(r.trigger)}
+                                </Badge>
+                                <ArrowRight
+                                  className="h-3 w-3 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                                <Badge className="text-xs bg-primary/10 text-primary">
+                                  {getWorkflowActionLabel(r.action)}
+                                </Badge>
+                              </div>
                             ))}
                           </div>
                         </TableCell>

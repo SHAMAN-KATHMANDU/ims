@@ -8,6 +8,22 @@ export interface CrmDashboardData {
   totalLeads: number;
   convertedLeads: number;
   monthlyRevenueChart: Array<{ month: string; revenue: number }>;
+  /**
+   * Open-deal funnel per CRM framework pipeline (NEW_SALES, REMARKETING,
+   * REPURCHASE), each stage in pipeline order. Stage colors are NOT included —
+   * resolve them from `usePipelines()` stage data when rendering.
+   */
+  pipelineFunnels: Array<{
+    pipelineId: string;
+    pipelineName: string;
+    pipelineType: string;
+    stages: Array<{
+      stageId: string | null;
+      stage: string;
+      count: number;
+      value: number;
+    }>;
+  }>;
   activitySummary: Array<{
     id: string;
     type: string;
@@ -32,6 +48,19 @@ export interface CrmReportsData {
   salesPerUser: Array<{
     userId: string;
     username: string;
+    dealCount: number;
+    totalValue: number;
+  }>;
+  /**
+   * Full staff table — one row per staff member across the union of deal owners
+   * and activity creators. Backs the Helm "Staff activity" report.
+   */
+  staffPerformance: Array<{
+    userId: string;
+    username: string;
+    calls: number;
+    emails: number;
+    meetings: number;
     dealCount: number;
     totalValue: number;
   }>;
