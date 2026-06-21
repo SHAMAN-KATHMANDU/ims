@@ -215,13 +215,9 @@ export function ContactsPage() {
     }
   };
 
+  // Clicking a contact navigates to its detail page (no view drawer).
   const openView = (id: string) => {
-    if (isDesktop) {
-      setSelectedId(id);
-      setDrawerMode("view");
-    } else {
-      router.push(`${basePath}/crm/contacts/${id}`);
-    }
+    router.push(`${basePath}/crm/contacts/${id}`);
   };
 
   const openEdit = (id: string) => {

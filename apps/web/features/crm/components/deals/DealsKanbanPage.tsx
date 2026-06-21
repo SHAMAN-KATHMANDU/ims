@@ -213,10 +213,13 @@ export function DealsKanbanPage() {
     }
   }, [isDesktop, router, basePath]);
 
-  const openView = useCallback((id: string) => {
-    setSelectedDealId(id);
-    setDrawerMode("view");
-  }, []);
+  // Clicking a deal navigates to its detail page (no view drawer).
+  const openView = useCallback(
+    (id: string) => {
+      router.push(`${basePath}/crm/deals/${id}`);
+    },
+    [router, basePath],
+  );
 
   const openEdit = useCallback(
     (id: string) => {
@@ -889,12 +892,13 @@ function DroppableStageColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`shrink-0 w-72 rounded-lg p-3 transition-colors min-h-[120px] ${
-        isOver ? "bg-muted ring-2 ring-primary/50" : "bg-muted/50"
-      }`}
+      className={cn(
+        "shrink-0 w-[268px] rounded-xl border bg-secondary p-3 transition-colors min-h-[120px]",
+        isOver && "border-primary bg-primary/5",
+      )}
     >
       {/* Column header: colored dot + name + count chip + sum */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {stageColor && (
             <div
@@ -903,13 +907,13 @@ function DroppableStageColumn({
               aria-hidden="true"
             />
           )}
-          <h3 className="font-semibold truncate">{stage}</h3>
-          <span className="text-xs font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-full shrink-0">
+          <h3 className="text-[13px] font-semibold truncate">{stage}</h3>
+          <span className="font-mono text-[11.5px] bg-card text-muted-foreground px-1.5 rounded-md shrink-0">
             {count}
           </span>
         </div>
         {stageSum !== undefined && (
-          <span className="text-sm font-semibold text-primary shrink-0">
+          <span className="text-xs font-semibold text-muted-foreground shrink-0">
             {formatCurrency(stageSum)}
           </span>
         )}
@@ -1022,7 +1026,7 @@ function DealCard({
 
   return (
     <>
-      <Card className="cursor-grab active:cursor-grabbing hover:bg-muted/50 transition-colors relative">
+      <Card className="rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing relative">
         {/* Status dot (top-right) */}
         <div
           className={cn(
@@ -1070,7 +1074,7 @@ function DealCard({
 
         <CardContent className="p-3 pt-0 space-y-2">
           {/* Big value */}
-          <p className="text-lg font-bold text-primary">
+          <p className="text-lg font-bold tracking-tight">
             {formatCurrency(Number(deal.value))}
           </p>
 
