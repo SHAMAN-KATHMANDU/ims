@@ -199,13 +199,9 @@ export function TasksPage() {
     }
   };
 
+  // Opening a task navigates to its edit page (no drawer).
   const openEdit = (id: string) => {
-    if (isDesktop) {
-      setSelectedId(id);
-      setDrawerMode("edit");
-    } else {
-      router.push(`${basePath}/crm/tasks/${id}/edit`);
-    }
+    router.push(`${basePath}/crm/tasks/${id}/edit`);
   };
 
   const confirmDeleteTask = () => {
@@ -535,7 +531,7 @@ export function TasksPage() {
         </div>
 
         {/* ── Desktop table ────────────────────────────────────────────── */}
-        <div className="hidden sm:block overflow-x-auto rounded-md border">
+        <div className="hidden sm:block overflow-x-auto rounded-xl border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
