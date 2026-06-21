@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { Can, PermissionGate } from "@/features/permissions";
 import {
   useLeadsPaginated,
@@ -117,7 +116,6 @@ export function LeadsPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isDesktop = useIsDesktop();
   const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
 
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -212,11 +210,7 @@ export function LeadsPage() {
   };
 
   const openEdit = (id: string) => {
-    if (isDesktop) {
-      router.push(`${basePath}/crm/leads/${id}/edit`);
-    } else {
-      router.push(`${basePath}/crm/leads/${id}/edit`);
-    }
+    router.push(`${basePath}/crm/leads/${id}/edit`);
   };
 
   const handleConvert = (lead: Lead) => {

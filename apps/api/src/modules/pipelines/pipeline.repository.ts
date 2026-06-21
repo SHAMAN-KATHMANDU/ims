@@ -189,7 +189,7 @@ export class PipelineRepository {
         type: { in: frameworkTypes },
         deletedAt: null,
       },
-      select: { id: true, type: true },
+      select: { id: true, name: true, type: true },
     });
 
     const results: Array<{ id: string; name: string; type: PipelineType }> = [];
@@ -200,29 +200,30 @@ export class PipelineRepository {
       const existingPipeline = existing.find(
         (pipeline) => pipeline.type === (tmpl.type as PipelineType),
       );
+
+      // Already present — preserve the tenant's customized name/stages/default
+      // and only create the framework pipelines that are still missing. (Seeding
+      // is additive and safe to re-run; it never overwrites existing pipelines.)
+      if (existingPipeline) {
+        results.push({
+          id: existingPipeline.id,
+          name: existingPipeline.name,
+          type: existingPipeline.type,
+        });
+        continue;
+      }
+
       const shouldBeDefault = tmpl.suggestAsDefault && !defaultAssigned;
       const stages = makeStages(tmpl.stageNames, [...tmpl.probabilities]);
-      let p;
-
-      if (existingPipeline) {
-        p = await this.update(existingPipeline.id, {
-          name: tmpl.name,
-          stages,
-          isDefault: shouldBeDefault,
-          closedWonStageName: tmpl.closedWonStageName ?? null,
-          closedLostStageName: tmpl.closedLostStageName ?? null,
-        });
-      } else {
-        p = await this.create({
-          tenantId,
-          name: tmpl.name,
-          type: tmpl.type as PipelineType,
-          stages,
-          isDefault: shouldBeDefault,
-          closedWonStageName: tmpl.closedWonStageName ?? null,
-          closedLostStageName: tmpl.closedLostStageName ?? null,
-        });
-      }
+      const p = await this.create({
+        tenantId,
+        name: tmpl.name,
+        type: tmpl.type as PipelineType,
+        stages,
+        isDefault: shouldBeDefault,
+        closedWonStageName: tmpl.closedWonStageName ?? null,
+        closedLostStageName: tmpl.closedLostStageName ?? null,
+      });
 
       if (shouldBeDefault) {
         await this.clearDefaultForTenantExcept(tenantId, p.id);
