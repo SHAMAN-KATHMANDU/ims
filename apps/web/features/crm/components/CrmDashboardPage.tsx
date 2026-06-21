@@ -13,6 +13,7 @@ import {
   Users,
   Award,
   FileText,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 
@@ -70,10 +72,7 @@ export function CrmDashboardPage() {
   if (isLoading || !d) {
     return (
       <PageShell className="space-y-4">
-        <PageHeader
-          title="CRM Overview"
-          description="Sales overview and key metrics"
-        />
+        <PageHeader title="Dashboard" description="Your pipeline at a glance" />
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-[104px]" />
@@ -118,8 +117,15 @@ export function CrmDashboardPage() {
   return (
     <PageShell className="space-y-3.5">
       <PageHeader
-        title="CRM Overview"
-        description="Sales overview and key metrics"
+        title="Dashboard"
+        description="Your pipeline at a glance"
+        actions={
+          <Button asChild>
+            <Link href={`${basePath}/crm/deals/new`}>
+              <Plus className="h-[18px] w-[18px]" /> New deal
+            </Link>
+          </Button>
+        }
       />
 
       {/* KPI tiles */}
