@@ -17,7 +17,6 @@ import {
 } from "../../hooks/use-tasks";
 import { useUsers } from "@/features/users";
 import { useTaskSelectionStore } from "../../store/task-selection-store";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -104,7 +103,6 @@ export function TasksPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isDesktop = useIsDesktop();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const dealsEnabled = envDealsEnabled && salesPipelinePlan;
@@ -190,13 +188,9 @@ export function TasksPage() {
       } as PaginationState)
     : null;
 
+  // New/Edit open as full pages (no drawer).
   const openNew = () => {
-    if (isDesktop) {
-      setSelectedId(null);
-      setDrawerMode("new");
-    } else {
-      router.push(`${basePath}/crm/tasks/new`);
-    }
+    router.push(`${basePath}/crm/tasks/new`);
   };
 
   // Opening a task navigates to its edit page (no drawer).

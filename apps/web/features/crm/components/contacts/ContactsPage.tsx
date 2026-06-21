@@ -20,7 +20,6 @@ import {
   useCrmSources,
   useCrmJourneyTypes,
 } from "../../hooks/use-crm-settings";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -82,7 +81,6 @@ export function ContactsPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isDesktop = useIsDesktop();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
@@ -206,13 +204,9 @@ export function ContactsPage() {
     toast({ title: "Contacts imported successfully" });
   };
 
+  // New/Edit/View open as full pages (no drawer).
   const openNew = () => {
-    if (isDesktop) {
-      setSelectedId(null);
-      setDrawerMode("new");
-    } else {
-      router.push(`${basePath}/crm/contacts/new`);
-    }
+    router.push(`${basePath}/crm/contacts/new`);
   };
 
   // Clicking a contact navigates to its detail page (no view drawer).
@@ -221,12 +215,7 @@ export function ContactsPage() {
   };
 
   const openEdit = (id: string) => {
-    if (isDesktop) {
-      setSelectedId(id);
-      setDrawerMode("edit");
-    } else {
-      router.push(`${basePath}/crm/contacts/${id}/edit`);
-    }
+    router.push(`${basePath}/crm/contacts/${id}/edit`);
   };
 
   const closeDrawer = () => {

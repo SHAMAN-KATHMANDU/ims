@@ -29,7 +29,6 @@ import {
 import { dealKeys } from "../../hooks/use-deals";
 import { resolveStageColor } from "../../utils/stage-color";
 import { useQueryClient } from "@tanstack/react-query";
-import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
@@ -117,7 +116,6 @@ export function DealsKanbanPage() {
   if (!envDealsEnabled || !salesPipelineEnabled) notFound();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
-  const isDesktop = useIsDesktop();
   const { toast } = useToast();
 
   const [pipelineId, setPipelineId] = useState<string>("");
@@ -204,16 +202,11 @@ export function DealsKanbanPage() {
     }),
   );
 
+  // New/Edit/View open as full pages (no drawer).
   const openNew = useCallback(() => {
-    if (isDesktop) {
-      setSelectedDealId(null);
-      setDrawerMode("new");
-    } else {
-      router.push(`${basePath}/crm/deals/new`);
-    }
-  }, [isDesktop, router, basePath]);
+    router.push(`${basePath}/crm/deals/new`);
+  }, [router, basePath]);
 
-  // Clicking a deal navigates to its detail page (no view drawer).
   const openView = useCallback(
     (id: string) => {
       router.push(`${basePath}/crm/deals/${id}`);
@@ -223,14 +216,9 @@ export function DealsKanbanPage() {
 
   const openEdit = useCallback(
     (id: string) => {
-      if (isDesktop) {
-        setSelectedDealId(id);
-        setDrawerMode("edit");
-      } else {
-        router.push(`${basePath}/crm/deals/${id}/edit`);
-      }
+      router.push(`${basePath}/crm/deals/${id}/edit`);
     },
-    [isDesktop, router, basePath],
+    [router, basePath],
   );
 
   const closeDrawer = useCallback(() => {
