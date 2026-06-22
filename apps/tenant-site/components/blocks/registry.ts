@@ -221,7 +221,7 @@ export const blockRegistry: Record<BlockKind, BlockRegistryEntry> = (() => {
     const override = tenantOverrides[kind];
     merged[kind] = {
       component: (override ??
-        packageRegistry[kind].component) as BlockComponent,
+        packageRegistry[kind]?.component) as BlockComponent,
       container: CONTAINER_KINDS.has(kind),
     };
   }
