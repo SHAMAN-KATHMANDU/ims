@@ -51,7 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pencil,
   Plus,
@@ -102,76 +101,63 @@ import type {
   CrmJourneyType,
 } from "../../services/crm-settings.service";
 
+type CrmSettingsTab = "pipelines" | "sources" | "journey-types" | "tags";
+
 export default function CrmSettingsPage() {
   const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
-  const defaultTab = pipelinesTabEnabled ? "pipelines" : "tags";
+
+  const tabs: Array<{
+    key: CrmSettingsTab;
+    label: string;
+    icon: typeof GitBranch;
+  }> = pipelinesTabEnabled
+    ? [
+        { key: "pipelines", label: "Pipelines", icon: GitBranch },
+        { key: "sources", label: "Sources", icon: Tag },
+        { key: "journey-types", label: "Journey Types", icon: Route },
+        { key: "tags", label: "Tags", icon: Tags },
+      ]
+    : [{ key: "tags", label: "Tags", icon: Tags }];
+
+  const [activeTab, setActiveTab] = useState<CrmSettingsTab>(tabs[0]!.key);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="CRM Settings"
         description="Configure pipelines and CRM contact metadata."
       />
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-8 h-auto bg-transparent p-0">
-          {pipelinesTabEnabled && (
-            <TabsTrigger
-              value="pipelines"
-              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
+      {/* Segmented section switcher (replaces the prior Radix tab bar). */}
+      <div className="inline-flex flex-wrap gap-0.5 rounded-lg border bg-secondary p-0.5">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors",
+                active
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
-              <GitBranch className="h-4 w-4" aria-hidden="true" />
-              Pipelines
-            </TabsTrigger>
-          )}
-          {pipelinesTabEnabled && (
-            <TabsTrigger
-              value="sources"
-              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
-            >
-              <Tag className="h-4 w-4" aria-hidden="true" />
-              Sources
-            </TabsTrigger>
-          )}
-          {pipelinesTabEnabled && (
-            <TabsTrigger
-              value="journey-types"
-              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
-            >
-              <Route className="h-4 w-4" aria-hidden="true" />
-              <span>Journey Types</span>
-            </TabsTrigger>
-          )}
-          {pipelinesTabEnabled && (
-            <TabsTrigger
-              value="tags"
-              className="gap-2 shrink-0 data-[state=active]:bg-primary/10 data-[state=active]:text-primary border rounded-lg py-2 px-3 text-sm font-medium"
-            >
-              <Tags className="h-4 w-4" aria-hidden="true" />
-              Tags
-            </TabsTrigger>
-          )}
-        </TabsList>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
 
-        {pipelinesTabEnabled && (
-          <TabsContent value="pipelines">
-            <PipelineSettings />
-          </TabsContent>
-        )}
-        {pipelinesTabEnabled && (
-          <TabsContent value="sources">
-            <SourceSettings />
-          </TabsContent>
-        )}
-        {pipelinesTabEnabled && (
-          <TabsContent value="journey-types">
-            <JourneyTypeSettings />
-          </TabsContent>
-        )}
-        <TabsContent value="tags">
-          <TagSettings />
-        </TabsContent>
-      </Tabs>
+      {activeTab === "pipelines" && pipelinesTabEnabled && <PipelineSettings />}
+      {activeTab === "sources" && pipelinesTabEnabled && <SourceSettings />}
+      {activeTab === "journey-types" && pipelinesTabEnabled && (
+        <JourneyTypeSettings />
+      )}
+      {activeTab === "tags" && <TagSettings />}
     </div>
   );
 }
