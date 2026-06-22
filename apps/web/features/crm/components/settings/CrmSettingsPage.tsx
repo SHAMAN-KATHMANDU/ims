@@ -129,7 +129,11 @@ export default function CrmSettingsPage() {
       />
 
       {/* Segmented section switcher (replaces the prior Radix tab bar). */}
-      <div className="inline-flex flex-wrap gap-0.5 rounded-lg border bg-secondary p-0.5">
+      <div
+        role="group"
+        aria-label="CRM settings sections"
+        className="inline-flex flex-wrap gap-0.5 rounded-lg border bg-secondary p-0.5"
+      >
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
@@ -137,9 +141,11 @@ export default function CrmSettingsPage() {
             <button
               key={t.key}
               type="button"
+              aria-pressed={active}
               onClick={() => setActiveTab(t.key)}
               className={cn(
                 "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-secondary",
                 active
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
