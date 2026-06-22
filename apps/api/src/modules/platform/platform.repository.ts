@@ -3,9 +3,11 @@
  * All cross-tenant operations use basePrisma (unscoped).
  */
 
+import { randomUUID } from "node:crypto";
 import { basePrisma } from "@/config/prisma";
-import type { PlanTier } from "@prisma/client";
+import type { PlanTier, PipelineType } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
+import { CRM_PIPELINE_TEMPLATES } from "@repo/shared";
 
 const DEFAULT_TENANT_PAYMENT_METHODS = [
   { id: "pm_cash", code: "CASH", label: "Cash", enabled: true, order: 0 },
@@ -262,6 +264,28 @@ export class PlatformRepository {
       for (const name of defaultJourneyTypes) {
         await tx.crmJourneyType.create({
           data: { tenantId: tenant.id, name },
+        });
+      }
+
+      // CRM framework pipelines: every tenant starts with the standard three
+      // (Sales / Remarketing / Repurchasing). The Sales (NEW_SALES) pipeline is
+      // the default. Stage shape matches seedFrameworkPipelines: { id, name, order }.
+      for (const tmpl of CRM_PIPELINE_TEMPLATES) {
+        if (tmpl.type === "GENERAL") continue;
+        await tx.pipeline.create({
+          data: {
+            tenantId: tenant.id,
+            name: tmpl.name,
+            type: tmpl.type as PipelineType,
+            stages: tmpl.stageNames.map((name, i) => ({
+              id: randomUUID(),
+              name,
+              order: i + 1,
+            })),
+            isDefault: tmpl.suggestAsDefault,
+            closedWonStageName: tmpl.closedWonStageName ?? null,
+            closedLostStageName: tmpl.closedLostStageName ?? null,
+          },
         });
       }
 
