@@ -60,6 +60,9 @@ import { registerPagesUpdateMcpTools } from "@/modules/pages/mcp-tools-update";
 import { registerAutomationUpdateMcpTools } from "@/modules/automation/mcp-tools-update";
 import { registerMediaUpdateMcpTools } from "@/modules/media/mcp-tools-update";
 
+// Read-only Facebook Graph (Meta) tools — page/post/message insights, labels, ads.
+import { registerMetaGraphMcpTools } from "@/modules/meta-graph/mcp-tools";
+
 export interface McpAuthContext {
   tenantId: string;
   tenantSlug: string;
@@ -87,7 +90,15 @@ DEAL STAGES: a deal's stage must be one of its pipeline's stages — list_pipeli
 
 JOURNEY TYPE is an editable lookup: a contact's stored journeyType wins when it is a valid journey type; otherwise it is derived from the contact's active deal pipeline and stage. Validate it like any other named lookup.
 
-UPDATING: always fetch the record (get_*/list_*) before update_* so you send correct ids and change only intended fields.`;
+UPDATING: always fetch the record (get_*/list_*) before update_* so you send correct ids and change only intended fields.
+
+META / FACEBOOK GRAPH (read-only meta_* tools — page/post/message insights, labels, ads):
+- Credentials are per-tenant and configured by the tenant in Settings → Facebook / Meta. If a tool reports the integration is not configured, tell the user to add their Facebook App + Page/Ads tokens there; do not invent credentials.
+- Resolve selectors first when more than one is connected: call meta_page_list for a pageId and meta_ad_accounts_list for an adAccountId. An "availableOptions" error means you must pick one of those ids and retry.
+- Use CURRENT metric names. The old page_impressions / post_impressions / impressions / page_fans metrics were deprecated (June 2026); prefer views, page_follows, page_media_view, page_post_engagements, post_engaged_users. The curated tools already default to valid metrics — pass metrics only to override.
+- Page/post insights since/until windows are capped at 90 days per request.
+- For heavy or broken-down ads reports use meta_ads_insights_submit then meta_ads_insights_poll (async); meta_ads_insights is for quick synchronous queries.
+- meta_graph_get / meta_graph_get_all / meta_graph_batch are the generic escape hatch for any endpoint not covered by a curated tool; {page-id} and {ad-account-id} in the path are substituted from the selected credential.`;
 
 export function createMcpServer(authCtx: McpAuthContext): McpServer {
   const server = new McpServer(
@@ -147,6 +158,9 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerPagesUpdateMcpTools(server, authCtx);
   registerAutomationUpdateMcpTools(server, authCtx);
   registerMediaUpdateMcpTools(server, authCtx);
+
+  // Meta / Facebook Graph (read-only).
+  registerMetaGraphMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 

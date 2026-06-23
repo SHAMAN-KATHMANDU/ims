@@ -2622,6 +2622,30 @@ const SETTINGS_MCP = [
   },
 ] as const;
 
+const SETTINGS_META = [
+  {
+    key: "SETTINGS.META.VIEW",
+    bit: 243,
+    module: "SETTINGS" as const,
+    submodule: "Meta",
+    action: "VIEW",
+    label: "View Meta/Facebook integration",
+    description:
+      "See the connected Facebook App, Pages and Ad accounts, and read Meta Graph insights (page/post/message/ads) and labels.",
+  },
+  {
+    key: "SETTINGS.META.UPDATE",
+    bit: 244,
+    module: "SETTINGS" as const,
+    submodule: "Meta",
+    action: "UPDATE",
+    label: "Manage Meta/Facebook integration",
+    implies: ["SETTINGS.META.VIEW"],
+    description:
+      "Configure the tenant's Facebook App ID/Secret and add or remove Page and Ads access tokens.",
+  },
+] as const;
+
 // ADMINISTRATOR is the last permission, pinned at bit 511
 const SETTINGS_ADMINISTRATOR = [
   {
@@ -2691,6 +2715,7 @@ export const PERMISSIONS = [
   ...SETTINGS_INTEGRATIONS,
   ...SETTINGS_AI,
   ...SETTINGS_MCP,
+  ...SETTINGS_META,
   ...SETTINGS_ADMINISTRATOR,
 ] as const;
 
