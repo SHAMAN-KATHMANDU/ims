@@ -3,13 +3,29 @@ import { env } from "@/config/env";
 import { getProvider } from "@/providers/provider-factory";
 import { logger } from "@/config/logger";
 import { MessagingProvider } from "@prisma/client";
+import { resolveAppSecretForPage } from "@/modules/meta-integration/meta-integration.service";
 
 const PROVIDER_MAP: Record<string, MessagingProvider> = {
   messenger: "FACEBOOK_MESSENGER",
   FACEBOOK_MESSENGER: "FACEBOOK_MESSENGER",
 };
 
-export function verifyWebhookSignature(
+/** Peek the page id from a raw page-webhook body without trusting it yet. */
+function extractPageId(rawBody: Buffer): string | undefined {
+  try {
+    const parsed = JSON.parse(rawBody.toString("utf8")) as {
+      object?: string;
+      entry?: Array<{ id?: string }>;
+    };
+    if (parsed.object !== "page") return undefined;
+    const id = parsed.entry?.[0]?.id;
+    return id == null ? undefined : String(id);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function verifyWebhookSignature(
   req: Request,
   res: Response,
   next: NextFunction,
@@ -30,10 +46,29 @@ export function verifyWebhookSignature(
   const provider = getProvider(providerEnum);
   const rawBody = req.body as Buffer;
 
+  // Bring-your-own-app: each tenant signs with their own app secret, resolved
+  // from the page id. Fall back to the platform secret for legacy channels.
+  let appSecret = env.metaAppSecret;
+  const pageId = extractPageId(rawBody);
+  if (pageId) {
+    try {
+      const tenantSecret = await resolveAppSecretForPage(pageId);
+      if (tenantSecret) appSecret = tenantSecret;
+    } catch (err) {
+      logger.warn(
+        "[Webhook] app-secret resolution failed; using platform secret",
+        undefined,
+        {
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
+    }
+  }
+
   const isValid = provider.verifyWebhookSignature(
     rawBody,
     signature,
-    env.metaAppSecret,
+    appSecret,
   );
 
   if (!isValid) {

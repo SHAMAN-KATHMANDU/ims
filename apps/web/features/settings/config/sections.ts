@@ -99,7 +99,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "mcp",
     label: "MCP",
-    description: "Generate tokens and set up Claude Desktop or other MCP clients",
+    description:
+      "Generate tokens and set up Claude Desktop or other MCP clients",
     path: "settings/mcp",
     group: "workspace",
     roles: ["admin", "superAdmin"],
@@ -136,6 +137,16 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     roles: ["admin", "superAdmin"],
     envFeature: EnvFeature.CRM_WORKFLOWS,
     feature: Feature.SALES_PIPELINE,
+  },
+  // Facebook / Meta — requires SETTINGS.META.VIEW permission via PermissionGate.
+  // No env/plan gate — always visible to admins.
+  {
+    id: "facebook",
+    label: "Facebook / Meta",
+    description: "Connect Facebook App and Pages for Meta integration",
+    path: "settings/integrations/facebook",
+    group: "workspace",
+    roles: ["admin", "superAdmin"],
   },
   // Website moved out of Settings into the top-level MARKETING sidebar
   // section (apps/web/constants/dashboard-nav.tsx) — it now opens as its

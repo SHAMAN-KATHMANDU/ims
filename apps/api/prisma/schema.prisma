@@ -81,6 +81,10 @@ model Tenant {
   messagingChannels MessagingChannel[]
   conversations     Conversation[]
 
+  // Meta / Facebook Graph integration (bring-your-own unverified app, per tenant)
+  metaIntegration MetaIntegration?
+  metaCredentials MetaCredential[]
+
   mediaAssets MediaAsset[]
 
   // Domain / public site relations
@@ -2853,6 +2857,72 @@ enum MessageContentType {
   LOCATION
   POSTBACK
   STICKER
+}
+
+/// Per-tenant Meta (Facebook) Graph integration — bring-your-own unverified app.
+/// Holds the tenant's OWN App ID / App Secret; access tokens live in MetaCredential
+/// rows. All secrets are AES-256-GCM encrypted at rest and never returned raw.
+model MetaIntegration {
+  id       String @id @default(uuid()) @map("meta_integration_id")
+  tenantId String @unique @map("tenant_id")
+
+  /// The tenant's own Facebook App ID (public identifier; not a secret).
+  appId String? @map("app_id") @db.VarChar(255)
+
+  /// Encrypted Facebook App Secret. Used to compute appsecret_proof on Graph calls.
+  appSecretEnc String? @map("app_secret_enc") @db.Text
+
+  /// Optional default selectors so single-page / single-account tenants can omit them.
+  defaultPageId      String? @map("default_page_id") @db.VarChar(255)
+  defaultAdAccountId String? @map("default_ad_account_id") @db.VarChar(255)
+
+  /// Optional per-tenant Graph API version override (e.g. "v23.0"); falls back to the code default.
+  graphApiVersion String? @map("graph_api_version") @db.VarChar(16)
+
+  status    ChannelStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  credentials MetaCredential[]
+
+  @@map("meta_integrations")
+}
+
+/// A single Meta access token (a Page token or an Ads system-user token) that the
+/// tenant pasted in Settings. Encrypted at rest; never returned to clients raw.
+model MetaCredential {
+  id            String             @id @default(uuid()) @map("meta_credential_id")
+  tenantId      String             @map("tenant_id")
+  integrationId String             @map("integration_id")
+  kind          MetaCredentialKind
+
+  /// Page ID (kind=PAGE) or ad-account id WITHOUT the "act_" prefix (kind=ADS).
+  externalId String @map("external_id") @db.VarChar(255)
+  name       String @db.VarChar(255)
+
+  /// Encrypted access token (Page access token or Ads system-user token).
+  accessTokenEnc String @map("access_token_enc") @db.Text
+
+  /// Non-sensitive metadata (page category, token scopes, last validated time, etc.).
+  metadata Json?
+
+  status    ChannelStatus @default(ACTIVE)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  integration MetaIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, kind, externalId])
+  @@index([tenantId])
+  @@index([integrationId])
+  @@map("meta_credentials")
+}
+
+enum MetaCredentialKind {
+  PAGE
+  ADS
 }
 
 /// A tenant's connected messaging channel (e.g., a Facebook Page).

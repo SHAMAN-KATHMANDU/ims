@@ -41,6 +41,8 @@ const TENANT_SCOPED_MODELS = new Set([
   "ErrorReport",
   "MessagingChannel",
   "Conversation",
+  "MetaIntegration",
+  "MetaCredential",
   "MediaAsset",
   "AutomationDefinition",
   "AutomationEvent",
