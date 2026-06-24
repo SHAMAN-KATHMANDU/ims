@@ -48,6 +48,21 @@ metaIntegrationRouter.put(
 
 /**
  * @swagger
+ * /meta-integration/webhook/regenerate-token:
+ *   post:
+ *     summary: Issue a fresh app-level webhook verify token
+ *     tags: [MetaIntegration]
+ *     security:
+ *       - bearerAuth: []
+ */
+metaIntegrationRouter.post(
+  "/webhook/regenerate-token",
+  requirePermission("SETTINGS.META.UPDATE", workspaceLocator()),
+  asyncHandler(metaIntegrationController.regenerateWebhookToken),
+);
+
+/**
+ * @swagger
  * /meta-integration/credentials/test:
  *   post:
  *     summary: Validate a Page or Ads access token without storing it

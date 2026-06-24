@@ -6,7 +6,15 @@ import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Trash2, Plus, Check, Copy, Webhook, Sparkles } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Check,
+  Copy,
+  Webhook,
+  Sparkles,
+  RefreshCw,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -19,15 +27,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AppCredentialsFormSchema,
   type AppCredentialsFormValues,
 } from "../validation";
 import {
   useMetaIntegrationSummary,
   useUpdateAppCredentials,
+  useRegenerateWebhookToken,
   useDeleteCredential,
 } from "../hooks/use-meta-integration";
 import { AddCredentialDialog } from "./AddCredentialDialog";
+
+const GRAPH_API_VERSIONS = [
+  "v25.0",
+  "v24.0",
+  "v23.0",
+  "v22.0",
+  "v21.0",
+  "v20.0",
+];
 
 /** Small read-only field with a copy button (for the webhook URL / verify token). */
 function CopyField({ value, label }: { value: string; label: string }) {
@@ -133,6 +158,7 @@ export function FacebookIntegrationPage() {
 
   const { data: summary, isLoading } = useMetaIntegrationSummary();
   const updateAppCredentials = useUpdateAppCredentials();
+  const regenerateToken = useRegenerateWebhookToken();
   const deleteCredential = useDeleteCredential();
 
   const form = useForm<AppCredentialsFormValues>({
@@ -193,6 +219,7 @@ export function FacebookIntegrationPage() {
   const isBusy =
     updateAppCredentials.isPending ||
     deleteCredential.isPending ||
+    regenerateToken.isPending ||
     form.formState.isSubmitting;
 
   return (
@@ -259,20 +286,27 @@ export function FacebookIntegrationPage() {
 
             <div className="space-y-2">
               <Label htmlFor="graph-api-version">Graph API Version</Label>
-              <Input
-                id="graph-api-version"
-                type="text"
-                placeholder="v23.0"
-                autoComplete="off"
-                {...form.register("graphApiVersion")}
-              />
-              {form.formState.errors.graphApiVersion && (
-                <p role="alert" className="text-sm text-destructive">
-                  {form.formState.errors.graphApiVersion.message}
-                </p>
-              )}
+              <Select
+                value={form.watch("graphApiVersion") || "v23.0"}
+                onValueChange={(v) =>
+                  form.setValue("graphApiVersion", v, { shouldDirty: true })
+                }
+              >
+                <SelectTrigger id="graph-api-version" className="w-full">
+                  <SelectValue placeholder="Select a version" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GRAPH_API_VERSIONS.map((v) => (
+                    <SelectItem key={v} value={v}>
+                      {v}
+                      {v === "v23.0" ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
-                Format: v##.# (e.g., v23.0). Defaults to v23.0 if not set.
+                The Graph API version used for all calls. Latest is v25.0; v23.0
+                is a safe default.
               </p>
             </div>
 
@@ -343,6 +377,29 @@ export function FacebookIntegrationPage() {
             <Label>Callback URL</Label>
             <CopyField value={webhook?.url ?? ""} label="Callback URL" />
           </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>Verify Token</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => regenerateToken.mutate()}
+                disabled={isBusy}
+              >
+                <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                Regenerate
+              </Button>
+            </div>
+            <CopyField
+              value={webhook?.verifyToken ?? ""}
+              label="Verify token"
+            />
+            <p className="text-xs text-muted-foreground">
+              Auto-generated for you — paste this with the Callback URL in Meta.
+              Regenerating invalidates the old one.
+            </p>
+          </div>
           {webhook?.subscribedFields?.length ? (
             <div className="space-y-1.5">
               <Label>Auto-subscribed fields</Label>
@@ -357,16 +414,17 @@ export function FacebookIntegrationPage() {
           ) : null}
           <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
             <li>
-              In your Meta App dashboard → <strong>Webhooks</strong>, choose{" "}
-              <strong>Page</strong> and paste the Callback URL above.
+              Set this up <strong>first</strong>: in your Meta App dashboard →{" "}
+              <strong>Webhooks</strong>, choose <strong>Page</strong>, paste the
+              Callback URL and Verify Token above, then click Verify &amp; Save.
             </li>
             <li>
-              Paste the <strong>Verify Token</strong> shown for your Page below
-              and click Verify &amp; Save.
+              Save your App ID &amp; Secret above (used to sign and verify
+              events).
             </li>
             <li>
-              Adding a Page token here auto-subscribes the fields above — no
-              extra step needed.
+              <strong>Then</strong> add a Page token below — it auto-subscribes
+              the fields above so inbound messages reach your inbox.
             </li>
           </ol>
         </CardContent>
@@ -438,15 +496,6 @@ export function FacebookIntegrationPage() {
                       </Button>
                     </div>
                   </div>
-                  {cred.webhookVerifyToken && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Verify Token</Label>
-                      <CopyField
-                        value={cred.webhookVerifyToken}
-                        label="Verify token"
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

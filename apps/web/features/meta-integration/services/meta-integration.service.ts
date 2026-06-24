@@ -113,3 +113,14 @@ export async function deleteCredential(
     throw handleApiError(error, "deleteCredential");
   }
 }
+
+export async function regenerateWebhookToken(): Promise<MetaIntegrationSummary> {
+  try {
+    const res = await api.post<AddCredentialResponse>(
+      "/meta-integration/webhook/regenerate-token",
+    );
+    return res.data.integration;
+  } catch (error) {
+    throw handleApiError(error, "regenerateWebhookToken");
+  }
+}

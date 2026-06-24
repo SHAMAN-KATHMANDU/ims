@@ -8,6 +8,7 @@ import {
   testCredential,
   addCredential,
   deleteCredential,
+  regenerateWebhookToken,
   type UpsertAppCredentialsPayload,
   type TestCredentialPayload,
   type AddCredentialPayload,
@@ -71,6 +72,22 @@ export function useAddCredential() {
         queryKey: metaIntegrationKeys.all,
       });
       toast.success("Credential added successfully");
+    },
+  });
+}
+
+/**
+ * Issue a fresh app-level webhook verify token.
+ */
+export function useRegenerateWebhookToken() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => regenerateWebhookToken(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: metaIntegrationKeys.all,
+      });
+      toast.success("Webhook verify token regenerated");
     },
   });
 }

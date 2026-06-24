@@ -2879,6 +2879,11 @@ model MetaIntegration {
   /// Optional per-tenant Graph API version override (e.g. "v23.0"); falls back to the code default.
   graphApiVersion String? @map("graph_api_version") @db.VarChar(16)
 
+  /// App-level webhook verify token — the tenant pastes this into their Meta app's
+  /// Webhooks config BEFORE connecting a page. Must be unique so the GET challenge
+  /// resolves the right row. Auto-generated on first view.
+  webhookVerifyToken String? @unique @map("webhook_verify_token") @db.VarChar(255)
+
   status    ChannelStatus @default(ACTIVE)
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
