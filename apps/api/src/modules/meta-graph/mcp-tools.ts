@@ -80,6 +80,48 @@ export function registerMetaGraphMcpTools(
     query,
   });
 
+  /**
+   * Declarative registration for the common "resolve token → GET a node/edge →
+   * return JSON" shape, so the refined getter tools below stay DRY (one source
+   * of truth for the assert/resolve/request/respond boilerplate).
+   */
+  const readTool = (
+    name: string,
+    opts: {
+      title: string;
+      description: string;
+      scope: "page" | "ads";
+      inputSchema: Record<string, z.ZodTypeAny>;
+      build: (
+        args: any,
+        externalId: string,
+      ) => { path: string; query?: QueryMap };
+    },
+  ) => {
+    registerTool(
+      name,
+      {
+        title: opts.title,
+        description: opts.description,
+        inputSchema: opts.inputSchema,
+      },
+      async (args) => {
+        try {
+          await assertMcpPermission(authCtx, META_READ_PERM);
+          const t =
+            opts.scope === "ads"
+              ? await ads(args.adAccountId)
+              : await page(args.pageId);
+          const { path, query } = opts.build(args, t.externalId);
+          const data = await metaGraphRequest(reqOpts(t, path, query));
+          return mcpJsonResponse(data);
+        } catch (err) {
+          return mcpErrorResponse(err, `${name} failed`);
+        }
+      },
+    );
+  };
+
   // ════════════════════════════════════════════════════════════════════════
   // GENERIC CORE — the thin escape hatch (reaches any node/edge)
   // ════════════════════════════════════════════════════════════════════════
@@ -836,6 +878,407 @@ export function registerMetaGraphMcpTools(
       }
     },
   );
+
+  // ════════════════════════════════════════════════════════════════════════
+  // REFINED GETTERS (read-only) — per-object detail + more page/ads/business edges
+  // ════════════════════════════════════════════════════════════════════════
+
+  // — Page content & detail —
+  readTool("meta_post_get", {
+    title: "Get a post",
+    description:
+      "Fetch one Page post with engagement summaries (reactions/comments/shares) and attachments.",
+    scope: "page",
+    inputSchema: {
+      postId: z.string(),
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.postId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,message,story,created_time,permalink_url,status_type,is_published,shares,reactions.summary(true),comments.summary(true),attachments",
+      },
+    }),
+  });
+
+  readTool("meta_post_reactions", {
+    title: "List post reactions",
+    description:
+      "Reactions on a post with a total count; optionally filter by type (LIKE, LOVE, WOW, HAHA, SAD, ANGRY, CARE).",
+    scope: "page",
+    inputSchema: {
+      postId: z.string(),
+      pageId: z.string().optional(),
+      type: z
+        .enum(["LIKE", "LOVE", "WOW", "HAHA", "SAD", "ANGRY", "CARE", "NONE"])
+        .optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a) => ({
+      path: `${a.postId}/reactions`,
+      query: { type: a.type, summary: "total_count", limit: a.limit ?? 25 },
+    }),
+  });
+
+  readTool("meta_page_feed", {
+    title: "List page feed",
+    description:
+      "The Page feed (the Page's posts plus, where enabled, visitor posts). Use meta_post_list for only the Page's own published posts.",
+    scope: "page",
+    inputSchema: {
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      after: z.string().optional(),
+    },
+    build: (a, ext) => ({
+      path: `${ext}/feed`,
+      query: {
+        fields:
+          a.fields ||
+          "id,message,story,created_time,permalink_url,from,status_type",
+        limit: a.limit ?? 25,
+        after: a.after,
+      },
+    }),
+  });
+
+  readTool("meta_page_ratings", {
+    title: "List page ratings/reviews",
+    description: "Recommendations and reviews left on the Page.",
+    scope: "page",
+    inputSchema: {
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a, ext) => ({
+      path: `${ext}/ratings`,
+      query: {
+        fields:
+          a.fields ||
+          "created_time,rating,review_text,recommendation_type,reviewer,open_graph_story",
+        limit: a.limit ?? 25,
+      },
+    }),
+  });
+
+  readTool("meta_page_photos", {
+    title: "List page photos",
+    description:
+      "Photos on the Page. type=uploaded (default) for the Page's own photos, or tagged.",
+    scope: "page",
+    inputSchema: {
+      pageId: z.string().optional(),
+      type: z.enum(["uploaded", "tagged"]).optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a, ext) => ({
+      path: `${ext}/photos`,
+      query: {
+        type: a.type || "uploaded",
+        fields: a.fields || "id,created_time,name,link,images",
+        limit: a.limit ?? 25,
+      },
+    }),
+  });
+
+  readTool("meta_page_videos", {
+    title: "List page videos",
+    description: "Videos uploaded to the Page.",
+    scope: "page",
+    inputSchema: {
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a, ext) => ({
+      path: `${ext}/videos`,
+      query: {
+        fields:
+          a.fields ||
+          "id,title,description,created_time,length,permalink_url,views",
+        limit: a.limit ?? 25,
+      },
+    }),
+  });
+
+  readTool("meta_video_insights", {
+    title: "Video insights",
+    description:
+      "Insights for a single video. Pass `metrics` to target the ones you need; defaults to common view metrics.",
+    scope: "page",
+    inputSchema: {
+      videoId: z.string(),
+      pageId: z.string().optional(),
+      metrics: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.videoId}/video_insights`,
+      query: {
+        metric:
+          a.metrics ||
+          "total_video_views,total_video_impressions,total_video_avg_time_watched",
+      },
+    }),
+  });
+
+  readTool("meta_page_roles", {
+    title: "List page roles",
+    description: "People with a role on the Page (admins, editors, etc.).",
+    scope: "page",
+    inputSchema: { pageId: z.string().optional() },
+    build: (_a, ext) => ({
+      path: `${ext}/roles`,
+      query: { fields: "id,name,role,tasks" },
+    }),
+  });
+
+  readTool("meta_comment_replies", {
+    title: "List comment replies",
+    description: "Replies to a specific comment (nested comments).",
+    scope: "page",
+    inputSchema: {
+      commentId: z.string(),
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a) => ({
+      path: `${a.commentId}/comments`,
+      query: {
+        fields: a.fields || "id,from,message,created_time,like_count",
+        limit: a.limit ?? 25,
+      },
+    }),
+  });
+
+  // — Messaging detail —
+  readTool("meta_conversation_get", {
+    title: "Get a conversation",
+    description:
+      "Details of one Messenger conversation (participants, counts, link, last update).",
+    scope: "page",
+    inputSchema: {
+      conversationId: z.string(),
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.conversationId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,participants,can_reply,message_count,unread_count,link,updated_time,senders",
+      },
+    }),
+  });
+
+  readTool("meta_messaging_profile", {
+    title: "Get a messaging user's profile",
+    description:
+      "Profile of a person you're messaging (by PSID), fetched with the Page token.",
+    scope: "page",
+    inputSchema: {
+      psid: z.string().describe("Page-scoped user id"),
+      pageId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.psid}`,
+      query: {
+        fields:
+          a.fields || "first_name,last_name,profile_pic,locale,timezone,gender",
+      },
+    }),
+  });
+
+  // — Ads detail (Marketing API) —
+  readTool("meta_ad_account_get", {
+    title: "Get ad account details",
+    description:
+      "Ad account fields: currency, status, spend, balance, spend cap, timezone, business.",
+    scope: "ads",
+    inputSchema: {
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a, ext) => ({
+      path: `act_${ext}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,account_status,currency,amount_spent,balance,spend_cap,timezone_name,business,funding_source_details",
+      },
+    }),
+  });
+
+  readTool("meta_campaign_get", {
+    title: "Get a campaign",
+    description:
+      "Fields for one campaign (status, objective, budgets, schedule, special ad categories).",
+    scope: "ads",
+    inputSchema: {
+      campaignId: z.string(),
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.campaignId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,status,effective_status,objective,buying_type,daily_budget,lifetime_budget,start_time,stop_time,special_ad_categories",
+      },
+    }),
+  });
+
+  readTool("meta_adset_get", {
+    title: "Get an ad set",
+    description: "Fields for one ad set, including targeting and optimization.",
+    scope: "ads",
+    inputSchema: {
+      adsetId: z.string(),
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.adsetId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,status,effective_status,campaign_id,optimization_goal,billing_event,bid_amount,daily_budget,lifetime_budget,start_time,end_time,targeting",
+      },
+    }),
+  });
+
+  readTool("meta_ad_get", {
+    title: "Get an ad",
+    description:
+      "Fields for one ad, including its creative reference and effective status.",
+    scope: "ads",
+    inputSchema: {
+      adId: z.string(),
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.adId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,status,effective_status,adset_id,campaign_id,creative,tracking_specs",
+      },
+    }),
+  });
+
+  readTool("meta_adcreative_get", {
+    title: "Get an ad creative",
+    description:
+      "Fields for one ad creative (object_story_spec, media, copy, CTA).",
+    scope: "ads",
+    inputSchema: {
+      creativeId: z.string(),
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+    },
+    build: (a) => ({
+      path: `${a.creativeId}`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,object_story_spec,thumbnail_url,image_url,body,title,call_to_action_type,effective_object_story_id",
+      },
+    }),
+  });
+
+  readTool("meta_custom_audiences_list", {
+    title: "List custom audiences",
+    description:
+      "Custom audiences on the ad account (size estimates, subtype, status).",
+    scope: "ads",
+    inputSchema: {
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    },
+    build: (a, ext) => ({
+      path: `act_${ext}/customaudiences`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,subtype,description,approximate_count_lower_bound,approximate_count_upper_bound,operation_status,delivery_status,time_created",
+        limit: a.limit ?? 50,
+      },
+    }),
+  });
+
+  readTool("meta_ad_account_activities", {
+    title: "Ad account activity log",
+    description:
+      "Change-history events on the ad account (who changed what, when).",
+    scope: "ads",
+    inputSchema: {
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+      since: z.string().optional(),
+      until: z.string().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    },
+    build: (a, ext) => ({
+      path: `act_${ext}/activities`,
+      query: {
+        fields:
+          a.fields ||
+          "event_type,event_time,actor_name,object_name,object_id,extra_data",
+        since: a.since,
+        until: a.until,
+        limit: a.limit ?? 50,
+      },
+    }),
+  });
+
+  readTool("meta_ad_rules", {
+    title: "List automated ad rules",
+    description:
+      "Automated rules library for the ad account (evaluation + execution specs).",
+    scope: "ads",
+    inputSchema: {
+      adAccountId: z.string().optional(),
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    },
+    build: (a, ext) => ({
+      path: `act_${ext}/adrules_library`,
+      query: {
+        fields:
+          a.fields ||
+          "id,name,status,evaluation_spec,execution_spec,schedule_spec,created_time",
+        limit: a.limit ?? 50,
+      },
+    }),
+  });
+
+  readTool("meta_businesses_list", {
+    title: "List businesses",
+    description: "Business Manager accounts reachable by the Ads token.",
+    scope: "ads",
+    inputSchema: {
+      fields: z.string().optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    build: (a) => ({
+      path: "me/businesses",
+      query: {
+        fields: a.fields || "id,name,verification_status,created_time",
+        limit: a.limit ?? 25,
+      },
+    }),
+  });
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
