@@ -51,6 +51,7 @@ const integrationWith = (over: Record<string, unknown> = {}) => ({
   graphApiVersion: null,
   defaultPageId: null,
   defaultAdAccountId: null,
+  webhookVerifyToken: "wvt",
   credentials: [],
   ...over,
 });
@@ -66,16 +67,23 @@ describe("MetaIntegrationService", () => {
   });
 
   describe("getSummary", () => {
-    it("returns an unconfigured shell when no integration exists", async () => {
-      mockRepo.getIntegration.mockResolvedValue(null);
+    it("lazily provisions a row + app-level verify token for a fresh tenant", async () => {
+      // First lookup: no row. After ensureIntegration, a bare tokened row.
+      mockRepo.getIntegration
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue(
+          integrationWith({ appId: null, appSecretEnc: null }),
+        );
+      mockRepo.ensureIntegration.mockResolvedValue(integrationWith());
       const out = await service.getSummary("t1");
       expect(out).toMatchObject({
-        configured: false,
+        configured: false, // no app id/secret/credentials yet
         appId: null,
         hasAppSecret: false,
         graphApiVersion: "v23.0",
         credentials: [],
       });
+      expect(out.webhook.verifyToken).toBe("wvt");
     });
 
     it("masks secrets — never leaks the encrypted app secret or token", async () => {

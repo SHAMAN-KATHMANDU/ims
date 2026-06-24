@@ -73,29 +73,40 @@ export class MetaIntegrationService {
     return decrypt(integration.appSecretEnc);
   }
 
+  /**
+   * Ensure the tenant has an integration row with an app-level webhook verify
+   * token. The token must exist BEFORE a page is connected so the tenant can set
+   * up their Meta app's webhook first; it's generated lazily on first view.
+   */
+  private async ensureWebhookVerifyToken(tenantId: string) {
+    let integration = await metaIntegrationRepository.getIntegration(tenantId);
+    if (!integration) {
+      await metaIntegrationRepository.ensureIntegration(tenantId);
+      integration = await metaIntegrationRepository.getIntegration(tenantId);
+    }
+    if (integration && !integration.webhookVerifyToken) {
+      await metaIntegrationRepository.upsertIntegration(tenantId, {
+        webhookVerifyToken: crypto.randomBytes(24).toString("hex"),
+      });
+      integration = await metaIntegrationRepository.getIntegration(tenantId);
+    }
+    return integration!;
+  }
+
+  /** Issue a fresh app-level webhook verify token (invalidates the old one). */
+  async regenerateWebhookToken(tenantId: string) {
+    await metaIntegrationRepository.ensureIntegration(tenantId);
+    await metaIntegrationRepository.upsertIntegration(tenantId, {
+      webhookVerifyToken: crypto.randomBytes(24).toString("hex"),
+    });
+    return this.getSummary(tenantId);
+  }
+
   /** Masked, secret-free view for the Settings UI (incl. webhook onboarding info). */
   async getSummary(tenantId: string) {
-    const integration =
-      await metaIntegrationRepository.getIntegration(tenantId);
-    const webhook = {
-      url: metaWebhookUrl(),
-      subscribedFields: WEBHOOK_SUBSCRIBED_FIELDS.split(","),
-    };
+    const integration = await this.ensureWebhookVerifyToken(tenantId);
 
-    if (!integration) {
-      return {
-        configured: false,
-        appId: null,
-        hasAppSecret: false,
-        graphApiVersion: DEFAULT_GRAPH_API_VERSION,
-        defaultPageId: null,
-        defaultAdAccountId: null,
-        credentials: [],
-        webhook,
-      };
-    }
-
-    // For PAGE credentials, attach the linked inbox channel's webhook info.
+    // For PAGE credentials, attach the linked inbox channel's status.
     const channels = await messagingChannelRepository.findAll(tenantId);
     const channelByPage = new Map(
       channels
@@ -104,13 +115,22 @@ export class MetaIntegrationService {
     );
 
     return {
-      configured: true,
+      // "configured" reflects real setup, not the mere existence of the row.
+      configured: Boolean(
+        integration.appId ||
+        integration.appSecretEnc ||
+        integration.credentials.length,
+      ),
       appId: integration.appId ?? null, // App ID is a public identifier, safe to show
       hasAppSecret: Boolean(integration.appSecretEnc),
       graphApiVersion: integration.graphApiVersion ?? DEFAULT_GRAPH_API_VERSION,
       defaultPageId: integration.defaultPageId ?? null,
       defaultAdAccountId: integration.defaultAdAccountId ?? null,
-      webhook,
+      webhook: {
+        url: metaWebhookUrl(),
+        subscribedFields: WEBHOOK_SUBSCRIBED_FIELDS.split(","),
+        verifyToken: integration.webhookVerifyToken ?? null,
+      },
       credentials: integration.credentials.map((c) => {
         const channel =
           c.kind === MetaCredentialKind.PAGE
@@ -127,12 +147,11 @@ export class MetaIntegrationService {
           tokenConfigured: true, // never expose the token itself
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
-          // Inbox/webhook wiring (PAGE only)
+          // Inbox wiring (PAGE only)
           ...(c.kind === MetaCredentialKind.PAGE
             ? {
                 inboxChannelId: channel?.id ?? null,
                 inboxStatus: channel?.status ?? null,
-                webhookVerifyToken: channel?.webhookVerifyToken ?? null,
                 webhookSubscribed: meta.webhookSubscribed === true,
               }
             : {}),

@@ -27,6 +27,7 @@ export class MetaIntegrationRepository {
       graphApiVersion?: string | null;
       defaultPageId?: string | null;
       defaultAdAccountId?: string | null;
+      webhookVerifyToken?: string | null;
     },
   ) {
     return prisma.metaIntegration.upsert({

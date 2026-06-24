@@ -19,10 +19,9 @@ export interface MetaCredential {
   tokenConfigured: boolean;
   createdAt: string;
   updatedAt: string;
-  // PAGE-only inbox/webhook wiring (present on PAGE credentials).
+  // PAGE-only inbox wiring (present on PAGE credentials).
   inboxChannelId?: string | null;
   inboxStatus?: string | null;
-  webhookVerifyToken?: string | null;
   webhookSubscribed?: boolean;
 }
 
@@ -31,6 +30,8 @@ export interface MetaWebhookInfo {
   url: string;
   /** Page fields we auto-subscribe to when a Page token is added. */
   subscribedFields: string[];
+  /** App-level verify token to paste into the Meta app's Webhooks config. */
+  verifyToken: string | null;
 }
 
 export interface MetaIntegrationSummary {

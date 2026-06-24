@@ -58,6 +58,23 @@ class MetaIntegrationController {
     }
   };
 
+  regenerateWebhookToken = async (req: Request, res: Response) => {
+    try {
+      const summary = await metaIntegrationService.regenerateWebhookToken(
+        req.user!.tenantId,
+      );
+      return res.status(200).json({
+        message: "Webhook verify token regenerated",
+        integration: summary,
+      });
+    } catch (error: unknown) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Regenerate webhook token error")
+      );
+    }
+  };
+
   addCredential = async (req: Request, res: Response) => {
     try {
       const body = AddCredentialSchema.parse(req.body);

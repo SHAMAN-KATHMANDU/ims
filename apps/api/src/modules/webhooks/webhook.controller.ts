@@ -25,6 +25,19 @@ export async function verify(req: Request, res: Response) {
       res.status(200).send(challenge);
       return;
     }
+
+    // App-level verify token (Meta integration) — set up before any page is
+    // connected, so it has no channel yet.
+    const integration = await basePrisma.metaIntegration.findFirst({
+      where: { webhookVerifyToken: token },
+    });
+    if (integration) {
+      logger.log(
+        `[Webhook] Verification successful for meta integration ${integration.id}`,
+      );
+      res.status(200).send(challenge);
+      return;
+    }
   }
 
   logger.warn("[Webhook] Verification failed");
