@@ -25,11 +25,12 @@ import type {
 import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { trimmedRequired } from "../../validation";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const schema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: trimmedRequired({ requiredMessage: "Title is required" }),
   dueDate: z.string().optional(),
   contactId: z.string().optional(),
   dealId: z.string().optional(),
@@ -124,7 +125,7 @@ export function TaskForm(props: TaskFormProps) {
 
     if (props.mode === "create") {
       await props.onSubmit({
-        title: values.title,
+        title: values.title.trim(),
         dueDate: emptyToUndefined(values.dueDate),
         contactId: emptyToUndefined(values.contactId),
         dealId: dealsEnabled ? emptyToUndefined(values.dealId) : undefined,
