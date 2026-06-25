@@ -742,9 +742,20 @@ export function SaleDetail({
             <EditSaleForm
               sale={sale}
               onSubmit={async (data) => {
-                await editSaleMutation.mutateAsync({ saleId: sale.id, data });
-                toast({ title: "Sale updated" });
-                handleEditSuccess();
+                // Catch the rejection so a backend rejection (e.g. "Insufficient
+                // stock") doesn't escape as an unhandled promise rejection and
+                // so we never fall through to the success toast / close. The
+                // Save button itself reverts from "Saving…" automatically
+                // because it is bound to editSaleMutation.isPending, which React
+                // Query resets on error — keeping the modal open for correction.
+                // (issue #607; mirrors handlePaySubmit / handleDeleteConfirm.)
+                try {
+                  await editSaleMutation.mutateAsync({ saleId: sale.id, data });
+                  toast({ title: "Sale updated" });
+                  handleEditSuccess();
+                } catch {
+                  // The axios interceptor already surfaced the error toast.
+                }
               }}
               onCancel={() => setEditDialogOpen(false)}
               isLoading={editSaleMutation.isPending}
