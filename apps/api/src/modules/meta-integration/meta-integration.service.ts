@@ -147,12 +147,17 @@ export class MetaIntegrationService {
           tokenConfigured: true, // never expose the token itself
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
-          // Inbox wiring (PAGE only)
+          // Inbox wiring + linked Instagram account (PAGE only)
           ...(c.kind === MetaCredentialKind.PAGE
             ? {
                 inboxChannelId: channel?.id ?? null,
                 inboxStatus: channel?.status ?? null,
                 webhookSubscribed: meta.webhookSubscribed === true,
+                instagram:
+                  (meta.instagram as {
+                    id?: string;
+                    username?: string;
+                  } | null) ?? null,
               }
             : {}),
         };
@@ -208,6 +213,7 @@ export class MetaIntegrationService {
 
     let webhookSubscribed = false;
     let webhookNote: string | undefined;
+    let instagram: { id: string; username?: string } | null = null;
 
     // PAGE tokens additionally wire the Messenger inbox: subscribe the page to
     // webhooks and provision a MessagingChannel so the existing inbound pipeline
@@ -223,6 +229,14 @@ export class MetaIntegrationService {
       );
       webhookSubscribed = provisioned.webhookSubscribed;
       webhookNote = provisioned.note;
+      // Cache the linked Instagram Business account so the meta_ig_* tools and
+      // the Settings UI don't re-resolve it on every call.
+      instagram = await this.resolveLinkedInstagram(
+        externalId,
+        dto.accessToken,
+        appSecret,
+        version,
+      );
     }
 
     await metaIntegrationRepository.upsertCredential({
@@ -234,7 +248,9 @@ export class MetaIntegrationService {
       accessTokenEnc: encrypt(dto.accessToken),
       metadata: {
         validatedAt: new Date().toISOString(),
-        ...(dto.kind === MetaCredentialKind.PAGE ? { webhookSubscribed } : {}),
+        ...(dto.kind === MetaCredentialKind.PAGE
+          ? { webhookSubscribed, instagram }
+          : {}),
       },
     });
 
@@ -345,6 +361,32 @@ export class MetaIntegrationService {
     );
     if (existing && existing.tenantId === tenantId) {
       await messagingChannelRepository.disconnect(existing.id);
+    }
+  }
+
+  /**
+   * Best-effort: resolve the Instagram Business account linked to a Page.
+   * Non-fatal — returns null on any error or when no IG account is linked.
+   */
+  private async resolveLinkedInstagram(
+    pageId: string,
+    token: string,
+    appSecret: string | undefined,
+    version: string,
+  ): Promise<{ id: string; username?: string } | null> {
+    try {
+      const res = await metaGraphRequest<{
+        instagram_business_account?: { id: string; username?: string };
+      }>({
+        path: `${pageId}`,
+        token,
+        appSecret,
+        version,
+        query: { fields: "instagram_business_account{id,username}" },
+      });
+      return res.instagram_business_account ?? null;
+    } catch {
+      return null;
     }
   }
 
