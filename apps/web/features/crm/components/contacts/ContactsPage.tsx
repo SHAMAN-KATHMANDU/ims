@@ -686,7 +686,15 @@ export function ContactsPage() {
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={confirmDelete}
+                onClick={(e) => {
+                  // Radix AlertDialogAction closes the dialog on click by
+                  // default. This is a two-step flow (Continue → type name →
+                  // Delete): step 1 must keep the dialog open to reveal step 2,
+                  // and step 2 closes it itself via the mutation callbacks.
+                  // Suppress the automatic close so the flow isn't cut short.
+                  e.preventDefault();
+                  confirmDelete();
+                }}
                 disabled={
                   deleteMutation.isPending ||
                   (deleteConfirmStep === 2 && !canConfirmDelete)
