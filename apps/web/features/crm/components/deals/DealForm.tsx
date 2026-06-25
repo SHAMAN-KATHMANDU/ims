@@ -33,11 +33,15 @@ import { DealLineItemsSection } from "./DealLineItemsSection";
 import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
+import { meaningfulText } from "../../validation";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const createSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: meaningfulText({
+    requiredMessage: "Name is required",
+    invalidMessage: "Please enter a valid deal name",
+  }),
   value: z.coerce.number().min(0),
   stage: z.string().optional(),
   pipelineId: z.string().optional(),
@@ -215,7 +219,7 @@ export function DealForm(props: DealFormProps) {
   const handleSubmit = form.handleSubmit(async (values) => {
     if (props.mode === "create") {
       await props.onSubmit({
-        name: values.name,
+        name: values.name.trim(),
         value: values.value,
         stage: values.stage,
         expectedCloseDate: values.expectedCloseDate || undefined,
@@ -227,7 +231,7 @@ export function DealForm(props: DealFormProps) {
       });
     } else {
       await props.onSubmit({
-        name: values.name,
+        name: values.name.trim(),
         value: values.value,
         pipelineId: values.pipelineId,
         stage: values.stage,

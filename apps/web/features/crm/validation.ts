@@ -10,6 +10,116 @@ import {
   parseWorkflowActionConfig,
 } from "@repo/shared";
 
+// ── Shared field validators ─────────────────────────────────────────────────
+
+/**
+ * A free-text name/title that must contain meaningful content: non-empty after
+ * trimming and containing at least one letter. Rejects junk like "123" or ".".
+ */
+export function meaningfulText(opts: {
+  requiredMessage: string;
+  invalidMessage: string;
+  max?: number;
+}) {
+  return z
+    .string()
+    .max(opts.max ?? 200)
+    .refine((v) => v.trim().length > 0, opts.requiredMessage)
+    .refine((v) => /\p{L}/u.test(v), opts.invalidMessage);
+}
+
+/**
+ * A required free-text value that must be non-empty after trimming. Unlike
+ * {@link meaningfulText} it allows purely numeric/symbolic content (e.g. a task
+ * title of "123"), but rejects whitespace-only input.
+ */
+export function trimmedRequired(opts: {
+  requiredMessage: string;
+  max?: number;
+}) {
+  return z
+    .string()
+    .max(opts.max ?? 200)
+    .refine((v) => v.trim().length > 0, opts.requiredMessage);
+}
+
+/**
+ * Common gTLDs accepted in addition to any 2-letter country-code TLD (e.g. .np,
+ * .uk). Keeps junk domains like "acme.cwedfghjk" out without shipping the full
+ * IANA list.
+ */
+const KNOWN_TLDS = new Set([
+  "com",
+  "org",
+  "net",
+  "edu",
+  "gov",
+  "mil",
+  "int",
+  "info",
+  "biz",
+  "name",
+  "pro",
+  "app",
+  "dev",
+  "io",
+  "ai",
+  "tech",
+  "online",
+  "site",
+  "store",
+  "shop",
+  "cloud",
+  "digital",
+  "agency",
+  "company",
+  "solutions",
+  "services",
+  "technology",
+  "international",
+  "media",
+  "news",
+  "blog",
+  "design",
+  "studio",
+  "world",
+  "live",
+  "life",
+  "xyz",
+  "tv",
+  "me",
+  "co",
+]);
+
+/** True when `value` is an http(s) URL whose host ends in a recognised TLD. */
+export function isValidWebsiteUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname;
+  const labels = host.split(".");
+  if (labels.length < 2) return false;
+  if (labels.some((label) => label.length === 0)) return false;
+  const tld = labels[labels.length - 1]!.toLowerCase();
+  // 2-letter country-code TLDs (.np, .uk, …) or a recognised generic TLD.
+  return /^[a-z]{2}$/.test(tld) || KNOWN_TLDS.has(tld);
+}
+
+/** Optional website field: blank is allowed, otherwise must be a valid URL. */
+export const websiteField = z
+  .string()
+  .max(200)
+  .refine(
+    (v) => v.trim() === "" || isValidWebsiteUrl(v.trim()),
+    "Please enter a valid website URL",
+  )
+  .optional()
+  .or(z.literal(""));
+
 export const ContactSchema = z
   .object({
     firstName: z.string().min(1, "First name is required").max(100),
@@ -31,7 +141,10 @@ export const LeadSchema = z.object({
 });
 
 export const DealSchema = z.object({
-  name: z.string().min(1, "Name is required").max(200),
+  name: meaningfulText({
+    requiredMessage: "Name is required",
+    invalidMessage: "Please enter a valid deal name",
+  }),
   value: z.coerce.number().min(0),
   contactId: z.string().uuid().optional().nullable(),
   companyId: z.string().uuid().optional().nullable(),
@@ -40,7 +153,7 @@ export const DealSchema = z.object({
 });
 
 export const TaskSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200),
+  title: trimmedRequired({ requiredMessage: "Title is required" }),
   dueDate: z.string().optional(),
   completed: z.boolean().optional(),
   contactId: z.string().uuid().optional().nullable(),
@@ -53,7 +166,7 @@ export const TaskSchema = z.object({
 
 export const CompanySchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
-  website: z.string().url().optional().or(z.literal("")),
+  website: websiteField,
   address: z.string().max(500).optional(),
   phone: z.string().max(50).optional().nullable(),
 });
