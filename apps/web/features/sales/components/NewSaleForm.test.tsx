@@ -998,6 +998,70 @@ describe("NewSaleForm", () => {
   });
 
   // ──────────────────────────────────────────────────────────────
+  // Manual discount focus (issue #605)
+  // ──────────────────────────────────────────────────────────────
+  //
+  // Typing a manual discount writes the whole items array via setValue, which
+  // regenerates every useFieldArray field id. When the cart row was keyed on
+  // that id, each keystroke remounted the row and dropped input focus. The row
+  // is now keyed on its stable (variation, sub-variation) identity, so the same
+  // DOM node survives the update.
+
+  describe("manual discount focus (issue #605)", () => {
+    async function renderWithItem() {
+      mockInventoryReturn([MOCK_INVENTORY_ITEM]);
+      render(<NewSaleForm {...defaultProps} />);
+      selectLocation();
+      const searchInput = screen.getByPlaceholderText(
+        /search by product name/i,
+      );
+      fireEvent.change(searchInput, { target: { value: "shirt" } });
+      await waitFor(() =>
+        expect(screen.getByText("Test Shirt")).toBeInTheDocument(),
+      );
+      const addBtns = screen.getAllByRole("button", { name: /^add$/i });
+      await act(async () => {
+        fireEvent.click(addBtns[0]!);
+      });
+      await waitFor(() =>
+        expect(screen.getByText("Shopping Cart")).toBeInTheDocument(),
+      );
+    }
+
+    it("keeps the same % input element (no remount) and focus across a keystroke", async () => {
+      await renderWithItem();
+
+      const pctInput = screen.getByPlaceholderText("%");
+      pctInput.focus();
+      expect(document.activeElement).toBe(pctInput);
+
+      await act(async () => {
+        fireEvent.change(pctInput, { target: { value: "5" } });
+      });
+
+      await waitFor(() => expect(pctInput).toHaveValue(5));
+      // Same node still mounted (a remount would return a different element).
+      expect(screen.getByPlaceholderText("%")).toBe(pctInput);
+      // …and focus was never dropped.
+      expect(document.activeElement).toBe(pctInput);
+    });
+
+    it("keeps focus on the reason input across a keystroke", async () => {
+      await renderWithItem();
+
+      const reasonInput = screen.getByPlaceholderText(/reason/i);
+      reasonInput.focus();
+      await act(async () => {
+        fireEvent.change(reasonInput, { target: { value: "VIP" } });
+      });
+
+      await waitFor(() => expect(reasonInput).toHaveValue("VIP"));
+      expect(screen.getByPlaceholderText(/reason/i)).toBe(reasonInput);
+      expect(document.activeElement).toBe(reasonInput);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────
   // Notes field
   // ──────────────────────────────────────────────────────────────
 

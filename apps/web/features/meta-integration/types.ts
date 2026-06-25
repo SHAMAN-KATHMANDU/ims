@@ -23,6 +23,8 @@ export interface MetaCredential {
   inboxChannelId?: string | null;
   inboxStatus?: string | null;
   webhookSubscribed?: boolean;
+  /** Instagram Business account linked to this Page, if any. */
+  instagram?: { id?: string; username?: string } | null;
 }
 
 export interface MetaWebhookInfo {

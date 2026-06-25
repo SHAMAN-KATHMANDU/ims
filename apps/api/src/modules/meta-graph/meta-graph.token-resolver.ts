@@ -13,7 +13,10 @@ import { MetaCredentialKind } from "@prisma/client";
 import { createError, type AppError } from "@/middlewares/errorHandler";
 import { decrypt } from "@/utils/encryption";
 import metaIntegrationRepository from "@/modules/meta-integration/meta-integration.repository";
-import { DEFAULT_GRAPH_API_VERSION } from "./meta-graph.client";
+import {
+  DEFAULT_GRAPH_API_VERSION,
+  metaGraphRequest,
+} from "./meta-graph.client";
 
 export interface ResolvedMetaToken {
   /** Decrypted access token (Page token or Ads system-user token). */
@@ -142,4 +145,126 @@ export function resolveAdsToken(
   opts: { adAccountId?: string } = {},
 ): Promise<ResolvedMetaToken> {
   return resolve(tenantId, MetaCredentialKind.ADS, opts.adAccountId);
+}
+
+// ── Instagram ───────────────────────────────────────────────────────────────
+// Instagram Business/Creator accounts are reached through the linked Facebook
+// Page using the SAME Page token. We resolve the Page token, then the linked IG
+// account id (stored on the PAGE credential's metadata, with a live fallback).
+
+export interface ResolvedInstagramAccount {
+  token: string;
+  appSecret?: string;
+  version: string;
+  /** The Instagram Business account id — the node for all IG calls. */
+  igUserId: string;
+  igUsername?: string;
+  /** The Facebook Page the IG account is linked to. */
+  pageId: string;
+  name: string;
+}
+
+/** `metadata.instagram` shape stored on a PAGE credential when connected. */
+function readStoredIg(
+  metadata: unknown,
+): { id?: string; username?: string } | undefined {
+  const ig = (metadata as Record<string, unknown> | null)?.instagram;
+  return ig && typeof ig === "object"
+    ? (ig as { id?: string; username?: string })
+    : undefined;
+}
+
+function igAmbiguousError(
+  options: Array<{ id: string; name: string }>,
+  selectorProvided: boolean,
+): AppErrorWithOptions {
+  const msg = selectorProvided
+    ? "No connected Page matches that pageId/igUserId. Use meta_ig_list to see the configured options."
+    : "Multiple Pages are connected — pass pageId (or igUserId) to choose one (see meta_ig_list).";
+  const err = createError(
+    msg,
+    400,
+    "META_AMBIGUOUS_SELECTOR",
+  ) as AppErrorWithOptions;
+  err.availableOptions = options;
+  err.referenceKind = "pageId";
+  return err;
+}
+
+export async function resolveInstagramAccount(
+  tenantId: string,
+  opts: { pageId?: string; igUserId?: string } = {},
+): Promise<ResolvedInstagramAccount> {
+  const integration = await metaIntegrationRepository.getIntegration(tenantId);
+  const version = integration?.graphApiVersion || DEFAULT_GRAPH_API_VERSION;
+  const appSecret = integration?.appSecretEnc
+    ? decrypt(integration.appSecretEnc)
+    : undefined;
+
+  const creds = await metaIntegrationRepository.getCredentialsByKind(
+    tenantId,
+    MetaCredentialKind.PAGE,
+  );
+  if (creds.length === 0) {
+    throw createError(
+      "No Facebook Page is configured. Add one in Settings → Facebook / Meta (its linked Instagram account is used).",
+      400,
+      "META_NOT_CONFIGURED",
+    );
+  }
+
+  const options = creds.map((c) => ({ id: c.externalId, name: c.name }));
+  const pageSel = opts.pageId?.trim();
+  const igSel = opts.igUserId?.trim();
+
+  let chosen = creds[0];
+  if (igSel) {
+    const match = creds.find((c) => readStoredIg(c.metadata)?.id === igSel);
+    if (!match) throw igAmbiguousError(options, true);
+    chosen = match;
+  } else if (pageSel) {
+    const match = creds.find((c) => c.externalId === pageSel);
+    if (!match) throw igAmbiguousError(options, true);
+    chosen = match;
+  } else if (integration?.defaultPageId) {
+    chosen =
+      creds.find((c) => c.externalId === integration.defaultPageId) ?? chosen;
+  } else if (creds.length > 1) {
+    throw igAmbiguousError(options, false);
+  }
+
+  const token = decrypt(chosen.accessTokenEnc);
+
+  // Stored IG account first; otherwise resolve live from the Page.
+  let ig = readStoredIg(chosen.metadata);
+  if (!ig?.id) {
+    const live = await metaGraphRequest<{
+      instagram_business_account?: { id: string; username?: string };
+    }>({
+      path: `${chosen.externalId}`,
+      token,
+      appSecret,
+      version,
+      query: { fields: "instagram_business_account{id,username}" },
+    });
+    ig = live.instagram_business_account;
+  }
+
+  if (!ig?.id) {
+    throw createError(
+      `The Facebook Page "${chosen.name}" has no linked Instagram Business account. Link one in the Page's settings, then reconnect the Page.`,
+      400,
+      "META_NO_IG_ACCOUNT",
+    );
+  }
+
+  return {
+    token,
+    appSecret,
+    version,
+    igUserId: ig.id,
+    igUsername: ig.username,
+    pageId: chosen.externalId,
+    name: chosen.name,
+  };
 }

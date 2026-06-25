@@ -828,11 +828,11 @@ export function NewSaleForm({
 
   // Direct keyboard entry for item quantity. Clamps to [1, maxQuantity],
   // flooring zero/negative/invalid entries to 1 and toasting when the entry
-  // exceeds available stock (same guard as the + button). Writes via setValue
-  // rather than useFieldArray.update so the row's field id is preserved — an
-  // update() would regenerate the id, remount the input, and drop focus after
-  // every keystroke. setValue still propagates to the field array, so line
-  // totals and the +/- buttons stay in sync.
+  // exceeds available stock (same guard as the + button). Writes the whole
+  // items array via setValue so line totals and the +/- buttons stay in sync.
+  // NB: setValue("items", …) regenerates every useFieldArray field id, so the
+  // row must be keyed on its stable identity (see the itemsFields.map key) to
+  // avoid remounting and dropping input focus (issue #605).
   const handleSetQuantity = (index: number, rawValue: string) => {
     const currentItems = validationForm.getValues("items") ?? [];
     const item = currentItems[index] as SaleItem | undefined;
@@ -871,11 +871,10 @@ export function NewSaleForm({
     handleSetQuantity(index, "1");
   };
 
-  // Apply a manual-discount field patch via setValue rather than
-  // useFieldArray.update so the row's field id is preserved — update() would
-  // regenerate the id, remount the input, and drop focus after every keystroke
-  // (issue #583, same root cause as handleSetQuantity). setValue still
-  // propagates to the field array, so line totals stay in sync.
+  // Apply a manual-discount field patch by writing the whole items array via
+  // setValue so line totals stay in sync. As with handleSetQuantity this
+  // regenerates the useFieldArray field ids, so focus is preserved by the row's
+  // stable identity key rather than by the write strategy (issues #583/#605).
   const patchDiscountFields = (index: number, patch: Partial<SaleItem>) => {
     const currentItems = validationForm.getValues("items") ?? [];
     const item = currentItems[index] as SaleItem | undefined;
@@ -1821,7 +1820,15 @@ export function NewSaleForm({
                             >
                               {itemsFields.map((item, index) => (
                                 <div
-                                  key={item.id}
+                                  // Key on the cart line's stable identity
+                                  // (variation + sub-variation, unique per line)
+                                  // rather than the useFieldArray field id. A
+                                  // setValue("items", …) regenerates every field
+                                  // id, so an id-based key remounts the whole row
+                                  // on each keystroke and drops focus from the
+                                  // quantity / manual-discount inputs (issue
+                                  // #605; #583/#597 only masked it).
+                                  key={`${item.variationId}::${item.subVariationId ?? "_"}`}
                                   className="bg-muted/30 border rounded-lg p-4 space-y-3"
                                 >
                                   <div className="flex items-start justify-between">

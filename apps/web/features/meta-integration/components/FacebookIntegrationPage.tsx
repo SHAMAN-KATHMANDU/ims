@@ -138,6 +138,25 @@ const MCP_TOOL_GROUPS: Array<{ group: string; tools: string[] }> = [
     ],
   },
   {
+    group: "Instagram",
+    tools: [
+      "meta_ig_list",
+      "meta_ig_account_get",
+      "meta_ig_account_insights",
+      "meta_ig_media_list",
+      "meta_ig_media_get",
+      "meta_ig_media_insights",
+      "meta_ig_media_comments",
+      "meta_ig_comment_replies",
+      "meta_ig_stories",
+      "meta_ig_tags",
+      "meta_ig_hashtag_search",
+      "meta_ig_hashtag_media",
+      "meta_ig_conversations",
+      "meta_ig_conversation_messages",
+    ],
+  },
+  {
     group: "Webhooks & generic",
     tools: [
       "meta_webhook_subscriptions",
@@ -437,7 +456,12 @@ export function FacebookIntegrationPage() {
             <div>
               <CardTitle>Pages</CardTitle>
               <CardDescription>
-                Connected Facebook Pages ({pages.length})
+                Connected Facebook Pages ({pages.length}). A Page token with the{" "}
+                <code>instagram_basic</code>,{" "}
+                <code>instagram_manage_insights</code>,{" "}
+                <code>instagram_manage_comments</code>, and{" "}
+                <code>instagram_manage_messages</code> scopes also unlocks the
+                linked Instagram account (meta_ig_* tools).
               </CardDescription>
             </div>
             <Button
@@ -467,8 +491,21 @@ export function FacebookIntegrationPage() {
                       <p className="text-xs text-muted-foreground">
                         {cred.externalId}
                       </p>
+                      {cred.instagram?.username && (
+                        <p className="text-xs text-muted-foreground">
+                          Instagram: @{cred.instagram.username}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      {cred.instagram?.id ? (
+                        <Badge
+                          variant="outline"
+                          className="border-pink-500 text-pink-600"
+                        >
+                          Instagram linked
+                        </Badge>
+                      ) : null}
                       {cred.webhookSubscribed ? (
                         <Badge className="bg-green-600">
                           Webhook subscribed

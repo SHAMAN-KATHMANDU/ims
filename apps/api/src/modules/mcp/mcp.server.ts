@@ -62,6 +62,7 @@ import { registerMediaUpdateMcpTools } from "@/modules/media/mcp-tools-update";
 
 // Read-only Facebook Graph (Meta) tools — page/post/message insights, labels, ads.
 import { registerMetaGraphMcpTools } from "@/modules/meta-graph/mcp-tools";
+import { registerInstagramMcpTools } from "@/modules/meta-graph/mcp-tools-instagram";
 
 export interface McpAuthContext {
   tenantId: string;
@@ -98,7 +99,12 @@ META / FACEBOOK GRAPH (read-only meta_* tools — page/post/message insights, la
 - Use CURRENT metric names. The old page_impressions / post_impressions / impressions / page_fans metrics were deprecated (June 2026); prefer views, page_follows, page_media_view, page_post_engagements, post_engaged_users. The curated tools already default to valid metrics — pass metrics only to override.
 - Page/post insights since/until windows are capped at 90 days per request.
 - For heavy or broken-down ads reports use meta_ads_insights_submit then meta_ads_insights_poll (async); meta_ads_insights is for quick synchronous queries.
-- meta_graph_get / meta_graph_get_all / meta_graph_batch are the generic escape hatch for any endpoint not covered by a curated tool; {page-id} and {ad-account-id} in the path are substituted from the selected credential.`;
+- meta_graph_get / meta_graph_get_all / meta_graph_batch are the generic escape hatch for any endpoint not covered by a curated tool; {page-id} and {ad-account-id} in the path are substituted from the selected credential.
+
+INSTAGRAM (read-only meta_ig_* tools — profile, media, insights, comments, hashtags, DM threads):
+- Instagram Business/Creator accounts are reached through the linked Facebook Page (same Page token). The Page must have a linked IG account and the token must carry the instagram_* scopes. Call meta_ig_list first to see connected IG accounts and to get a pageId/igUserId selector.
+- Use CURRENT IG metric names: prefer views (the old impressions is deprecated). Account engagement totals (accounts_engaged, total_interactions) require metric_type=total_value. Insights since/until are capped at 90 days.
+- A "no linked Instagram Business account" error means the chosen Page has no IG account linked — tell the user to link one in the Page's settings.`;
 
 export function createMcpServer(authCtx: McpAuthContext): McpServer {
   const server = new McpServer(
@@ -161,6 +167,8 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
 
   // Meta / Facebook Graph (read-only).
   registerMetaGraphMcpTools(server, authCtx);
+  // Instagram (read-only, via the linked Page token).
+  registerInstagramMcpTools(server, authCtx);
 
   registerYantraPrompts(server);
 
