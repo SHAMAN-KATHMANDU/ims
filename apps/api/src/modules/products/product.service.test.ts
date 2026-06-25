@@ -431,6 +431,118 @@ describe("ProductService", () => {
     });
   });
 
+  // A product with variations but NO sub-variations (the common case) used to
+  // 500 on create: the inventory upsert keyed on the (location, variation,
+  // sub_variation) compound-unique and Prisma 5.22 rejects a null
+  // sub_variation_id in a compound-unique `where` at runtime (issue #610,
+  // root-caused/fixed by #609). These tests lock the create() flow onto the
+  // null-safe raw-upsert path so the regression can't return.
+  describe("create — inventory seeding (issue #610 / #609)", () => {
+    const baseCtx = { tenantId: "tenant-1", userId: "user-1" };
+
+    const mockFindCategory = vi.fn();
+    const mockFindDefaultWarehouse = vi.fn();
+    const mockCreateProduct = vi.fn();
+    const mockUpsertIncrement = vi.fn();
+    const mockUpsertSeed = vi.fn();
+    const mockCreateAuditLog = vi.fn();
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      Object.assign(mockRepo, {
+        findCategoryByIdAndTenant: mockFindCategory,
+        findDefaultWarehouse: mockFindDefaultWarehouse,
+        createProduct: mockCreateProduct,
+        upsertIncrementLocationInventory: mockUpsertIncrement,
+        upsertSeedLocationInventory: mockUpsertSeed,
+        createAuditLog: mockCreateAuditLog,
+      });
+      mockFindCategory.mockResolvedValue({ id: "c1", name: "Furniture" });
+      mockFindDefaultWarehouse.mockResolvedValue({ id: "wh-1" });
+      mockCreateAuditLog.mockResolvedValue(undefined);
+    });
+
+    const baseDto = {
+      name: "Bookshelf",
+      categoryId: "c1",
+      costPrice: 100,
+      mrp: 200,
+      // Explicit imsCode → take the direct create path (no auto-generation),
+      // keeping these tests focused on the inventory-seeding branch.
+      imsCode: "BK-1",
+    };
+
+    it("seeds a no-sub-variation line via upsertIncrement with subVariationId null (no 500)", async () => {
+      mockCreateProduct.mockResolvedValue({
+        id: "p1",
+        name: "Bookshelf",
+        imsCode: "BK-1",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        variations: [{ id: "var-1", stockQuantity: 10, subVariations: [] }],
+      });
+
+      await expect(
+        productService.create(
+          {
+            ...baseDto,
+            variations: [{ stockQuantity: 10 }],
+          } as unknown as Parameters<typeof productService.create>[0],
+          baseCtx as Parameters<typeof productService.create>[1],
+        ),
+      ).resolves.toMatchObject({ id: "p1" });
+
+      expect(mockUpsertIncrement).toHaveBeenCalledWith({
+        locationId: "wh-1",
+        variationId: "var-1",
+        subVariationId: null,
+        quantity: 10,
+      });
+      expect(mockUpsertSeed).not.toHaveBeenCalled();
+    });
+
+    it("seeds each sub-variation via upsertSeed (not the increment path)", async () => {
+      mockCreateProduct.mockResolvedValue({
+        id: "p2",
+        name: "Bookshelf",
+        imsCode: "BK-2",
+        categoryId: "c1",
+        vendorId: null,
+        costPrice: 100,
+        mrp: 200,
+        variations: [
+          {
+            id: "var-2",
+            stockQuantity: 0,
+            subVariations: [{ id: "sub-a" }, { id: "sub-b" }],
+          },
+        ],
+      });
+
+      await productService.create(
+        {
+          ...baseDto,
+          variations: [{ stockQuantity: 0, subVariants: ["A", "B"] }],
+        } as unknown as Parameters<typeof productService.create>[0],
+        baseCtx as Parameters<typeof productService.create>[1],
+      );
+
+      expect(mockUpsertSeed).toHaveBeenCalledWith({
+        locationId: "wh-1",
+        variationId: "var-2",
+        subVariationId: "sub-a",
+      });
+      expect(mockUpsertSeed).toHaveBeenCalledWith({
+        locationId: "wh-1",
+        variationId: "var-2",
+        subVariationId: "sub-b",
+      });
+      expect(mockUpsertIncrement).not.toHaveBeenCalled();
+    });
+  });
+
   // Bad attribute UUIDs (stale picker, mismatched type/value, or hand-edited
   // payload) used to bubble out as Prisma P2025 FK failures → generic 500.
   // The pre-write validator must catch them as 400 errors.
