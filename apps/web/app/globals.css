@@ -536,7 +536,7 @@
 
   .receipt-divider {
     border-color: #e5e7eb !important;
-    margin: 12px 0 !important;
+    margin: 8px 0 !important;
   }
 
   .receipt-table-header {
@@ -571,10 +571,59 @@
     margin-bottom: 4px !important;
   }
 
+  /*
+   * Compact the inter-section spacing for print. On screen the receipt uses
+   * Tailwind `space-y-4` (16px between every section); on a small A5 page those
+   * margins accumulate and, combined with each section's `break-inside-avoid`,
+   * bump whole sections onto fresh pages — a short invoice spilled across three
+   * pages (issue #606). Tighten the gap so the content stays together.
+   */
+  .receipt-print-wrapper > * + * {
+    margin-top: 8px !important;
+  }
+
+  /*
+   * The items table renders inside an `overflow-x-auto` scroll wrapper with a
+   * `min-w-[400px] table-fixed` table for the on-screen view. In print the
+   * fixed layout clipped narrow numeric columns (Qty, Disc %) and the scroll
+   * wrapper could crop the right edge. Let the table lay out to its content and
+   * never clip (issue #606).
+   */
+  .receipt-items > div {
+    overflow: visible !important;
+    border: none !important;
+  }
+
+  .receipt-items table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+
+  .receipt-items th,
+  .receipt-items td {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow: visible !important;
+  }
+
+  /*
+   * Keep the totals block and the business footer pinned together beneath the
+   * items rather than orphaning the footer on a blank trailing page (issue
+   * #606). The previous 16px footer top-margin was enough to tip it over the
+   * page boundary on a full receipt.
+   */
+  .receipt-totals {
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
   .receipt-print-wrapper .receipt-footer {
     border-top-color: #e5e7eb !important;
-    margin-top: 16px !important;
-    padding-top: 12px !important;
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
   }
 
   @page {
