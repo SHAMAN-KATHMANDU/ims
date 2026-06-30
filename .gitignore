@@ -62,8 +62,8 @@ Thumbs.db
 .cursor/
 CLAUDE.md
 **/CLAUDE.md
+graphify-out/
 
-<<<<<<< HEAD
 # ----- Deploy / cloud -----
 .vercel
 .serverless/
