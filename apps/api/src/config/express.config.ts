@@ -20,6 +20,15 @@ import {
 
 const app = express();
 
+// The API always sits behind exactly one reverse proxy in staging/production
+// (Caddy on the dev box, nginx on prod) — trust that single hop so req.ip is
+// the real client address. Without this, every external caller shares the
+// proxy's IP and the OAuth /token + /register rate limits become one global
+// bucket (and express-rate-limit logs ERR_ERL_UNEXPECTED_X_FORWARDED_FOR on
+// every request). Numeric 1 (not `true`) keeps X-Forwarded-For spoofing by
+// direct clients ineffective beyond the first untrusted hop.
+app.set("trust proxy", 1);
+
 // Request timeout middleware (30 seconds default). The MCP transport streams
 // tool responses and a single tool call can legitimately run long — give it
 // 5 minutes instead (nginx mirrors this with proxy_read_timeout 300s).
