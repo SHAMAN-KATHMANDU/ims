@@ -60,6 +60,14 @@ const EnvSchema = z
     DATABASE_URL: z.string().optional().default(""),
     CORS_ORIGIN: z.string().optional(),
     API_PUBLIC_URL: z.string().optional(),
+    /** Public base URL of the admin web app; OAuth consent redirects land there (e.g. https://app.shamanyantra.com). */
+    WEB_PUBLIC_URL: z.string().optional(),
+    /** OAuth 2.1 issuer for the MCP authorization server. Defaults to the origin of API_PUBLIC_URL. */
+    OAUTH_ISSUER_URL: z.string().optional(),
+    /** Lifetime of OAuth-issued MCP access tokens (jsonwebtoken `expiresIn` syntax). */
+    MCP_OAUTH_ACCESS_TOKEN_TTL: z.string().optional().default("1h"),
+    /** Lifetime of OAuth refresh tokens (s/m/h/d suffix). */
+    MCP_OAUTH_REFRESH_TOKEN_TTL: z.string().optional().default("30d"),
     REDIS_URL: z.string().optional(),
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
@@ -224,6 +232,29 @@ const EnvSchema = z
     /** Base origin for static assets (uploads); strip /api/v1 from API_PUBLIC_URL */
     const publicServerOrigin = publicApiUrl.replace(/\/api\/v1\/?$/, "");
 
+    if (!isDev && !raw.WEB_PUBLIC_URL?.trim()) {
+      throw new z.ZodError([
+        {
+          code: "custom",
+          path: ["WEB_PUBLIC_URL"],
+          message:
+            "WEB_PUBLIC_URL is required in staging and production (OAuth consent redirects, e.g. https://app.shamanyantra.com).",
+        },
+      ]);
+    }
+    // Default matches apps/web `next dev --port 3400`.
+    const webPublicUrl = raw.WEB_PUBLIC_URL?.trim() || "http://localhost:3400";
+
+    // OAuth issuer must be an origin (no path/query/fragment — RFC 8414).
+    // API_PUBLIC_URL carries /api/v1, so take its URL origin.
+    let oauthIssuerUrl: string;
+    try {
+      oauthIssuerUrl =
+        raw.OAUTH_ISSUER_URL?.trim() || new URL(publicApiUrl).origin;
+    } catch {
+      oauthIssuerUrl = "http://localhost:4000";
+    }
+
     const awsRegion = raw.AWS_REGION?.trim() ?? "";
     const photosS3Bucket = raw.PHOTOS_S3_BUCKET?.trim() ?? "";
     const photosPublicUrlPrefixRaw = raw.PHOTOS_PUBLIC_URL_PREFIX?.trim() ?? "";
@@ -354,6 +385,10 @@ const EnvSchema = z
         publicServerOrigin.length > 0
           ? publicServerOrigin
           : "http://localhost:4000",
+      webPublicUrl,
+      oauthIssuerUrl,
+      mcpOauthAccessTokenTtl: raw.MCP_OAUTH_ACCESS_TOKEN_TTL.trim(),
+      mcpOauthRefreshTokenTtl: raw.MCP_OAUTH_REFRESH_TOKEN_TTL.trim(),
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,

@@ -9,7 +9,7 @@
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import prisma from "@/config/prisma";
+import prisma, { basePrisma } from "@/config/prisma";
 import { requirePermission } from "@/middlewares/requirePermission";
 import { workspaceLocator } from "@/shared/permissions/resourceLocator";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -83,13 +83,37 @@ mcpTokenRouter.get(
       select: {
         id: true,
         name: true,
+        oauthClientId: true,
         createdAt: true,
         expiresAt: true,
         lastUsedAt: true,
         revokedAt: true,
       },
     });
-    return ok(res, { tokens });
+
+    // Resolve OAuth client names for connector-issued tokens (single query;
+    // oauthClientId is null for tokens minted from this settings screen).
+    const oauthClientIds = [
+      ...new Set(
+        tokens.flatMap((t) => (t.oauthClientId ? [t.oauthClientId] : [])),
+      ),
+    ];
+    const clients = oauthClientIds.length
+      ? await basePrisma.oAuthClient.findMany({
+          where: { id: { in: oauthClientIds } },
+          select: { id: true, clientName: true },
+        })
+      : [];
+    const clientNameById = new Map(clients.map((c) => [c.id, c.clientName]));
+
+    return ok(res, {
+      tokens: tokens.map(({ oauthClientId, ...token }) => ({
+        ...token,
+        oauthClientName: oauthClientId
+          ? (clientNameById.get(oauthClientId) ?? "OAuth client")
+          : null,
+      })),
+    });
   }),
 );
 

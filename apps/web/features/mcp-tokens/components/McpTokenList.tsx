@@ -3,10 +3,7 @@
 import { Key, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
-import {
-  useMcpTokens,
-  useRevokeMcpToken,
-} from "../hooks/use-mcp-tokens";
+import { useMcpTokens, useRevokeMcpToken } from "../hooks/use-mcp-tokens";
 import type { McpToken } from "../types";
 
 function formatDate(value: string | null): string {
@@ -50,9 +47,7 @@ export function McpTokenList() {
   };
 
   if (isLoading) {
-    return (
-      <div className="text-sm text-muted-foreground">Loading tokens…</div>
-    );
+    return <div className="text-sm text-muted-foreground">Loading tokens…</div>;
   }
 
   if (!tokens || tokens.length === 0) {
@@ -89,7 +84,14 @@ export function McpTokenList() {
             const isRevoked = !!token.revokedAt;
             return (
               <tr key={token.id} className="border-t border-border">
-                <td className="px-3 py-2 font-medium">{token.name}</td>
+                <td className="px-3 py-2 font-medium">
+                  {token.name}
+                  {token.oauthClientName && (
+                    <span className="ml-2 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] font-normal text-muted-foreground uppercase">
+                      OAuth · {token.oauthClientName}
+                    </span>
+                  )}
+                </td>
                 <td className={`px-3 py-2 text-xs ${status.tone}`}>
                   {status.label}
                 </td>

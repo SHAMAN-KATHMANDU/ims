@@ -2,6 +2,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import cors from "cors";
+import { mcpAuthRouter } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import router from "@/config/router.config";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "@/config/swagger.config";
@@ -11,12 +12,20 @@ import { requestIdMiddleware } from "@/middlewares/requestId";
 import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
 import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
+import {
+  oauthServerProvider,
+  MCP_RESOURCE_URL,
+  MCP_SCOPE,
+} from "@/modules/oauth/oauth.provider";
 
 const app = express();
 
-// Request timeout middleware (30 seconds default)
+// Request timeout middleware (30 seconds default). The MCP transport streams
+// tool responses and a single tool call can legitimately run long — give it
+// 5 minutes instead (nginx mirrors this with proxy_read_timeout 300s).
 app.use((req, res, next) => {
-  req.setTimeout(30000, () => {
+  const timeoutMs = req.path.startsWith("/api/v1/mcp") ? 300000 : 30000;
+  req.setTimeout(timeoutMs, () => {
     res.status(408).json({
       message: "The request took too long. Please try again.",
       statusCode: 408,
@@ -31,12 +40,55 @@ app.use(requestIdMiddleware);
 // Request logging for all /api/v1 calls (method, path, status, duration)
 app.use(requestLoggingMiddleware);
 
+// MCP + OAuth endpoints are Bearer/PKCE-authed (no cookies), and MCP clients
+// connect from arbitrary origins (claude.ai, MCP Inspector, ChatGPT) — so
+// these paths get open CORS. Mounted BEFORE the credentialed app-wide CORS,
+// which would otherwise end preflights from unknown origins with no
+// Access-Control-Allow-Origin header.
+app.use(
+  [
+    "/api/v1/mcp",
+    "/authorize",
+    "/token",
+    "/register",
+    "/revoke",
+    "/.well-known",
+  ],
+  cors({
+    origin: true,
+    exposedHeaders: ["Mcp-Session-Id", "WWW-Authenticate"],
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "mcp-protocol-version",
+      "Mcp-Session-Id",
+    ],
+  }),
+);
+
 // CORS middleware - uses CORS_ORIGIN from environment
 // In production, this must be set to specific frontend origin(s)
 app.use(
   cors({
     origin: env.corsOrigin,
     credentials: true,
+  }),
+);
+
+// OAuth 2.1 authorization server for the MCP transport (MCP SDK). Serves
+// /.well-known/oauth-authorization-server, /.well-known/oauth-protected-resource/api/v1/mcp,
+// /authorize, /token, /register (DCR) and /revoke — all at the app root, as
+// RFC 8414/9728 require. Storage + policy live in modules/oauth/oauth.provider.
+app.use(
+  mcpAuthRouter({
+    provider: oauthServerProvider,
+    issuerUrl: new URL(env.oauthIssuerUrl),
+    resourceServerUrl: new URL(MCP_RESOURCE_URL),
+    scopesSupported: [MCP_SCOPE],
+    resourceName: "IMS MCP",
+    // DCR clients (claude.ai, ChatGPT) don't re-register when a secret
+    // expires — issue non-expiring secrets and rely on /revoke + row revocation.
+    clientRegistrationOptions: { clientSecretExpirySeconds: 0 },
   }),
 );
 

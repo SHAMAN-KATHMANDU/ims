@@ -1,6 +1,8 @@
 export interface McpToken {
   id: string;
   name: string;
+  /** Set when the token was issued through the OAuth connector flow (e.g. "Claude"); null for tokens minted on this screen. */
+  oauthClientName: string | null;
   createdAt: string;
   expiresAt: string;
   lastUsedAt: string | null;

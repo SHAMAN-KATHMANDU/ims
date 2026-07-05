@@ -54,19 +54,21 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: (credentials: LoginCredentials) =>
-      loginApi(
-        credentials.username,
-        credentials.password,
-        credentials.tenantSlug,
-      ),
-    onSuccess: ({ token, refreshToken, user, tenant }) => {
+    mutationFn: (vars: LoginCredentials & { redirectTo?: string }) =>
+      loginApi(vars.username, vars.password, vars.tenantSlug),
+    onSuccess: ({ token, refreshToken, user, tenant }, vars) => {
       setAuth(user, token, tenant, refreshToken);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       const root = tenant?.slug
         ? getWorkspaceRoot(tenant.slug)
         : getWorkspaceRoot();
-      router.push(root);
+      // Only same-origin relative paths may override the workspace root
+      // (open-redirect protection; "//host" is protocol-relative and unsafe).
+      const next =
+        vars.redirectTo?.startsWith("/") && !vars.redirectTo.startsWith("//")
+          ? vars.redirectTo
+          : null;
+      router.push(next ?? root);
       router.refresh();
     },
   });
@@ -82,8 +84,11 @@ export function useAuth() {
   });
 
   const login = useCallback(
-    async (credentials: LoginCredentials) => {
-      return loginMutation.mutateAsync(credentials);
+    async (
+      credentials: LoginCredentials,
+      options?: { redirectTo?: string },
+    ) => {
+      return loginMutation.mutateAsync({ ...credentials, ...options });
     },
     [loginMutation],
   );

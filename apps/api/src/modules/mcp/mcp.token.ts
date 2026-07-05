@@ -41,6 +41,10 @@ export interface SignMcpTokenInput {
   username?: string;
   /** User-given label persisted on the McpToken row. */
   name: string;
+  /** Override the default token lifetime (jsonwebtoken `expiresIn` syntax). */
+  ttl?: string;
+  /** OAuthClient.id when issued through the OAuth /token endpoint. */
+  oauthClientId?: string;
 }
 
 export interface SignMcpTokenResult {
@@ -54,9 +58,9 @@ export interface SignMcpTokenResult {
 export async function signMcpToken(
   input: SignMcpTokenInput,
 ): Promise<SignMcpTokenResult> {
-  const ttl = process.env.MCP_TOKEN_TTL ?? DEFAULT_MCP_TTL;
+  const ttl = input.ttl ?? process.env.MCP_TOKEN_TTL ?? DEFAULT_MCP_TTL;
   const jti = randomUUID();
-  const { name, ...claims } = input;
+  const { name, ttl: _ttl, oauthClientId, ...claims } = input;
 
   const token = jwt.sign(claims, env.jwtSecret, {
     expiresIn: ttl as any,
@@ -78,6 +82,7 @@ export async function signMcpToken(
       userId: input.id,
       name,
       jti,
+      oauthClientId: oauthClientId ?? null,
       expiresAt,
     },
   });
