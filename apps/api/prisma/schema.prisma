@@ -99,6 +99,9 @@ model Tenant {
   // clients (Claude Desktop, etc.) to the /mcp transport.
   mcpTokens McpToken[]
 
+  // OAuth refresh tokens for MCP connector grants bound to this tenant.
+  oauthRefreshTokens OAuthRefreshToken[]
+
   // Blog relations
   blogPosts      BlogPost[]
   blogCategories BlogCategory[]
@@ -219,21 +222,94 @@ model TenantApiKey {
 // every /mcp request so revocation is immediate; stateless verify alone
 // would have to wait for expiry.
 model McpToken {
-  id         String    @id @default(uuid())
-  tenantId   String    @map("tenant_id")
-  userId     String    @map("user_id")
-  name       String // user-given label, e.g. "Roshan's laptop — Claude Desktop"
-  jti        String    @unique // JWT id; what verifyMcpToken looks up
-  expiresAt  DateTime  @map("expires_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  lastUsedAt DateTime? @map("last_used_at")
-  revokedAt  DateTime? @map("revoked_at")
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  userId        String    @map("user_id")
+  name          String // user-given label, e.g. "Roshan's laptop — Claude Desktop"
+  jti           String    @unique // JWT id; what verifyMcpToken looks up
+  oauthClientId String?   @map("oauth_client_id") // OAuthClient.id when issued via /token; null for static tokens
+  expiresAt     DateTime  @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  lastUsedAt    DateTime? @map("last_used_at")
+  revokedAt     DateTime? @map("revoked_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, userId])
+  @@index([oauthClientId])
   @@map("mcp_tokens")
+}
+
+// OAuth 2.1 client from dynamic client registration (RFC 7591).
+// Global, NOT tenant-scoped: DCR is anonymous (claude.ai registers before any
+// user logs in). Tenant/user binding happens at consent time.
+model OAuthClient {
+  id                      String    @id @default(uuid())
+  clientId                String    @unique @map("client_id")
+  clientSecret            String?   @map("client_secret") // bcrypt hash; null for public (PKCE-only) clients
+  clientName              String?   @map("client_name")
+  redirectUris            String[]  @map("redirect_uris")
+  grantTypes              String[]  @default(["authorization_code", "refresh_token"]) @map("grant_types")
+  tokenEndpointAuthMethod String    @default("none") @map("token_endpoint_auth_method")
+  scope                   String    @default("mcp")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  revokedAt               DateTime? @map("revoked_at")
+
+  authorizationRequests OAuthAuthorizationRequest[]
+  refreshTokens         OAuthRefreshToken[]
+
+  @@map("oauth_clients")
+}
+
+// Pending /authorize request; its id is the opaque request_id the consent page
+// receives. tenantId/userId stay NULL until the logged-in user approves.
+// Short-lived (~10 min) — purged by the cleanup job.
+model OAuthAuthorizationRequest {
+  id            String    @id @default(uuid())
+  clientId      String    @map("client_id")
+  redirectUri   String    @map("redirect_uri")
+  state         String?
+  scope         String
+  resource      String? // RFC 8707 resource indicator; validated == canonical MCP URL
+  codeChallenge String    @map("code_challenge") // PKCE S256 only
+  code          String?   @unique // set at approval; single-use
+  codeUsedAt    DateTime? @map("code_used_at")
+  tenantId      String?   @map("tenant_id") // bound at consent approval
+  userId        String?   @map("user_id")
+  approvedAt    DateTime? @map("approved_at")
+  expiresAt     DateTime  @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("oauth_authorization_requests")
+}
+
+// Opaque refresh token (sha256 hash stored). Rotation: each /token refresh
+// issues a new row in the same familyId and stamps rotatedAt on the old one;
+// reuse of a rotated token revokes the whole family.
+model OAuthRefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique @map("token_hash")
+  familyId  String    @map("family_id")
+  clientId  String    @map("client_id")
+  tenantId  String    @map("tenant_id")
+  userId    String    @map("user_id")
+  scope     String
+  expiresAt DateTime  @map("expires_at")
+  rotatedAt DateTime? @map("rotated_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  client OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([tenantId, userId])
+  @@map("oauth_refresh_tokens")
 }
 
 enum TenantDomainApp {
@@ -1008,6 +1084,9 @@ model User {
 
   // MCP tokens this user has minted for their MCP clients.
   mcpTokens McpToken[]
+
+  // OAuth refresh tokens for MCP connector grants this user approved.
+  oauthRefreshTokens OAuthRefreshToken[]
 
   @@unique([tenantId, username])
   @@index([tenantId, deletedAt])

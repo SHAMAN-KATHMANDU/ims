@@ -36,6 +36,13 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  // OAuth consent for MCP connectors (root-level route, not a workspace).
+  // It renders its own signed-out state (org entry → login → back here),
+  // so it must not be caught by the protected-path redirect below.
+  if (pathname === "/oauth/consent") {
+    return NextResponse.next();
+  }
+
   // Root: if logged in, redirect to tenant root (we use default slug; they may have tenant in store)
   if (pathname === "/") {
     if (hasToken) {

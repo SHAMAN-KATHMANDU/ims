@@ -23,8 +23,16 @@ import { getForgotPasswordPath } from "@/constants/routes";
 /**
  * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
  * and is passed as a prop; it is sent as X-Tenant-Slug on login.
+ * `next` (optional, same-origin path) overrides the post-login redirect —
+ * used by the OAuth consent flow to return to /oauth/consent.
  */
-export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
+export function LoginForm({
+  tenantSlug,
+  next,
+}: {
+  tenantSlug: string;
+  next?: string;
+}) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -60,11 +68,14 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
       return;
     }
     try {
-      await login({
-        username: data.username,
-        password: data.password,
-        tenantSlug: slug,
-      });
+      await login(
+        {
+          username: data.username,
+          password: data.password,
+          tenantSlug: slug,
+        },
+        next ? { redirectTo: next } : undefined,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed";
       const isGenericNotFound = message === "The requested item was not found.";

@@ -86,6 +86,7 @@ import publicDataApiRouter from "@/modules/public-data-api/public-data-api.route
 import formsRouter from "@/modules/forms/forms.router";
 import mcpRouter from "@/modules/mcp/mcp.router";
 import mcpTokenRouter from "@/modules/mcp/mcp.token.router";
+import oauthConsentRouter from "@/modules/oauth/oauth.consent.router";
 import {
   siteTemplatesRouter,
   siteTemplatesPlatformRouter,
@@ -128,6 +129,21 @@ router.use(
   mcpTokenRouter,
 );
 router.use("/mcp", mcpRouter);
+
+// ============================================
+// OAuth consent bridge for the MCP authorization server. The protocol
+// endpoints (/authorize, /token, /register, /revoke, /.well-known/*) live at
+// the app root via mcpAuthRouter (express.config.ts); this surface is what
+// the apps/web consent page calls with the user's normal JWT to approve or
+// deny a pending authorization request.
+// ============================================
+router.use(
+  "/oauth/consent",
+  verifyToken,
+  resolveTenant,
+  checkSubscription,
+  oauthConsentRouter,
+);
 
 // ============================================
 // Public website routes (no JWT; tenant resolved from Host header)

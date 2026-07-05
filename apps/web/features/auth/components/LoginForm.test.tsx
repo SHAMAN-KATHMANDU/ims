@@ -64,11 +64,44 @@ describe("LoginForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /^login$/i }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith({
-        username: "user1",
-        password: "password123",
-        tenantSlug: "acme",
-      });
+      expect(mockLogin).toHaveBeenCalledWith(
+        {
+          username: "user1",
+          password: "password123",
+          tenantSlug: "acme",
+        },
+        undefined,
+      );
+    });
+  });
+
+  it("forwards next as the post-login redirect override", async () => {
+    mockLogin.mockResolvedValue(undefined);
+
+    render(
+      <LoginForm tenantSlug="acme" next="/oauth/consent?request_id=r1" />,
+      {
+        wrapper,
+      },
+    );
+
+    fireEvent.change(screen.getByLabelText("Username"), {
+      target: { value: "user1" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^login$/i }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith(
+        {
+          username: "user1",
+          password: "password123",
+          tenantSlug: "acme",
+        },
+        { redirectTo: "/oauth/consent?request_id=r1" },
+      );
     });
   });
 

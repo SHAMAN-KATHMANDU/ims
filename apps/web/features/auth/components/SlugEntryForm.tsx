@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SlugSchema, type SlugInput } from "../validation";
 
-export function SlugEntryForm() {
+/**
+ * `next` (optional, same-origin path) is forwarded to the login page so the
+ * post-login redirect can return to a flow in progress (e.g. OAuth consent).
+ */
+export function SlugEntryForm({ next }: { next?: string } = {}) {
   const router = useRouter();
 
   const form = useForm<SlugInput>({
@@ -19,7 +23,12 @@ export function SlugEntryForm() {
 
   const handleSubmit = form.handleSubmit((values) => {
     const trimmed = values.slug.trim().toLowerCase();
-    router.push(getLoginPath(trimmed));
+    const loginPath = getLoginPath(trimmed);
+    router.push(
+      next && next.startsWith("/") && !next.startsWith("//")
+        ? `${loginPath}?next=${encodeURIComponent(next)}`
+        : loginPath,
+    );
   });
 
   return (
@@ -52,11 +61,7 @@ export function SlugEntryForm() {
         <Button type="submit">Go</Button>
       </div>
       {form.formState.errors.slug && (
-        <p
-          id="slug-error"
-          role="alert"
-          className="text-sm text-destructive"
-        >
+        <p id="slug-error" role="alert" className="text-sm text-destructive">
           {form.formState.errors.slug.message}
         </p>
       )}
