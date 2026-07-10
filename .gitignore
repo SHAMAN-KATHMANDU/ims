@@ -85,3 +85,6 @@ apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
 
 todo.md
+
+# Playwright MCP browser artifacts
+.playwright-mcp/
