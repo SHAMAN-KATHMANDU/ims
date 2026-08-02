@@ -87,6 +87,8 @@ const EXPECTED_CREATE_TOOLS = [
   "unpublish_page",
   "presign_media_upload",
   "register_media_asset",
+  "create_attribute_type",
+  "create_attribute_value",
 ];
 
 const EXPECTED_READ_TOOLS_SAMPLE = [
@@ -97,6 +99,19 @@ const EXPECTED_READ_TOOLS_SAMPLE = [
   "inventory_snapshot",
   "crm_staff_activity",
   "report_render",
+  "list_attribute_types",
+  "get_attribute_type",
+  "update_attribute_type",
+  "list_attribute_values",
+  "update_attribute_value",
+  "get_attribute_value_usage",
+  "list_transfers",
+  "get_transfer",
+  "list_sales",
+  "get_sale",
+  "get_product_stock",
+  "get_location_inventory",
+  "update_pipeline",
 ];
 
 describe("createMcpServer", () => {
@@ -131,8 +146,8 @@ describe("createMcpServer", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("registers at least 47 tools total (38 create + ~18 read)", () => {
-    expect(names.length).toBeGreaterThanOrEqual(47);
+  it("registers at least 62 tools total (40 create + ~30 read/update)", () => {
+    expect(names.length).toBeGreaterThanOrEqual(62);
   });
 
   it("dumps the full sorted tool list (for visibility)", () => {

@@ -59,6 +59,12 @@ import { registerBlogUpdateMcpTools } from "@/modules/blog/mcp-tools-update";
 import { registerPagesUpdateMcpTools } from "@/modules/pages/mcp-tools-update";
 import { registerAutomationUpdateMcpTools } from "@/modules/automation/mcp-tools-update";
 import { registerMediaUpdateMcpTools } from "@/modules/media/mcp-tools-update";
+import { registerAttributeTypesCreateMcpTools } from "@/modules/attribute-types/mcp-tools-create";
+import { registerAttributeTypesReadMcpTools } from "@/modules/attribute-types/mcp-tools-read";
+import { registerTransfersReadMcpTools } from "@/modules/transfers/mcp-tools-read";
+import { registerSalesReadMcpTools } from "@/modules/sales/mcp-tools-read";
+import { registerInventoryReadMcpTools } from "@/modules/inventory/mcp-tools-read";
+import { registerPipelinesUpdateMcpTools } from "@/modules/pipelines/mcp-tools-update";
 
 // Read-only Facebook Graph (Meta) tools — page/post/message insights, labels, ads.
 import { registerMetaGraphMcpTools } from "@/modules/meta-graph/mcp-tools";
@@ -88,6 +94,8 @@ FOREIGN-KEY IDS (companyId, memberId, contactId, dealId, pipelineId, assignedToI
 - Resolve the id with the matching list_*/get_* tool before using it. Unknown or soft-deleted ids are rejected.
 
 DEAL STAGES: a deal's stage must be one of its pipeline's stages — list_pipelines to see them.
+
+ATTRIBUTE TYPES are the product-variation lookups (Size, Color, …): call list_attribute_types before creating a type or value (both are unique per tenant/type). Deleting or merging types/values happens in the admin UI only — use get_attribute_value_usage to report what a value is used by.
 
 JOURNEY TYPE is an editable lookup: a contact's stored journeyType wins when it is a valid journey type; otherwise it is derived from the contact's active deal pipeline and stage. Validate it like any other named lookup.
 
@@ -143,6 +151,7 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerBlogCreateMcpTools(server, authCtx);
   registerPagesCreateMcpTools(server, authCtx);
   registerMediaCreateMcpTools(server, authCtx);
+  registerAttributeTypesCreateMcpTools(server, authCtx);
 
   // Update / read / lookup tools (CRU additions).
   registerCrmSettingsMcpTools(server, authCtx);
@@ -164,6 +173,11 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerPagesUpdateMcpTools(server, authCtx);
   registerAutomationUpdateMcpTools(server, authCtx);
   registerMediaUpdateMcpTools(server, authCtx);
+  registerAttributeTypesReadMcpTools(server, authCtx);
+  registerTransfersReadMcpTools(server, authCtx);
+  registerSalesReadMcpTools(server, authCtx);
+  registerInventoryReadMcpTools(server, authCtx);
+  registerPipelinesUpdateMcpTools(server, authCtx);
 
   // Meta / Facebook Graph (read-only).
   registerMetaGraphMcpTools(server, authCtx);
