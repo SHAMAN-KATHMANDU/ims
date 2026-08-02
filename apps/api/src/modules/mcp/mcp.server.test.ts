@@ -89,6 +89,13 @@ const EXPECTED_CREATE_TOOLS = [
   "register_media_asset",
   "create_attribute_type",
   "create_attribute_value",
+  "create_collection",
+  "set_collection_products",
+  "create_redirect",
+  "create_snippet",
+  "create_workflow",
+  "send_message",
+  "set_review_approval",
 ];
 
 const EXPECTED_READ_TOOLS_SAMPLE = [
@@ -112,6 +119,32 @@ const EXPECTED_READ_TOOLS_SAMPLE = [
   "get_product_stock",
   "get_location_inventory",
   "update_pipeline",
+  "list_collections",
+  "get_collection",
+  "update_collection",
+  "list_reviews",
+  "list_redirects",
+  "update_redirect",
+  "list_snippets",
+  "update_snippet",
+  "get_business_profile",
+  "update_business_profile",
+  "get_payment_methods",
+  "update_payment_methods",
+  "list_notifications",
+  "list_workflows",
+  "get_workflow",
+  "update_workflow",
+  "list_conversations",
+  "get_conversation_messages",
+  "list_users",
+  "get_user",
+  "list_roles",
+  "get_role",
+  "analytics_overview",
+  "analytics_sales_revenue",
+  "analytics_inventory_ops",
+  "analytics_customers_promos",
 ];
 
 describe("createMcpServer", () => {
@@ -146,8 +179,8 @@ describe("createMcpServer", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("registers at least 62 tools total (40 create + ~30 read/update)", () => {
-    expect(names.length).toBeGreaterThanOrEqual(62);
+  it("registers at least 98 tools total across all modules", () => {
+    expect(names.length).toBeGreaterThanOrEqual(98);
   });
 
   it("dumps the full sorted tool list (for visibility)", () => {

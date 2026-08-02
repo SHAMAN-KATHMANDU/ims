@@ -65,6 +65,18 @@ import { registerTransfersReadMcpTools } from "@/modules/transfers/mcp-tools-rea
 import { registerSalesReadMcpTools } from "@/modules/sales/mcp-tools-read";
 import { registerInventoryReadMcpTools } from "@/modules/inventory/mcp-tools-read";
 import { registerPipelinesUpdateMcpTools } from "@/modules/pipelines/mcp-tools-update";
+import { registerCollectionsMcpTools } from "@/modules/collections/mcp-tools";
+import { registerReviewsReadMcpTools } from "@/modules/reviews/mcp-tools-read";
+import { registerRedirectsMcpTools } from "@/modules/redirects/mcp-tools";
+import { registerSnippetsMcpTools } from "@/modules/snippets/mcp-tools";
+import { registerBusinessProfileMcpTools } from "@/modules/business-profile/mcp-tools";
+import { registerTenantSettingsMcpTools } from "@/modules/tenant-settings/mcp-tools";
+import { registerNotificationsReadMcpTools } from "@/modules/notifications/mcp-tools-read";
+import { registerWorkflowsMcpTools } from "@/modules/workflows/mcp-tools";
+import { registerMessagingMcpTools } from "@/modules/messaging/mcp-tools";
+import { registerUsersReadMcpTools } from "@/modules/users/mcp-tools-read";
+import { registerPermissionsReadMcpTools } from "@/modules/permissions/mcp-tools-read";
+import { registerAnalyticsMcpTools } from "@/modules/analytics/mcp-tools";
 
 // Read-only Facebook Graph (Meta) tools — page/post/message insights, labels, ads.
 import { registerMetaGraphMcpTools } from "@/modules/meta-graph/mcp-tools";
@@ -100,6 +112,10 @@ ATTRIBUTE TYPES are the product-variation lookups (Size, Color, …): call list_
 JOURNEY TYPE is an editable lookup: a contact's stored journeyType wins when it is a valid journey type; otherwise it is derived from the contact's active deal pipeline and stage. Validate it like any other named lookup.
 
 UPDATING: always fetch the record (get_*/list_*) before update_* so you send correct ids and change only intended fields.
+
+MESSAGING: send_message delivers to a real customer on the connected channel. Only send content the user explicitly asked to send; never draft-and-send in one step without showing the user the text.
+
+ADMIN READS: users and roles are read-only over MCP (list_users, get_user, list_roles, get_role). User lifecycle, role changes, and all deletions happen in the admin UI.
 
 META / FACEBOOK GRAPH (read-only meta_* tools — page/post/message insights, labels, ads):
 - Credentials are per-tenant and configured by the tenant in Settings → Facebook / Meta. If a tool reports the integration is not configured, tell the user to add their Facebook App + Page/Ads tokens there; do not invent credentials.
@@ -178,6 +194,24 @@ export function createMcpServer(authCtx: McpAuthContext): McpServer {
   registerSalesReadMcpTools(server, authCtx);
   registerInventoryReadMcpTools(server, authCtx);
   registerPipelinesUpdateMcpTools(server, authCtx);
+
+  // Website / content modules.
+  registerCollectionsMcpTools(server, authCtx);
+  registerReviewsReadMcpTools(server, authCtx);
+  registerRedirectsMcpTools(server, authCtx);
+  registerSnippetsMcpTools(server, authCtx);
+
+  // Tenant settings & communication.
+  registerBusinessProfileMcpTools(server, authCtx);
+  registerTenantSettingsMcpTools(server, authCtx);
+  registerNotificationsReadMcpTools(server, authCtx);
+  registerWorkflowsMcpTools(server, authCtx);
+  registerMessagingMcpTools(server, authCtx);
+
+  // Read-only administration & analytics.
+  registerUsersReadMcpTools(server, authCtx);
+  registerPermissionsReadMcpTools(server, authCtx);
+  registerAnalyticsMcpTools(server, authCtx);
 
   // Meta / Facebook Graph (read-only).
   registerMetaGraphMcpTools(server, authCtx);
